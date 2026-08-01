@@ -11,5 +11,3 @@ export const growthStages = ["Làm đọt", "Ra hoa", "Đậu trái", "Nuôi tr�
 export const activityTypes = ["Phun thuốc", "Bón phân", "Tưới nước", "Làm cỏ"] as const;
 
 export const durianVarieties = ["Ri6", "Monthong", "MusangKing", "Dona", "Khác"] as const;
-
-export const qualityGrades = ["Loại 1", "Loại 2", "Loại kem"] as const;

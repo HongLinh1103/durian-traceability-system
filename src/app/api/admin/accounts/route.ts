@@ -106,14 +106,6 @@ export async function GET(request: Request) {
                             isActive: true,
                         },
                     },
-                    packhouses: {
-                        select: {
-                            id: true,
-                            packhouseCode: true,
-                            packhouseName: true,
-                            address: true,
-                        },
-                    },
                     areaManagerApplication: {
                         select: {
                             identityNumber: true,

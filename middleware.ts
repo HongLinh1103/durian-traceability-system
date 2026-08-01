@@ -6,18 +6,13 @@ import { AUTH_COOKIE_NAME, verifyAuthToken } from "@/lib/auth-token";
 const roleRedirects: Record<UserRole, string> = {
     ADMIN: "/dashboard/admin/reminders",
     AREA_MANAGER: "/dashboard/area-manager",
-    EXPORTER: "/dashboard/exporter",
     FARMER: "/dashboard/farmer",
-    PACKHOUSE_MANAGER: "/dashboard/packhouse/batches",
-    PACKHOUSE_STAFF: "/dashboard/packhouse/batches",
 };
 
 const accessRules: Array<{ prefix: string; roles: UserRole[] }> = [
     { prefix: "/dashboard/admin", roles: ["ADMIN"] },
     { prefix: "/dashboard/area-manager", roles: ["AREA_MANAGER", "ADMIN"] },
-    { prefix: "/dashboard/exporter", roles: ["EXPORTER", "ADMIN"] },
     { prefix: "/dashboard/farmer", roles: ["FARMER", "AREA_MANAGER", "ADMIN"] },
-    { prefix: "/dashboard/packhouse", roles: ["PACKHOUSE_MANAGER", "PACKHOUSE_STAFF", "ADMIN"] },
 ];
 
 function getRule(pathname: string): { prefix: string; roles: UserRole[] } | undefined {

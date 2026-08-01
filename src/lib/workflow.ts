@@ -38,15 +38,3 @@ export function evaluatePhiSafety(input: { sprayDate: DateLike; harvestDate: Dat
         safeHarvestDate,
     };
 }
-
-export function buildTraceUrl(qrCodeString: string) {
-    return `/trace/${qrCodeString}`;
-}
-
-export function generateTraceCode() {
-    return globalThis.crypto?.randomUUID?.() ?? `trace-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-export function buildGoogleMapsEmbed(latitude: number, longitude: number) {
-    return `https://www.google.com/maps?q=${latitude},${longitude}&z=16&output=embed`;
-}

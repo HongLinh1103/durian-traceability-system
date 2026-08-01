@@ -79,7 +79,7 @@ export default async function GardenDetailPage({ params }: { params: { gardenId:
                 take: 1,
                 select: { actionDate: true },
             },
-            _count: { select: { farmingLogs: true, harvestBatches: true } },
+            _count: { select: { farmingLogs: true } },
         },
     });
     if (!garden) notFound();
@@ -155,7 +155,6 @@ export default async function GardenDetailPage({ params }: { params: { gardenId:
                     <Info label="Ngày liên kết" value={garden.createdAt.toLocaleDateString("vi-VN")} />
                     <Info label="Cập nhật gần nhất" value={garden.updatedAt.toLocaleString("vi-VN")} />
                     <Info label="Số nhật ký" value={garden._count.farmingLogs.toLocaleString("vi-VN")} />
-                    <Info label="Số lô thu hoạch" value={garden._count.harvestBatches.toLocaleString("vi-VN")} />
                     <Info label="Nhật ký gần nhất" value={latestLog ? formatVietnameseDate(latestLog) : null} />
                 </DetailCard>
             </div>

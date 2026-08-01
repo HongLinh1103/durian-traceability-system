@@ -18,9 +18,6 @@ const roleLabels: Record<string, string> = {
     ADMIN: "Quản trị viên",
     FARMER: "Nông dân",
     AREA_MANAGER: "Trưởng ban quản lý vùng trồng",
-    EXPORTER: "Doanh nghiệp xuất khẩu",
-    PACKHOUSE_MANAGER: "Quản lý cơ sở đóng gói",
-    PACKHOUSE_STAFF: "Nhân viên cơ sở đóng gói",
 };
 
 type ManagedRegion = {
@@ -42,7 +39,6 @@ export default async function AccountPage() {
         where: { id: session.user.id },
         include: {
             farms: { orderBy: { createdAt: "asc" } },
-            packhouses: { orderBy: { createdAt: "asc" } },
             areaManagerApplication: true,
         },
     });
@@ -164,11 +160,6 @@ export default async function AccountPage() {
                 </div>
             )}
 
-            {user.packhouses.length > 0 && (
-                <Section title="Cơ sở đóng gói" icon={Building2}>
-                    {user.packhouses.map((item) => <Info key={item.id} label={`${item.packhouseCode} — ${item.packhouseName}`} value={item.address} />)}
-                </Section>
-            )}
         </main>
     );
 }

@@ -1,14 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, QrCode } from "lucide-react";
-
-const ctaLinks = [
-    {
-        href: "/trace/scan",
-        label: "Tra Cứu Mã QR",
-        icon: QrCode,
-    },
-];
 
 type HeroBannerProps = {
     compact?: boolean;
@@ -40,7 +30,7 @@ export function HeroBanner({ compact = false, showContent = true }: HeroBannerPr
                 <div className="max-w-3xl space-y-5">
                     {/* Tag nhỏ */}
                     <span className="inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300 backdrop-blur">
-                        Truy xuất nguồn gốc sầu riêng xuất khẩu
+                        Quản lý canh tác sầu riêng
                     </span>
 
                     {/* Tiêu đề & Mô tả */}
@@ -49,30 +39,13 @@ export function HeroBanner({ compact = false, showContent = true }: HeroBannerPr
                             className="text-2xl font-black tracking-tight sm:text-4xl lg:text-5xl leading-tight text-white"
                             style={{ fontFamily: "var(--font-display)" }}
                         >
-                            Hệ thống quản lý nhật ký canh tác và truy xuất nguồn gốc.
+                            Hệ thống quản lý hồ sơ và nhật ký canh tác.
                         </h1>
                         <p className="max-w-2xl text-sm leading-relaxed text-emerald-100/80 sm:text-base">
-                            Hỗ trợ nông dân và doanh nghiệp kiểm soát kỹ thuật canh tác, chuẩn hóa vùng trồng, đồng thời tạo dữ liệu tin cậy cho chuỗi sầu riêng xuất khẩu.
+                            Hỗ trợ nông dân và Ban quản lý kiểm soát kỹ thuật canh tác, chuẩn hóa vùng trồng và theo dõi hồ sơ thuận tiện.
                         </p>
                     </div>
 
-                    {/* Các nút bấm */}
-                    <div className="pt-2 flex flex-col gap-3 sm:flex-row">
-                        {ctaLinks.map((item) => {
-                            const Icon = item.icon;
-                            return (
-                                <Link
-                                    key={item.label}
-                                    href={item.href}
-                                    className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg transition hover:bg-emerald-500 active:scale-95"
-                                >
-                                    <Icon className="mr-2 h-4 w-4 text-emerald-300" />
-                                    {item.label}
-                                    <ArrowRight className="ml-2 h-4 w-4 opacity-70" />
-                                </Link>
-                            );
-                        })}
-                    </div>
                 </div>
             </div>
             )}

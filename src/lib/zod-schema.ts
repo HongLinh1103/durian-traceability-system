@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { activityTypes, growthStages, qualityGrades } from "@/lib/constants";
+import { activityTypes, growthStages } from "@/lib/constants";
 import { isValidVietnameseDate } from "@/lib/date-format";
 
 const passwordPolicy = z
@@ -95,7 +95,7 @@ export const farmerRegisterSchema = z
 
 export const legacyRegisterSchema = z
     .object({
-        role: z.enum(["FARMER", "AREA_MANAGER", "EXPORTER", "PACKHOUSE_MANAGER"], {
+        role: z.enum(["FARMER", "AREA_MANAGER"], {
             required_error: "Vui lòng chọn vai trò",
             invalid_type_error: "Vai trò không hợp lệ",
         }),
@@ -116,10 +116,10 @@ export const legacyRegisterSchema = z
             .string({ required_error: "Vui lòng nhập địa chỉ" })
             .trim()
             .min(5, "Địa chỉ phải có ít nhất 5 ký tự"),
-        farmOrPackhouseName: z
-            .string({ required_error: "Vui lòng nhập tên vườn/vựa" })
+        farmName: z
+            .string({ required_error: "Vui lòng nhập tên vườn" })
             .trim()
-            .min(2, "Tên vườn/vựa phải có ít nhất 2 ký tự"),
+            .min(2, "Tên vườn phải có ít nhất 2 ký tự"),
         areaSize: z.preprocess(
             (value) => {
                 if (value === "" || value === null || value === undefined) {
@@ -219,17 +219,7 @@ export const farmingLogSchema = z.object({
     }
 });
 
-export const batchSchema = z.object({
-    farmId: z.string().min(1, "Chọn mã MSVT"),
-    packhouseId: z.string().min(1, "Chọn cơ sở đóng gói"),
-    harvestDate: z.string().min(1, "Chọn ngày thu hoạch"),
-    totalWeightKg: z.coerce.number().positive("Khối lượng phải lớn hơn 0"),
-    qualityGrade: z.enum(qualityGrades),
-    status: z.enum(["DRAFT", "APPROVED", "PACKED", "SHIPPED"]),
-});
-
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type FarmingLogInput = z.infer<typeof farmingLogSchema>;
-export type BatchInput = z.infer<typeof batchSchema>;

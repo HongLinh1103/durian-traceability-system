@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 
 const publicLinks = [
     { href: "/", label: "Trang chủ" },
-    { href: "/trace/scan", label: "Tra cứu mã QR" },
     { href: "/documents", label: "Tài liệu" },
     { href: "/news", label: "Tin tức" },
 ];
@@ -27,7 +26,6 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/region-manager/gardens", label: "Quản lý vườn trồng", roles: ["AREA_MANAGER"] },
     { href: "/region-manager/farmers", label: "Hồ sơ nông dân", roles: ["AREA_MANAGER"], badge: true },
     { href: "/dashboard/admin/farming", label: "Quản lý canh tác", roles: ["ADMIN"] },
-    { href: "/dashboard/packhouse/batches", label: "Quản lý lô hàng", roles: ["PACKHOUSE_MANAGER", "PACKHOUSE_STAFF"] },
     { href: "/dashboard/admin/accounts", label: "Quản lý tài khoản", roles: ["ADMIN"], badge: true },
     { href: "/dashboard/admin/master-data", label: "Quản lý danh mục", roles: ["ADMIN"] },
 ];

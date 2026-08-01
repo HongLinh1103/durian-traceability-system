@@ -46,7 +46,6 @@ type AccountUser = {
         growingRegion: string | null;
         isActive: boolean;
     }>;
-    packhouses: Array<{ id: string; packhouseCode: string; packhouseName: string; address: string }>;
     areaManagerApplication: {
         identityNumber: string;
         identityIssuedDate: string;
@@ -71,9 +70,6 @@ type AccountsResponse = {
 const roleLabels: Record<string, string> = {
     FARMER: "Nông dân",
     AREA_MANAGER: "Trưởng BQL Vùng trồng",
-    EXPORTER: "Doanh nghiệp Xuất khẩu",
-    PACKHOUSE_MANAGER: "Quản lý CSĐG",
-    PACKHOUSE_STAFF: "Nhân viên CSĐG",
     ADMIN: "Admin",
 };
 

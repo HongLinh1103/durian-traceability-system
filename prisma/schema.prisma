@@ -11,10 +11,7 @@ datasource db {
 enum UserRole {
   ADMIN
   AREA_MANAGER
-  EXPORTER
   FARMER
-  PACKHOUSE_MANAGER
-  PACKHOUSE_STAFF
 }
 
 /// Trạng thái duyệt tài khoản sau onboarding.
@@ -41,23 +38,6 @@ enum ActivityType {
   IRRIGATE
   PRUNE
   WEEDING
-}
-
-/// Phân hạng chất lượng lô hàng.
-enum QualityGrade {
-  TYPE_1
-  TYPE_2
-  CREAM
-}
-
-/// Trạng thái xử lý của lô hàng.
-enum BatchStatus {
-  DRAFT
-  PENDING_APPROVAL
-  APPROVED
-  PACKED
-  SHIPPED
-  REJECTED
 }
 
 /// Trạng thái tuân thủ GACC cho thuốc bảo vệ thực vật.
@@ -143,53 +123,52 @@ model Fertilizer {
 }
 
 model User {
-  id             String        @id @default(cuid())
-  phone          String        @unique
-  email          String?       @unique
-  password       String
-  fullName       String?
-  avatar         String?
-  address        String?
-  province       String?
-  district       String?
-  ward           String?
-  registrationName String?
-  registeredAreaSize Float?
-  registeredTotalTrees Int?
+  id                      String        @id @default(cuid())
+  phone                   String        @unique
+  email                   String?       @unique
+  password                String
+  fullName                String?
+  avatar                  String?
+  address                 String?
+  province                String?
+  district                String?
+  ward                    String?
+  registrationName        String?
+  registeredAreaSize      Float?
+  registeredTotalTrees    Int?
   registeredDurianVariety String?
-  role           UserRole
-  isApproved     Boolean       @default(false)
-  failedAttempts Int           @default(0)
-  lockUntil      DateTime?
-  isLocked       Boolean       @default(false)
-  accountStatus  AccountStatus @default(PENDING)
-  approvedAt     DateTime?
-  deletedAt      DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  role                    UserRole
+  isApproved              Boolean       @default(false)
+  failedAttempts          Int           @default(0)
+  lockUntil               DateTime?
+  isLocked                Boolean       @default(false)
+  accountStatus           AccountStatus @default(PENDING)
+  approvedAt              DateTime?
+  deletedAt               DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
 
-  farms         Farm[]
-  packhouses    Packhouse[]
-  notifications Notification[]
-  uploadedDocuments Document[]
+  farms                  Farm[]
+  notifications          Notification[]
+  uploadedDocuments      Document[]
   areaManagerApplication AreaManagerApplication?
-  approvalHistories ApprovalHistory[] @relation("ApprovalSubject")
-  approvalActions ApprovalHistory[] @relation("ApprovalActor")
+  approvalHistories      ApprovalHistory[]       @relation("ApprovalSubject")
+  approvalActions        ApprovalHistory[]       @relation("ApprovalActor")
 
   @@index([role])
   @@index([role, accountStatus, deletedAt])
 }
 
 model ApprovalHistory {
-  id          String   @id @default(cuid())
-  subjectId   String
-  actorId     String
-  action      String
-  fromStatus  AccountStatus?
-  toStatus    AccountStatus?
-  reason      String?
-  details     Json?
-  createdAt   DateTime @default(now())
+  id         String         @id @default(cuid())
+  subjectId  String
+  actorId    String
+  action     String
+  fromStatus AccountStatus?
+  toStatus   AccountStatus?
+  reason     String?
+  details    Json?
+  createdAt  DateTime       @default(now())
 
   subject User @relation("ApprovalSubject", fields: [subjectId], references: [id], onDelete: Restrict)
   actor   User @relation("ApprovalActor", fields: [actorId], references: [id], onDelete: Restrict)
@@ -200,24 +179,24 @@ model ApprovalHistory {
 }
 
 model AreaManagerApplication {
-  id                   String   @id @default(cuid())
-  userId               String   @unique
-  identityNumber       String   @unique
-  identityIssuedDate   DateTime
-  identityIssuedPlace  String
-  identityFrontKey     String
-  identityBackKey      String
-  organizationName     String
-  taxCode              String?
-  position             String
-  officeProvince       String
-  officeDistrict       String
-  officeWard           String
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  identityNumber        String   @unique
+  identityIssuedDate    DateTime
+  identityIssuedPlace   String
+  identityFrontKey      String
+  identityBackKey       String
+  organizationName      String
+  taxCode               String?
+  position              String
+  officeProvince        String
+  officeDistrict        String
+  officeWard            String
   officeDetailedAddress String
-  authorityDocumentKey String
-  managedRegions       Json
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  authorityDocumentKey  String
+  managedRegions        Json
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -226,22 +205,22 @@ model AreaManagerApplication {
 }
 
 model Document {
-  id           String         @id @default(cuid())
-  title        String
-  slug         String         @unique
-  summary      String?
-  category     String
-  status       DocumentStatus @default(DRAFT)
-  fileName     String
-  fileUrl      String
-  storageKey   String         @unique
-  mimeType     String
-  fileSize     Int
-  uploaderId   String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  publishedAt  DateTime?
-  deletedAt    DateTime?
+  id          String         @id @default(cuid())
+  title       String
+  slug        String         @unique
+  summary     String?
+  category    String
+  status      DocumentStatus @default(DRAFT)
+  fileName    String
+  fileUrl     String
+  storageKey  String         @unique
+  mimeType    String
+  fileSize    Int
+  uploaderId  String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  publishedAt DateTime?
+  deletedAt   DateTime?
 
   uploader User @relation(fields: [uploaderId], references: [id], onDelete: Restrict)
 
@@ -251,49 +230,48 @@ model Document {
 }
 
 model NewsArticle {
-  id          String     @id @default(cuid())
-  title       String
-  description String?
-  imageUrl    String?
-  sourceName  String
-  originalUrl String     @unique
+  id                String     @id @default(cuid())
+  title             String
+  description       String?
+  imageUrl          String?
+  sourceName        String
+  originalUrl       String     @unique
   sourcePublishedAt DateTime?
-  status      NewsStatus @default(DRAFT)
-  publishedAt DateTime?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  status            NewsStatus @default(DRAFT)
+  publishedAt       DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
   @@index([status, publishedAt])
   @@map("news_articles")
 }
 
 model Farm {
-  id            String   @id @default(cuid())
-  farmCode      String   @unique
-  farmName      String
-  areaSize      Float
-  totalTrees    Int
-  durianVariety String
-  address       String
-  province      String?
-  district      String?
-  ward          String?
-  areaUnit      String   @default("HECTARE")
-  notes         String?
-  latitude      Float?
-  longitude     Float?
-  growingRegion String?
+  id              String   @id @default(cuid())
+  farmCode        String   @unique
+  farmName        String
+  areaSize        Float
+  totalTrees      Int
+  durianVariety   String
+  address         String
+  province        String?
+  district        String?
+  ward            String?
+  areaUnit        String   @default("HECTARE")
+  notes           String?
+  latitude        Float?
+  longitude       Float?
+  growingRegion   String?
   growingRegionId String?
-  isActive      Boolean  @default(true)
-  isInSeason    Boolean  @default(true)
-  farmerId      String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isActive        Boolean  @default(true)
+  isInSeason      Boolean  @default(true)
+  farmerId        String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  farmer         User           @relation(fields: [farmerId], references: [id], onDelete: Cascade)
-  region         GrowingRegion? @relation(fields: [growingRegionId], references: [id], onDelete: SetNull)
-  farmingLogs    FarmingLog[]
-  harvestBatches HarvestBatch[]
+  farmer      User           @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  region      GrowingRegion? @relation(fields: [growingRegionId], references: [id], onDelete: SetNull)
+  farmingLogs FarmingLog[]
 
   @@index([farmerId])
   @@index([farmCode])
@@ -301,18 +279,18 @@ model Farm {
 }
 
 model GrowingRegion {
-  id            String   @id @default(cuid())
-  code          String   @unique
+  id            String    @id @default(cuid())
+  code          String    @unique
   name          String
   province      String
   district      String?
   ward          String?
-  cropVarieties String[] @default([])
-  isActive      Boolean  @default(true)
+  cropVarieties String[]  @default([])
+  isActive      Boolean   @default(true)
   approvedAt    DateTime?
   validUntil    DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   farms Farm[]
 
@@ -340,53 +318,6 @@ model FarmingLog {
   @@index([farmId, actionDate])
   @@index([stage])
   @@index([activityType])
-}
-
-model Packhouse {
-  id            String   @id @default(cuid())
-  packhouseCode String   @unique
-  packhouseName String
-  address       String
-  managerId     String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  manager        User           @relation(fields: [managerId], references: [id], onDelete: Cascade)
-  harvestBatches HarvestBatch[]
-
-  @@index([managerId])
-  @@index([packhouseCode])
-}
-
-model HarvestBatch {
-  id            String       @id @default(cuid())
-  batchCode     String       @unique
-  farmId        String
-  packhouseId   String
-  harvestDate   DateTime
-  totalWeightKg Float
-  qualityGrade  QualityGrade
-  status        BatchStatus  @default(DRAFT)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  farm      Farm      @relation(fields: [farmId], references: [id], onDelete: Restrict)
-  packhouse Packhouse @relation(fields: [packhouseId], references: [id], onDelete: Restrict)
-  qrCode    QRCode?
-
-  @@index([farmId, harvestDate])
-  @@index([packhouseId])
-  @@index([status])
-}
-
-model QRCode {
-  id           String   @id @default(cuid())
-  qrCodeString String   @unique
-  batchId      String   @unique
-  scanCount    Int      @default(0)
-  createdAt    DateTime @default(now())
-
-  batch HarvestBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
 
 model ProhibitedChemical {

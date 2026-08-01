@@ -10,7 +10,7 @@ const sans = Plus_Jakarta_Sans({ subsets: ["latin", "vietnamese"], variable: "--
 
 export const metadata: Metadata = {
     title: "Triviet Traceability",
-    description: "Phần mềm quản lý nhật ký nông nghiệp và truy xuất nguồn gốc sầu riêng xuất khẩu.",
+    description: "Phần mềm quản lý hồ sơ vùng trồng và nhật ký canh tác sầu riêng.",
     manifest: "/manifest.json",
     appleWebApp: {
         capable: true,

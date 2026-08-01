@@ -58,7 +58,7 @@ export default function MasterDataOverviewPage() {
                     </CardTitle>
                     <CardDescription>
                         Quản lý các danh mục dữ liệu dùng chung trong toàn hệ thống.
-                        Dữ liệu tại đây sẽ được sử dụng trong form đăng ký vườn, nhật ký canh tác, nhật ký phun thuốc, nhật ký bón phân và truy xuất nguồn gốc.
+                        Dữ liệu tại đây sẽ được sử dụng trong form đăng ký vườn, nhật ký canh tác, nhật ký phun thuốc và nhật ký bón phân.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

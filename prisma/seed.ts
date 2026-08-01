@@ -24,15 +24,6 @@ const seedUsers = [
         isApproved: true,
         accountStatus: "APPROVED" as const,
     },
-    {
-        phone: "0908888999",
-        email: "exporter@triviet.vn",
-        password: "123456",
-        fullName: "Vựa Thu Mua Trí Việt",
-        role: "EXPORTER" as const,
-        isApproved: true,
-        accountStatus: "APPROVED" as const,
-    },
 ].filter((user) => user.role === "ADMIN");
 
 async function main() {
@@ -193,8 +184,6 @@ async function main() {
     console.log("│───│───────────────│────────────│────────────│──────────────────────────────");
     console.log("│ 1 │ ADMIN         │ 0348110676 │ Admin@123  │ Quản trị viên Hệ thống");
     console.log("│ 2 │ AREA_MANAGER  │ 0901234567 │ 123456     │ Nguyễn Văn Quản (HTX Phong Điền)");
-    console.log("│ 3 │ EXPORTER      │ 0908888999 │ 123456     │ Vựa Thu Mua Trí Việt");
-    console.log("│ 4 │ FARMER        │ 0912345678 │ 123456     │ Trần Văn Vườn (Vườn Ri6 & Monthong)");
     console.log("────────────────────────────────────────────");
 
     // ─── Seed Master Data: Giống sầu riêng (Demo) ─────────────

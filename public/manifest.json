@@ -1,7 +1,7 @@
 {
     "name": "Triviet Durian Traceability",
     "short_name": "Triviet",
-    "description": "Quản lý nhật ký nông nghiệp và truy xuất nguồn gốc sầu riêng.",
+    "description": "Quản lý hồ sơ vùng trồng và nhật ký canh tác sầu riêng.",
     "start_url": "/dashboard/farmer",
     "scope": "/",
     "display": "standalone",

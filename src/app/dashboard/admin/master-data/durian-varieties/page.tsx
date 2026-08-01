@@ -156,7 +156,7 @@ export default function DurianVarietiesPage() {
                     </CardTitle>
                     <CardDescription>
                         Quản lý danh sách các giống sầu riêng được sử dụng trong hệ thống.
-                        Dữ liệu giống sẽ hiển thị trong form đăng ký vườn, cập nhật vườn, nhật ký canh tác và truy xuất nguồn gốc.
+                        Dữ liệu giống sẽ hiển thị trong form đăng ký vườn, cập nhật vườn và nhật ký canh tác.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
