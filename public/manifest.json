@@ -1,0 +1,25 @@
+{
+    "name": "Triviet Durian Traceability",
+    "short_name": "Triviet",
+    "description": "Quản lý nhật ký nông nghiệp và truy xuất nguồn gốc sầu riêng.",
+    "start_url": "/dashboard/farmer",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#f0fdf4",
+    "theme_color": "#16a34a",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/icon-192.svg",
+            "sizes": "192x192",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icon-512.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}
