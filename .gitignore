@@ -10,3 +10,4 @@ prisma/dev.db
 public/uploads/documents/*
 !public/uploads/documents/.gitkeep
 .storage/
+*.tsbuildinfo
