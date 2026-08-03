@@ -44,7 +44,30 @@ type AccountUser = {
         longitude: number | null;
         notes: string | null;
         growingRegion: string | null;
+        region: { code: string; name: string } | null;
         isActive: boolean;
+    }>;
+    regionManagers: Array<{
+        id: string;
+        fullName: string | null;
+        phone: string;
+        email: string | null;
+        organizationName: string | null;
+        position: string | null;
+        regions: ManagedRegion[];
+    }>;
+    managedFarms: Array<{
+        id: string;
+        farmCode: string;
+        farmName: string;
+        areaSize: number;
+        totalTrees: number;
+        durianVariety: string;
+        address: string;
+        growingRegion: string | null;
+        isActive: boolean;
+        region: { code: string; name: string } | null;
+        farmer: { id: string; fullName: string | null; phone: string; accountStatus: string };
     }>;
     areaManagerApplication: {
         identityNumber: string;
@@ -515,7 +538,52 @@ function AccountDetailModal({
                     </section>
                 )}
 
-                {account.farms.length > 0 && (
+                {account.role === "FARMER" && (
+                    <section className="mt-4">
+                        <h3 className="mb-3 font-bold text-slate-900">Trưởng ban quản lý vùng trồng phụ trách</h3>
+                        {account.regionManagers.length === 0 ? (
+                            <div className="rounded-2xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">Chưa xác định được Trưởng ban phụ trách vùng trồng của các vườn đã đăng ký.</div>
+                        ) : (
+                            <div className="space-y-3">
+                                {account.regionManagers.map((manager) => (
+                                    <div key={manager.id} className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-blue-950">
+                                        <strong>{manager.fullName || manager.phone}</strong>
+                                        <p className="mt-1">{manager.position || "Trưởng ban"}{manager.organizationName ? ` · ${manager.organizationName}` : ""}</p>
+                                        <p>Điện thoại: {manager.phone}{manager.email ? ` · ${manager.email}` : ""}</p>
+                                        <p>Vùng phụ trách: {manager.regions.map((region) => [region.code, region.name].filter(Boolean).join(" - ")).join(", ")}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                )}
+
+                {account.role === "AREA_MANAGER" && (
+                    <section className="mt-4">
+                        <h3 className="mb-3 font-bold text-slate-900">Các vườn đang quản lý</h3>
+                        {account.managedFarms.length === 0 ? (
+                            <div className="rounded-2xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">Chưa có vườn nào thuộc vùng được giao quản lý.</div>
+                        ) : (
+                            <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                                <table className="w-full min-w-[760px] text-left text-sm">
+                                    <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr>{["Mã vườn", "Tên vườn", "Chủ vườn", "Vùng trồng", "Diện tích", "Trạng thái"].map((heading) => <th key={heading} className="px-4 py-3 font-semibold">{heading}</th>)}</tr></thead>
+                                    <tbody className="divide-y divide-slate-100">{account.managedFarms.map((farm) => (
+                                        <tr key={farm.id}>
+                                            <td className="whitespace-nowrap px-4 py-3 font-semibold text-brand-700">{farm.farmCode}</td>
+                                            <td className="px-4 py-3 font-medium text-slate-900">{farm.farmName}</td>
+                                            <td className="px-4 py-3">{farm.farmer.fullName || farm.farmer.phone}</td>
+                                            <td className="px-4 py-3">{farm.region ? `${farm.region.code} - ${farm.region.name}` : farm.growingRegion || "—"}</td>
+                                            <td className="whitespace-nowrap px-4 py-3">{farm.areaSize.toLocaleString("vi-VN")} ha</td>
+                                            <td className="px-4 py-3"><Badge className={farm.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-600"}>{farm.isActive ? "Hoạt động" : "Tạm ngừng"}</Badge></td>
+                                        </tr>
+                                    ))}</tbody>
+                                </table>
+                            </div>
+                        )}
+                    </section>
+                )}
+
+                {account.role === "FARMER" && account.farms.length > 0 && (
                     <section className="mt-4">
                         <h3 className="mb-3 font-bold text-slate-900">Danh sách vườn</h3>
                         <div className="space-y-3">{account.farms.map((farm) => (

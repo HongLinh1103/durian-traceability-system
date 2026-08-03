@@ -3,6 +3,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+type ManagedRegionAssignment = { code?: string; name?: string };
+
+function getManagedRegionAssignments(value: unknown): ManagedRegionAssignment[] {
+    if (Array.isArray(value)) {
+        return value.filter((item): item is ManagedRegionAssignment => Boolean(item && typeof item === "object"));
+    }
+    return value && typeof value === "object" ? [value as ManagedRegionAssignment] : [];
+}
+
 function generateOfficialFarmCode(index: number) {
     const timestamp = Date.now().toString(36).toUpperCase();
     const random = Math.floor(Math.random() * 9000 + 1000);
@@ -103,6 +112,7 @@ export async function GET(request: Request) {
                             longitude: true,
                             notes: true,
                             growingRegion: true,
+                            region: { select: { code: true, name: true } },
                             isActive: true,
                         },
                     },
@@ -126,9 +136,104 @@ export async function GET(request: Request) {
             prisma.user.count({ where }),
         ]);
 
+        const areaManagers = await prisma.user.findMany({
+            where: {
+                role: "AREA_MANAGER",
+                accountStatus: "APPROVED",
+                isApproved: true,
+                deletedAt: null,
+                areaManagerApplication: { isNot: null },
+            },
+            select: {
+                id: true,
+                fullName: true,
+                phone: true,
+                email: true,
+                areaManagerApplication: {
+                    select: {
+                        organizationName: true,
+                        position: true,
+                        managedRegions: true,
+                    },
+                },
+            },
+        });
+
+        const managerRegionCodes = new Set(
+            data
+                .filter((account) => account.role === "AREA_MANAGER")
+                .flatMap((account) => getManagedRegionAssignments(account.areaManagerApplication?.managedRegions))
+                .map((region) => region.code?.trim())
+                .filter((code): code is string => Boolean(code)),
+        );
+        const managedFarms = managerRegionCodes.size > 0
+            ? await prisma.farm.findMany({
+                where: {
+                    isActive: true,
+                    region: { code: { in: [...managerRegionCodes] } },
+                    farmer: {
+                        accountStatus: "APPROVED",
+                        isApproved: true,
+                        deletedAt: null,
+                    },
+                },
+                orderBy: [{ region: { code: "asc" } }, { farmName: "asc" }],
+                select: {
+                    id: true,
+                    farmCode: true,
+                    farmName: true,
+                    areaSize: true,
+                    totalTrees: true,
+                    durianVariety: true,
+                    address: true,
+                    province: true,
+                    district: true,
+                    ward: true,
+                    areaUnit: true,
+                    latitude: true,
+                    longitude: true,
+                    notes: true,
+                    growingRegion: true,
+                    isActive: true,
+                    region: { select: { code: true, name: true } },
+                    farmer: { select: { id: true, fullName: true, phone: true, accountStatus: true } },
+                },
+            })
+            : [];
+
+        const enrichedData = data.map((account) => {
+            const farmRegionCodes = new Set(account.farms.map((farm) => farm.region?.code).filter((code): code is string => Boolean(code)));
+            const assignedCodes = new Set(
+                getManagedRegionAssignments(account.areaManagerApplication?.managedRegions)
+                    .map((region) => region.code?.trim())
+                    .filter((code): code is string => Boolean(code)),
+            );
+
+            return {
+                ...account,
+                regionManagers: account.role === "FARMER"
+                    ? areaManagers
+                        .map((manager) => ({
+                            id: manager.id,
+                            fullName: manager.fullName,
+                            phone: manager.phone,
+                            email: manager.email,
+                            organizationName: manager.areaManagerApplication?.organizationName ?? null,
+                            position: manager.areaManagerApplication?.position ?? null,
+                            regions: getManagedRegionAssignments(manager.areaManagerApplication?.managedRegions)
+                                .filter((region) => Boolean(region.code && farmRegionCodes.has(region.code))),
+                        }))
+                        .filter((manager) => manager.regions.length > 0)
+                    : [],
+                managedFarms: account.role === "AREA_MANAGER"
+                    ? managedFarms.filter((farm) => Boolean(farm.region?.code && assignedCodes.has(farm.region.code)))
+                    : [],
+            };
+        });
+
         return NextResponse.json({
             success: true,
-            data,
+            data: enrichedData,
             pagination: {
                 page,
                 pageSize,
