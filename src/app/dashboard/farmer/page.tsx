@@ -6,6 +6,7 @@ import { Bell, ChevronRight, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { HeroBanner } from "@/components/home/HeroBanner";
 import type { FarmerNotificationItem } from "@/lib/reminders";
 
 type FarmerDashboardResponse = {
@@ -48,10 +49,12 @@ export default function FarmerDashboardPage() {
     }, []);
 
     return (
-        <main className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-            <div className="mb-4 flex items-center justify-between rounded-[28px] border border-white/70 bg-white/90 px-5 py-4 shadow-soft backdrop-blur">
+        <main className="mx-auto min-h-screen max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+            <HeroBanner compact showContent={false} />
+
+            <div className="flex items-center justify-between rounded-[28px] border border-white/70 bg-white/90 px-5 py-4 shadow-soft backdrop-blur">
                 <div>
-                    <p className="text-sm font-medium text-slate-500">Dashboard nông dân</p>
+                    <p className="text-sm font-semibold text-emerald-700">Trang chủ nông dân</p>
                     <h1 className="text-2xl font-black text-slate-900" style={{ fontFamily: "var(--font-display)" }}>{farmName}</h1>
                     <p className="text-sm text-slate-500">{farmCode}</p>
                 </div>
@@ -62,7 +65,7 @@ export default function FarmerDashboardPage() {
             </div>
 
             {shouldRemindToday ? (
-                <Card className="mb-6 border-amber-200 bg-amber-50">
+                <Card className="border-amber-200 bg-amber-50">
                     <CardContent className="flex flex-wrap items-center justify-between gap-4 py-5">
                         <div className="flex items-start gap-3">
                             <TriangleAlert className="mt-0.5 h-5 w-5 text-amber-600" />
