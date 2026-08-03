@@ -36,6 +36,8 @@ type SpeechRecognitionInstanceLike = {
 
 type SpeechRecognitionConstructorLike = new () => SpeechRecognitionInstanceLike;
 type FarmOption = { id: string; farmCode: string; farmName: string };
+type PesticideOption = { id: string; code: string; tradeName: string; activeIngredient: string; phiDays: number | null; recommendedDosage: string | null };
+type FertilizerOption = { id: string; code: string; name: string; brand: string | null; recommendedDosage: string | null };
 type FarmingLogItem = {
     id: string;
     actionDate: string;
@@ -124,6 +126,9 @@ export default function NewFarmingLogPage() {
     const [farms, setFarms] = useState<FarmOption[]>([]);
     const [farmsLoading, setFarmsLoading] = useState(true);
     const [recentLogs, setRecentLogs] = useState<FarmingLogItem[]>([]);
+    const [pesticides, setPesticides] = useState<PesticideOption[]>([]);
+    const [fertilizers, setFertilizers] = useState<FertilizerOption[]>([]);
+    const [masterDataLoading, setMasterDataLoading] = useState(true);
     const now = useMemo(() => new Date(), []);
 
     const form = useForm<FarmingLogInput>({
@@ -148,6 +153,32 @@ export default function NewFarmingLogPage() {
     const activityType = form.watch("activityType");
     const isSpraying = activityType === activityTypes[0];
     const isFertilizing = activityType === activityTypes[1];
+
+    useEffect(() => {
+        let cancelled = false;
+        async function loadMasterData() {
+            setMasterDataLoading(true);
+            try {
+                const [pesticideResponse, fertilizerResponse] = await Promise.all([
+                    fetch("/api/master-data/pesticides", { cache: "no-store" }),
+                    fetch("/api/master-data/fertilizers", { cache: "no-store" }),
+                ]);
+                const [pesticidePayload, fertilizerPayload] = await Promise.all([pesticideResponse.json(), fertilizerResponse.json()]);
+                if (!cancelled) {
+                    setPesticides(pesticideResponse.ok && pesticidePayload.success ? pesticidePayload.data : []);
+                    setFertilizers(fertilizerResponse.ok && fertilizerPayload.success ? fertilizerPayload.data : []);
+                }
+            } finally {
+                if (!cancelled) setMasterDataLoading(false);
+            }
+        }
+        void loadMasterData();
+        return () => { cancelled = true; };
+    }, []);
+
+    useEffect(() => {
+        form.setValue("chemicalName", "", { shouldValidate: false });
+    }, [activityType, form]);
 
     useEffect(() => {
         if (!isSpraying) {
@@ -598,7 +629,13 @@ export default function NewFarmingLogPage() {
                         {(isSpraying || isFertilizing) && <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <Label htmlFor="chemicalName">{isSpraying ? "Tên thuốc" : "Tên phân bón"}</Label>
-                                <Input id="chemicalName" {...form.register("chemicalName")} placeholder={isSpraying ? "Ví dụ: Trichlorfon" : "Ví dụ: NPK 20-20-15"} />
+                                <select id="chemicalName" disabled={masterDataLoading} className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm disabled:cursor-wait disabled:bg-slate-50" {...form.register("chemicalName")}>
+                                    <option value="">{masterDataLoading ? "Đang tải danh mục..." : isSpraying ? "Chọn thuốc BVTV" : "Chọn phân bón"}</option>
+                                    {isSpraying
+                                        ? pesticides.map((item) => <option key={item.id} value={item.tradeName}>{item.code} - {item.tradeName} ({item.activeIngredient})</option>)
+                                        : fertilizers.map((item) => <option key={item.id} value={item.name}>{item.code} - {item.name}{item.brand ? ` (${item.brand})` : ""}</option>)}
+                                </select>
+                                {!masterDataLoading && ((isSpraying && pesticides.length === 0) || (isFertilizing && fertilizers.length === 0)) && <p className="mt-1 text-xs text-amber-600">Danh mục chưa có dữ liệu đang hoạt động. Vui lòng liên hệ quản trị viên.</p>}
                                 <p className="mt-1 text-xs text-red-600">{form.formState.errors.chemicalName?.message}</p>
                                 {isSpraying && <p className={`mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${isProhibited ? "bg-red-50 text-red-700" : "bg-brand-50 text-brand-700"}`}>
                                     {isProhibited ? <AlertTriangle className="h-3.5 w-3.5" /> : <Sprout className="h-3.5 w-3.5" />}

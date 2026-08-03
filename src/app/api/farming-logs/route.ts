@@ -97,6 +97,25 @@ export async function POST(request: Request) {
             );
         }
 
+        if (normalizedActivityType === "SPRAY_PESTICIDE") {
+            const pesticide = await prisma.pesticide.findFirst({
+                where: { tradeName: chemicalName, isActive: true, deletedAt: null, gaccStatus: { not: "PROHIBITED" } },
+                select: { id: true },
+            });
+            if (!pesticide) {
+                return NextResponse.json({ ok: false, error: "Thuốc BVTV không thuộc danh mục đang được phép sử dụng." }, { status: 400 });
+            }
+        }
+        if (normalizedActivityType === "FERTILIZE") {
+            const fertilizer = await prisma.fertilizer.findFirst({
+                where: { name: chemicalName, isActive: true, deletedAt: null },
+                select: { id: true },
+            });
+            if (!fertilizer) {
+                return NextResponse.json({ ok: false, error: "Phân bón không thuộc danh mục đang hoạt động." }, { status: 400 });
+            }
+        }
+
         const images = await Promise.all(
             uploadedImages.map(async (file) => {
                 const buffer = Buffer.from(await file.arrayBuffer());
