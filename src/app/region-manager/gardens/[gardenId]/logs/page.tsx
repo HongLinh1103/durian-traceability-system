@@ -1,15 +1,13 @@
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, CalendarDays, Camera, History, ShieldCheck } from "lucide-react";
+import { ArrowLeft, History } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getManagedRegionScope } from "@/lib/region-manager-scope";
-import { formatVietnameseDateTime } from "@/lib/date-format";
 import { ReminderButton } from "@/components/region-manager/reminder-button";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const activityLabels: Record<string, string> = { SPRAY_PESTICIDE: "Phun thuốc", FERTILIZE: "Bón phân", IRRIGATE: "Tưới nước", PRUNE: "Cắt tỉa", WEEDING: "Làm cỏ" };
 const stageLabels: Record<string, string> = { MAKING_SPROUT: "Làm đọt", FLOWERING: "Ra hoa", FRUIT_SETTING: "Đậu trái", FRUIT_GROWING: "Nuôi trái", HARVEST: "Thu hoạch" };
@@ -51,11 +49,38 @@ export default async function GardenLogsPage({ params }: { params: { gardenId: s
             {daysOverdue === null ? "Vườn này chưa có nhật ký canh tác." : `Vườn đã ${daysOverdue} ngày chưa cập nhật nhật ký.`}
         </div>}
 
-        <div className="flex items-center gap-2"><History className="h-5 w-5 text-emerald-600" /><h2 className="text-xl font-bold">Nhật ký canh tác</h2></div>
-        {garden.farmingLogs.length === 0 ? <Card className="rounded-[28px] border-dashed"><CardContent className="py-12 text-center text-slate-500">Vườn này chưa có nhật ký canh tác.</CardContent></Card> :
-            <div className="space-y-4">{garden.farmingLogs.map((log) => <Card key={log.id} className="rounded-[26px]">
-                <CardHeader className="pb-3"><div className="flex flex-wrap justify-between gap-3"><div><CardTitle className="text-lg">{activityLabels[log.activityType] ?? log.activityType}</CardTitle><CardDescription>{stageLabels[log.stage] ?? log.stage}</CardDescription></div><span className="flex items-center gap-2 text-sm font-semibold text-emerald-700"><CalendarDays className="h-4 w-4" />{formatVietnameseDateTime(log.actionDate)}</span></div></CardHeader>
-                <CardContent className="space-y-3"><div className="flex flex-wrap gap-2">{log.chemicalName && <Badge className="bg-blue-50 text-blue-700">{log.chemicalName}</Badge>}{log.dosage && <Badge className="bg-violet-50 text-violet-700">{log.dosage}</Badge>}{log.phiDays != null && <Badge className="bg-amber-50 text-amber-700">PHI: {log.phiDays} ngày</Badge>}{log.images.length > 0 && <Badge className="bg-slate-100 text-slate-700"><Camera className="mr-1 h-3.5 w-3.5" />{log.images.length} ảnh</Badge>}<Badge className={log.isGACCCompliant ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}><ShieldCheck className="mr-1 h-3.5 w-3.5" />{log.isGACCCompliant ? "Phù hợp GACC" : "Cần kiểm tra GACC"}</Badge></div>{log.notes && <p className="whitespace-pre-wrap text-sm text-slate-600">{log.notes}</p>}</CardContent>
-            </Card>)}</div>}
+        <Card className="overflow-hidden rounded-[28px] border-slate-200 shadow-sm">
+            <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
+                <History className="h-5 w-5 text-emerald-600" />
+                <h2 className="text-xl font-bold text-slate-900">Nhật ký canh tác đã ghi</h2>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] text-left text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                        <tr>
+                            {["Ngày", "Giai đoạn", "Hoạt động", "Vật tư", "Liều lượng", "PHI", "GACC", "Ghi chú"].map((heading) => (
+                                <th key={heading} className="whitespace-nowrap px-4 py-3 font-semibold">{heading}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {garden.farmingLogs.length === 0 ? (
+                            <tr><td colSpan={8} className="py-12 text-center text-slate-500">Vườn này chưa có nhật ký canh tác.</td></tr>
+                        ) : garden.farmingLogs.map((log) => (
+                            <tr key={log.id} className="hover:bg-slate-50/70">
+                                <td className="whitespace-nowrap px-4 py-3">{log.actionDate.toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" })}</td>
+                                <td className="px-4 py-3">{stageLabels[log.stage] ?? log.stage}</td>
+                                <td className="px-4 py-3">{activityLabels[log.activityType] ?? log.activityType}</td>
+                                <td className="px-4 py-3">{log.chemicalName || "—"}</td>
+                                <td className="px-4 py-3">{log.dosage || "—"}</td>
+                                <td className="px-4 py-3">{log.phiDays ?? "—"}</td>
+                                <td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs font-semibold ${log.isGACCCompliant ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{log.isGACCCompliant ? "Đạt" : "Không đạt"}</span></td>
+                                <td className="max-w-64 whitespace-pre-wrap px-4 py-3">{log.notes || "—"}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </Card>
     </main>;
 }
