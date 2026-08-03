@@ -103,14 +103,14 @@ export async function POST(request: Request, { params }: { params: { farmId: str
     }
     const farm = await prisma.farm.findUnique({
         where: { id: params.farmId },
-        select: { farmName: true, farmerId: true },
+        select: { farmCode: true, farmName: true, farmerId: true },
     });
     if (!farm) return NextResponse.json({ success: false, message: "Không tìm thấy vườn." }, { status: 404 });
 
     await prisma.notification.create({
         data: {
             userId: farm.farmerId,
-            title: "Nhắc nhở cập nhật nhật ký canh tác",
+            title: `Nhắc nhở cập nhật nhật ký canh tác - ${farm.farmCode}`,
             message,
             type: "FARMING_LOG_REMINDER",
         },

@@ -156,6 +156,38 @@ export async function loadFarmerDashboardState(userId?: string) {
             }
         }
 
+        // Reminder cũ phải biến mất khi nông dân đã ghi bù đủ nhật ký.
+        // Chỉ giữ reminder của những vườn hiện vẫn còn quá hạn.
+        const activeReminderTitles = overdueFarms.map(({ farm }) => buildReminderTitle(farm.farmCode));
+        await prisma.notification.deleteMany({
+            where: {
+                userId: targetUserId,
+                type: "REMINDER",
+                ...(activeReminderTitles.length > 0
+                    ? { title: { notIn: activeReminderTitles } }
+                    : {}),
+            },
+        });
+
+        // Admin/Trưởng ban tạo loại FARMING_LOG_REMINDER. Các bản ghi cũ có thể
+        // không chứa mã vườn trong tiêu đề, nên đối chiếu thêm tên vườn trong nội dung.
+        const overdueFarmIds = new Set(overdueFarms.map(({ farm }) => farm.id));
+        const resolvedFarms = farms.filter((farm) => !overdueFarmIds.has(farm.id));
+        await prisma.notification.deleteMany({
+            where: {
+                userId: targetUserId,
+                type: "FARMING_LOG_REMINDER",
+                ...(overdueFarms.length === 0
+                    ? {}
+                    : {
+                        OR: resolvedFarms.flatMap((farm) => [
+                            { title: { contains: farm.farmCode, mode: "insensitive" as const } },
+                            { message: { contains: farm.farmName, mode: "insensitive" as const } },
+                        ]),
+                    }),
+            },
+        });
+
         const notifications = await prisma.notification.findMany({
             where: { userId: targetUserId },
             orderBy: { createdAt: "desc" },
