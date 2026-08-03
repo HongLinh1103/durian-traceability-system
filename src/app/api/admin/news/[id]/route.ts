@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyPublishedContent } from "@/lib/content-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
                     : null,
             },
         });
+        if (current.status !== "PUBLISHED" && article.status === "PUBLISHED") {
+            await notifyPublishedContent("news", article);
+        }
         return NextResponse.json({ success: true, message: parsed.data.status === "PUBLISHED" ? "Đã xuất bản bài viết." : "Đã lưu bản nháp.", data: article });
     } catch (error) {
         const message = error instanceof Error && error.message.includes("Unique constraint")

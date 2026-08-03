@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { markContentAsRead } from "@/lib/content-notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,11 +18,15 @@ export async function GET(_request: Request, { params }: { params: { slug: strin
             slug,
             ...(isAdmin ? {} : { status: "PUBLISHED", deletedAt: null }),
         },
-        select: { fileName: true, storageKey: true, mimeType: true },
+        select: { id: true, fileName: true, storageKey: true, mimeType: true },
     });
 
     if (!document) {
         return NextResponse.json({ success: false, message: "Không tìm thấy tài liệu." }, { status: 404 });
+    }
+
+    if (session?.user?.id && ["FARMER", "AREA_MANAGER"].includes(session.user.role)) {
+        await markContentAsRead(session.user.id, "document", document.id);
     }
 
     try {

@@ -6,6 +6,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { DeleteNewsButton } from "@/components/news/delete-news-button";
+import { getContentId, NEW_NEWS_TYPE } from "@/lib/content-notifications";
+import { ContentReadLink } from "@/components/content-read-link";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,16 @@ export default async function NewsPage() {
         }),
     ]);
     const isAdmin = session?.user?.role === "ADMIN";
+    const unreadNotifications = session?.user?.id && ["FARMER", "AREA_MANAGER"].includes(session.user.role)
+        ? await prisma.notification.findMany({
+            where: { userId: session.user.id, isRead: false, type: { startsWith: NEW_NEWS_TYPE } },
+            select: { id: true, type: true },
+        })
+        : [];
+    const publishedArticleIds = new Set(databaseArticles.map((article) => article.id));
+    const newArticleIds = new Set(unreadNotifications
+        .map((notification) => getContentId(notification.type, NEW_NEWS_TYPE))
+        .filter((id): id is string => Boolean(id && publishedArticleIds.has(id))));
     const newsArticles = databaseArticles.map((article) => ({
             id: `database-${article.id}`,
             databaseId: article.id,
@@ -27,6 +39,7 @@ export default async function NewsPage() {
             sourceName: article.sourceName,
             originalUrl: article.originalUrl,
             sourcePublishedDate: article.sourcePublishedAt?.toLocaleDateString("vi-VN") ?? null,
+            isNew: newArticleIds.has(article.id),
         }));
 
     return (
@@ -61,7 +74,7 @@ export default async function NewsPage() {
                         key={article.id}
                         className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
                     >
-                        <a href={article.originalUrl} target="_blank" rel="noopener noreferrer" className="flex flex-1 flex-col">
+                        <ContentReadLink kind="news" contentId={article.databaseId} isNew={article.isNew} showNewLabel href={article.originalUrl} target="_blank" rel="noopener noreferrer" className="relative flex flex-1 flex-col">
                             <div className="relative aspect-video shrink-0 overflow-hidden bg-slate-100">
                                 {article.imageUrl ? <Image
                                     src={article.imageUrl}
@@ -78,7 +91,7 @@ export default async function NewsPage() {
                                 <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">{article.description || "Xem nội dung chi tiết tại nguồn bài viết."}</p>
                                 <span className="mt-auto inline-flex items-center pt-4 text-sm font-semibold text-emerald-700 group-hover:text-emerald-800">Đọc bài viết <ExternalLink className="ml-2 h-4 w-4" /></span>
                             </div>
-                        </a>
+                        </ContentReadLink>
                         {isAdmin && article.databaseId && <DeleteNewsButton articleId={article.databaseId} title={article.title} />}
                     </article>
                 ))}

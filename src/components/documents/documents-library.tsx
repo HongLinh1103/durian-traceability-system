@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { ArchiveRestore, Download, FilePlus2, FileText, Loader2, Search, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
+import { ContentReadLink } from "@/components/content-read-link";
 
 type DocumentItem = {
     id: string;
@@ -35,6 +35,7 @@ export function DocumentsLibrary() {
     const isAdmin = status === "authenticated" && session?.user?.role === "ADMIN";
     const [documents, setDocuments] = useState<DocumentItem[]>([]);
     const [categories, setCategories] = useState<string[]>([]);
+    const [newDocumentIds, setNewDocumentIds] = useState<string[]>([]);
     const [search, setSearch] = useState("");
     const [category, setCategory] = useState("");
     const [loading, setLoading] = useState(true);
@@ -50,7 +51,10 @@ export function DocumentsLibrary() {
             const payload = await response.json();
             if (!response.ok) throw new Error(payload.message);
             setDocuments(payload.data);
-            if (!isAdmin) setCategories(payload.categories ?? []);
+            if (!isAdmin) {
+                setCategories(payload.categories ?? []);
+                setNewDocumentIds(payload.newIds ?? []);
+            }
         } catch (error) {
             toast({
                 title: "Không thể tải tài liệu",
@@ -177,6 +181,7 @@ export function DocumentsLibrary() {
                             <div className="flex items-start justify-between gap-3">
                                 <div className="rounded-2xl bg-brand-50 p-3 text-brand-700"><FileText className="h-6 w-6" /></div>
                                 <div className="flex flex-wrap justify-end gap-2 text-[10px] font-bold uppercase">
+                                    {!isAdmin && newDocumentIds.includes(item.id) && <span className="rounded-full bg-red-500 px-2 py-1 text-white">New</span>}
                                     <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">{item.category}</span>
                                     {isAdmin && <span className={`rounded-full px-2 py-1 ${item.status === "PUBLISHED" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>{item.status}</span>}
                                     {item.deletedAt && <span className="rounded-full bg-red-100 px-2 py-1 text-red-700">Đã xóa</span>}
@@ -187,12 +192,12 @@ export function DocumentsLibrary() {
                             <p className="mt-4 text-xs text-slate-400">{item.fileName} · {formatBytes(item.fileSize)}</p>
                             <div className="mt-5 grid grid-cols-2 gap-2">
                                 {!item.deletedAt && item.status !== "DRAFT" && (
-                                    <Link href={`/documents/${item.slug}`} className="inline-flex h-10 items-center justify-center rounded-xl bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700">Mở</Link>
+                                    <ContentReadLink kind="document" contentId={item.id} isNew={newDocumentIds.includes(item.id)} href={`/documents/${item.slug}`} onClick={() => setNewDocumentIds((ids) => ids.filter((id) => id !== item.id))} className="inline-flex h-10 items-center justify-center rounded-xl bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700">Mở</ContentReadLink>
                                 )}
                                 {!item.deletedAt && (
-                                    <a href={item.fileUrl} download={item.fileName} className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                                    <ContentReadLink kind="document" contentId={item.id} isNew={newDocumentIds.includes(item.id)} href={item.fileUrl} download={item.fileName} onClick={() => setNewDocumentIds((ids) => ids.filter((id) => id !== item.id))} className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                                         <Download className="mr-1.5 h-4 w-4" />Tải
-                                    </a>
+                                    </ContentReadLink>
                                 )}
                             </div>
                             {isAdmin && (

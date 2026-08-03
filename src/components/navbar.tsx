@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 
 const publicLinks = [
     { href: "/", label: "Trang chủ" },
-    { href: "/documents", label: "Tài liệu" },
-    { href: "/news", label: "Tin tức" },
+    { href: "/documents", label: "Tài liệu", notificationKey: "documents" as const },
+    { href: "/news", label: "Tin tức", notificationKey: "news" as const },
 ];
 
 type DashboardLink = {
@@ -35,6 +35,7 @@ export function Navbar() {
     const { data: session, status } = useSession();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
+    const [contentCounts, setContentCounts] = useState({ documents: 0, news: 0 });
     const [hydrated, setHydrated] = useState(false);
 
     useEffect(() => {
@@ -72,6 +73,31 @@ export function Navbar() {
         };
     }, [isAuthed, userRole]);
 
+    useEffect(() => {
+        if (!isAuthed || !["FARMER", "AREA_MANAGER"].includes(userRole ?? "")) {
+            setContentCounts({ documents: 0, news: 0 });
+            return;
+        }
+        let cancelled = false;
+        const fetchContentCounts = async () => {
+            try {
+                const response = await fetch("/api/content-notifications", { cache: "no-store" });
+                const payload = await response.json();
+                if (!cancelled && payload.success) setContentCounts(payload.data);
+            } catch {
+                // Navbar notifications must not block navigation.
+            }
+        };
+        void fetchContentCounts();
+        window.addEventListener("content-notifications-updated", fetchContentCounts);
+        const interval = setInterval(fetchContentCounts, 30000);
+        return () => {
+            cancelled = true;
+            window.removeEventListener("content-notifications-updated", fetchContentCounts);
+            clearInterval(interval);
+        };
+    }, [isAuthed, pathname, userRole]);
+
     const accessibleDashboards = userRole
         ? dashboardLinks.filter((l) => l.roles.includes(userRole))
         : [];
@@ -106,19 +132,26 @@ export function Navbar() {
                             ? "/dashboard/area-manager"
                             : link.href === "/" && userRole === "ADMIN"
                                 ? "/dashboard/admin"
+                                : link.href === "/" && userRole === "FARMER"
+                                    ? "/dashboard/farmer"
                                 : link.href;
                         return (
                             <Link
                                 key={link.href}
                                 href={href}
                                 className={cn(
-                                    "whitespace-nowrap rounded-2xl px-2.5 py-2 text-sm font-semibold transition 2xl:px-3",
+                                    "relative whitespace-nowrap rounded-2xl px-2.5 py-2 text-sm font-semibold transition 2xl:px-3",
                                     pathname === href
                                         ? "bg-brand-50 text-brand-700"
                                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
                                 )}
                             >
                                 {link.label}
+                                {link.notificationKey && contentCounts[link.notificationKey] > 0 && (
+                                    <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                                        {contentCounts[link.notificationKey] > 99 ? "99+" : contentCounts[link.notificationKey]}
+                                    </span>
+                                )}
                             </Link>
                         );
                     })}
@@ -216,6 +249,8 @@ export function Navbar() {
                                 ? "/dashboard/area-manager"
                                 : link.href === "/" && userRole === "ADMIN"
                                     ? "/dashboard/admin"
+                                    : link.href === "/" && userRole === "FARMER"
+                                        ? "/dashboard/farmer"
                                     : link.href;
                             return (
                                 <Link
@@ -223,13 +258,18 @@ export function Navbar() {
                                     href={href}
                                     onClick={() => setMobileOpen(false)}
                                     className={cn(
-                                        "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition",
+                                        "flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition",
                                         pathname === href
                                             ? "bg-brand-50 text-brand-700"
                                             : "text-slate-600 hover:bg-slate-50",
                                     )}
                                 >
-                                    {link.label}
+                                    <span>{link.label}</span>
+                                    {link.notificationKey && contentCounts[link.notificationKey] > 0 && (
+                                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                                            {contentCounts[link.notificationKey] > 99 ? "99+" : contentCounts[link.notificationKey]}
+                                        </span>
+                                    )}
                                 </Link>
                             );
                         })}

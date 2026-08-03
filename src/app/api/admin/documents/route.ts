@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyPublishedContent } from "@/lib/content-notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -99,6 +100,8 @@ export async function POST(request: Request) {
             publishedAt: publish ? new Date() : null,
         },
     });
+
+    if (publish) await notifyPublishedContent("document", document);
 
     return NextResponse.json({ success: true, data: document }, { status: 201 });
 }

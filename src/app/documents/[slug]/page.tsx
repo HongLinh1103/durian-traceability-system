@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Download, FileText } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { markContentAsRead } from "@/lib/content-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +15,10 @@ function formatBytes(bytes: number) {
 }
 
 export default async function DocumentDetailPage({ params }: { params: { slug: string } }) {
-    const document = await prisma.document.findFirst({
+    const [session, document] = await Promise.all([getServerSession(authOptions), prisma.document.findFirst({
         where: { slug: decodeURIComponent(params.slug), status: "PUBLISHED", deletedAt: null },
         select: {
+            id: true,
             title: true,
             summary: true,
             category: true,
@@ -23,9 +27,12 @@ export default async function DocumentDetailPage({ params }: { params: { slug: s
             fileSize: true,
             publishedAt: true,
         },
-    });
+    })]);
 
     if (!document) notFound();
+    if (session?.user?.id && ["FARMER", "AREA_MANAGER"].includes(session.user.role)) {
+        await markContentAsRead(session.user.id, "document", document.id);
+    }
 
     return (
         <main className="mx-auto min-h-screen max-w-3xl px-4 py-8 sm:px-6">
