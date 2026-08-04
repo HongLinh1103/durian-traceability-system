@@ -26,7 +26,7 @@ type FarmWithLogs = {
     farmCode: string;
     farmName: string;
     farmerId: string;
-    farmer: { fullName: string | null; phone: string };
+    farmer: { fullName: string | null; phone: string; approvedAt: Date | null };
     createdAt: Date;
     farmingLogs: Array<{ actionDate: Date; createdAt: Date }>;
 };
@@ -53,7 +53,7 @@ function getLatestLogDate(farm: FarmWithLogs) {
 
 function buildReminderRow(farm: FarmWithLogs, referenceDate: Date): ReminderRow | null {
     const latestLogDate = getLatestLogDate(farm);
-    const baseDate = latestLogDate ?? farm.createdAt;
+    const baseDate = latestLogDate ?? farm.farmer.approvedAt ?? farm.createdAt;
 
     const daysOverdue = daysDifference(referenceDate, baseDate);
     if (daysOverdue < 2) {
@@ -85,6 +85,14 @@ export async function loadReminderRows() {
 
     try {
         const farms = (await prisma.farm.findMany({
+            where: {
+                isActive: true,
+                farmer: {
+                    accountStatus: "APPROVED",
+                    isApproved: true,
+                    deletedAt: null,
+                },
+            },
             include: {
                 farmer: true,
                 farmingLogs: {

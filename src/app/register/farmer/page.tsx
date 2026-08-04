@@ -205,7 +205,7 @@ export default function RegisterPage() {
                                         <Input {...form.register("email")} type="email" autoComplete="email" />
                                     </Field>
                                     <div />
-                                    <PasswordInput id="password" label="Mật khẩu" value={form.watch("password")} onValueChange={(value) => form.setValue("password", value, { shouldValidate: true })} error={form.formState.errors.password?.message} helperText="Tối thiểu 8 ký tự, gồm chữ và số." />
+                                    <PasswordInput id="password" label="Mật khẩu" value={form.watch("password")} onValueChange={(value) => form.setValue("password", value, { shouldValidate: true })} error={form.formState.errors.password?.message} helperText="Tối thiểu 6 ký tự." />
                                     <PasswordInput id="confirmPassword" label="Xác nhận mật khẩu" value={form.watch("confirmPassword")} onValueChange={(value) => form.setValue("confirmPassword", value, { shouldValidate: true })} error={form.formState.errors.confirmPassword?.message} />
                                     <Field label="Tỉnh hoặc thành phố" error={form.formState.errors.province?.message}><Input {...form.register("province")} /></Field>
                                     <Field label="Quận hoặc huyện" error={form.formState.errors.district?.message}><Input {...form.register("district")} /></Field>

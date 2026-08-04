@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AlertCircle, ArchiveRestore, Ban, CheckCircle2, Eye, Lock, Pencil, Plus, Search, Trash2, Unlock, Users, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -126,7 +127,7 @@ export function FarmerAccountsManager() {
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                     {regions.length > 1 && <div className="space-y-1"><Label>Vùng đang quản lý</Label><select value={regionCode} onChange={(event) => setRegionCode(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm"><option value="">Tất cả vùng</option>{regions.map((region) => <option key={region.id} value={region.code}>{region.code} - {region.name}</option>)}</select></div>}
-                    <Button onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Tạo nông dân</Button>
+                    <Button onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Tạo tài khoản nông dân</Button>
                 </div>
             </header>
 
@@ -179,7 +180,27 @@ export function FarmerAccountsManager() {
 }
 
 function Modal({ children, onClose, width = "max-w-4xl" }: { children: React.ReactNode; onClose: () => void; width?: string }) {
-    return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className={`max-h-[90vh] w-full ${width} overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl`}>{children}</div></div>;
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, []);
+
+    if (!mounted) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex h-[100dvh] w-screen items-center justify-center overflow-hidden bg-slate-950/55 p-4 backdrop-blur-[1px]" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+            <div role="dialog" aria-modal="true" className={`max-h-[calc(100dvh-2rem)] w-full ${width} overflow-y-auto overscroll-contain rounded-3xl bg-white p-6 shadow-2xl`}>
+                {children}
+            </div>
+        </div>,
+        document.body,
+    );
 }
 
 function FarmerDetail({ farmer, onClose, onAction, onEdit, onDecision }: { farmer: Farmer; onClose: () => void; onAction: (action: string) => void; onEdit: () => void; onDecision: (action: "supplement" | "reject") => void }) {
@@ -212,6 +233,12 @@ function DecisionDialog({ action, reason, setReason, items, setItems, onClose, o
 function CreateFarmerDialog({ regions, onClose, onCreated }: { regions: Region[]; onClose: () => void; onCreated: () => void }) {
     const { toast } = useToast();
     const [submitting, setSubmitting] = useState(false);
+    const [farms, setFarms] = useState([createEmptyFarm()]);
+
+    function updateFarm(index: number, field: keyof CreateFarmInput, value: string) {
+        setFarms((current) => current.map((farm, farmIndex) => farmIndex === index ? { ...farm, [field]: value } : farm));
+    }
+
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault(); setSubmitting(true);
         const values = Object.fromEntries(new FormData(event.currentTarget));
@@ -221,7 +248,7 @@ function CreateFarmerDialog({ regions, onClose, onCreated }: { regions: Region[]
                 body: JSON.stringify({
                     fullName: values.fullName, phone: values.phone, email: values.email, password: values.password,
                     address: values.address, province: values.province, district: values.district, ward: values.ward,
-                    farms: [{ farmName: values.farmName, areaSize: values.areaSize, totalTrees: values.totalTrees, durianVariety: values.durianVariety, address: values.farmAddress, growingRegionId: values.growingRegionId }],
+                    farms,
                 }),
             });
             const payload = await response.json();
@@ -230,19 +257,49 @@ function CreateFarmerDialog({ regions, onClose, onCreated }: { regions: Region[]
         } catch (error) { toast({ title: "Không thể tạo tài khoản", description: error instanceof Error ? error.message : undefined, variant: "destructive" }); }
         finally { setSubmitting(false); }
     }
-    return <Modal onClose={onClose} width="max-w-2xl"><div className="flex justify-between"><div><h2 className="text-2xl font-black">Tạo tài khoản nông dân</h2><p className="text-sm text-slate-500">Tài khoản được kích hoạt ngay và liên kết với vùng phụ trách.</p></div><button onClick={onClose}><X /></button></div>
+    return <Modal onClose={onClose} width="max-w-4xl"><div className="flex justify-between"><div><h2 className="text-2xl font-black">Tạo tài khoản nông dân</h2><p className="text-sm text-slate-500">Tài khoản được kích hoạt ngay và liên kết với vùng phụ trách.</p></div><button onClick={onClose}><X /></button></div>
         <form onSubmit={submit} className="mt-6 grid gap-4 sm:grid-cols-2">
             <Field label="Họ và tên"><Input name="fullName" required /></Field><Field label="Số điện thoại"><Input name="phone" required /></Field>
             <Field label="Email"><Input name="email" type="email" /></Field><Field label="Mật khẩu ban đầu"><Input name="password" required minLength={6} type="password" /></Field>
             <Field label="Địa chỉ cư trú"><Input name="address" /></Field><Field label="Tỉnh/Thành"><Input name="province" /></Field>
             <Field label="Quận/Huyện"><Input name="district" /></Field><Field label="Xã/Phường"><Input name="ward" /></Field>
-            <div className="sm:col-span-2 border-t pt-4"><h3 className="font-bold">Vườn đầu tiên</h3></div>
-            <Field label="Tên vườn"><Input name="farmName" required /></Field><Field label="Vùng trồng"><select name="growingRegionId" required className="h-10 w-full rounded-xl border bg-white px-3 text-sm"><option value="">Chọn vùng</option>{regions.map((region) => <option value={region.id} key={region.id}>{region.code} - {region.name}</option>)}</select></Field>
-            <Field label="Diện tích (ha)"><Input name="areaSize" type="number" min="0.01" step="0.01" required /></Field><Field label="Tổng số cây"><Input name="totalTrees" type="number" min="1" required /></Field>
-            <Field label="Giống sầu riêng"><Input name="durianVariety" required /></Field><Field label="Địa chỉ vườn"><Input name="farmAddress" required /></Field>
+            <div className="sm:col-span-2 border-t pt-4"><h3 className="font-bold">Thông tin vườn</h3><p className="mt-1 text-sm text-slate-500">Có thể thêm nhiều vườn cho cùng một tài khoản nông dân.</p></div>
+            <div className="space-y-4 sm:col-span-2">
+                {farms.map((farm, index) => (
+                    <section key={farm.key} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                            <h4 className="font-bold text-slate-900">Vườn {index + 1}</h4>
+                            {index > 0 && <Button type="button" size="sm" variant="outline" className="text-red-600" onClick={() => setFarms((current) => current.filter((_, farmIndex) => farmIndex !== index))}><Trash2 className="mr-1 h-4 w-4" />Xóa vườn</Button>}
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <Field label="Tên vườn"><Input value={farm.farmName} onChange={(event) => updateFarm(index, "farmName", event.target.value)} required /></Field>
+                            <Field label="Vùng trồng"><select value={farm.growingRegionId} onChange={(event) => updateFarm(index, "growingRegionId", event.target.value)} required className="h-10 w-full rounded-xl border bg-white px-3 text-sm"><option value="">Chọn vùng</option>{regions.map((region) => <option value={region.id} key={region.id}>{region.code} - {region.name}</option>)}</select></Field>
+                            <Field label="Diện tích (ha)"><Input value={farm.areaSize} onChange={(event) => updateFarm(index, "areaSize", event.target.value)} type="number" min="0.01" step="0.01" required /></Field>
+                            <Field label="Tổng số cây"><Input value={farm.totalTrees} onChange={(event) => updateFarm(index, "totalTrees", event.target.value)} type="number" min="1" required /></Field>
+                            <Field label="Giống sầu riêng"><Input value={farm.durianVariety} onChange={(event) => updateFarm(index, "durianVariety", event.target.value)} required /></Field>
+                            <Field label="Địa chỉ vườn"><Input value={farm.address} onChange={(event) => updateFarm(index, "address", event.target.value)} required /></Field>
+                        </div>
+                    </section>
+                ))}
+                <Button type="button" variant="outline" onClick={() => setFarms((current) => [...current, createEmptyFarm()])}><Plus className="mr-2 h-4 w-4" />Thêm vườn khác</Button>
+            </div>
             <div className="sm:col-span-2 flex justify-end gap-2 pt-3"><Button type="button" variant="outline" onClick={onClose}>Hủy</Button><Button disabled={submitting} type="submit">{submitting ? "Đang tạo..." : "Tạo và kích hoạt"}</Button></div>
         </form>
     </Modal>;
+}
+
+type CreateFarmInput = {
+    key: string;
+    farmName: string;
+    growingRegionId: string;
+    areaSize: string;
+    totalTrees: string;
+    durianVariety: string;
+    address: string;
+};
+
+function createEmptyFarm(): CreateFarmInput {
+    return { key: crypto.randomUUID(), farmName: "", growingRegionId: "", areaSize: "", totalTrees: "", durianVariety: "", address: "" };
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

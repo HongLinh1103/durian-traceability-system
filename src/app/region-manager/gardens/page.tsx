@@ -42,7 +42,15 @@ export default async function RegionManagerGardensPage() {
 
     const farms = scope.codes.length
         ? await prisma.farm.findMany({
-            where: { region: { code: { in: scope.codes } } },
+            where: {
+                isActive: true,
+                region: { code: { in: scope.codes } },
+                farmer: {
+                    accountStatus: "APPROVED",
+                    isApproved: true,
+                    deletedAt: null,
+                },
+            },
             orderBy: { createdAt: "desc" },
             select: {
                 id: true,
@@ -58,7 +66,7 @@ export default async function RegionManagerGardensPage() {
                 durianVariety: true,
                 isActive: true,
                 region: { select: { code: true, name: true } },
-                farmer: { select: { fullName: true, phone: true } },
+                farmer: { select: { fullName: true, phone: true, approvedAt: true } },
                 farmingLogs: {
                     orderBy: [{ actionDate: "desc" }, { createdAt: "desc" }],
                     select: { actionDate: true },
@@ -71,7 +79,7 @@ export default async function RegionManagerGardensPage() {
         <GardensManager
             regions={scope.regions}
             gardens={farms.map((farm) => {
-                const delayMetrics = calculateDelayMetrics(farm.createdAt, farm.farmingLogs);
+                const delayMetrics = calculateDelayMetrics(farm.farmer.approvedAt ?? farm.createdAt, farm.farmingLogs);
                 return {
                 id: farm.id,
                 farmCode: farm.farmCode,

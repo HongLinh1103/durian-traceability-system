@@ -32,8 +32,8 @@ export default function AreaManagerRegistrationPage() {
             }
         }
         if (step === 0) {
-            if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-                toast({ title: "Mật khẩu chưa đạt yêu cầu", description: "Mật khẩu cần tối thiểu 8 ký tự, gồm chữ và số.", variant: "destructive" });
+            if (password.length < 6) {
+                toast({ title: "Mật khẩu chưa đạt yêu cầu", description: "Mật khẩu cần tối thiểu 6 ký tự.", variant: "destructive" });
                 return;
             }
             if (password !== confirmPassword) {
@@ -120,7 +120,7 @@ export default function AreaManagerRegistrationPage() {
                             <Field label="Nơi cấp"><Input name="identityIssuedPlace" required /></Field>
                             <FileField name="identityFront" label="Ảnh mặt trước CCCD" accept="image/jpeg,image/png,image/webp" />
                             <FileField name="identityBack" label="Ảnh mặt sau CCCD" accept="image/jpeg,image/png,image/webp" />
-                            <PasswordInput id="managerPassword" label="Mật khẩu" value={password} onValueChange={setPassword} helperText="Tối thiểu 8 ký tự, gồm chữ và số." autoComplete="new-password" />
+                            <PasswordInput id="managerPassword" label="Mật khẩu" value={password} onValueChange={setPassword} helperText="Tối thiểu 6 ký tự." autoComplete="new-password" />
                             <PasswordInput id="managerConfirmPassword" label="Xác nhận mật khẩu" value={confirmPassword} onValueChange={setConfirmPassword} autoComplete="new-password" />
                         </div>
 

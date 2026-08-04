@@ -27,7 +27,12 @@ export default async function GardenDetailPage({ params }: { params: { gardenId:
     if (!scope) redirect("/");
 
     const garden = await prisma.farm.findFirst({
-        where: { id: params.gardenId, region: { code: { in: scope.codes } } },
+        where: {
+            id: params.gardenId,
+            isActive: true,
+            region: { code: { in: scope.codes } },
+            farmer: { accountStatus: "APPROVED", isApproved: true, deletedAt: null },
+        },
         select: {
             id: true,
             farmCode: true,

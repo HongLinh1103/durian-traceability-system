@@ -4,7 +4,7 @@ import { isValidVietnameseDate } from "@/lib/date-format";
 
 const passwordPolicy = z
     .string()
-    .min(4, "Mật khẩu phải có ít nhất 4 ký tự");
+    .min(6, "Mật khẩu phải có ít nhất 6 ký tự");
 
 // Số điện thoại Việt Nam: 10-11 số, bắt đầu bằng 0
 const vietnamPhoneRegex = /^(0[3|5|7|8|9])+([0-9]{8})\b$/;
@@ -69,9 +69,7 @@ export const farmerRegisterSchema = z
             .default(""),
         password: z
             .string()
-            .min(8, "Mật khẩu phải có ít nhất 8 ký tự")
-            .regex(/[A-Za-z]/, "Mật khẩu phải có ít nhất một chữ cái")
-            .regex(/[0-9]/, "Mật khẩu phải có ít nhất một chữ số"),
+            .min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
         confirmPassword: z.string().min(1, "Vui lòng xác nhận mật khẩu"),
         province: z.string().trim().min(2, "Vui lòng nhập tỉnh/thành phố"),
         district: z.string().trim().min(2, "Vui lòng nhập quận/huyện"),

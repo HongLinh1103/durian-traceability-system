@@ -1,4 +1,7 @@
 import Image from "next/image";
+import Link from "next/link";
+import { ScanLine } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type HeroBannerProps = {
     compact?: boolean;
@@ -45,6 +48,13 @@ export function HeroBanner({ compact = false, showContent = true }: HeroBannerPr
                             Hỗ trợ nông dân và Ban quản lý kiểm soát kỹ thuật canh tác, chuẩn hóa vùng trồng và theo dõi hồ sơ thuận tiện.
                         </p>
                     </div>
+
+                    <Button asChild size="lg" className="w-full bg-emerald-400 text-emerald-950 shadow-lg hover:bg-emerald-300 sm:w-auto">
+                        <Link href="/trace/scan">
+                            <ScanLine className="mr-2 h-5 w-5" />
+                            Quét mã QR
+                        </Link>
+                    </Button>
 
                 </div>
             </div>

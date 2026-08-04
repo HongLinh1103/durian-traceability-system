@@ -125,11 +125,27 @@ export async function POST(request: Request) {
     if (String(body.password).length < 6) {
         return NextResponse.json({ success: false, message: "Mật khẩu cần có ít nhất 6 ký tự." }, { status: 400 });
     }
-    const regionIds = farms.map((farm: { growingRegionId?: string }) => farm.growingRegionId).filter(Boolean);
+    const invalidFarm = farms.some((farm: Record<string, unknown>) =>
+        !String(farm.farmName || "").trim()
+        || !String(farm.growingRegionId || "").trim()
+        || !String(farm.durianVariety || "").trim()
+        || !String(farm.address || "").trim()
+        || !Number.isFinite(Number(farm.areaSize))
+        || Number(farm.areaSize) <= 0
+        || !Number.isInteger(Number(farm.totalTrees))
+        || Number(farm.totalTrees) <= 0,
+    );
+    if (invalidFarm) {
+        return NextResponse.json({ success: false, message: "Thông tin của mỗi vườn chưa đầy đủ hoặc không hợp lệ." }, { status: 400 });
+    }
+    const regionIds = Array.from(new Set<string>(
+        farms.map((farm: Record<string, unknown>) => String(farm.growingRegionId || "").trim()).filter(Boolean),
+    ));
     const allowedRegions = await prisma.growingRegion.findMany({
         where: { id: { in: regionIds }, code: { in: context.scope.codes }, isActive: true },
     });
-    if (allowedRegions.length !== farms.length) {
+    const allowedRegionIds = new Set(allowedRegions.map((region) => region.id));
+    if (farms.some((farm: { growingRegionId?: string }) => !farm.growingRegionId || !allowedRegionIds.has(farm.growingRegionId))) {
         return NextResponse.json({ success: false, message: "Mỗi vườn phải thuộc một vùng bạn đang phụ trách." }, { status: 400 });
     }
     const email = body.email?.trim().toLowerCase() || null;

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 const publicLinks = [
     { href: "/", label: "Trang chủ" },
+    { href: "/trace/scan", label: "Tra cứu mã QR" },
     { href: "/documents", label: "Tài liệu", notificationKey: "documents" as const },
     { href: "/news", label: "Tin tức", notificationKey: "news" as const },
 ];
@@ -141,7 +142,7 @@ export function Navbar() {
                                 href={href}
                                 className={cn(
                                     "relative whitespace-nowrap rounded-2xl px-2.5 py-2 text-sm font-semibold transition 2xl:px-3",
-                                    pathname === href
+                                    (link.href === "/trace/scan" ? pathname.startsWith("/trace") : pathname === href)
                                         ? "bg-brand-50 text-brand-700"
                                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
                                 )}
@@ -259,7 +260,7 @@ export function Navbar() {
                                     onClick={() => setMobileOpen(false)}
                                     className={cn(
                                         "flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition",
-                                        pathname === href
+                                        (link.href === "/trace/scan" ? pathname.startsWith("/trace") : pathname === href)
                                             ? "bg-brand-50 text-brand-700"
                                             : "text-slate-600 hover:bg-slate-50",
                                     )}

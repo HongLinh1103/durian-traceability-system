@@ -31,7 +31,7 @@ const applicationSchema = z
         identityNumber: z.string().trim().regex(/^\d{9}(\d{3})?$/, "CCCD/CMND phải có 9 hoặc 12 số"),
         identityIssuedDate: z.coerce.date().max(new Date(), "Ngày cấp không hợp lệ"),
         identityIssuedPlace: z.string().trim().min(2),
-        password: z.string().min(8).regex(/[A-Za-z]/).regex(/\d/),
+        password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
         confirmPassword: z.string(),
         organizationName: z.string().trim().min(2),
         taxCode: z.string().trim().optional(),

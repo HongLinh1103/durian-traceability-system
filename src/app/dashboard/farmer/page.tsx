@@ -96,7 +96,9 @@ export default function FarmerDashboardPage() {
                                 <div key={item.id} className={`rounded-3xl border p-4 ${item.isRead ? "border-slate-200 bg-white" : "border-brand-200 bg-brand-50"}`}>
                                     <div className="flex items-center justify-between gap-3">
                                         <p className="font-semibold text-slate-900">{item.title}</p>
-                                        <Badge className={item.isRead ? "bg-slate-100 text-slate-600" : "bg-amber-100 text-amber-800"}>{item.type}</Badge>
+                                        {!item.type.startsWith("NEW_NEWS:") && !item.type.startsWith("NEW_DOCUMENT:") && (
+                                            <Badge className={item.isRead ? "bg-slate-100 text-slate-600" : "bg-amber-100 text-amber-800"}>{item.type}</Badge>
+                                        )}
                                     </div>
                                     <p className="mt-2 text-sm text-slate-600">{item.message}</p>
                                 </div>

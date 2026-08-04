@@ -619,11 +619,6 @@ export default function NewFarmingLogPage() {
                                 <p className="mt-1 text-xs text-red-600">{form.formState.errors.actionTime?.message}</p>
                                 <p className="mt-1 text-xs text-slate-500">Mặc định là thời gian hiện tại của thiết bị.</p>
                             </div>
-                            {isSpraying && <div>
-                                <Label htmlFor="phiDays">Số ngày cách ly PHI</Label>
-                                <Input id="phiDays" type="number" min="0" {...form.register("phiDays")} />
-                                <p className="mt-1 text-xs text-red-600">{form.formState.errors.phiDays?.message}</p>
-                            </div>}
                         </div>
 
                         {(isSpraying || isFertilizing) && <div className="grid gap-4 md:grid-cols-2">
@@ -646,6 +641,11 @@ export default function NewFarmingLogPage() {
                                 <Label htmlFor="dosage">Liều lượng</Label>
                                 <Input id="dosage" {...form.register("dosage")} placeholder="Ví dụ: 20ml/bình 16L" />
                                 <p className="mt-1 text-xs text-red-600">{form.formState.errors.dosage?.message}</p>
+                            </div>}
+                            {isSpraying && <div>
+                                <Label htmlFor="phiDays">Số ngày cách ly PHI</Label>
+                                <Input id="phiDays" type="number" min="0" {...form.register("phiDays")} />
+                                <p className="mt-1 text-xs text-red-600">{form.formState.errors.phiDays?.message}</p>
                             </div>}
                         </div>}
 
