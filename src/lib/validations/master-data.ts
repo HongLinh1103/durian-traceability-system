@@ -40,6 +40,11 @@ export const masterCodeSchema = z
     .min(1, "Mã không được để trống")
     .regex(/^[A-Za-z0-9_-]+$/, "Mã chỉ được chứa chữ cái, số, dấu gạch ngang (-) và gạch dưới (_)");
 
+const imageUrlsSchema = z.preprocess(
+    (value) => Array.isArray(value) ? value.filter((item) => typeof item === "string" && item.trim()) : [],
+    z.array(z.string().url("URL ảnh không hợp lệ")).max(6, "Tối đa 6 ảnh"),
+);
+
 // ─── Durian Variety Schema ─────────────────────────────
 
 export const durianVarietySchema = z.object({
@@ -100,6 +105,7 @@ export const pesticideBaseSchema = z.object({
         .string({ required_error: "Hoạt chất không được để trống" })
         .trim()
         .min(1, "Hoạt chất không được để trống"),
+    concentration: z.string().trim().optional().or(z.literal("")),
     category: z
         .string()
         .trim()
@@ -110,6 +116,8 @@ export const pesticideBaseSchema = z.object({
         .trim()
         .optional()
         .or(z.literal("")),
+    origin: z.string().trim().optional().or(z.literal("")),
+    imageUrls: imageUrlsSchema,
     registrationNumber: z
         .string()
         .trim()
@@ -126,11 +134,15 @@ export const pesticideBaseSchema = z.object({
         .trim()
         .optional()
         .or(z.literal("")),
+    targetPests: z.string().trim().optional().or(z.literal("")),
+    usageInstructions: z.string().trim().optional().or(z.literal("")),
     recommendedDosage: z
         .string()
         .trim()
         .optional()
         .or(z.literal("")),
+    safetyWarnings: z.string().trim().optional().or(z.literal("")),
+    storageInstructions: z.string().trim().optional().or(z.literal("")),
     phiDays: z.preprocess(
         (value) => {
             if (value === "" || value === null || value === undefined) return undefined;
@@ -201,11 +213,15 @@ export const fertilizerSchema = z.object({
         .trim()
         .optional()
         .or(z.literal("")),
+    origin: z.string().trim().optional().or(z.literal("")),
+    imageUrls: imageUrlsSchema,
     nutrientComposition: z
         .string()
         .trim()
         .optional()
         .or(z.literal("")),
+    mainUses: z.string().trim().optional().or(z.literal("")),
+    targetCrops: z.string().trim().optional().or(z.literal("")),
     usageInstructions: z
         .string()
         .trim()
@@ -221,6 +237,9 @@ export const fertilizerSchema = z.object({
         .trim()
         .optional()
         .or(z.literal("")),
+    safetyWarnings: z.string().trim().optional().or(z.literal("")),
+    storageInstructions: z.string().trim().optional().or(z.literal("")),
+    sourceReference: z.string().trim().optional().or(z.literal("")),
     notes: z
         .string()
         .trim()

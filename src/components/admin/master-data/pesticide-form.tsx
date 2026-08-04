@@ -31,13 +31,20 @@ export function PesticideForm({ initialData, onSuccess, onCancel }: PesticideFor
             code: initialData?.code ?? "",
             tradeName: initialData?.tradeName ?? "",
             activeIngredient: initialData?.activeIngredient ?? "",
+            concentration: initialData?.concentration ?? "",
             category: initialData?.category ?? "",
             manufacturer: initialData?.manufacturer ?? "",
+            origin: initialData?.origin ?? "",
+            imageUrls: initialData?.imageUrls ?? [],
             registrationNumber: initialData?.registrationNumber ?? "",
             gaccStatus: initialData?.gaccStatus ?? "UNKNOWN",
             localStatus: initialData?.localStatus ?? "",
             usagePurpose: initialData?.usagePurpose ?? "",
+            targetPests: initialData?.targetPests ?? "",
+            usageInstructions: initialData?.usageInstructions ?? "",
             recommendedDosage: initialData?.recommendedDosage ?? "",
+            safetyWarnings: initialData?.safetyWarnings ?? "",
+            storageInstructions: initialData?.storageInstructions ?? "",
             phiDays: initialData?.phiDays ?? undefined,
             notes: initialData?.notes ?? "",
             sourceReference: initialData?.sourceReference ?? "",
@@ -147,10 +154,17 @@ export function PesticideForm({ initialData, onSuccess, onCancel }: PesticideFor
                             </select>
                         </div>
 
+                        <div className="space-y-2"><Label htmlFor="concentration">Hàm lượng</Label><Input id="concentration" {...form.register("concentration")} placeholder="VD: 250 g/L" /></div>
+
                         <div className="space-y-2">
                             <Label htmlFor="manufacturer">Nhà sản xuất</Label>
                             <Input id="manufacturer" {...form.register("manufacturer")} placeholder="VD: Bayer" />
                         </div>
+
+                        <div className="space-y-2"><Label htmlFor="origin">Xuất xứ</Label><Input id="origin" {...form.register("origin")} /></div>
+                        <div className="space-y-2"><Label htmlFor="imageUrl">Ảnh mặt trước (URL)</Label><Input id="imageUrl" {...form.register("imageUrls.0")} placeholder="https://..." /></div>
+                        <div className="space-y-2"><Label htmlFor="imageBackUrl">Ảnh mặt sau (URL)</Label><Input id="imageBackUrl" {...form.register("imageUrls.1")} placeholder="https://..." /></div>
+                        <div className="space-y-2"><Label htmlFor="imageLabelUrl">Ảnh nhãn hướng dẫn (URL)</Label><Input id="imageLabelUrl" {...form.register("imageUrls.2")} placeholder="https://..." /></div>
 
                         <div className="space-y-2">
                             <Label htmlFor="registrationNumber">Số đăng ký</Label>
@@ -200,6 +214,9 @@ export function PesticideForm({ initialData, onSuccess, onCancel }: PesticideFor
                         <Input id="usagePurpose" {...form.register("usagePurpose")} placeholder="VD: Trừ sâu vẽ bùa" />
                     </div>
 
+                    <div className="space-y-2"><Label htmlFor="targetPests">Đối tượng phòng trừ</Label><Textarea id="targetPests" {...form.register("targetPests")} /></div>
+                    <div className="space-y-2"><Label htmlFor="usageInstructions">Hướng dẫn sử dụng tham khảo</Label><Textarea id="usageInstructions" {...form.register("usageInstructions")} /></div>
+
                     <div className="space-y-2">
                         <Label htmlFor="recommendedDosage">Liều lượng khuyến nghị</Label>
                         <Input id="recommendedDosage" {...form.register("recommendedDosage")} placeholder="VD: 20ml/bình 16L" />
@@ -209,6 +226,9 @@ export function PesticideForm({ initialData, onSuccess, onCancel }: PesticideFor
                         <Label htmlFor="sourceReference">Nguồn tham chiếu</Label>
                         <Input id="sourceReference" {...form.register("sourceReference")} placeholder="VD: Thông tư 10/2023" />
                     </div>
+
+                    <div className="space-y-2"><Label htmlFor="safetyWarnings">Cảnh báo an toàn</Label><Textarea id="safetyWarnings" {...form.register("safetyWarnings")} /></div>
+                    <div className="space-y-2"><Label htmlFor="storageInstructions">Cách bảo quản</Label><Textarea id="storageInstructions" {...form.register("storageInstructions")} /></div>
 
                     <div className="space-y-2">
                         <Label htmlFor="localStatus">Trạng thái nội bộ</Label>

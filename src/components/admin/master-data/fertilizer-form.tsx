@@ -32,10 +32,17 @@ export function FertilizerForm({ initialData, onSuccess, onCancel }: FertilizerF
             fertilizerType: initialData?.fertilizerType ?? "",
             brand: initialData?.brand ?? "",
             manufacturer: initialData?.manufacturer ?? "",
+            origin: initialData?.origin ?? "",
+            imageUrls: initialData?.imageUrls ?? [],
             nutrientComposition: initialData?.nutrientComposition ?? "",
+            mainUses: initialData?.mainUses ?? "",
+            targetCrops: initialData?.targetCrops ?? "",
             usageInstructions: initialData?.usageInstructions ?? "",
             recommendedDosage: initialData?.recommendedDosage ?? "",
             applicationMethod: initialData?.applicationMethod ?? "",
+            safetyWarnings: initialData?.safetyWarnings ?? "",
+            storageInstructions: initialData?.storageInstructions ?? "",
+            sourceReference: initialData?.sourceReference ?? "",
             notes: initialData?.notes ?? "",
             isActive: initialData?.isActive ?? true,
         },
@@ -128,6 +135,11 @@ export function FertilizerForm({ initialData, onSuccess, onCancel }: FertilizerF
                             <Input id="manufacturer" {...form.register("manufacturer")} placeholder="VD: Công ty Phân bón X" />
                         </div>
 
+                        <div className="space-y-2"><Label htmlFor="origin">Xuất xứ</Label><Input id="origin" {...form.register("origin")} placeholder="VD: Việt Nam" /></div>
+                        <div className="space-y-2"><Label htmlFor="imageUrl">Ảnh mặt trước (URL)</Label><Input id="imageUrl" {...form.register("imageUrls.0")} placeholder="https://..." /></div>
+                        <div className="space-y-2"><Label htmlFor="imageBackUrl">Ảnh mặt sau (URL)</Label><Input id="imageBackUrl" {...form.register("imageUrls.1")} placeholder="https://..." /></div>
+                        <div className="space-y-2"><Label htmlFor="imageLabelUrl">Ảnh nhãn hướng dẫn (URL)</Label><Input id="imageLabelUrl" {...form.register("imageUrls.2")} placeholder="https://..." /></div>
+
                         <div className="space-y-2">
                             <Label htmlFor="nutrientComposition">Thành phần dinh dưỡng</Label>
                             <Input id="nutrientComposition" {...form.register("nutrientComposition")} placeholder="VD: N:20%, P:20%, K:15%" />
@@ -145,9 +157,19 @@ export function FertilizerForm({ initialData, onSuccess, onCancel }: FertilizerF
                     </div>
 
                     <div className="space-y-2">
+                        <Label htmlFor="mainUses">Công dụng chính</Label>
+                        <Textarea id="mainUses" {...form.register("mainUses")} placeholder="Công dụng đối với cây sầu riêng..." />
+                    </div>
+                    <div className="space-y-2"><Label htmlFor="targetCrops">Đối tượng áp dụng</Label><Textarea id="targetCrops" {...form.register("targetCrops")} placeholder="Cây trồng, giai đoạn áp dụng..." /></div>
+
+                    <div className="space-y-2">
                         <Label htmlFor="usageInstructions">Hướng dẫn sử dụng</Label>
                         <Textarea id="usageInstructions" {...form.register("usageInstructions")} placeholder="Hướng dẫn sử dụng chi tiết..." />
                     </div>
+
+                    <div className="space-y-2"><Label htmlFor="safetyWarnings">Cảnh báo an toàn</Label><Textarea id="safetyWarnings" {...form.register("safetyWarnings")} /></div>
+                    <div className="space-y-2"><Label htmlFor="storageInstructions">Cách bảo quản</Label><Textarea id="storageInstructions" {...form.register("storageInstructions")} /></div>
+                    <div className="space-y-2"><Label htmlFor="sourceReference">Nguồn tham khảo</Label><Input id="sourceReference" {...form.register("sourceReference")} placeholder="URL nguồn chính thức" /></div>
 
                     <div className="space-y-2">
                         <Label htmlFor="notes">Ghi chú</Label>

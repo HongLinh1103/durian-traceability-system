@@ -223,12 +223,36 @@ async function main() {
         { code: "FER-KCL-001", name: "Kali Clorua (KCl)", fertilizerType: "Vô cơ", brand: "CNA", manufacturer: "Công ty Cổ phần Phân bón Miền Nam", nutrientComposition: "K2O: 60%" },
     ];
 
+    const fertilizerDetails: Record<string, Record<string, unknown>> = {
+        "FER-NPK-201515": {
+            mainUses: "Cung cấp cân đối đạm, lân và kali, hỗ trợ phát triển rễ, thân cành và phục hồi cây sau thu hoạch.",
+            targetCrops: "Nhiều loại cây trồng; với cây ăn trái dùng theo giai đoạn kiến thiết hoặc sau thu hoạch theo hướng dẫn trên nhãn.",
+            usageInstructions: "Bón theo loại đất, tuổi cây và tình hình sinh trưởng; không áp dụng một liều cố định cho mọi vườn.",
+            sourceReference: "https://binhdien.com/sanpham/npk-dau-trau/npk-dau-trau-20-20-15-1.html",
+        },
+        "FER-ORG-001": {
+            mainUses: "Bổ sung chất hữu cơ và vi sinh vật hữu ích, cải tạo độ phì đất, hỗ trợ bộ rễ phát triển và tăng khả năng hấp thu dinh dưỡng.",
+            targetCrops: "Dùng bón lót hoặc bón bổ sung cho nhiều loại cây trồng theo hướng dẫn trên bao bì.",
+            usageInstructions: "Bón vào đất và phối hợp với chế độ dinh dưỡng phù hợp; liều lượng căn cứ nhãn sản phẩm và tình trạng vườn.",
+            sourceReference: "https://songgianh.com.vn/phan-huu-co-vi-sinh-cao-cap-song-gianh-p265.html",
+        },
+        "FER-KCL-001": {
+            mainUses: "Bổ sung kali, hỗ trợ vận chuyển đường và tổng hợp chất hữu cơ, giúp cây cứng khỏe và cải thiện năng suất, chất lượng nông sản.",
+            targetCrops: "Cây trồng có nhu cầu kali và không mẫn cảm với clo; cần thận trọng với sầu riêng và cây nhạy cảm clo.",
+            usageInstructions: "Chỉ bón theo kết quả phân tích đất, nhu cầu cây và hướng dẫn trên bao bì; không dùng thay thế kali sulphate cho cây nhạy cảm clo.",
+            safetyWarnings: "Không bón quá liều hoặc sát gốc; với sầu riêng nên có tư vấn kỹ thuật trước khi sử dụng nguồn kali clorua.",
+            sourceReference: "https://phanbonmiennam.com.vn/nha-nong/bai-3-kali-va-vai-tro-phan-kali-trong-canh-tac-nong-nghiep-con-nua/",
+        },
+    };
+
     for (const fert of demoFertilizers) {
+        const fertilizerData = { ...fert, ...fertilizerDetails[fert.code], isActive: true };
         const existing = await prisma.fertilizer.findUnique({ where: { code: fert.code } });
         if (!existing) {
-            await prisma.fertilizer.create({ data: { ...fert, isActive: true } });
+            await prisma.fertilizer.create({ data: fertilizerData });
             console.log(`   ✅ Created fertilizer: ${fert.code} - ${fert.name}`);
         } else {
+            await prisma.fertilizer.update({ where: { code: fert.code }, data: fertilizerData });
             console.log(`   ⏭️  Skipped (exists): ${fert.code} - ${fert.name}`);
         }
     }

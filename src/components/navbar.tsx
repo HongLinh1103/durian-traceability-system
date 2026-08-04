@@ -23,12 +23,13 @@ type DashboardLink = {
 };
 
 const dashboardLinks: DashboardLink[] = [
+    { href: "/materials", label: "Vật tư", roles: ["FARMER", "AREA_MANAGER"] },
     { href: "/dashboard/farmer/logs", label: "Nhật ký canh tác", roles: ["FARMER"] },
     { href: "/region-manager/gardens", label: "Quản lý vườn trồng", roles: ["AREA_MANAGER"] },
     { href: "/region-manager/farmers", label: "Hồ sơ nông dân", roles: ["AREA_MANAGER"], badge: true },
     { href: "/dashboard/admin/farming", label: "Quản lý canh tác", roles: ["ADMIN"] },
     { href: "/dashboard/admin/accounts", label: "Quản lý tài khoản", roles: ["ADMIN"], badge: true },
-    { href: "/dashboard/admin/master-data", label: "Quản lý danh mục", roles: ["ADMIN"] },
+    { href: "/dashboard/admin/master-data", label: "Quản lý vật tư", roles: ["ADMIN"] },
 ];
 
 export function Navbar() {

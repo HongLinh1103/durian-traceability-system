@@ -34,6 +34,10 @@ export async function GET(request: Request) {
                 { code: { contains: query.search, mode: "insensitive" } },
                 { name: { contains: query.search, mode: "insensitive" } },
                 { brand: { contains: query.search, mode: "insensitive" } },
+                { manufacturer: { contains: query.search, mode: "insensitive" } },
+                { nutrientComposition: { contains: query.search, mode: "insensitive" } },
+                { mainUses: { contains: query.search, mode: "insensitive" } },
+                { targetCrops: { contains: query.search, mode: "insensitive" } },
             ];
         }
 

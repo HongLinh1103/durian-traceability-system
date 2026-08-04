@@ -34,6 +34,9 @@ export async function GET(request: Request) {
                 { code: { contains: query.search, mode: "insensitive" } },
                 { tradeName: { contains: query.search, mode: "insensitive" } },
                 { activeIngredient: { contains: query.search, mode: "insensitive" } },
+                { manufacturer: { contains: query.search, mode: "insensitive" } },
+                { usagePurpose: { contains: query.search, mode: "insensitive" } },
+                { targetPests: { contains: query.search, mode: "insensitive" } },
             ];
         }
 
