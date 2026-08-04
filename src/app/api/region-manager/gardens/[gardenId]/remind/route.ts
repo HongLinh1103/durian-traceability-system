@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getManagedRegionScope } from "@/lib/region-manager-scope";
+import { completedMissingLogDays } from "@/lib/log-schedule";
 
 export async function POST(_: Request, { params }: { params: { gardenId: string } }) {
     const session = await getServerSession(authOptions);
@@ -20,21 +21,24 @@ export async function POST(_: Request, { params }: { params: { gardenId: string 
         select: {
             farmCode: true,
             farmName: true,
+            createdAt: true,
             farmerId: true,
+            farmer: { select: { approvedAt: true } },
             farmingLogs: { orderBy: { actionDate: "desc" }, take: 1, select: { actionDate: true } },
         },
     });
     if (!garden) return NextResponse.json({ success: false, message: "Vườn không thuộc phạm vi phụ trách." }, { status: 404 });
 
-    const latest = garden.farmingLogs[0]?.actionDate;
-    const days = latest ? Math.max(0, Math.floor((Date.now() - latest.getTime()) / 86_400_000)) : null;
+    const latest = garden.farmingLogs[0]?.actionDate ?? null;
+    const days = completedMissingLogDays(latest ?? garden.farmer.approvedAt ?? garden.createdAt);
+    if (days < 1) {
+        return NextResponse.json({ success: false, message: "Vườn chưa trễ nhật ký nên không cần gửi nhắc nhở." }, { status: 409 });
+    }
     await prisma.notification.create({
         data: {
             userId: garden.farmerId,
             title: `Nhắc cập nhật nhật ký ${garden.farmCode}`,
-            message: latest
-                ? `Vườn ${garden.farmName} đã ${days} ngày chưa cập nhật nhật ký. Vui lòng bổ sung nhật ký canh tác.`
-                : `Vườn ${garden.farmName} chưa có nhật ký canh tác. Vui lòng cập nhật nhật ký đầu tiên.`,
+            message: `Vườn ${garden.farmName} đang thiếu nhật ký ${days} ngày. Vui lòng bổ sung nhật ký canh tác.`,
             type: "FARMING_LOG_REMINDER",
         },
     });

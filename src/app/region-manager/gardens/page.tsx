@@ -4,18 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getManagedRegionScope } from "@/lib/region-manager-scope";
 import { GardensManager } from "@/components/region-manager/gardens-manager";
+import { completedMissingLogDays, missingDaysBetweenLogs } from "@/lib/log-schedule";
 
 export const dynamic = "force-dynamic";
-
-const LOG_OVERDUE_DAYS = 2;
-
-function differenceInDays(later: Date, earlier: Date) {
-    const laterDay = new Date(later);
-    const earlierDay = new Date(earlier);
-    laterDay.setHours(0, 0, 0, 0);
-    earlierDay.setHours(0, 0, 0, 0);
-    return Math.max(0, Math.floor((laterDay.getTime() - earlierDay.getTime()) / 86_400_000));
-}
 
 function calculateDelayMetrics(createdAt: Date, logs: { actionDate: Date }[]) {
     const chronological = [...logs].sort((a, b) => a.actionDate.getTime() - b.actionDate.getTime());
@@ -23,12 +14,11 @@ function calculateDelayMetrics(createdAt: Date, logs: { actionDate: Date }[]) {
     let previousDate = createdAt;
 
     for (const log of chronological) {
-        if (differenceInDays(log.actionDate, previousDate) >= LOG_OVERDUE_DAYS) overdueCount += 1;
+        overdueCount += missingDaysBetweenLogs(previousDate, log.actionDate);
         previousDate = log.actionDate;
     }
 
-    const daysSinceLatest = differenceInDays(new Date(), previousDate);
-    const daysOverdue = daysSinceLatest >= LOG_OVERDUE_DAYS ? daysSinceLatest : 0;
+    const daysOverdue = completedMissingLogDays(previousDate);
     if (daysOverdue > 0) overdueCount += 1;
 
     return { daysOverdue, overdueCount };

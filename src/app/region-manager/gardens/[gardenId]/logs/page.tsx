@@ -8,6 +8,7 @@ import { getManagedRegionScope } from "@/lib/region-manager-scope";
 import { ReminderButton } from "@/components/region-manager/reminder-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { completedMissingLogDays } from "@/lib/log-schedule";
 
 const activityLabels: Record<string, string> = { SPRAY_PESTICIDE: "Phun thuốc", FERTILIZE: "Bón phân", IRRIGATE: "Tưới nước", PRUNE: "Cắt tỉa", WEEDING: "Làm cỏ" };
 const stageLabels: Record<string, string> = { MAKING_SPROUT: "Làm đọt", FLOWERING: "Ra hoa", FRUIT_SETTING: "Đậu trái", FRUIT_GROWING: "Nuôi trái", HARVEST: "Thu hoạch" };
@@ -27,17 +28,17 @@ export default async function GardenLogsPage({ params }: { params: { gardenId: s
             farmer: { accountStatus: "APPROVED", isApproved: true, deletedAt: null },
         },
         select: {
-            id: true, farmCode: true, farmName: true,
-            farmer: { select: { fullName: true, phone: true } },
+            id: true, farmCode: true, farmName: true, createdAt: true,
+            farmer: { select: { fullName: true, phone: true, approvedAt: true } },
             region: { select: { code: true, name: true } },
             farmingLogs: { orderBy: [{ actionDate: "desc" }, { createdAt: "desc" }] },
         },
     });
     if (!garden) notFound();
 
-    const latest = garden.farmingLogs[0]?.actionDate;
-    const daysOverdue = latest ? Math.max(0, Math.floor((Date.now() - latest.getTime()) / 86_400_000)) : null;
-    const shouldRemind = daysOverdue === null || daysOverdue >= 3;
+    const latest = garden.farmingLogs[0]?.actionDate ?? null;
+    const daysOverdue = completedMissingLogDays(latest ?? garden.farmer.approvedAt ?? garden.createdAt);
+    const shouldRemind = daysOverdue >= 1;
 
     return <main className="mx-auto min-h-screen max-w-6xl space-y-5 px-4 py-6 sm:px-6">
         <div><Button asChild variant="outline" size="sm"><Link href="/region-manager/gardens"><ArrowLeft className="mr-2 h-4 w-4" />Quay lại danh sách</Link></Button></div>
@@ -51,7 +52,7 @@ export default async function GardenLogsPage({ params }: { params: { gardenId: s
         </Card>
 
         {shouldRemind && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-900">
-            {daysOverdue === null ? "Vườn này chưa có nhật ký canh tác." : `Vườn đã ${daysOverdue} ngày chưa cập nhật nhật ký.`}
+            {latest === null ? `Vườn chưa ghi nhật ký và đang trễ ${daysOverdue} ngày.` : `Vườn đang trễ ${daysOverdue} ngày nhật ký.`}
         </div>}
 
         <Card className="overflow-hidden rounded-[28px] border-slate-200 shadow-sm">

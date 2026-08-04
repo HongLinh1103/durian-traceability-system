@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HeroBanner } from "@/components/home/HeroBanner";
+import { completedMissingLogDays } from "@/lib/log-schedule";
 
 type ManagedRegion = {
     code?: string;
@@ -40,11 +41,16 @@ export default async function AreaManagerDashboard() {
         .filter((code): code is string => Boolean(code));
     const [managedFarms, pendingProfileCount] = managedRegionCodes.length
         ? await Promise.all([prisma.farm.findMany({
-            where: { region: { code: { in: managedRegionCodes } } },
+            where: {
+                isActive: true,
+                region: { code: { in: managedRegionCodes } },
+                farmer: { accountStatus: "APPROVED", isApproved: true, deletedAt: null },
+            },
             select: {
                 farmerId: true,
                 createdAt: true,
                 isActive: true,
+                farmer: { select: { approvedAt: true } },
                 farmingLogs: {
                     orderBy: [{ actionDate: "desc" }, { createdAt: "desc" }],
                     take: 1,
@@ -61,13 +67,9 @@ export default async function AreaManagerDashboard() {
         })])
         : [[], 0];
     const memberHouseholdCount = new Set(managedFarms.map((farm) => farm.farmerId)).size;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const overdueFarmCount = managedFarms.filter((farm) => {
-        if (!farm.isActive) return false;
-        const referenceDate = new Date(farm.farmingLogs[0]?.actionDate ?? farm.createdAt);
-        referenceDate.setHours(0, 0, 0, 0);
-        return Math.floor((today.getTime() - referenceDate.getTime()) / 86_400_000) >= 2;
+        const referenceDate = farm.farmingLogs[0]?.actionDate ?? farm.farmer.approvedAt ?? farm.createdAt;
+        return completedMissingLogDays(referenceDate) >= 1;
     }).length;
 
     return (

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { completedMissingLogDays, startOfVietnamDay } from "@/lib/log-schedule";
 
 export type ReminderRow = {
     farmId: string;
@@ -31,18 +32,7 @@ type FarmWithLogs = {
 };
 
 function startOfToday() {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    return date;
-}
-
-function daysDifference(later: Date, earlier: Date) {
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const laterDay = new Date(later);
-    const earlierDay = new Date(earlier);
-    laterDay.setHours(0, 0, 0, 0);
-    earlierDay.setHours(0, 0, 0, 0);
-    return Math.floor((laterDay.getTime() - earlierDay.getTime()) / msPerDay);
+    return startOfVietnamDay();
 }
 
 function getLatestLogDate(farm: FarmWithLogs) {
@@ -54,8 +44,8 @@ function buildReminderRow(farm: FarmWithLogs, referenceDate: Date): ReminderRow 
     const latestLogDate = getLatestLogDate(farm);
     const baseDate = latestLogDate ?? farm.farmer.approvedAt ?? farm.createdAt;
 
-    const daysOverdue = daysDifference(referenceDate, baseDate);
-    if (daysOverdue < 2) {
+    const daysOverdue = completedMissingLogDays(baseDate, referenceDate);
+    if (daysOverdue < 1) {
         return null;
     }
 
@@ -107,9 +97,14 @@ export async function loadReminderRows() {
 export async function loadFarmerDashboardState(userId: string) {
     const targetUserId = userId;
         const farms = await prisma.farm.findMany({
-            where: { farmerId: targetUserId, isActive: true },
+            where: {
+                farmerId: targetUserId,
+                isActive: true,
+                farmer: { accountStatus: "APPROVED", isApproved: true, deletedAt: null },
+            },
             orderBy: { createdAt: "asc" },
             include: {
+                farmer: { select: { approvedAt: true } },
                 farmingLogs: {
                     orderBy: { actionDate: "desc" },
                     take: 1,
@@ -123,9 +118,9 @@ export async function loadFarmerDashboardState(userId: string) {
         const overdueFarms = farms
             .map((farm) => ({
                 farm,
-                daysOverdue: daysDifference(today, farm.farmingLogs[0]?.actionDate ?? farm.createdAt),
+                daysOverdue: completedMissingLogDays(farm.farmingLogs[0]?.actionDate ?? farm.farmer.approvedAt ?? farm.createdAt, today),
             }))
-            .filter((item) => item.daysOverdue >= 2);
+            .filter((item) => item.daysOverdue >= 1);
 
         for (const { farm, daysOverdue } of overdueFarms) {
             const title = buildReminderTitle(farm.farmCode);

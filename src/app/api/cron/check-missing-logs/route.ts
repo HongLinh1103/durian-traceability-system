@@ -3,14 +3,13 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import { buildReminderTitle, createReminderNotification, loadReminderRows } from "@/lib/reminders";
+import { startOfVietnamDay } from "@/lib/log-schedule";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 function startOfToday() {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    return date;
+    return startOfVietnamDay();
 }
 
 export async function GET(request: Request) {

@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { HeroBanner } from "@/components/home/HeroBanner";
 import { Button } from "@/components/ui/button";
+import { completedMissingLogDays } from "@/lib/log-schedule";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,7 @@ export default async function AdminDashboardPage() {
             },
             select: {
                 createdAt: true,
+                farmer: { select: { approvedAt: true } },
                 farmingLogs: {
                     orderBy: [{ actionDate: "desc" }, { createdAt: "desc" }],
                     take: 1,
@@ -40,13 +42,9 @@ export default async function AdminDashboardPage() {
         }),
     ]);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const overdueFarmCount = farmsForOverdue.filter((farm) => {
-        const referenceDate = new Date(farm.farmingLogs[0]?.actionDate ?? farm.createdAt);
-        referenceDate.setHours(0, 0, 0, 0);
-        const daysSinceUpdate = Math.floor((today.getTime() - referenceDate.getTime()) / 86_400_000);
-        return daysSinceUpdate >= 2;
+        const referenceDate = farm.farmingLogs[0]?.actionDate ?? farm.farmer.approvedAt ?? farm.createdAt;
+        return completedMissingLogDays(referenceDate) >= 1;
     }).length;
 
     const summaries = [

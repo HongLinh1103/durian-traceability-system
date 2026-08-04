@@ -2,18 +2,9 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { completedMissingLogDays } from "@/lib/log-schedule";
 
 export const dynamic = "force-dynamic";
-
-const OVERDUE_AFTER_DAYS = 2;
-
-function daysSince(date: Date) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const compared = new Date(date);
-    compared.setHours(0, 0, 0, 0);
-    return Math.max(0, Math.floor((today.getTime() - compared.getTime()) / 86_400_000));
-}
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -26,11 +17,12 @@ export async function GET() {
             farmer: {
                 isApproved: true,
                 accountStatus: "APPROVED",
+                deletedAt: null,
             },
         },
         orderBy: { createdAt: "desc" },
         include: {
-            farmer: { select: { id: true, fullName: true, phone: true } },
+            farmer: { select: { id: true, fullName: true, phone: true, approvedAt: true } },
             farmingLogs: {
                 orderBy: [{ actionDate: "desc" }, { createdAt: "desc" }],
                 take: 1,
@@ -42,7 +34,7 @@ export async function GET() {
 
     const rows = farms.map((farm) => {
         const latestLogDate = farm.farmingLogs[0]?.actionDate ?? null;
-        const daysOverdue = daysSince(latestLogDate ?? farm.createdAt);
+        const daysOverdue = completedMissingLogDays(latestLogDate ?? farm.farmer.approvedAt ?? farm.createdAt);
         return {
             id: farm.id,
             farmCode: farm.farmCode,
@@ -57,7 +49,7 @@ export async function GET() {
             isInSeason: farm.isInSeason,
             latestLogDate: latestLogDate?.toISOString() ?? null,
             daysOverdue,
-            isOverdue: farm.isActive && daysOverdue >= OVERDUE_AFTER_DAYS,
+            isOverdue: farm.isActive && daysOverdue >= 1,
             logCount: farm._count.farmingLogs,
         };
     });
