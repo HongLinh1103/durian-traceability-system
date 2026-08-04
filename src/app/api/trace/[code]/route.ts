@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: Request, { params }: { params: { code: string } }) {
+export async function GET(request: Request, { params }: { params: { code: string } }) {
+    const rateLimit = checkRateLimit(`trace:${getClientIp(request)}`, 60, 60_000);
+    if (!rateLimit.allowed) {
+        return NextResponse.json(
+            { success: false, status: "RATE_LIMITED", message: "Bạn tra cứu quá nhanh. Vui lòng thử lại sau." },
+            { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds), "Cache-Control": "no-store" } },
+        );
+    }
     const code = decodeURIComponent(params.code).trim();
     if (!code || code.length > 200) {
         return NextResponse.json({ success: false, status: "INVALID", message: "Mã QR không hợp lệ hoặc không thuộc hệ thống." }, { status: 400 });
@@ -67,5 +75,5 @@ export async function GET(_request: Request, { params }: { params: { code: strin
             region: farm.region,
             farmingLogs: farm.farmingLogs,
         },
-    });
+    }, { headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300", "X-RateLimit-Remaining": String(rateLimit.remaining) } });
 }

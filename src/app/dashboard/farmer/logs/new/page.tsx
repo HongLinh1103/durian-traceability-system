@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { farmingLogSchema, type FarmingLogInput } from "@/lib/validation";
-import { mockLogDefaults } from "@/lib/mock-data";
 import { growthStages, activityTypes } from "@/lib/constants";
 import { evaluatePhiSafety, isProhibitedChemical } from "@/lib/workflow";
 import type { OfflineFarmingLogPayload } from "@/lib/offline-farming-logs";
@@ -134,7 +133,10 @@ export default function NewFarmingLogPage() {
     const form = useForm<FarmingLogInput>({
         resolver: zodResolver(farmingLogSchema),
         defaultValues: {
-            ...mockLogDefaults,
+            stage: growthStages[0],
+            activityType: activityTypes[0],
+            phiDays: 0,
+            isGACCCompliant: true,
             actionDate: formatVietnameseDate(now),
             actionTime: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
             farmId: "",
@@ -496,7 +498,10 @@ export default function NewFarmingLogPage() {
             }
 
             form.reset({
-                ...mockLogDefaults,
+                stage: growthStages[0],
+                activityType: activityTypes[0],
+                phiDays: 0,
+                isGACCCompliant: true,
                 actionDate: formatVietnameseDate(new Date()),
                 actionTime: `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`,
                 farmId: values.farmId,

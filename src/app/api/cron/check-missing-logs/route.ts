@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/lib/auth";
 import { buildReminderTitle, createReminderNotification, loadReminderRows } from "@/lib/reminders";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +13,15 @@ function startOfToday() {
     return date;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+    const configuredSecret = process.env.CRON_SECRET;
+    const authorization = request.headers.get("authorization");
+    const hasCronSecret = Boolean(configuredSecret && authorization === `Bearer ${configuredSecret}`);
+    const session = hasCronSecret ? null : await getServerSession(authOptions);
+    if (!hasCronSecret && session?.user?.role !== "ADMIN") {
+        return NextResponse.json({ ok: false, error: "Không có quyền chạy tác vụ định kỳ." }, { status: 401 });
+    }
+
     const reminders = await loadReminderRows();
     const createdNotifications: string[] = [];
     const today = startOfToday();

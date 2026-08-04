@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { mockFarms } from "@/lib/mock-data";
 
 export type ReminderRow = {
     farmId: string;
@@ -82,9 +81,7 @@ export function buildReminderMessage(farmName: string, daysOverdue: number) {
 
 export async function loadReminderRows() {
     const referenceDate = startOfToday();
-
-    try {
-        const farms = (await prisma.farm.findMany({
+    const farms = (await prisma.farm.findMany({
             where: {
                 isActive: true,
                 farmer: {
@@ -99,34 +96,16 @@ export async function loadReminderRows() {
                     orderBy: { actionDate: "desc" },
                 },
             },
-        })) as FarmWithLogs[];
+    })) as FarmWithLogs[];
 
-        const rows = farms
-            .map((farm) => buildReminderRow(farm, referenceDate))
-            .filter((row): row is ReminderRow => Boolean(row))
-            .sort((left, right) => right.daysOverdue - left.daysOverdue);
-
-        return rows;
-    } catch {
-        return mockFarms
-            .map((farm, index) => ({
-                farmId: farm.id,
-                farmCode: farm.farmCode,
-                farmName: farm.farmName,
-                farmerId: `demo-farmer-${index + 1}`,
-                farmerName: `Demo Farmer ${index + 1}`,
-                daysOverdue: 2 + index,
-                latestLogDate: new Date(Date.now() - (2 + index) * 24 * 60 * 60 * 1000).toISOString(),
-                logCount: 3,
-            }))
-            .sort((left, right) => right.daysOverdue - left.daysOverdue);
-    }
+    return farms
+        .map((farm) => buildReminderRow(farm, referenceDate))
+        .filter((row): row is ReminderRow => Boolean(row))
+        .sort((left, right) => right.daysOverdue - left.daysOverdue);
 }
 
-export async function loadFarmerDashboardState(userId?: string) {
-    const targetUserId = userId ?? "demo-farmer-1";
-
-    try {
+export async function loadFarmerDashboardState(userId: string) {
+    const targetUserId = userId;
         const farms = await prisma.farm.findMany({
             where: { farmerId: targetUserId, isActive: true },
             orderBy: { createdAt: "asc" },
@@ -203,7 +182,7 @@ export async function loadFarmerDashboardState(userId?: string) {
         });
         const mostOverdue = overdueFarms.sort((left, right) => right.daysOverdue - left.daysOverdue)[0] ?? null;
 
-        return {
+    return {
             unreadCount: notifications.filter((item) => !item.isRead).length,
             shouldRemindToday: Boolean(mostOverdue),
             daysOverdue: mostOverdue?.daysOverdue ?? 0,
@@ -218,27 +197,7 @@ export async function loadFarmerDashboardState(userId?: string) {
             })) as FarmerNotificationItem[],
             farmName: mostOverdue?.farm.farmName ?? latestFarm?.farmName ?? "Vườn Sầu Riêng Hợp Tác Xanh",
             farmCode: mostOverdue?.farm.farmCode ?? latestFarm?.farmCode ?? "MSVT-001",
-        };
-    } catch {
-        return {
-            unreadCount: 3,
-            shouldRemindToday: true,
-            daysOverdue: 2,
-            latestLogDate: null,
-            notifications: [
-                {
-                    id: "demo-noti-1",
-                    title: "Nhắc nhở cập nhật nhật ký",
-                    message: "Bạn chưa cập nhật nhật ký canh tác hôm nay. Vui lòng nhập nhật ký để hệ thống theo dõi PHI.",
-                    type: "REMINDER",
-                    isRead: false,
-                    createdAt: new Date().toISOString(),
-                },
-            ],
-            farmName: "Vườn Sầu Riêng Hợp Tác Xanh",
-            farmCode: "MSVT-001",
-        };
-    }
+    };
 }
 
 export async function createReminderNotification(userId: string, farmName: string, farmCode: string, daysOverdue: number) {

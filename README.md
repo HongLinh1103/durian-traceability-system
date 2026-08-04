@@ -160,6 +160,8 @@ Không sử dụng mật khẩu seed trong production.
 | `npm run lint` | Chạy Next.js ESLint |
 | `npm run prisma:generate` | Sinh Prisma Client |
 | `npm run prisma:migrate` | Tạo/chạy migration phát triển |
+| `npm run prisma:migrate:deploy` | Chạy migration đã commit trên staging/production |
+| `npm run typecheck` | Kiểm tra TypeScript mà không tạo output |
 | `npm run db:start` | Khởi động PostgreSQL bằng Docker Compose |
 | `npm run db:stop` | Dừng PostgreSQL container |
 | `npm run seed` | Nạp tài khoản và dữ liệu mẫu |
@@ -221,5 +223,8 @@ node scripts/seed-tri-an-manager.cjs
 - File hồ sơ Trưởng ban nằm tại `.storage/area-manager-applications`.
 - File tài liệu nằm tại `.storage/documents`; cần persistent volume khi triển khai container.
 - Endpoint `/api/cron/check-missing-logs` cần scheduler bên ngoài gọi nếu muốn chạy định kỳ.
+- Scheduler phải gửi header `Authorization: Bearer <CRON_SECRET>`; Admin đã đăng nhập vẫn có thể chạy thủ công.
+- Endpoint `/api/health` kiểm tra trạng thái ứng dụng và kết nối database.
 - `middleware.ts` bảo vệ `/dashboard/*`; các trang `/region-manager/*` tự kiểm tra session ở server/API.
 - Phải đổi secret và mật khẩu seed trước khi triển khai thực tế.
+- Xem checklist triển khai tại [`docs/production-readiness.md`](docs/production-readiness.md).

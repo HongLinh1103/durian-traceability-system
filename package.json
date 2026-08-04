@@ -9,6 +9,8 @@
         "lint": "next lint",
         "prisma:generate": "prisma generate",
         "prisma:migrate": "prisma migrate dev",
+        "prisma:migrate:deploy": "prisma migrate deploy",
+        "typecheck": "tsc --noEmit",
         "db:start": "docker compose up -d postgres",
         "db:stop": "docker compose stop postgres",
         "seed": "npx tsx prisma/seed.ts",
