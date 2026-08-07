@@ -93,6 +93,7 @@ type AccountsResponse = {
 const roleLabels: Record<string, string> = {
     FARMER: "Nông dân",
     AREA_MANAGER: "Trưởng BQL Vùng trồng",
+    STORE_OWNER: "Cửa hàng vật tư",
     ADMIN: "Admin",
 };
 

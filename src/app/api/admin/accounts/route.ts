@@ -47,7 +47,7 @@ export async function GET(request: Request) {
 
         const where: Record<string, unknown> = { deletedAt: null };
 
-        // Chỉ lấy các role không phải ADMIN
+        // Hiển thị cả tài khoản chủ cửa hàng trong cùng danh sách tài khoản.
         where.role = role ? { equals: role } : { not: "ADMIN" };
 
         if (status === "all") {
@@ -293,6 +293,10 @@ export async function PATCH(request: Request) {
                         growingRegionId: true,
                     },
                 },
+                stores: {
+                    where: { deletedAt: null },
+                    select: { id: true, name: true, status: true },
+                },
             },
         });
 
@@ -384,6 +388,17 @@ export async function PATCH(request: Request) {
                         toStatus: "APPROVED",
                     },
                 });
+                if (user.role === "STORE_OWNER") {
+                    await Promise.all(user.stores.map(async (store) => {
+                        await tx.store.update({
+                            where: { id: store.id },
+                            data: { status: "APPROVED", reviewReason: null, approvedAt: new Date() },
+                        });
+                        await tx.storeAuditLog.create({
+                            data: { storeId: store.id, actorId: actor.user.id, action: "STORE_APPROVED", fromStatus: store.status, toStatus: "APPROVED" },
+                        });
+                    }));
+                }
                 await Promise.all(
                     farmRegionAssignments.map(({ farm, region }, index) =>
                         tx.farm.update({
@@ -415,18 +430,24 @@ export async function PATCH(request: Request) {
             });
         } else if (action === "reject") {
             const reason = body.reason || "Không đáp ứng yêu cầu đăng ký.";
-            await prisma.$transaction([
-                prisma.user.update({
+            await prisma.$transaction(async (tx) => {
+                await tx.user.update({
                     where: { id: userId },
                     data: { isApproved: false, accountStatus: "REJECTED" },
-                }),
-                prisma.approvalHistory.create({
+                });
+                await tx.approvalHistory.create({
                     data: { subjectId: userId, actorId: actor.user.id, action: "REJECTED", fromStatus: user.accountStatus, toStatus: "REJECTED", reason },
-                }),
-                prisma.notification.create({
+                });
+                if (user.role === "STORE_OWNER") {
+                    await Promise.all(user.stores.map(async (store) => {
+                        await tx.store.update({ where: { id: store.id }, data: { status: "REJECTED", reviewReason: reason, approvedAt: null } });
+                        await tx.storeAuditLog.create({ data: { storeId: store.id, actorId: actor.user.id, action: "STORE_REJECTED", fromStatus: store.status, toStatus: "REJECTED", reason } });
+                    }));
+                }
+                await tx.notification.create({
                     data: { userId, title: "Tài khoản bị từ chối", message: `Tài khoản của bạn đã bị từ chối phê duyệt. Lý do: ${reason}`, type: "ACCOUNT_REJECTED" },
-                }),
-            ]);
+                });
+            });
 
             return NextResponse.json({
                 success: true,
@@ -435,15 +456,21 @@ export async function PATCH(request: Request) {
         } else {
             const reason = String(body.reason || "").trim();
             if (!reason) return NextResponse.json({ success: false, message: "Vui lòng nhập nội dung cần bổ sung." }, { status: 400 });
-            await prisma.$transaction([
-                prisma.user.update({ where: { id: userId }, data: { isApproved: false, accountStatus: "NEEDS_SUPPLEMENT" } }),
-                prisma.approvalHistory.create({
+            await prisma.$transaction(async (tx) => {
+                await tx.user.update({ where: { id: userId }, data: { isApproved: false, accountStatus: "NEEDS_SUPPLEMENT" } });
+                await tx.approvalHistory.create({
                     data: { subjectId: userId, actorId: actor.user.id, action: "SUPPLEMENT_REQUESTED", fromStatus: user.accountStatus, toStatus: "NEEDS_SUPPLEMENT", reason },
-                }),
-                prisma.notification.create({
+                });
+                if (user.role === "STORE_OWNER") {
+                    await Promise.all(user.stores.map(async (store) => {
+                        await tx.store.update({ where: { id: store.id }, data: { status: "NEED_SUPPLEMENT", reviewReason: reason, approvedAt: null } });
+                        await tx.storeAuditLog.create({ data: { storeId: store.id, actorId: actor.user.id, action: "STORE_NEED_SUPPLEMENT", fromStatus: store.status, toStatus: "NEED_SUPPLEMENT", reason } });
+                    }));
+                }
+                await tx.notification.create({
                     data: { userId, title: "Hồ sơ cần bổ sung", message: `Hồ sơ đăng ký của bạn cần bổ sung thông tin: ${reason}`, type: "ACCOUNT_SUPPLEMENT_REQUIRED" },
-                }),
-            ]);
+                });
+            });
             return NextResponse.json({ success: true, message: `Đã gửi yêu cầu bổ sung cho ${user.fullName || "tài khoản"}.` });
         }
     } catch (error) {

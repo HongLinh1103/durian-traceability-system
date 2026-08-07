@@ -4,13 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { Leaf, LogIn, LogOut, Menu, UserRound, X } from "lucide-react";
+import { ChevronDown, Leaf, LogIn, LogOut, Menu, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const publicLinks = [
     { href: "/", label: "Trang chủ" },
-    { href: "/trace/scan", label: "Tra cứu mã QR" },
     { href: "/documents", label: "Tài liệu", notificationKey: "documents" as const },
     { href: "/news", label: "Tin tức", notificationKey: "news" as const },
 ];
@@ -23,30 +22,51 @@ type DashboardLink = {
 };
 
 const dashboardLinks: DashboardLink[] = [
-    { href: "/materials", label: "Vật tư", roles: ["FARMER", "AREA_MANAGER"] },
+    { href: "/materials", label: "Tất cả vật tư", roles: ["FARMER", "AREA_MANAGER"] },
+    { href: "/materials/fertilizers", label: "Phân bón", roles: ["FARMER", "AREA_MANAGER"] },
+    { href: "/materials/pesticides", label: "Thuốc BVTV", roles: ["FARMER", "AREA_MANAGER"] },
+    { href: "/materials/stores", label: "Cửa hàng vật tư", roles: ["FARMER", "AREA_MANAGER"] },
+    { href: "/orders", label: "Đơn mua của tôi", roles: ["FARMER"] },
     { href: "/dashboard/farmer/logs", label: "Nhật ký canh tác", roles: ["FARMER"] },
     { href: "/region-manager/gardens", label: "Quản lý vườn trồng", roles: ["AREA_MANAGER"] },
     { href: "/region-manager/farmers", label: "Hồ sơ nông dân", roles: ["AREA_MANAGER"], badge: true },
     { href: "/dashboard/admin/farming", label: "Quản lý canh tác", roles: ["ADMIN"] },
     { href: "/dashboard/admin/accounts", label: "Quản lý tài khoản", roles: ["ADMIN"], badge: true },
-    { href: "/dashboard/admin/master-data", label: "Quản lý vật tư", roles: ["ADMIN"] },
+    { href: "/dashboard/admin/master-data/pesticides", label: "Danh mục cấm", roles: ["ADMIN"] },
+    { href: "/dashboard/admin/store-products", label: "Duyệt sản phẩm", roles: ["ADMIN"] },
+    { href: "/dashboard/store", label: "Cửa hàng", roles: ["STORE_OWNER"] },
+    { href: "/dashboard/store/products", label: "Sản phẩm", roles: ["STORE_OWNER"] },
+    { href: "/dashboard/store/orders", label: "Đơn hàng", roles: ["STORE_OWNER"] },
 ];
 
 export function Navbar() {
     const pathname = usePathname();
     const { data: session, status } = useSession();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [materialsOpen, setMaterialsOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
     const [contentCounts, setContentCounts] = useState({ documents: 0, news: 0 });
     const [hydrated, setHydrated] = useState(false);
+    const [currentUserName, setCurrentUserName] = useState<string | null>(null);
 
     useEffect(() => {
         setHydrated(true);
     }, []);
 
+    useEffect(() => {
+        setMaterialsOpen(false);
+    }, [pathname]);
+
     const isAuthed = hydrated && status === "authenticated";
     const isLoading = !hydrated || status === "loading";
     const userRole = isAuthed ? (session?.user?.role ?? null) : null;
+    useEffect(() => {
+        if (!isAuthed) { setCurrentUserName(null); return; }
+        void fetch("/api/auth/me", { cache: "no-store" })
+            .then((response) => response.json())
+            .then((payload) => { if (payload.success) setCurrentUserName(payload.user.fullName || payload.user.phone); })
+            .catch(() => undefined);
+    }, [isAuthed]);
     useEffect(() => {
         if (!isAuthed || !["ADMIN", "AREA_MANAGER"].includes(userRole ?? "")) {
             setPendingCount(0);
@@ -55,13 +75,19 @@ export function Navbar() {
         let cancelled = false;
         const fetchCount = async () => {
             try {
-                const endpoint = userRole === "ADMIN"
-                    ? "/api/admin/accounts?page=1&pageSize=1&status=PENDING"
-                    : "/api/region-manager/farmers?page=1&pageSize=1&status=PENDING";
-                const res = await fetch(endpoint, { cache: "no-store" });
+                if (userRole === "ADMIN") {
+                    const accountsResponse = await fetch("/api/admin/accounts?page=1&pageSize=1&status=PENDING", { cache: "no-store" });
+                    const accountsPayload = await accountsResponse.json();
+                    if (!cancelled) {
+                        const pendingAccounts = accountsPayload.success ? accountsPayload.pagination.totalItems : 0;
+                        setPendingCount(pendingAccounts);
+                    }
+                    return;
+                }
+                const res = await fetch("/api/region-manager/farmers?page=1&pageSize=1&status=PENDING", { cache: "no-store" });
                 const payload = await res.json();
                 if (!cancelled && payload.success) {
-                    setPendingCount(userRole === "AREA_MANAGER" ? payload.stats.pending : payload.pagination.totalItems);
+                    setPendingCount(payload.stats.pending);
                 }
             } catch {
                 // silent
@@ -103,6 +129,8 @@ export function Navbar() {
     const accessibleDashboards = userRole
         ? dashboardLinks.filter((l) => l.roles.includes(userRole))
         : [];
+    const materialLinks = accessibleDashboards.filter((link) => ["/materials", "/materials/fertilizers", "/materials/pesticides", "/materials/stores", "/orders"].includes(link.href));
+    const primaryDashboardLinks = accessibleDashboards.filter((link) => !materialLinks.includes(link));
 
     const isAuthPage = pathname === "/login" || pathname === "/register";
 
@@ -128,7 +156,7 @@ export function Navbar() {
                 </Link>
 
                 {/* Desktop Navigation */}
-                <div className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-x-auto px-1 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:flex">
+                <div className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-visible px-1 py-2 xl:flex">
                     {publicLinks.map((link) => {
                         const href = link.href === "/" && userRole === "AREA_MANAGER"
                             ? "/dashboard/area-manager"
@@ -143,7 +171,7 @@ export function Navbar() {
                                 href={href}
                                 className={cn(
                                     "relative whitespace-nowrap rounded-2xl px-2.5 py-2 text-sm font-semibold transition 2xl:px-3",
-                                    (link.href === "/trace/scan" ? pathname.startsWith("/trace") : pathname === href)
+                                    pathname === href
                                         ? "bg-brand-50 text-brand-700"
                                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
                                 )}
@@ -157,8 +185,16 @@ export function Navbar() {
                             </Link>
                         );
                     })}
+                    {isAuthed && materialLinks.length > 0 && (
+                        <div className="relative">
+                            <button type="button" onClick={() => setMaterialsOpen((open) => !open)} aria-expanded={materialsOpen} aria-haspopup="menu" className={cn("flex items-center gap-1 whitespace-nowrap rounded-2xl px-3 py-2 text-sm font-semibold transition", (pathname.startsWith("/materials") || pathname.startsWith("/orders")) ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900")}>
+                                Vật tư <ChevronDown className={cn("h-4 w-4 transition-transform", materialsOpen && "rotate-180")} />
+                            </button>
+                            {materialsOpen && <div role="menu" className="absolute left-0 top-full z-[70] mt-2 min-w-56 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">{materialLinks.map((link) => <Link key={link.href} href={link.href} role="menuitem" onClick={() => setMaterialsOpen(false)} className={cn("block rounded-xl px-3 py-2 text-sm font-semibold transition", pathname === link.href ? "bg-brand-50 text-brand-700" : "text-slate-700 hover:bg-brand-50 hover:text-brand-700")}>{link.label}</Link>)}</div>}
+                        </div>
+                    )}
                     {isAuthed &&
-                        accessibleDashboards.map((link) => (
+                        primaryDashboardLinks.map((link) => (
                             <Link
                                 key={link.href}
                                 href={link.href}
@@ -188,7 +224,7 @@ export function Navbar() {
                             <Link href="/account" title="Xem thông tin tài khoản" className="flex min-w-0 items-center gap-1.5 rounded-2xl bg-brand-50 px-2.5 py-1.5 text-sm font-medium text-brand-700 transition hover:bg-brand-100 2xl:px-3">
                                 <UserRound className="h-4 w-4" />
                                 <span className="max-w-20 truncate 2xl:max-w-32">
-                                    {session?.user?.fullName ?? session?.user?.phone ?? "Nguoi dung"}
+                                    {currentUserName ?? session?.user?.fullName ?? session?.user?.phone ?? "Người dùng"}
                                 </span>
                                 <span className="hidden rounded-lg bg-brand-200 px-1.5 py-0.5 text-[10px] font-bold uppercase text-brand-800 2xl:inline">
                                     {session?.user?.role?.replaceAll("_", " ") ?? ""}
@@ -237,7 +273,7 @@ export function Navbar() {
                                 <UserRound className="h-5 w-5 text-brand-600" />
                                 <div className="min-w-0 flex-1">
                                     <p className="truncate text-sm font-semibold text-brand-800">
-                                        {session?.user?.fullName ?? session?.user?.phone ?? "User"}
+                                        {currentUserName ?? session?.user?.fullName ?? session?.user?.phone ?? "Người dùng"}
                                     </p>
                                     <p className="text-xs font-medium text-brand-600">
                                         {session?.user?.role?.replace("_", " ") ?? ""}
@@ -261,7 +297,7 @@ export function Navbar() {
                                     onClick={() => setMobileOpen(false)}
                                     className={cn(
                                         "flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition",
-                                        (link.href === "/trace/scan" ? pathname.startsWith("/trace") : pathname === href)
+                                        pathname === href
                                             ? "bg-brand-50 text-brand-700"
                                             : "text-slate-600 hover:bg-slate-50",
                                     )}
@@ -276,8 +312,14 @@ export function Navbar() {
                             );
                         })}
 
+                        {isAuthed && materialLinks.length > 0 && (
+                            <div className="rounded-2xl border border-slate-100 p-2">
+                                <button type="button" onClick={() => setMaterialsOpen((open) => !open)} aria-expanded={materialsOpen} className="flex w-full items-center justify-between px-2 py-2 text-sm font-bold text-slate-700">Vật tư <ChevronDown className={cn("h-4 w-4 transition-transform", materialsOpen && "rotate-180")} /></button>
+                                {materialsOpen && <div className="space-y-1 border-t border-slate-100 pt-1">{materialLinks.map((link) => <Link key={link.href} href={link.href} onClick={() => { setMaterialsOpen(false); setMobileOpen(false); }} className="block rounded-xl px-4 py-2 text-sm text-slate-600 hover:bg-brand-50">{link.label}</Link>)}</div>}
+                            </div>
+                        )}
                         {isAuthed &&
-                            accessibleDashboards.map((link) => (
+                            primaryDashboardLinks.map((link) => (
                                 <Link
                                     key={link.href}
                                     href={link.href}
