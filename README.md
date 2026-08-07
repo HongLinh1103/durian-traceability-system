@@ -1,94 +1,85 @@
 # Hệ thống Quản lý Canh tác Sầu riêng
 
-Ứng dụng web quản lý tài khoản, hồ sơ nông dân, vùng trồng, vườn trồng và nhật ký canh tác sầu riêng. Hệ thống cung cấp cơ chế phân quyền, phê duyệt hồ sơ, theo dõi hoạt động canh tác và quản lý dữ liệu phục vụ kiểm tra, đối chiếu.
+Ứng dụng web quản lý tài khoản, vùng trồng, vườn, nhật ký canh tác và marketplace vật tư nông nghiệp. Hệ thống sử dụng Next.js App Router, PostgreSQL và Prisma; hỗ trợ phân quyền, đăng nhập bằng số điện thoại hoặc email, giao diện responsive và PWA.
 
-Hệ thống được xây dựng bằng Next.js App Router, PostgreSQL và Prisma, hỗ trợ đăng nhập bằng số điện thoại hoặc email, giao diện responsive và khả năng cài đặt dưới dạng PWA.
+## Chức năng chính
 
-## Chức năng hiện có
+### Nông dân (`FARMER`)
 
-### Nông dân
-
-- Đăng ký tài khoản và khai báo một hoặc nhiều vườn.
-- Nhập mã vùng trồng ngay trong thông tin từng vườn.
-- Khai báo nhiều giống sầu riêng cho cùng một vườn.
-- Theo dõi trạng thái hồ sơ: chờ duyệt, cần bổ sung, đã duyệt hoặc bị từ chối.
-- Xem dashboard vườn và tạo nhật ký canh tác.
+- Đăng ký tài khoản, khai báo một hoặc nhiều vườn và giống sầu riêng.
+- Theo dõi trạng thái hồ sơ và ghi nhật ký canh tác.
 - Lưu tạm nhật ký trên IndexedDB khi mất kết nối.
+- Xem cửa hàng, tìm vật tư, quản lý giỏ hàng và đặt hàng.
+- Theo dõi trạng thái các đơn mua.
 
-### Trưởng ban quản lý vùng trồng
+### Trưởng ban quản lý vùng trồng (`AREA_MANAGER`)
 
-- Đăng ký hồ sơ tổ chức, thông tin định danh, giấy tờ thẩm quyền và vùng phụ trách.
-- Xem dashboard theo phạm vi vùng: tổng số vườn, số hộ, hồ sơ cần duyệt và vườn trễ nhật ký.
-- Nhận badge số hồ sơ chờ duyệt tại mục **Hồ sơ nông dân** trên navbar.
-- Xem, duyệt, yêu cầu bổ sung, từ chối, cập nhật, khóa hoặc xóa mềm hồ sơ nông dân thuộc vùng quản lý.
-- Quản lý vườn và gửi nhắc nhở ghi nhật ký.
+- Đăng ký hồ sơ tổ chức và vùng phụ trách.
+- Xem dashboard, vườn và nông dân trong phạm vi được phân công.
+- Duyệt, yêu cầu bổ sung, từ chối, cập nhật, khóa hoặc xóa mềm hồ sơ nông dân.
+- Theo dõi thông tin và nhật ký của từng vườn.
 
-### Quản trị viên
+### Chủ cửa hàng vật tư (`STORE_OWNER`)
 
-- Quản lý tài khoản: xem, sửa, khóa/mở khóa và xóa mềm.
-- Phê duyệt hồ sơ đăng ký Trưởng ban quản lý vùng trồng.
+- Đăng ký hồ sơ cửa hàng và tải giấy tờ chứng minh.
+- Quản lý hồ sơ, sản phẩm, tồn kho và đơn hàng của cửa hàng.
+- Thêm, chỉnh sửa hoặc ẩn sản phẩm.
+- Sản phẩm mới được đăng bán ngay sau khi thêm, **không cần Admin duyệt sản phẩm**.
+- Chỉ cửa hàng đã được duyệt mới có thể đăng sản phẩm và kinh doanh.
+
+### Quản trị viên (`ADMIN`)
+
+- Quản lý và duyệt tài khoản, bao gồm hồ sơ chủ cửa hàng.
+- Quản lý cửa hàng, hồ sơ và giấy tờ liên quan.
 - Quản lý tình trạng canh tác và nhật ký của các vườn.
-- Quản lý giống sầu riêng, phân bón và thuốc bảo vệ thực vật.
-- Quản lý tài liệu: tải lên, xuất bản, ẩn, xóa và khôi phục.
-- Nhập tin tức từ URL, chỉnh sửa metadata, xuất bản và xóa bài viết.
-- Theo dõi và gửi nhắc nhở đối với vườn thiếu nhật ký.
+- Quản lý danh mục thuốc bảo vệ thực vật và hóa chất cấm.
+- Quản lý tài liệu và tin tức.
+- Admin không tham gia quy trình duyệt từng sản phẩm của cửa hàng.
 
-### Nội dung công khai và PWA
+### Nội dung công khai
 
-- Cung cấp trang chủ, tin tức và tài liệu công khai.
-- Có Service Worker, manifest, trang offline và banner cài đặt PWA.
-
-## Vai trò
-
-| Vai trò | Khu vực chính |
-|---|---|
-| `ADMIN` | Tài khoản, canh tác, danh mục, tài liệu, tin tức và nhắc nhở |
-| `AREA_MANAGER` | Dashboard Trưởng ban, hồ sơ nông dân và vườn trong vùng phụ trách |
-| `FARMER` | Dashboard nông dân và nhật ký canh tác |
-
-Tài khoản chưa được duyệt, bị khóa hoặc đã xóa không thể sử dụng các khu vực được bảo vệ.
+- Trang chủ, tin tức và tài liệu.
+- Danh mục phân bón, thuốc bảo vệ thực vật và cửa hàng được duyệt.
+- Chi tiết sản phẩm và thông tin phục vụ mua hàng.
+- Service Worker, manifest, trang offline và banner cài đặt PWA.
 
 ## Công nghệ
 
 | Thành phần | Công nghệ |
 |---|---|
-| Framework | Next.js 14.2 (App Router), React 18 |
+| Framework | Next.js 14.2 App Router, React 18 |
 | Ngôn ngữ | TypeScript |
 | UI | Tailwind CSS, Lucide React, component nội bộ |
 | Xác thực | NextAuth Credentials, JWT session, bcryptjs |
 | Database | PostgreSQL 16, Prisma 5 |
-| Form | react-hook-form, Zod |
-| Biểu đồ | Recharts |
+| Validation | Zod, react-hook-form |
 | Offline | Service Worker, IndexedDB (`idb`) |
 
 ## Cấu trúc thư mục
 
 ```text
+.github/workflows/     # GitHub Actions CI
+docs/                  # Tài liệu vận hành
 prisma/
-  schema.prisma                 # Mô hình dữ liệu
-  seed.ts                       # Tài khoản và dữ liệu mẫu
-public/
-  manifest.json
-  sw.js
-  offline.html
-scripts/
-  import-legacy-news.cjs        # Chuyển tin tức cũ vào database
-  seed-tri-an-manager.cjs       # Tạo tài khoản/vùng Trị An bằng Node
+  migrations/          # Lịch sử migration database
+  schema.prisma        # Mô hình dữ liệu Prisma
+  seed.ts              # Tài khoản và dữ liệu mẫu
+public/                # Tài nguyên tĩnh và PWA
+scripts/               # Script import/seed dữ liệu
 src/
-  app/                          # Page và Route Handler
-  components/                   # UI và component nghiệp vụ
-  data/                         # Dữ liệu phục vụ migration
-  lib/                          # Auth, Prisma, validation, reminder, offline...
-  types/                        # Khai báo TypeScript
-.storage/                       # File upload cục bộ, không commit
-middleware.ts                   # Phân quyền route dashboard
+  app/                 # Page và Route Handler
+  components/          # UI và component nghiệp vụ
+  lib/                 # Auth, Prisma, validation và tiện ích
+  types/               # Khai báo TypeScript
+.storage/              # File upload cục bộ, không commit
+middleware.ts          # Bảo vệ và phân quyền route
 ```
 
-## Cài đặt và chạy
+## Cài đặt
 
 ### Yêu cầu
 
-- Node.js 18 trở lên.
+- Node.js 20 khuyến nghị (tối thiểu Node.js 18).
 - npm 9 trở lên.
 - Docker Desktop hoặc PostgreSQL tương thích.
 
@@ -104,19 +95,19 @@ npm install
 npm run db:start
 ```
 
-Docker Compose mở PostgreSQL tại cổng `5433` trên máy host.
+Docker Compose ánh xạ PostgreSQL sang cổng `5433` trên máy host.
 
 ### 3. Cấu hình môi trường
 
-Sao chép `.env.example` thành `.env.local`:
+Sao chép `.env.example` thành `.env.local` và thay các secret:
 
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5433/triviet"
 NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="thay-bang-chuoi-bi-mat-dai-va-ngau-nhien"
+NEXTAUTH_SECRET="replace-with-a-long-random-secret"
+AUTH_JWT_SECRET="replace-with-a-different-long-random-secret"
+STORE_DOCUMENT_SIGNING_SECRET="replace-with-a-long-random-document-signing-secret"
 ```
-
-`AUTH_JWT_SECRET` là secret dự phòng cho API đăng nhập tùy biến; nếu không khai báo, hệ thống dùng `NEXTAUTH_SECRET`.
 
 ### 4. Khởi tạo database
 
@@ -126,7 +117,7 @@ npm run prisma:migrate
 npm run seed
 ```
 
-### 5. Chạy development server
+### 5. Chạy ứng dụng
 
 ```bash
 npm run dev
@@ -134,97 +125,114 @@ npm run dev
 
 Mở [http://localhost:3000](http://localhost:3000).
 
-## Tài khoản và vùng seed
+## Tài khoản mẫu
 
-| Vai trò | Tài khoản | Mật khẩu | Ghi chú |
-|---|---|---|---|
-| Admin | `0348110676` hoặc `admin@triviet.vn` | `Admin@123` | Đã duyệt |
-| Trưởng ban | `0909123456` hoặc `truongban.trian@triviet.vn` | `Truongban@123` | Quản lý vùng Trị An |
+| Vai trò | Tài khoản | Mật khẩu |
+|---|---|---|
+| Admin | `0348110676` hoặc `admin@triviet.vn` | `Admin@123` |
+| Trưởng ban | `0909123456` hoặc `truongban.trian@triviet.vn` | `Truongban@123` |
+| Chủ cửa hàng | `0909000001` hoặc `store.owner@triviet.vn` | `123456` |
 
-Vùng mẫu của Trưởng ban:
-
-- Mã vùng: `MSVT-DN-TRIAN-001`
-- Tên vùng: Vùng trồng sầu riêng Trị An
-- Địa bàn: Xã Trị An, huyện Vĩnh Cửu, tỉnh Đồng Nai
-- Giống: Ri6, Monthong, Dona
-
-Không sử dụng mật khẩu seed trong production.
+Không sử dụng các mật khẩu mẫu trong môi trường production.
 
 ## Lệnh npm
 
 | Lệnh | Mô tả |
 |---|---|
 | `npm run dev` | Chạy development server |
-| `npm run build` | Build production và kiểm tra TypeScript |
+| `npm run build` | Tạo production build |
 | `npm run start` | Chạy production server sau khi build |
-| `npm run lint` | Chạy Next.js ESLint |
+| `npm run lint` | Kiểm tra ESLint |
+| `npm run typecheck` | Kiểm tra TypeScript |
 | `npm run prisma:generate` | Sinh Prisma Client |
-| `npm run prisma:migrate` | Tạo/chạy migration phát triển |
+| `npm run prisma:migrate` | Tạo/chạy migration development |
 | `npm run prisma:migrate:deploy` | Chạy migration đã commit trên staging/production |
-| `npm run typecheck` | Kiểm tra TypeScript mà không tạo output |
 | `npm run db:start` | Khởi động PostgreSQL bằng Docker Compose |
 | `npm run db:stop` | Dừng PostgreSQL container |
 | `npm run seed` | Nạp tài khoản và dữ liệu mẫu |
-| `npm run migrate:legacy-news` | Nhập bài báo cũ; bỏ qua URL đã tồn tại |
-
-Nếu `tsx` gặp lỗi môi trường Windows, có thể tạo riêng dữ liệu Trưởng ban Trị An bằng:
-
-```bash
-node scripts/seed-tri-an-manager.cjs
-```
+| `npm run seed:materials` | Nạp danh mục vật tư mẫu |
+| `npm run seed:prohibited-chemicals` | Nạp danh mục hóa chất cấm |
+| `npm run import:prohibited-chemicals` | Nhập hóa chất cấm từ Excel |
+| `npm run seed:store-marketplace` | Nạp cửa hàng, sản phẩm và tài khoản chủ cửa hàng mẫu |
+| `npm run migrate:legacy-news` | Nhập dữ liệu tin tức cũ |
 
 ## Route giao diện chính
 
 | Route | Quyền | Nội dung |
 |---|---|---|
-| `/` | Công khai | Trang chủ |
-| `/login` | Công khai | Đăng nhập bằng điện thoại/email |
-| `/register` | Công khai | Chọn loại tài khoản đăng ký |
-| `/register/farmer` | Công khai | Đăng ký nông dân và khai báo vườn |
+| `/`, `/documents`, `/news` | Công khai | Trang chủ và nội dung công khai |
+| `/register/farmer` | Công khai | Đăng ký nông dân |
 | `/register/area-manager` | Công khai | Đăng ký Trưởng ban |
-| `/account` | Đã đăng nhập | Thông tin tài khoản |
-| `/dashboard/farmer` | Nông dân | Dashboard nông dân |
-| `/dashboard/farmer/logs` | Nông dân | Nhật ký canh tác |
-| `/dashboard/farmer/logs/new` | Nông dân | Thêm nhật ký |
+| `/register/store-owner` | Công khai | Đăng ký chủ cửa hàng |
+| `/materials/*` | Người dùng phù hợp | Danh mục vật tư, cửa hàng và sản phẩm |
+| `/cart`, `/checkout`, `/orders` | Nông dân | Giỏ hàng, đặt hàng và lịch sử mua |
+| `/dashboard/farmer/*` | Nông dân | Dashboard và nhật ký canh tác |
 | `/dashboard/area-manager` | Trưởng ban | Dashboard theo vùng |
-| `/region-manager/farmers` | Trưởng ban | Hồ sơ nông dân |
-| `/region-manager/gardens` | Trưởng ban | Danh sách vườn |
-| `/dashboard/admin` | Admin | Dashboard quản trị |
-| `/dashboard/admin/accounts` | Admin | Quản lý tài khoản |
+| `/region-manager/farmers` | Trưởng ban | Quản lý hồ sơ nông dân |
+| `/region-manager/gardens` | Trưởng ban | Quản lý vườn trong vùng |
+| `/dashboard/store` | Chủ cửa hàng | Tổng quan cửa hàng |
+| `/dashboard/store/profile` | Chủ cửa hàng | Hồ sơ cửa hàng |
+| `/dashboard/store/products` | Chủ cửa hàng | Thêm, sửa và ẩn sản phẩm |
+| `/dashboard/store/orders` | Chủ cửa hàng | Quản lý đơn hàng |
+| `/dashboard/admin/accounts` | Admin | Quản lý tài khoản và duyệt hồ sơ |
+| `/dashboard/admin/stores` | Admin | Quản lý cửa hàng |
 | `/dashboard/admin/farming` | Admin | Quản lý canh tác |
-| `/dashboard/admin/master-data` | Admin | Quản lý danh mục |
+| `/dashboard/admin/master-data/pesticides` | Admin | Danh mục thuốc và hóa chất cấm |
 | `/dashboard/admin/news` | Admin | Quản lý tin tức |
-| `/dashboard/admin/reminders` | Admin | Cảnh báo và nhắc nhở |
-| `/documents` | Công khai | Tài liệu đã xuất bản |
-| `/news` | Công khai | Tin tức đã xuất bản |
 
 ## Nhóm API chính
 
 | Nhóm | Endpoint tiêu biểu |
 |---|---|
 | Xác thực | `/api/auth/[...nextauth]`, `/api/auth/login`, `/api/auth/me` |
-| Đăng ký | `POST /api/auth/register`, `POST /api/auth/register/area-manager` |
-| Nông dân | `/api/dashboard/farmer`, `/api/farming-logs` |
-| Trưởng ban | `/api/region-manager/farmers`, `/api/region-manager/gardens/[gardenId]/remind` |
-| Admin | `/api/admin/accounts`, `/api/admin/farming`, `/api/admin/master-data/*` |
+| Đăng ký | `/api/auth/register`, `/api/auth/register/area-manager`, `/api/auth/register/store-owner` |
+| Nông dân | `/api/farming-logs`, `/api/cart`, `/api/orders/*` |
+| Trưởng ban | `/api/region-manager/farmers` |
+| Cửa hàng | `/api/store/profile`, `/api/store/products/*`, `/api/store/orders/*` |
+| Marketplace | `/api/marketplace/products` |
+| Admin | `/api/admin/accounts`, `/api/admin/stores/*`, `/api/admin/farming/*`, `/api/admin/master-data/*` |
 | Nội dung | `/api/documents/*`, `/api/admin/documents/*`, `/api/admin/news/*` |
-| Nhắc nhở | `/api/admin/reminders`, `/api/admin/reminders/send`, `/api/cron/check-missing-logs` |
-| Tra vùng | `POST /api/growing-regions/match` |
+| Hệ thống | `/api/health`, `/api/growing-regions/match` |
 
 ## Mô hình dữ liệu
 
 - Tài khoản và duyệt hồ sơ: `User`, `AreaManagerApplication`, `ApprovalHistory`, `Notification`.
 - Vùng và canh tác: `GrowingRegion`, `Farm`, `FarmingLog`.
-- Danh mục: `DurianVariety`, `Fertilizer`, `Pesticide`, `ProhibitedChemical`.
+- Cửa hàng: `Store`, `StoreDocument`, `StoreAuditLog`.
+- Marketplace: `StoreProduct`, `CartItem`, `Order`, `OrderItem`, `OrderStatusHistory`.
+- Danh mục: `Pesticide`, `ProhibitedChemical`.
 - Nội dung: `Document`, `NewsArticle`.
+
+## Quy trình sản phẩm cửa hàng
+
+1. Admin duyệt tài khoản và hồ sơ cửa hàng.
+2. Chủ cửa hàng đã được duyệt thêm sản phẩm tại `/dashboard/store/products`.
+3. API tạo sản phẩm với trạng thái `APPROVED`; sản phẩm xuất hiện ngay trên marketplace.
+4. Chủ cửa hàng có thể chỉnh sửa hoặc ẩn sản phẩm mà không cần Admin duyệt lại.
+
+Migration `202608070002_publish_pending_store_products` chuyển các sản phẩm cũ đang `PENDING_REVIEW` sang `APPROVED`.
+
+## Kiểm tra chất lượng
+
+GitHub Actions chạy khi push lên `main` hoặc tạo pull request:
+
+1. Cài dependency bằng `npm ci`.
+2. Kiểm tra và sinh Prisma Client.
+3. Chạy TypeScript typecheck.
+4. Tạo Next.js production build.
+
+Có thể kiểm tra tại máy bằng:
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+```
 
 ## Lưu ý vận hành
 
-- File hồ sơ Trưởng ban nằm tại `.storage/area-manager-applications`.
-- File tài liệu nằm tại `.storage/documents`; cần persistent volume khi triển khai container.
-- Endpoint `/api/cron/check-missing-logs` cần scheduler bên ngoài gọi nếu muốn chạy định kỳ.
-- Scheduler phải gửi header `Authorization: Bearer <CRON_SECRET>`; Admin đã đăng nhập vẫn có thể chạy thủ công.
-- Endpoint `/api/health` kiểm tra trạng thái ứng dụng và kết nối database.
-- `middleware.ts` bảo vệ `/dashboard/*`; các trang `/region-manager/*` tự kiểm tra session ở server/API.
-- Phải đổi secret và mật khẩu seed trước khi triển khai thực tế.
-- Xem checklist triển khai tại [`docs/production-readiness.md`](docs/production-readiness.md).
+- Chạy `npm run prisma:migrate:deploy` trước khi khởi động phiên bản mới trên staging/production.
+- File tài liệu và hồ sơ cửa hàng trong `.storage` cần persistent volume khi triển khai container.
+- Đổi toàn bộ secret và mật khẩu mẫu trước khi triển khai thực tế.
+- Endpoint `/api/health` kiểm tra ứng dụng và kết nối database.
+- Xem checklist tại [`docs/production-readiness.md`](docs/production-readiness.md).
