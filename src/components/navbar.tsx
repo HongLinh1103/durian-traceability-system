@@ -33,7 +33,6 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/admin/farming", label: "Quản lý canh tác", roles: ["ADMIN"] },
     { href: "/dashboard/admin/accounts", label: "Quản lý tài khoản", roles: ["ADMIN"], badge: true },
     { href: "/dashboard/admin/master-data/pesticides", label: "Danh mục cấm", roles: ["ADMIN"] },
-    { href: "/dashboard/admin/store-products", label: "Duyệt sản phẩm", roles: ["ADMIN"] },
     { href: "/dashboard/store", label: "Cửa hàng", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/products", label: "Sản phẩm", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/orders", label: "Đơn hàng", roles: ["STORE_OWNER"] },

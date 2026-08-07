@@ -19,7 +19,7 @@ const productObjectSchema = z.object({
     price: z.coerce.number().positive().max(1_000_000_000), salePrice: z.coerce.number().positive().max(1_000_000_000).optional().nullable(),
     stock: z.coerce.number().int().min(0).max(1_000_000), unit: z.string().trim().min(1).max(50), imageUrls: z.array(z.string().url()).max(8).default([]),
     composition: z.string().trim().max(2000).optional(), phiDays: z.coerce.number().int().min(0).max(365).optional().nullable(), safetyWarnings: z.string().trim().max(3000).optional(),
-    status: z.enum(["DRAFT", "PENDING_REVIEW", "HIDDEN", "OUT_OF_STOCK"]).optional(),
+    status: z.enum(["APPROVED", "HIDDEN", "OUT_OF_STOCK"]).optional(),
 });
 export const productSchema = productObjectSchema.refine((v) => v.salePrice == null || v.salePrice <= v.price, { message: "Giá khuyến mãi không được lớn hơn giá bán.", path: ["salePrice"] });
 export const productUpdateSchema = productObjectSchema.partial();

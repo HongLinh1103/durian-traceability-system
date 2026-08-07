@@ -1,1 +1,0 @@
-import { StoreProductReview } from "@/components/admin/store-product-review"; export default function Page() { return <main className="mx-auto max-w-6xl px-4 py-7"><h1 className="mb-5 text-3xl font-black">Duyệt sản phẩm cửa hàng</h1><StoreProductReview /></main>; }

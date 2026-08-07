@@ -22,8 +22,8 @@ type Product = {
 
 const statusLabels: Record<string, string> = {
     DRAFT: "Bản nháp",
-    PENDING_REVIEW: "Chờ duyệt",
-    APPROVED: "Đã duyệt",
+    PENDING_REVIEW: "Đang bán",
+    APPROVED: "Đang bán",
     REJECTED: "Bị từ chối",
     HIDDEN: "Đã ẩn",
     OUT_OF_STOCK: "Hết hàng",
@@ -56,7 +56,6 @@ export function StoreProductsManager() {
             brand: data.get("brand"),
             usagePurpose: data.get("usagePurpose"),
             imageUrls: imageUrl ? [imageUrl] : [],
-            status: "PENDING_REVIEW",
         };
         const response = await fetch("/api/store/products", {
             method: "POST",
@@ -96,7 +95,7 @@ export function StoreProductsManager() {
             <Input name="unit" required placeholder="Đơn vị bán" />
             <Input name="imageUrl" type="url" placeholder="URL hình ảnh sản phẩm" />
             <Input name="usagePurpose" placeholder="Công dụng" />
-            <Button>Gửi sản phẩm để duyệt</Button>
+            <Button>Thêm sản phẩm</Button>
         </form>
 
         <div className="my-5 flex items-center justify-between">
