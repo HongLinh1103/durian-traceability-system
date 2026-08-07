@@ -91,29 +91,3 @@ export async function PATCH(request: Request, { params }: { params: { farmId: st
     const farm = await prisma.farm.update({ where: { id: params.farmId }, data: { isActive: body.isActive } });
     return NextResponse.json({ success: true, data: farm });
 }
-
-export async function POST(request: Request, { params }: { params: { farmId: string } }) {
-    if (!(await isAdmin())) {
-        return NextResponse.json({ success: false, message: "Không có quyền gửi nhắc nhở." }, { status: 403 });
-    }
-    const body = (await request.json()) as { message?: string; daysOverdue?: number };
-    const message = body.message?.trim();
-    if (!message) {
-        return NextResponse.json({ success: false, message: "Nội dung thông báo không được để trống." }, { status: 400 });
-    }
-    const farm = await prisma.farm.findUnique({
-        where: { id: params.farmId },
-        select: { farmCode: true, farmName: true, farmerId: true },
-    });
-    if (!farm) return NextResponse.json({ success: false, message: "Không tìm thấy vườn." }, { status: 404 });
-
-    await prisma.notification.create({
-        data: {
-            userId: farm.farmerId,
-            title: `Nhắc nhở cập nhật nhật ký canh tác - ${farm.farmCode}`,
-            message,
-            type: "FARMING_LOG_REMINDER",
-        },
-    });
-    return NextResponse.json({ success: true, message: `Đã gửi nhắc nhở cho ${farm.farmName}.` });
-}

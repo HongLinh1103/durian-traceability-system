@@ -1,12 +1,11 @@
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BookOpenCheck, LandPlot, MapPinned, TriangleAlert, Users } from "lucide-react";
+import { BookOpenCheck, LandPlot, MapPinned, Users } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { HeroBanner } from "@/components/home/HeroBanner";
 import { Button } from "@/components/ui/button";
-import { completedMissingLogDays } from "@/lib/log-schedule";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -16,43 +15,18 @@ export default async function AdminDashboardPage() {
     if (!session?.user?.id) redirect("/login");
     if (session.user.role !== "ADMIN") redirect("/");
 
-    const [accountCount, pendingCount, farmCount, regionCount, farmsForOverdue] = await Promise.all([
+    const [accountCount, pendingCount, farmCount, regionCount] = await Promise.all([
         prisma.user.count({ where: { deletedAt: null, role: { not: "ADMIN" } } }),
         prisma.user.count({ where: { deletedAt: null, role: { not: "ADMIN" }, accountStatus: "PENDING" } }),
         prisma.farm.count(),
         prisma.growingRegion.count(),
-        prisma.farm.findMany({
-            where: {
-                isActive: true,
-                farmer: {
-                    deletedAt: null,
-                    isApproved: true,
-                    accountStatus: "APPROVED",
-                },
-            },
-            select: {
-                createdAt: true,
-                farmer: { select: { approvedAt: true } },
-                farmingLogs: {
-                    orderBy: [{ actionDate: "desc" }, { createdAt: "desc" }],
-                    take: 1,
-                    select: { actionDate: true },
-                },
-            },
-        }),
     ]);
-
-    const overdueFarmCount = farmsForOverdue.filter((farm) => {
-        const referenceDate = farm.farmingLogs[0]?.actionDate ?? farm.farmer.approvedAt ?? farm.createdAt;
-        return completedMissingLogDays(referenceDate) >= 1;
-    }).length;
 
     const summaries = [
         { label: "Tổng tài khoản", value: accountCount, icon: Users, href: "/dashboard/admin/accounts" },
         { label: "Hồ sơ chờ duyệt", value: pendingCount, icon: BookOpenCheck, href: "/dashboard/admin/accounts" },
         { label: "Tổng vườn trồng", value: farmCount, icon: LandPlot, href: "/dashboard/admin/farming" },
         { label: "Tổng vùng trồng", value: regionCount, icon: MapPinned, href: "/dashboard/admin/farming" },
-        { label: "Số vườn trễ nhật ký", value: overdueFarmCount, icon: TriangleAlert, href: "/dashboard/admin/farming" },
     ];
 
     return (
@@ -77,7 +51,7 @@ export default async function AdminDashboardPage() {
                 </Button>
             </section>
 
-            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {summaries.map((item) => {
                     const Icon = item.icon;
                     return (

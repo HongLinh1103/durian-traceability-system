@@ -9,6 +9,7 @@ import {
     CheckCircle2,
     Map,
     Sprout,
+    Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 
-type AccountType = "FARMER" | "AREA_MANAGER";
+type AccountType = "FARMER" | "AREA_MANAGER" | "STORE_OWNER";
 
 const accountTypes = [
     {
@@ -38,6 +39,13 @@ const accountTypes = [
             "Quản lý vùng trồng, theo dõi hồ sơ vườn và công tác tuân thủ.",
         icon: Map,
         iconClass: "bg-blue-100 text-blue-700",
+    },
+    {
+        value: "STORE_OWNER" as const,
+        title: "Chủ cửa hàng vật tư",
+        description: "Đăng ký cửa hàng, tải giấy tờ và chờ Admin phê duyệt trước khi kinh doanh.",
+        icon: Store,
+        iconClass: "bg-amber-100 text-amber-700",
     },
 ];
 
@@ -61,6 +69,11 @@ export default function RegisterAccountTypePage() {
             return;
         }
 
+        if (selected === "STORE_OWNER") {
+            router.push("/register/store-owner");
+            return;
+        }
+
         router.push("/register/area-manager");
     }
 
@@ -80,7 +93,7 @@ export default function RegisterAccountTypePage() {
 
                     <CardContent className="space-y-7">
                         <div
-                            className="grid gap-5 md:grid-cols-2"
+                            className="grid gap-5 md:grid-cols-3"
                             role="radiogroup"
                             aria-label="Loại tài khoản"
                         >

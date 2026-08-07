@@ -4,25 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getManagedRegionScope } from "@/lib/region-manager-scope";
 import { GardensManager } from "@/components/region-manager/gardens-manager";
-import { completedMissingLogDays, missingDaysBetweenLogs } from "@/lib/log-schedule";
 
 export const dynamic = "force-dynamic";
-
-function calculateDelayMetrics(createdAt: Date, logs: { actionDate: Date }[]) {
-    const chronological = [...logs].sort((a, b) => a.actionDate.getTime() - b.actionDate.getTime());
-    let overdueCount = 0;
-    let previousDate = createdAt;
-
-    for (const log of chronological) {
-        overdueCount += missingDaysBetweenLogs(previousDate, log.actionDate);
-        previousDate = log.actionDate;
-    }
-
-    const daysOverdue = completedMissingLogDays(previousDate);
-    if (daysOverdue > 0) overdueCount += 1;
-
-    return { daysOverdue, overdueCount };
-}
 
 export default async function RegionManagerGardensPage() {
     const session = await getServerSession(authOptions);
@@ -69,7 +52,6 @@ export default async function RegionManagerGardensPage() {
         <GardensManager
             regions={scope.regions}
             gardens={farms.map((farm) => {
-                const delayMetrics = calculateDelayMetrics(farm.farmer.approvedAt ?? farm.createdAt, farm.farmingLogs);
                 return {
                 id: farm.id,
                 farmCode: farm.farmCode,
@@ -84,7 +66,6 @@ export default async function RegionManagerGardensPage() {
                 regionCode: farm.region?.code ?? "",
                 regionName: farm.region?.name ?? "",
                 latestLogDate: farm.farmingLogs[0]?.actionDate.toISOString() ?? null,
-                ...delayMetrics,
                 };
             })}
         />

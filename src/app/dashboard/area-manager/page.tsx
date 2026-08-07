@@ -1,11 +1,10 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { Building2, ClipboardCheck, MapPinned, Sprout, TriangleAlert, Users } from "lucide-react";
+import { Building2, ClipboardCheck, MapPinned, Sprout, Users } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HeroBanner } from "@/components/home/HeroBanner";
-import { completedMissingLogDays } from "@/lib/log-schedule";
 
 type ManagedRegion = {
     code?: string;
@@ -67,10 +66,6 @@ export default async function AreaManagerDashboard() {
         })])
         : [[], 0];
     const memberHouseholdCount = new Set(managedFarms.map((farm) => farm.farmerId)).size;
-    const overdueFarmCount = managedFarms.filter((farm) => {
-        const referenceDate = farm.farmingLogs[0]?.actionDate ?? farm.farmer.approvedAt ?? farm.createdAt;
-        return completedMissingLogDays(referenceDate) >= 1;
-    }).length;
 
     return (
         <main className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6 lg:px-8">
@@ -82,11 +77,10 @@ export default async function AreaManagerDashboard() {
                 <p className="mt-1 text-slate-600">Theo dõi tổ chức và vùng trồng bạn đang phụ trách.</p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Summary icon={ClipboardCheck} label="Hồ sơ cần duyệt" value={pendingProfileCount.toLocaleString("vi-VN")} />
                 <Summary icon={Sprout} label="Tổng số vườn" value={managedFarms.length.toLocaleString("vi-VN")} />
                 <Summary icon={Users} label="Số hộ thành viên" value={memberHouseholdCount.toLocaleString("vi-VN")} />
-                <Summary icon={TriangleAlert} label="Số vườn trễ nhật ký" value={overdueFarmCount.toLocaleString("vi-VN")} tone="red" />
             </div>
 
             <div className="grid gap-5 lg:grid-cols-2">

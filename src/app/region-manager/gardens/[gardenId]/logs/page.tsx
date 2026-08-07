@@ -5,10 +5,8 @@ import { ArrowLeft, History } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getManagedRegionScope } from "@/lib/region-manager-scope";
-import { ReminderButton } from "@/components/region-manager/reminder-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { completedMissingLogDays } from "@/lib/log-schedule";
 
 const activityLabels: Record<string, string> = { SPRAY_PESTICIDE: "Phun thuốc", FERTILIZE: "Bón phân", IRRIGATE: "Tưới nước", PRUNE: "Cắt tỉa", WEEDING: "Làm cỏ" };
 const stageLabels: Record<string, string> = { MAKING_SPROUT: "Làm đọt", FLOWERING: "Ra hoa", FRUIT_SETTING: "Đậu trái", FRUIT_GROWING: "Nuôi trái", HARVEST: "Thu hoạch" };
@@ -36,24 +34,15 @@ export default async function GardenLogsPage({ params }: { params: { gardenId: s
     });
     if (!garden) notFound();
 
-    const latest = garden.farmingLogs[0]?.actionDate ?? null;
-    const daysOverdue = completedMissingLogDays(latest ?? garden.farmer.approvedAt ?? garden.createdAt);
-    const shouldRemind = daysOverdue >= 1;
-
     return <main className="mx-auto min-h-screen max-w-6xl space-y-5 px-4 py-6 sm:px-6">
         <div><Button asChild variant="outline" size="sm"><Link href="/region-manager/gardens"><ArrowLeft className="mr-2 h-4 w-4" />Quay lại danh sách</Link></Button></div>
         <Card className="rounded-[28px] border-emerald-100">
             <CardHeader>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div><p className="text-sm font-semibold text-emerald-700">{garden.farmCode}</p><CardTitle className="mt-1 text-2xl">{garden.farmName}</CardTitle><CardDescription className="mt-2">{garden.farmer.fullName || garden.farmer.phone} · {garden.farmer.phone}<br />{garden.region?.code} – {garden.region?.name}</CardDescription></div>
-                    {shouldRemind && <ReminderButton gardenId={garden.id} />}
                 </div>
             </CardHeader>
         </Card>
-
-        {shouldRemind && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-900">
-            {latest === null ? `Vườn chưa ghi nhật ký và đang trễ ${daysOverdue} ngày.` : `Vườn đang trễ ${daysOverdue} ngày nhật ký.`}
-        </div>}
 
         <Card className="overflow-hidden rounded-[28px] border-slate-200 shadow-sm">
             <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">

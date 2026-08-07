@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { farmingLogSchema, type FarmingLogInput } from "@/lib/validation";
 import { growthStages, activityTypes } from "@/lib/constants";
-import { evaluatePhiSafety, isProhibitedChemical } from "@/lib/workflow";
+import { evaluatePhiSafety, matchProhibitedChemical, type ProhibitedChemicalEntry } from "@/lib/workflow";
 import type { OfflineFarmingLogPayload } from "@/lib/offline-farming-logs";
 import { formatVietnameseDate, formatVietnameseDateTime, toIsoDate, toIsoDateTime } from "@/lib/date-format";
 
@@ -35,8 +35,6 @@ type SpeechRecognitionInstanceLike = {
 
 type SpeechRecognitionConstructorLike = new () => SpeechRecognitionInstanceLike;
 type FarmOption = { id: string; farmCode: string; farmName: string };
-type PesticideOption = { id: string; code: string; tradeName: string; activeIngredient: string; phiDays: number | null; recommendedDosage: string | null };
-type FertilizerOption = { id: string; code: string; name: string; brand: string | null; recommendedDosage: string | null };
 type FarmingLogItem = {
     id: string;
     actionDate: string;
@@ -125,8 +123,7 @@ export default function NewFarmingLogPage() {
     const [farms, setFarms] = useState<FarmOption[]>([]);
     const [farmsLoading, setFarmsLoading] = useState(true);
     const [recentLogs, setRecentLogs] = useState<FarmingLogItem[]>([]);
-    const [pesticides, setPesticides] = useState<PesticideOption[]>([]);
-    const [fertilizers, setFertilizers] = useState<FertilizerOption[]>([]);
+    const [prohibitedEntries, setProhibitedEntries] = useState<ProhibitedChemicalEntry[]>([]);
     const [masterDataLoading, setMasterDataLoading] = useState(true);
     const now = useMemo(() => new Date(), []);
 
@@ -161,14 +158,10 @@ export default function NewFarmingLogPage() {
         async function loadMasterData() {
             setMasterDataLoading(true);
             try {
-                const [pesticideResponse, fertilizerResponse] = await Promise.all([
-                    fetch("/api/master-data/pesticides", { cache: "no-store" }),
-                    fetch("/api/master-data/fertilizers", { cache: "no-store" }),
-                ]);
-                const [pesticidePayload, fertilizerPayload] = await Promise.all([pesticideResponse.json(), fertilizerResponse.json()]);
+                const pesticideResponse = await fetch("/api/master-data/pesticides", { cache: "no-store" });
+                const pesticidePayload = await pesticideResponse.json();
                 if (!cancelled) {
-                    setPesticides(pesticideResponse.ok && pesticidePayload.success ? pesticidePayload.data : []);
-                    setFertilizers(fertilizerResponse.ok && fertilizerPayload.success ? fertilizerPayload.data : []);
+                    setProhibitedEntries(pesticideResponse.ok && pesticidePayload.success ? pesticidePayload.data : []);
                 }
             } finally {
                 if (!cancelled) setMasterDataLoading(false);
@@ -194,10 +187,11 @@ export default function NewFarmingLogPage() {
         }
     }, [form, isFertilizing, isSpraying]);
 
-    const isProhibited = useMemo(
-        () => isSpraying && isProhibitedChemical(chemicalName),
-        [chemicalName, isSpraying],
+    const prohibitedMatch = useMemo(
+        () => isSpraying ? matchProhibitedChemical(chemicalName, prohibitedEntries) : { status: "none" as const },
+        [chemicalName, isSpraying, prohibitedEntries],
     );
+    const isProhibited = prohibitedMatch.status !== "none";
 
     const safetyMessage = useMemo(() => {
         if (!isSpraying) {
@@ -629,17 +623,12 @@ export default function NewFarmingLogPage() {
                         {(isSpraying || isFertilizing) && <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <Label htmlFor="chemicalName">{isSpraying ? "Tên thuốc" : "Tên phân bón"}</Label>
-                                <select id="chemicalName" disabled={masterDataLoading} className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm disabled:cursor-wait disabled:bg-slate-50" {...form.register("chemicalName")}>
-                                    <option value="">{masterDataLoading ? "Đang tải danh mục..." : isSpraying ? "Chọn thuốc BVTV" : "Chọn phân bón"}</option>
-                                    {isSpraying
-                                        ? pesticides.map((item) => <option key={item.id} value={item.tradeName}>{item.code} - {item.tradeName} ({item.activeIngredient})</option>)
-                                        : fertilizers.map((item) => <option key={item.id} value={item.name}>{item.code} - {item.name}{item.brand ? ` (${item.brand})` : ""}</option>)}
-                                </select>
-                                {!masterDataLoading && ((isSpraying && pesticides.length === 0) || (isFertilizing && fertilizers.length === 0)) && <p className="mt-1 text-xs text-amber-600">Danh mục chưa có dữ liệu đang hoạt động. Vui lòng liên hệ quản trị viên.</p>}
+                                <Input id="chemicalName" placeholder={isSpraying ? "Nhập tên thuốc hoặc hoạt chất đã sử dụng" : "Nhập tên phân bón đã sử dụng"} {...form.register("chemicalName")} />
+                                {isSpraying && masterDataLoading && <p className="mt-1 text-xs text-slate-500">Đang tải danh mục cấm để kiểm tra...</p>}
                                 <p className="mt-1 text-xs text-red-600">{form.formState.errors.chemicalName?.message}</p>
-                                {isSpraying && <p className={`mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${isProhibited ? "bg-red-50 text-red-700" : "bg-brand-50 text-brand-700"}`}>
+                                {isSpraying && chemicalName.trim() && !masterDataLoading && <p className={`mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${isProhibited ? "bg-red-50 text-red-700" : "bg-brand-50 text-brand-700"}`}>
                                     {isProhibited ? <AlertTriangle className="h-3.5 w-3.5" /> : <Sprout className="h-3.5 w-3.5" />}
-                                    {isProhibited ? "Thuốc nằm trong danh sách cấm GACC" : "Thuốc không nằm trong danh sách cấm"}
+                                    {prohibitedMatch.status === "exact" ? "Phát hiện khớp danh mục cấm" : prohibitedMatch.status === "suspected" ? "Nghi ngờ khớp danh mục cấm" : "Chưa phát hiện trong danh mục cấm"}
                                 </p>}
                             </div>
                             {(isSpraying || isFertilizing) && <div>
@@ -718,7 +707,8 @@ export default function NewFarmingLogPage() {
 
                         {isProhibited ? (
                             <div className="rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                                Hệ thống sẽ tự động đánh dấu <strong>isGACCCompliant = false</strong> khi lưu nhật ký do phát hiện tên thuốc cấm.
+                                <strong>Cảnh báo: Thuốc hoặc hoạt chất bạn vừa nhập nằm trong danh mục bị cấm sử dụng. Vui lòng kiểm tra lại trước khi lưu nhật ký.</strong>
+                                {prohibitedMatch.status === "suspected" ? <p className="mt-1">Hệ thống phát hiện tên gần giống “{prohibitedMatch.matchedValue}”.</p> : null}
                             </div>
                         ) : null}
 

@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/PasswordInput";
 import { useToast } from "@/components/ui/toast";
-import { durianVarieties } from "@/lib/constants";
 
 const steps = ["Cá nhân & tài khoản", "Thông tin tổ chức", "Vùng trồng phụ trách"];
 
@@ -149,7 +148,7 @@ export default function AreaManagerRegistrationPage() {
                                 <Field label="Tổng diện tích (ha)"><Input name="regionAreaSize" required type="number" min="0.01" step="0.01" /></Field>
                                 <Field label="Số hộ nông dân / thửa đất thành viên"><Input name="farmerCount" required type="number" min="0" step="1" /></Field>
                                 <Field label="Giống sầu riêng chủ lực">
-                                    <select name="durianVariety" required className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm">{durianVarieties.map((item) => <option key={item}>{item}</option>)}</select>
+                                    <Input name="durianVariety" required placeholder="Ví dụ: Ri6, Dona, Monthong..." />
                                 </Field>
                             </div>
                             <label className="flex cursor-pointer gap-3 rounded-2xl bg-blue-50 p-4 text-sm text-blue-950">

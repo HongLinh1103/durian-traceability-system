@@ -1,0 +1,1 @@
+import { StoreOrdersManager } from "@/components/store/store-orders-manager"; export default function Page() { return <main className="mx-auto max-w-5xl px-4 py-7"><h1 className="mb-5 text-3xl font-black">Đơn hàng của cửa hàng</h1><StoreOrdersManager /></main>; }

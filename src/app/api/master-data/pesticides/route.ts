@@ -6,8 +6,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/master-data/pesticides
- * Public API - chỉ trả về danh sách thuốc BVTV đang hoạt động và không bị cấm
- * Dùng cho dropdown trong form nhật ký phun thuốc
+ * Public API - trả về tên thuốc/hoạt chất trong danh mục cấm đang hoạt động.
+ * Dùng để cảnh báo khi nông dân nhập tự do tên thuốc trong nhật ký.
  */
 export async function GET() {
     try {
@@ -15,18 +15,14 @@ export async function GET() {
             where: {
                 isActive: true,
                 deletedAt: null,
-                gaccStatus: { not: "PROHIBITED" },
+                gaccStatus: "PROHIBITED",
             },
             orderBy: { tradeName: "asc" },
             select: {
                 id: true,
-                code: true,
+                pesticideName: true,
                 tradeName: true,
                 activeIngredient: true,
-                category: true,
-                gaccStatus: true,
-                phiDays: true,
-                recommendedDosage: true,
             },
         });
 

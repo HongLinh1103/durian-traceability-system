@@ -27,11 +27,12 @@ export async function GET(request: Request) {
         const gaccStatus = url.searchParams.get("gaccStatus");
         const category = url.searchParams.get("category");
 
-        const where: Prisma.PesticideWhereInput = { deletedAt: null };
+        const where: Prisma.PesticideWhereInput = { deletedAt: null, gaccStatus: "PROHIBITED" };
 
         if (query.search) {
             where.OR = [
                 { code: { contains: query.search, mode: "insensitive" } },
+                { pesticideName: { contains: query.search, mode: "insensitive" } },
                 { tradeName: { contains: query.search, mode: "insensitive" } },
                 { activeIngredient: { contains: query.search, mode: "insensitive" } },
                 { manufacturer: { contains: query.search, mode: "insensitive" } },
@@ -43,9 +44,7 @@ export async function GET(request: Request) {
         if (query.status === "active") where.isActive = true;
         else if (query.status === "inactive") where.isActive = false;
 
-        if (gaccStatus) {
-            where.gaccStatus = gaccStatus as any;
-        }
+        if (gaccStatus && gaccStatus !== "PROHIBITED") where.gaccStatus = "PROHIBITED";
 
         if (category) {
             where.category = category;
@@ -107,7 +106,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const data = { ...parsed.data };
+        const data = { ...parsed.data, gaccStatus: "PROHIBITED" as const };
         if (data.effectiveFrom === "") data.effectiveFrom = undefined as any;
         if (data.effectiveTo === "") data.effectiveTo = undefined as any;
 

@@ -137,12 +137,7 @@ export function DocumentsLibrary() {
                     <h1 className="mt-2 text-4xl font-black text-slate-900">Tài liệu</h1>
                     <p className="mt-2 max-w-2xl text-slate-500">Tìm kiếm, mở và tải các tài liệu hướng dẫn, quy trình và tuân thủ.</p>
                 </div>
-                {isAdmin && (
-                    <Button onClick={() => setShowUpload(true)}>
-                        <FilePlus2 className="mr-2 h-5 w-5" />
-                        Thêm tài liệu
-                    </Button>
-                )}
+
             </div>
 
             <div className="mt-8 grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 sm:grid-cols-[1fr_240px]">
@@ -227,13 +222,7 @@ export function DocumentsLibrary() {
                             <button type="button" onClick={() => setShowUpload(false)} className="rounded-full p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button>
                         </div>
                         <div><Label htmlFor="document-title">Tiêu đề</Label><Input id="document-title" name="title" required maxLength={160} /></div>
-                        <div><Label htmlFor="document-category">Danh mục</Label><Input id="document-category" name="category" required maxLength={80} placeholder="Ví dụ: Hướng dẫn GACC" /></div>
-                        <div>
-                            <Label htmlFor="document-summary">Mô tả</Label>
-                            <textarea id="document-summary" name="summary" rows={4} maxLength={1000} className="w-full rounded-2xl border border-slate-200 p-3 text-sm" />
-                        </div>
-                        <div><Label htmlFor="document-file">Tệp (tối đa 20 MB)</Label><Input id="document-file" name="file" type="file" required accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" /></div>
-                        <label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-medium"><input type="checkbox" name="publish" value="true" defaultChecked /> Xuất bản ngay</label>
+                        <div><Label htmlFor="document-file">Chọn file (tối đa 20 MB)</Label><Input id="document-file" name="file" type="file" required accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" /></div>
                         <Button type="submit" className="w-full" disabled={submitting}>
                             {submitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Upload className="mr-2 h-5 w-5" />}
                             Tải lên

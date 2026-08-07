@@ -12,6 +12,48 @@ enum UserRole {
   ADMIN
   AREA_MANAGER
   FARMER
+  STORE_OWNER
+}
+
+enum StoreStatus {
+  DRAFT
+  PENDING_REVIEW
+  NEED_SUPPLEMENT
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum StoreDocumentType {
+  BUSINESS_REGISTRATION
+  PESTICIDE_TRADING_LICENSE
+  SPECIALIZED_DOCUMENT
+}
+
+enum StoreProductType {
+  FERTILIZER
+  PESTICIDE
+}
+
+enum StoreProductStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  HIDDEN
+  OUT_OF_STOCK
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY_FOR_DELIVERY
+  SHIPPING
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REJECTED
 }
 
 /// Trạng thái duyệt tài khoản sau onboarding.
@@ -77,33 +119,34 @@ model DurianVariety {
 
 /// Danh mục Thuốc bảo vệ thực vật (Master Data)
 model Pesticide {
-  id                 String             @id @default(cuid())
-  code               String             @unique
-  tradeName          String
-  activeIngredient   String
-  concentration      String?
-  category           String?
-  manufacturer       String?
-  origin             String?
+  id                  String             @id @default(cuid())
+  code                String             @unique
+  pesticideName       String?
+  tradeName           String
+  activeIngredient    String
+  concentration       String?
+  category            String?
+  manufacturer        String?
+  origin              String?
   imageUrls           String[]           @default([])
-  registrationNumber String?
-  gaccStatus         GaccChemicalStatus @default(UNKNOWN)
-  localStatus        String?
-  usagePurpose       String?
-  targetPests        String?
-  usageInstructions  String?
-  recommendedDosage  String?
-  safetyWarnings     String?
+  registrationNumber  String?
+  gaccStatus          GaccChemicalStatus @default(UNKNOWN)
+  localStatus         String?
+  usagePurpose        String?
+  targetPests         String?
+  usageInstructions   String?
+  recommendedDosage   String?
+  safetyWarnings      String?
   storageInstructions String?
-  phiDays            Int?
-  notes              String?
-  sourceReference    String?
-  effectiveFrom      DateTime?
-  effectiveTo        DateTime?
-  isActive           Boolean            @default(true)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  deletedAt          DateTime?
+  phiDays             Int?
+  notes               String?
+  sourceReference     String?
+  effectiveFrom       DateTime?
+  effectiveTo         DateTime?
+  isActive            Boolean            @default(true)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  deletedAt           DateTime?
 
   @@map("pesticides")
 }
@@ -117,10 +160,10 @@ model Fertilizer {
   brand               String?
   manufacturer        String?
   origin              String?
-  imageUrls            String[] @default([])
+  imageUrls           String[]  @default([])
   nutrientComposition String?
-  mainUses             String?
-  targetCrops          String?
+  mainUses            String?
+  targetCrops         String?
   usageInstructions   String?
   recommendedDosage   String?
   applicationMethod   String?
@@ -168,9 +211,192 @@ model User {
   areaManagerApplication AreaManagerApplication?
   approvalHistories      ApprovalHistory[]       @relation("ApprovalSubject")
   approvalActions        ApprovalHistory[]       @relation("ApprovalActor")
+  stores                 Store[]                 @relation("StoreOwner")
+  storeReviewActions     StoreAuditLog[]         @relation("StoreAuditActor")
+  cartItems              CartItem[]
+  orders                 Order[]                 @relation("FarmerOrders")
 
   @@index([role])
   @@index([role, accountStatus, deletedAt])
+}
+
+model Store {
+  id                  String      @id @default(cuid())
+  ownerId             String
+  representativeName  String
+  representativePhone String
+  representativeEmail String?
+  identityNumber      String
+  name                String
+  taxOrBusinessCode   String?
+  address             String
+  latitude            Float?
+  longitude           Float?
+  phone               String
+  openingHours        String?
+  signboardImageKey   String?
+  description         String?
+  status              StoreStatus @default(DRAFT)
+  reviewReason        String?
+  submittedAt         DateTime?
+  approvedAt          DateTime?
+  deletedAt           DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  owner     User            @relation("StoreOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  documents StoreDocument[]
+  products  StoreProduct[]
+  orders    Order[]
+  auditLogs StoreAuditLog[]
+
+  @@index([ownerId, status, deletedAt])
+  @@index([status, deletedAt])
+  @@map("stores")
+}
+
+model StoreDocument {
+  id               String            @id @default(cuid())
+  storeId          String
+  type             StoreDocumentType
+  name             String
+  storageKey       String            @unique
+  mimeType         String
+  fileSize         Int
+  issuedAt         DateTime?
+  expiresAt        DateTime?
+  issuingAuthority String?
+  deletedAt        DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  store            Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, type, deletedAt])
+  @@map("store_documents")
+}
+
+model StoreProduct {
+  id                String             @id @default(cuid())
+  storeId           String
+  type              StoreProductType
+  name              String
+  brand             String?
+  manufacturer      String?
+  origin            String?
+  description       String?
+  usagePurpose      String?
+  usageInstructions String?
+  packaging         String?
+  price             Decimal            @db.Decimal(14, 2)
+  salePrice         Decimal?           @db.Decimal(14, 2)
+  stock             Int                @default(0)
+  unit              String
+  imageUrls         String[]           @default([])
+  composition       String?
+  phiDays           Int?
+  safetyWarnings    String?
+  status            StoreProductStatus @default(DRAFT)
+  reviewReason      String?
+  deletedAt         DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  store             Store              @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  cartItems         CartItem[]
+  orderItems        OrderItem[]
+
+  @@index([storeId, status, deletedAt])
+  @@index([type, status, deletedAt])
+  @@map("store_products")
+}
+
+model CartItem {
+  id        String       @id @default(cuid())
+  userId    String
+  productId String
+  quantity  Int          @default(1)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   StoreProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("cart_items")
+}
+
+model Order {
+  id              String               @id @default(cuid())
+  orderCode       String               @unique
+  farmerId        String
+  storeId         String
+  status          OrderStatus          @default(PENDING)
+  recipientName   String
+  recipientPhone  String
+  shippingAddress String
+  note            String?
+  paymentMethod   String               @default("COD")
+  subtotal        Decimal              @db.Decimal(14, 2)
+  rejectionReason String?
+  cancelledAt     DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  farmer          User                 @relation("FarmerOrders", fields: [farmerId], references: [id], onDelete: Restrict)
+  store           Store                @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  items           OrderItem[]
+  histories       OrderStatusHistory[]
+
+  @@index([farmerId, status, deletedAt])
+  @@index([storeId, status, deletedAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String        @id @default(cuid())
+  orderId      String
+  productId    String?
+  productName  String
+  productImage String?
+  unitPrice    Decimal       @db.Decimal(14, 2)
+  quantity     Int
+  unit         String
+  storeName    String
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      StoreProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id         String       @id @default(cuid())
+  orderId    String
+  actorId    String?
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  note       String?
+  createdAt  DateTime     @default(now())
+  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@map("order_status_histories")
+}
+
+model StoreAuditLog {
+  id         String       @id @default(cuid())
+  storeId    String
+  actorId    String?
+  action     String
+  fromStatus StoreStatus?
+  toStatus   StoreStatus?
+  reason     String?
+  metadata   Json?
+  createdAt  DateTime     @default(now())
+  store      Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  actor      User?        @relation("StoreAuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, createdAt])
+  @@map("store_audit_logs")
 }
 
 model ApprovalHistory {

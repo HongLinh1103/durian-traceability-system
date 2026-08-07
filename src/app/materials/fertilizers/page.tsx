@@ -1,0 +1,2 @@
+import { MarketplaceProducts } from "@/components/store/marketplace-products";
+export default function FertilizersPage() { return <main className="mx-auto max-w-[1500px] space-y-5 px-4 py-7 sm:px-6"><header><p className="font-semibold text-emerald-700">Vật tư từ cửa hàng</p><h1 className="text-3xl font-black text-slate-950">Phân bón đang bán</h1><p className="mt-2 text-slate-600">Xem và đặt mua phân bón từ các cửa hàng vật tư đã được hệ thống phê duyệt.</p></header><MarketplaceProducts type="FERTILIZER" /></main>; }

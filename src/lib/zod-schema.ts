@@ -34,7 +34,7 @@ export const farmRegistrationSchema = z.object({
     totalTrees: z.coerce.number().int().nonnegative("Số cây không được âm"),
     durianVarieties: z
         .array(z.string().trim().min(1))
-        .min(1, "Chọn ít nhất một giống sầu riêng"),
+        .min(1, "Nhập ít nhất một giống sầu riêng"),
     latitude: optionalCoordinate.refine(
         (value) => value === undefined || (value >= -90 && value <= 90),
         "Vĩ độ không hợp lệ",
@@ -150,9 +150,9 @@ export const legacyRegisterSchema = z
                 .nonnegative("Số cây không được âm"),
         ),
         durianVariety: z
-            .string({ required_error: "Vui lòng chọn giống sầu riêng" })
+            .string({ required_error: "Vui lòng nhập giống sầu riêng" })
             .trim()
-            .min(1, "Vui lòng chọn giống sầu riêng"),
+            .min(1, "Vui lòng nhập giống sầu riêng"),
         password: passwordPolicy,
         confirmPassword: z.string({ required_error: "Vui lòng xác nhận mật khẩu" }).min(1, "Vui lòng xác nhận mật khẩu"),
     })

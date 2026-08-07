@@ -17,7 +17,6 @@ import {
     Trash2,
 } from "lucide-react";
 import { registerSchema, type RegisterInput } from "@/lib/zod-schema";
-import { durianVarieties } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -40,7 +39,7 @@ const emptyFarm = {
     areaSize: 0,
     areaUnit: "HECTARE" as const,
     totalTrees: 0,
-    durianVarieties: [durianVarieties[0] ?? "Ri6"],
+    durianVarieties: [""],
     latitude: undefined,
     longitude: undefined,
     notes: "",
@@ -241,23 +240,13 @@ export default function RegisterPage() {
                                                     <div className="space-y-2">
                                                         <Label>Giống sầu riêng</Label>
                                                         <div className="space-y-2">
-                                                            {values.farms[index].durianVarieties.map((selectedVariety, varietyIndex) => (
+                                                            {values.farms[index].durianVarieties.map((_, varietyIndex) => (
                                                                 <div key={varietyIndex} className="flex gap-2">
-                                                                    <select
+                                                                    <Input
                                                                         aria-label={`Giống sầu riêng ${varietyIndex + 1}`}
-                                                                        className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm"
+                                                                        placeholder="Ví dụ: Ri6, Dona, Monthong..."
                                                                         {...form.register(`farms.${index}.durianVarieties.${varietyIndex}`)}
-                                                                    >
-                                                                        {durianVarieties.map((variety) => (
-                                                                            <option
-                                                                                key={variety}
-                                                                                value={variety}
-                                                                                disabled={variety !== selectedVariety && values.farms[index].durianVarieties.includes(variety)}
-                                                                            >
-                                                                                {variety}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
+                                                                    />
                                                                     {values.farms[index].durianVarieties.length > 1 && (
                                                                         <Button
                                                                             type="button"
@@ -277,19 +266,9 @@ export default function RegisterPage() {
                                                                 </div>
                                                             ))}
                                                         </div>
-                                                        {values.farms[index].durianVarieties.length < durianVarieties.length && (
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    const nextVariety = durianVarieties.find((variety) => !values.farms[index].durianVarieties.includes(variety));
-                                                                    if (nextVariety) form.setValue(`farms.${index}.durianVarieties`, [...values.farms[index].durianVarieties, nextVariety], { shouldDirty: true, shouldValidate: true });
-                                                                }}
-                                                            >
-                                                                <Plus className="mr-2 h-4 w-4" />Thêm giống sầu riêng khác
-                                                            </Button>
-                                                        )}
+                                                        <Button type="button" variant="outline" size="sm" onClick={() => form.setValue(`farms.${index}.durianVarieties`, [...values.farms[index].durianVarieties, ""], { shouldDirty: true, shouldValidate: true })}>
+                                                            <Plus className="mr-2 h-4 w-4" />Thêm giống sầu riêng khác
+                                                        </Button>
                                                         {error?.durianVarieties?.message && <p className="text-xs font-medium text-red-600">{String(error.durianVarieties.message)}</p>}
                                                     </div>
                                                     <Field label="Vĩ độ" error={error?.latitude?.message}><Input type="number" step="any" {...form.register(`farms.${index}.latitude`)} /></Field>

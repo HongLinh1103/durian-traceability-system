@@ -33,8 +33,6 @@ type Garden = {
     regionCode: string;
     regionName: string;
     latestLogDate: string | null;
-    daysOverdue: number;
-    overdueCount: number;
 };
 
 export function GardensManager({ regions, gardens }: { regions: Region[]; gardens: Garden[] }) {
@@ -46,8 +44,7 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [localityFilter, setLocalityFilter] = useState("");
     const [varietyFilter, setVarietyFilter] = useState("");
-    const [logStatusFilter, setLogStatusFilter] = useState("");
-    const [appliedFilters, setAppliedFilters] = useState({ locality: "", variety: "", logStatus: "" });
+    const [appliedFilters, setAppliedFilters] = useState({ locality: "", variety: "" });
 
     const regionGardens = useMemo(
         () => gardens.filter((garden) => !regionCode || garden.regionCode === regionCode),
@@ -66,12 +63,7 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
             ].some((value) => value.toLocaleLowerCase("vi").includes(normalized));
             const matchesLocality = !appliedFilters.locality || garden.locality === appliedFilters.locality;
             const matchesVariety = !appliedFilters.variety || garden.durianVariety.toLocaleLowerCase("vi").includes(appliedFilters.variety.toLocaleLowerCase("vi"));
-            const matchesLogStatus =
-                !appliedFilters.logStatus ||
-                (appliedFilters.logStatus === "NONE" && !garden.latestLogDate) ||
-                (appliedFilters.logStatus === "OVERDUE" && garden.daysOverdue > 0) ||
-                (appliedFilters.logStatus === "CURRENT" && garden.daysOverdue === 0 && Boolean(garden.latestLogDate));
-            return matchesQuery && matchesLocality && matchesVariety && matchesLogStatus;
+            return matchesQuery && matchesLocality && matchesVariety;
         });
     }, [appliedFilters, appliedQuery, regionGardens]);
 
@@ -90,7 +82,6 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
     const stats = {
         total: regionGardens.length,
         active: regionGardens.filter((item) => item.isActive).length,
-        overdue: regionGardens.filter((item) => item.daysOverdue > 0).length,
     };
     const selectedRegion = regions.find((region) => region.code === regionCode);
 
@@ -99,8 +90,7 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
         setAppliedQuery("");
         setLocalityFilter("");
         setVarietyFilter("");
-        setLogStatusFilter("");
-        setAppliedFilters({ locality: "", variety: "", logStatus: "" });
+        setAppliedFilters({ locality: "", variety: "" });
         setPage(1);
     }
 
@@ -129,10 +119,9 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
                 </div>
             </header>
 
-            <section className="grid gap-3 sm:grid-cols-3">
+            <section className="grid gap-3 sm:grid-cols-2">
                 <Stat label="Tổng số vườn" value={stats.total} icon={Sprout} />
                 <Stat label="Đang hoạt động" value={stats.active} icon={Trees} tone="green" />
-                <Stat label="Trễ nhật ký" value={stats.overdue} icon={History} tone="red" />
             </section>
 
             <Card className="rounded-[24px]">
@@ -147,14 +136,14 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
                         />
                         <Button type="button" variant="outline" onClick={() => setFiltersOpen((value) => !value)}>
                             <Filter className="mr-2 h-4 w-4" />Bộ lọc
-                            {(appliedFilters.locality || appliedFilters.variety || appliedFilters.logStatus) && (
+                            {(appliedFilters.locality || appliedFilters.variety) && (
                                 <span className="ml-2 h-2 w-2 rounded-full bg-emerald-500" />
                             )}
                         </Button>
                         <Button type="button" onClick={() => { setAppliedQuery(query); setPage(1); }}><Search className="mr-2 h-4 w-4" />Tìm kiếm</Button>
                     </div>
                     {filtersOpen && (
-                        <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-3">
+                        <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
                             <label className="space-y-1.5 text-sm font-medium text-slate-700">
                                 <span>Địa phương</span>
                                 <select value={localityFilter} onChange={(event) => setLocalityFilter(event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
@@ -169,19 +158,10 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
                                     {varietyOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                                 </select>
                             </label>
-                            <label className="space-y-1.5 text-sm font-medium text-slate-700">
-                                <span>Tình trạng nhật ký</span>
-                                <select value={logStatusFilter} onChange={(event) => setLogStatusFilter(event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
-                                    <option value="">Tất cả tình trạng</option>
-                                    <option value="CURRENT">Đã cập nhật gần đây</option>
-                                    <option value="OVERDUE">Trễ từ 3 ngày</option>
-                                    <option value="NONE">Chưa có nhật ký</option>
-                                </select>
-                            </label>
                             <div className="flex flex-wrap gap-2 md:col-span-3 md:justify-end">
                                 <Button type="button" variant="outline" onClick={clearFilters}><RotateCcw className="mr-2 h-4 w-4" />Xóa bộ lọc</Button>
                                 <Button type="button" onClick={() => {
-                                    setAppliedFilters({ locality: localityFilter, variety: varietyFilter, logStatus: logStatusFilter });
+                                    setAppliedFilters({ locality: localityFilter, variety: varietyFilter });
                                     setPage(1);
                                     setFiltersOpen(false);
                                 }}>Áp dụng bộ lọc</Button>
@@ -195,7 +175,7 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
                 <div className="hidden overflow-x-auto lg:block">
                     <table className="w-full min-w-[1300px] text-left text-sm">
                         <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                            <tr>{["Mã vườn", "Tên vườn", "Chủ vườn", "Số điện thoại", "Địa phương", "Nhật ký gần nhất", "Số ngày trễ", "Số lần trễ nhật ký", "Trạng thái", "Thao tác"].map((item) => <th key={item} className="px-4 py-3">{item}</th>)}</tr>
+                            <tr>{["Mã vườn", "Tên vườn", "Chủ vườn", "Số điện thoại", "Địa phương", "Nhật ký gần nhất", "Trạng thái", "Thao tác"].map((item) => <th key={item} className="px-4 py-3">{item}</th>)}</tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {paginated.map((garden) => <GardenRow key={garden.id} garden={garden} />)}
@@ -234,7 +214,6 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
 }
 
 function statusFor(garden: Garden) {
-    if (garden.daysOverdue > 0) return { label: "Trễ nhật ký", className: "bg-red-100 text-red-700" };
     if (!garden.isActive) return { label: "Tạm ngừng", className: "bg-slate-100 text-slate-600" };
     return { label: "Đang hoạt động", className: "bg-emerald-100 text-emerald-700" };
 }
@@ -245,8 +224,6 @@ function GardenRow({ garden }: { garden: Garden }) {
         <td className="px-4 py-4 font-semibold text-emerald-700">{garden.farmCode}</td><td className="px-4 py-4 font-semibold">{garden.farmName}</td>
         <td className="px-4 py-4">{garden.ownerName}</td><td className="px-4 py-4">{garden.ownerPhone}</td><td className="max-w-52 px-4 py-4">{garden.locality}</td>
         <td className="px-4 py-4">{garden.latestLogDate ? formatVietnameseDate(new Date(garden.latestLogDate)) : "Chưa cập nhật"}</td>
-        <td className={`px-4 py-4 text-center font-semibold ${garden.daysOverdue > 0 ? "text-red-600" : "text-slate-500"}`}>{garden.daysOverdue}</td>
-        <td className={`px-4 py-4 text-center font-semibold ${garden.overdueCount > 0 ? "text-red-600" : "text-slate-500"}`}>{garden.overdueCount}</td>
         <td className="px-4 py-4"><Badge className={`${status.className} whitespace-nowrap px-2 py-1 text-xs`}>{status.label}</Badge></td>
         <td className="px-4 py-4"><div className="flex flex-col items-stretch gap-2 whitespace-nowrap">
             <Button asChild size="sm" variant="outline"><Link href={`/region-manager/gardens/${garden.id}`}><Search className="mr-1 h-4 w-4" />Xem chi tiết</Link></Button>
@@ -259,7 +236,7 @@ function GardenCard({ garden }: { garden: Garden }) {
     const status = statusFor(garden);
     return <article className="rounded-2xl border border-slate-200 p-4">
         <div className="flex items-start justify-between gap-3"><div><p className="font-bold">{garden.farmName}</p><p className="text-xs font-semibold text-emerald-700">{garden.farmCode}</p></div><Badge className={`${status.className} shrink-0 whitespace-nowrap px-2 py-1 text-xs`}>{status.label}</Badge></div>
-        <div className="mt-3 space-y-1 text-sm text-slate-600"><p>{garden.ownerName} · {garden.ownerPhone}</p><p>{garden.locality}</p><p>{garden.areaSize} ha · {garden.totalTrees} cây · {garden.durianVariety}</p><p>Nhật ký: {garden.latestLogDate ? formatVietnameseDate(new Date(garden.latestLogDate)) : "Chưa cập nhật"}</p><p className={garden.daysOverdue > 0 ? "font-semibold text-red-600" : ""}>Trễ {garden.daysOverdue} ngày · {garden.overdueCount} lần</p></div>
+        <div className="mt-3 space-y-1 text-sm text-slate-600"><p>{garden.ownerName} · {garden.ownerPhone}</p><p>{garden.locality}</p><p>{garden.areaSize} ha · {garden.totalTrees} cây · {garden.durianVariety}</p><p>Nhật ký: {garden.latestLogDate ? formatVietnameseDate(new Date(garden.latestLogDate)) : "Chưa cập nhật"}</p></div>
         <div className="mt-3 grid grid-cols-2 gap-2">
             <Button asChild size="sm" variant="outline"><Link href={`/region-manager/gardens/${garden.id}`}><Search className="mr-1 h-4 w-4" />Chi tiết</Link></Button>
             <Button asChild size="sm" variant="outline"><Link href={`/region-manager/gardens/${garden.id}/logs`}><History className="mr-1 h-4 w-4" />Nhật ký</Link></Button>

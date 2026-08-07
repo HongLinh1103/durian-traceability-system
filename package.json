@@ -15,7 +15,10 @@
         "db:stop": "docker compose stop postgres",
         "seed": "npx tsx prisma/seed.ts",
         "migrate:legacy-news": "node scripts/import-legacy-news.cjs"
-        ,"seed:materials": "node scripts/seed-material-catalog.cjs"
+        ,"seed:materials": "node scripts/seed-material-catalog.cjs",
+        "seed:prohibited-chemicals": "node scripts/seed-prohibited-chemicals.cjs",
+        "import:prohibited-chemicals": "node scripts/import-prohibited-chemicals-from-excel.cjs",
+        "seed:store-marketplace": "node scripts/seed-store-marketplace.cjs"
     },
     "dependencies": {
         "@hookform/resolvers": "^3.10.0",

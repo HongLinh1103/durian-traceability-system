@@ -62,12 +62,13 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const title = String(formData.get("title") ?? "").trim();
     const summary = String(formData.get("summary") ?? "").trim();
-    const category = String(formData.get("category") ?? "").trim();
-    const publish = formData.get("publish") === "true";
+    const category = String(formData.get("category") ?? "Tài liệu").trim() || "Tài liệu";
+    const publishValue = formData.get("publish");
+    const publish = publishValue === null || publishValue === "true";
     const file = formData.get("file");
 
-    if (!title || !category || !(file instanceof File)) {
-        return NextResponse.json({ success: false, message: "Vui lòng nhập tiêu đề, danh mục và chọn tệp." }, { status: 400 });
+    if (!title || !(file instanceof File)) {
+        return NextResponse.json({ success: false, message: "Vui lòng nhập tiêu đề và chọn tệp." }, { status: 400 });
     }
     if (file.size <= 0 || file.size > MAX_FILE_SIZE) {
         return NextResponse.json({ success: false, message: "Tệp phải có dung lượng từ 1 byte đến 20 MB." }, { status: 400 });

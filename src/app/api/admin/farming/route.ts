@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { completedMissingLogDays } from "@/lib/log-schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +33,6 @@ export async function GET() {
 
     const rows = farms.map((farm) => {
         const latestLogDate = farm.farmingLogs[0]?.actionDate ?? null;
-        const daysOverdue = completedMissingLogDays(latestLogDate ?? farm.farmer.approvedAt ?? farm.createdAt);
         return {
             id: farm.id,
             farmCode: farm.farmCode,
@@ -48,8 +46,6 @@ export async function GET() {
             isActive: farm.isActive,
             isInSeason: farm.isInSeason,
             latestLogDate: latestLogDate?.toISOString() ?? null,
-            daysOverdue,
-            isOverdue: farm.isActive && daysOverdue >= 1,
             logCount: farm._count.farmingLogs,
         };
     });
@@ -61,7 +57,6 @@ export async function GET() {
             totalFarms: rows.length,
             activeFarms: rows.filter((farm) => farm.isActive).length,
             inSeasonFarms: rows.filter((farm) => farm.isActive && farm.isInSeason).length,
-            overdueFarms: rows.filter((farm) => farm.isOverdue).length,
             totalArea: rows.reduce((total, farm) => total + farm.areaSize, 0),
         },
     });

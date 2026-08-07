@@ -43,6 +43,5 @@ export function MaterialCatalog({ items }: { items: MaterialCardItem[] }) {
                 <div className="flex flex-1 flex-col p-3"><Badge className={item.kind === "fertilizer" ? "w-fit bg-emerald-100 text-emerald-700" : "w-fit bg-amber-100 text-amber-700"}>{item.kind === "fertilizer" ? "Phân bón" : "Thuốc BVTV"}</Badge><h2 className="mt-2 line-clamp-2 min-h-10 text-sm font-bold text-slate-900">{item.name}</h2><p className="mt-1 line-clamp-2 min-h-8 text-xs text-slate-500">{item.purpose || "Chưa cập nhật công dụng"}</p><p className="mt-2 truncate text-xs text-slate-600">{item.manufacturer || "Chưa rõ nhà sản xuất"}</p><Button asChild size="sm" variant="outline" className="mt-auto w-full"><Link href={`/materials/${item.kind}/${item.id}`}>Xem chi tiết</Link></Button></div>
             </article>)}
         </section>
-        {filtered.length === 0 && <div className="rounded-3xl border border-dashed border-slate-300 py-16 text-center text-slate-500">Không tìm thấy vật tư phù hợp.</div>}
     </>;
 }

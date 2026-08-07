@@ -54,7 +54,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
             );
         }
 
-        const data = { ...parsed.data };
+        const data = { ...parsed.data, gaccStatus: "PROHIBITED" as const };
         if (data.effectiveFrom === "") data.effectiveFrom = undefined as any;
         if (data.effectiveTo === "") data.effectiveTo = undefined as any;
 

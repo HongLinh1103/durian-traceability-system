@@ -97,6 +97,7 @@ export const gaccStatusSchema = z.enum(["ALLOWED", "RESTRICTED", "PROHIBITED", "
 
 export const pesticideBaseSchema = z.object({
     code: masterCodeSchema,
+    pesticideName: z.string().trim().optional().or(z.literal("")),
     tradeName: z
         .string({ required_error: "Tên thương mại không được để trống" })
         .trim()

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,17 +25,16 @@ export async function GET() {
             );
         }
 
+        const user = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { id: true, fullName: true, email: true, phone: true, role: true, isApproved: true },
+        });
+        if (!user) return NextResponse.json({ success: false, message: "Không tìm thấy tài khoản." }, { status: 404 });
+
         return NextResponse.json(
             {
                 success: true,
-                user: {
-                    id: session.user.id,
-                    fullName: session.user.fullName ?? null,
-                    email: session.user.email ?? null,
-                    phone: session.user.phone ?? null,
-                    role: session.user.role,
-                    isApproved: session.user.isApproved ?? false,
-                },
+                user,
             },
             { status: 200 },
         );

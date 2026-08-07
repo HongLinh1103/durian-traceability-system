@@ -13,9 +13,11 @@ const responseSchema = loginSchema.extend({
 function getDashboardPath(role: string): string {
     switch (role) {
         case "ADMIN":
-            return "/dashboard/admin/reminders";
+            return "/dashboard/admin";
         case "AREA_MANAGER":
             return "/dashboard/area-manager";
+        case "STORE_OWNER":
+            return "/dashboard/store";
         case "FARMER":
         default:
             return "/dashboard/farmer";

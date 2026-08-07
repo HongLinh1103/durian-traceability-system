@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { getOwnedStore, requireRole, storeProfileSchema } from "@/lib/store-marketplace";
+import { prisma } from "@/lib/prisma";
+export async function GET() { const s = await requireRole(["STORE_OWNER"]); if (!s) return NextResponse.json({ success: false }, { status: 403 }); return NextResponse.json({ success: true, data: await prisma.store.findFirst({ where: { ownerId: s.user.id, deletedAt: null }, include: { documents: { where: { deletedAt: null } } } }) }); }
+export async function PATCH(request: Request) { const s = await requireRole(["STORE_OWNER"]); if (!s) return NextResponse.json({ success: false }, { status: 403 }); const store = await getOwnedStore(s.user.id); if (!store) return NextResponse.json({ success: false }, { status: 404 }); const parsed = storeProfileSchema.partial().safeParse(await request.json()); if (!parsed.success) return NextResponse.json({ success: false, message: parsed.error.issues[0]?.message }, { status: 400 }); const data = await prisma.store.update({ where: { id: store.id }, data: parsed.data }); return NextResponse.json({ success: true, data }); }

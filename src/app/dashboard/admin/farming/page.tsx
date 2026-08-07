@@ -3,17 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
     Activity,
-    Bell,
     Eye,
     LandPlot,
     Loader2,
     PauseCircle,
     PlayCircle,
     Sprout,
-    TriangleAlert,
     X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 
 type FarmRow = {
@@ -29,8 +26,6 @@ type FarmRow = {
     isActive: boolean;
     isInSeason: boolean;
     latestLogDate: string | null;
-    daysOverdue: number;
-    isOverdue: boolean;
     logCount: number;
 };
 
@@ -38,7 +33,6 @@ type Stats = {
     totalFarms: number;
     activeFarms: number;
     inSeasonFarms: number;
-    overdueFarms: number;
 };
 
 type FarmingLog = {
@@ -93,7 +87,7 @@ type FarmDetail = {
     farmingLogs: FarmingLog[];
 };
 
-const INITIAL_STATS: Stats = { totalFarms: 0, activeFarms: 0, inSeasonFarms: 0, overdueFarms: 0 };
+const INITIAL_STATS: Stats = { totalFarms: 0, activeFarms: 0, inSeasonFarms: 0 };
 
 const activityLabels: Record<string, string> = {
     SPRAY_PESTICIDE: "Phun thuốc BVTV",
@@ -136,9 +130,6 @@ export default function FarmingManagementPage() {
     const [farmDetail, setFarmDetail] = useState<FarmDetail | null>(null);
     const [logs, setLogs] = useState<FarmingLog[]>([]);
     const [logsLoading, setLogsLoading] = useState(false);
-    const [reminderFarm, setReminderFarm] = useState<FarmRow | null>(null);
-    const [reminderMessage, setReminderMessage] = useState("");
-    const [sending, setSending] = useState(false);
 
     const loadFarms = useCallback(async () => {
         setLoading(true);
@@ -175,31 +166,6 @@ export default function FarmingManagementPage() {
         }
     };
 
-    const openReminder = (farm: FarmRow) => {
-        setReminderFarm(farm);
-        setReminderMessage(`Vườn ${farm.farmName} đã ${farm.daysOverdue} ngày chưa cập nhật nhật ký canh tác. Vui lòng cập nhật nhật ký trong ứng dụng Triviet.`);
-    };
-
-    const sendReminder = async () => {
-        if (!reminderFarm) return;
-        setSending(true);
-        try {
-            const response = await fetch(`/api/admin/farming/${reminderFarm.id}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: reminderMessage, daysOverdue: reminderFarm.daysOverdue }),
-            });
-            const payload = await response.json();
-            if (!response.ok) throw new Error(payload.message);
-            toast({ title: "Gửi nhắc nhở thành công", description: payload.message, variant: "success" });
-            setReminderFarm(null);
-        } catch (error) {
-            toast({ title: "Gửi nhắc nhở thất bại", description: error instanceof Error ? error.message : "Vui lòng thử lại.", variant: "destructive" });
-        } finally {
-            setSending(false);
-        }
-    };
-
     const toggleFarm = async (farm: FarmRow) => {
         setProcessingId(farm.id);
         try {
@@ -223,7 +189,6 @@ export default function FarmingManagementPage() {
         { label: "Tổng số vườn trồng", value: stats.totalFarms, icon: LandPlot, tone: "bg-blue-50 text-blue-700" },
         { label: "Vườn đang hoạt động", value: stats.activeFarms, icon: Activity, tone: "bg-green-50 text-green-700" },
         { label: "Đang trong mùa vụ", value: stats.inSeasonFarms, icon: Sprout, tone: "bg-emerald-50 text-emerald-700" },
-        { label: "Trễ cập nhật nhật ký", value: stats.overdueFarms, icon: TriangleAlert, tone: "bg-red-50 text-red-700" },
     ];
 
     return (
@@ -256,7 +221,7 @@ export default function FarmingManagementPage() {
                     <table className="w-full min-w-[1050px] text-left text-sm">
                         <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                             <tr>
-                                {["Mã vườn", "Tên vườn", "Chủ vườn", "Vùng trực thuộc", "Nhật ký gần nhất", "Số ngày trễ", "Thao tác"].map((heading) => (
+                                {["Mã vườn", "Tên vườn", "Chủ vườn", "Vùng trực thuộc", "Nhật ký gần nhất", "Thao tác"].map((heading) => (
                                     <th key={heading} className="whitespace-nowrap px-4 py-3 font-semibold">{heading}</th>
                                 ))}
                             </tr>
@@ -273,11 +238,9 @@ export default function FarmingManagementPage() {
                                     <td className="px-4 py-4">{farm.ownerName}</td>
                                     <td className="px-4 py-4">{farm.growingRegion}</td>
                                     <td className="whitespace-nowrap px-4 py-4 text-slate-600">{farm.latestLogDate ? new Date(farm.latestLogDate).toLocaleDateString("vi-VN") : "Chưa có nhật ký"}</td>
-                                    <td className={`whitespace-nowrap px-4 py-4 font-semibold ${farm.isOverdue ? "text-red-600" : "text-slate-600"}`}>{farm.daysOverdue} ngày</td>
                                     <td className="px-4 py-4">
                                         <div className="flex items-center gap-1">
                                             <ActionButton label="Xem thông tin vườn và nhật ký" onClick={() => void openLogs(farm)}><Eye className="h-4 w-4" /></ActionButton>
-                                            <ActionButton label="Gửi nhắc nhở" tone="amber" onClick={() => openReminder(farm)}><Bell className="h-4 w-4" /></ActionButton>
                                             <ActionButton label={farm.isActive ? "Tạm ngừng" : "Kích hoạt lại"} tone={farm.isActive ? "red" : "green"} onClick={() => void toggleFarm(farm)}>
                                                 {processingId === farm.id ? <Loader2 className="h-4 w-4 animate-spin" /> : farm.isActive ? <PauseCircle className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}
                                             </ActionButton>
@@ -355,24 +318,6 @@ export default function FarmingManagementPage() {
                 </div>
             )}
 
-            {reminderFarm && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-lg rounded-[28px] bg-white p-6 shadow-2xl">
-                        <div className="flex items-center justify-between"><h2 className="text-xl font-bold">Gửi nhắc nhở</h2><button onClick={() => setReminderFarm(null)} className="rounded-full p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
-                        <dl className="mt-5 grid grid-cols-[140px_1fr] gap-3 rounded-2xl bg-slate-50 p-4 text-sm">
-                            <dt className="text-slate-500">Người nhận</dt><dd className="font-semibold">{reminderFarm.ownerName}</dd>
-                            <dt className="text-slate-500">Tên vườn</dt><dd className="font-semibold">{reminderFarm.farmName}</dd>
-                            <dt className="text-slate-500">Số ngày trễ</dt><dd className="font-semibold text-red-600">{reminderFarm.daysOverdue} ngày</dd>
-                            <dt className="text-slate-500">Kênh gửi</dt><dd className="font-semibold">Thông báo trong ứng dụng</dd>
-                        </dl>
-                        <label className="mt-5 block text-sm font-semibold text-slate-700">Nội dung thông báo</label>
-                        <textarea value={reminderMessage} onChange={(event) => setReminderMessage(event.target.value)} rows={5} className="mt-2 w-full rounded-2xl border border-slate-200 p-3 text-sm focus:border-brand-500 focus:outline-none" />
-                        <Button className="mt-4 w-full" onClick={() => void sendReminder()} disabled={sending || !reminderMessage.trim()}>
-                            {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}Gửi
-                        </Button>
-                    </div>
-                </div>
-            )}
         </main>
     );
 }

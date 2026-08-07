@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { authenticateLoginAttempt } from "@/lib/auth-service";
+import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
     session: { strategy: "jwt" },
@@ -49,12 +50,18 @@ export const authOptions: NextAuthOptions = {
         },
         async session({ session, token }) {
             if (session.user) {
+                const currentUser = token.sub
+                    ? await prisma.user.findUnique({
+                        where: { id: token.sub },
+                        select: { role: true, phone: true, fullName: true, email: true, isApproved: true },
+                    })
+                    : null;
                 session.user.id = token.sub ?? "";
-                session.user.role = token.role ?? "FARMER";
-                session.user.phone = token.phone ?? null;
-                session.user.fullName = token.fullName ?? null;
-                session.user.email = token.email ?? null;
-                session.user.isApproved = token.isApproved ?? false;
+                session.user.role = currentUser?.role ?? token.role ?? "FARMER";
+                session.user.phone = currentUser?.phone ?? token.phone ?? null;
+                session.user.fullName = currentUser?.fullName ?? token.fullName ?? null;
+                session.user.email = currentUser?.email ?? token.email ?? null;
+                session.user.isApproved = currentUser?.isApproved ?? token.isApproved ?? false;
             }
             return session;
         },

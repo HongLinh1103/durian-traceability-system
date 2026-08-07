@@ -4,15 +4,17 @@ import type { UserRole } from "@prisma/client";
 import { AUTH_COOKIE_NAME, verifyAuthToken } from "@/lib/auth-token";
 
 const roleRedirects: Record<UserRole, string> = {
-    ADMIN: "/dashboard/admin/reminders",
+    ADMIN: "/dashboard/admin",
     AREA_MANAGER: "/dashboard/area-manager",
     FARMER: "/dashboard/farmer",
+    STORE_OWNER: "/dashboard/store",
 };
 
 const accessRules: Array<{ prefix: string; roles: UserRole[] }> = [
     { prefix: "/dashboard/admin", roles: ["ADMIN"] },
     { prefix: "/dashboard/area-manager", roles: ["AREA_MANAGER", "ADMIN"] },
     { prefix: "/dashboard/farmer", roles: ["FARMER", "AREA_MANAGER", "ADMIN"] },
+    { prefix: "/dashboard/store", roles: ["STORE_OWNER"] },
 ];
 
 function getRule(pathname: string): { prefix: string; roles: UserRole[] } | undefined {

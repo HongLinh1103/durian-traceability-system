@@ -18,6 +18,7 @@ const roleLabels: Record<string, string> = {
     ADMIN: "Quản trị viên",
     FARMER: "Nông dân",
     AREA_MANAGER: "Trưởng ban quản lý vùng trồng",
+    STORE_OWNER: "Chủ cửa hàng vật tư",
 };
 
 type ManagedRegion = {
@@ -40,11 +41,13 @@ export default async function AccountPage() {
         include: {
             farms: { orderBy: { createdAt: "asc" } },
             areaManagerApplication: true,
+            stores: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } },
         },
     });
     if (!user) redirect("/login");
 
     const managerProfile = user.areaManagerApplication;
+    const storeProfile = user.stores[0] ?? null;
     const region = (managerProfile?.managedRegions ?? {}) as ManagedRegion;
     const address = [user.address, user.ward, user.district, user.province]
         .filter(Boolean)
@@ -156,6 +159,24 @@ export default async function AccountPage() {
                         <Info label="Quy mô" value={region.areaSize != null ? `${region.areaSize} ha` : null} />
                         <Info label="Số hộ thành viên" value={region.farmerCount != null ? `${region.farmerCount} hộ` : null} />
                         <Info label="Giống chủ lực" value={region.durianVarieties?.join(", ")} />
+                    </Section>
+                </div>
+            )}
+
+            {storeProfile && (
+                <div className="grid gap-5 lg:grid-cols-2">
+                    <Section title="Thông tin cửa hàng" icon={Building2}>
+                        <Info label="Tên cửa hàng" value={storeProfile.name} />
+                        <Info label="Người đại diện" value={storeProfile.representativeName} />
+                        <Info label="Điện thoại" value={storeProfile.phone} />
+                        <Info label="Mã số thuế/ĐKKD" value={storeProfile.taxOrBusinessCode} />
+                        <Info label="Trạng thái" value={storeProfile.status === "APPROVED" ? "Đã phê duyệt" : storeProfile.status} />
+                    </Section>
+                    <Section title="Địa chỉ và thời gian cửa hàng" icon={MapPin}>
+                        <Info label="Địa chỉ" value={storeProfile.address} />
+                        <Info label="Tọa độ" value={storeProfile.latitude != null && storeProfile.longitude != null ? `${storeProfile.latitude}, ${storeProfile.longitude}` : null} />
+                        <Info label="Giờ mở cửa" value={storeProfile.openingHours} />
+                        <Info label="Ngày phê duyệt" value={storeProfile.approvedAt?.toLocaleDateString("vi-VN")} />
                     </Section>
                 </div>
             )}

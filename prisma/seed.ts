@@ -186,77 +186,6 @@ async function main() {
     console.log("│ 2 │ AREA_MANAGER  │ 0901234567 │ 123456     │ Nguyễn Văn Quản (HTX Phong Điền)");
     console.log("────────────────────────────────────────────");
 
-    // ─── Seed Master Data: Giống sầu riêng (Demo) ─────────────
-    console.log("\n🌱 Seeding master data: Durian Varieties (demo)...");
-
-    const demoVarieties = [
-        { code: "RI6", name: "Ri6", scientificName: "Durio zibethinus Ri6", origin: "Việt Nam (Vĩnh Long)", averageHarvestDays: 120 },
-        { code: "MONTHONG", name: "Monthong", scientificName: "Durio zibethinus Monthong", origin: "Thái Lan", averageHarvestDays: 135 },
-        { code: "MUSANG_KING", name: "Musang King", scientificName: "Durio zibethinus Musang King", origin: "Malaysia", averageHarvestDays: 130 },
-        { code: "DONA", name: "Dona", scientificName: "Durio zibethinus Dona", origin: "Việt Nam (Đồng Nai)", averageHarvestDays: 125 },
-        { code: "CHUONG_BO", name: "Chuồng Bò", scientificName: null, origin: "Việt Nam (Tiền Giang)", averageHarvestDays: 110 },
-        { code: "KHO_QUA_XANH", name: "Khổ Qua Xanh", scientificName: null, origin: "Việt Nam", averageHarvestDays: null },
-    ];
-
-    for (const variety of demoVarieties) {
-        const existing = await prisma.durianVariety.findUnique({ where: { code: variety.code } });
-        if (!existing) {
-            await prisma.durianVariety.create({
-                data: {
-                    ...variety,
-                    description: `Giống sầu riêng ${variety.name} - Dữ liệu demo.`,
-                    isActive: true,
-                },
-            });
-            console.log(`   ✅ Created durian variety: ${variety.code} - ${variety.name}`);
-        } else {
-            console.log(`   ⏭️  Skipped (exists): ${variety.code} - ${variety.name}`);
-        }
-    }
-
-    // ─── Seed Master Data: Phân bón (Demo) ────────────────────
-    console.log("\n🌱 Seeding master data: Fertilizers (demo)...");
-
-    const demoFertilizers = [
-        { code: "FER-NPK-201515", name: "NPK 20-20-15", fertilizerType: "NPK", brand: "Đầu Trâu", manufacturer: "Công ty Phân bón Bình Điền", nutrientComposition: "N:20%, P:20%, K:15%" },
-        { code: "FER-ORG-001", name: "Phân hữu cơ vi sinh", fertilizerType: "Hữu cơ", brand: "Sông Gianh", manufacturer: "Công ty CP Phân bón Sông Gianh", nutrientComposition: "Hữu cơ: 25%, Vi sinh: 10^8 CFU/g" },
-        { code: "FER-KCL-001", name: "Kali Clorua (KCl)", fertilizerType: "Vô cơ", brand: "CNA", manufacturer: "Công ty Cổ phần Phân bón Miền Nam", nutrientComposition: "K2O: 60%" },
-    ];
-
-    const fertilizerDetails: Record<string, Record<string, unknown>> = {
-        "FER-NPK-201515": {
-            mainUses: "Cung cấp cân đối đạm, lân và kali, hỗ trợ phát triển rễ, thân cành và phục hồi cây sau thu hoạch.",
-            targetCrops: "Nhiều loại cây trồng; với cây ăn trái dùng theo giai đoạn kiến thiết hoặc sau thu hoạch theo hướng dẫn trên nhãn.",
-            usageInstructions: "Bón theo loại đất, tuổi cây và tình hình sinh trưởng; không áp dụng một liều cố định cho mọi vườn.",
-            sourceReference: "https://binhdien.com/sanpham/npk-dau-trau/npk-dau-trau-20-20-15-1.html",
-        },
-        "FER-ORG-001": {
-            mainUses: "Bổ sung chất hữu cơ và vi sinh vật hữu ích, cải tạo độ phì đất, hỗ trợ bộ rễ phát triển và tăng khả năng hấp thu dinh dưỡng.",
-            targetCrops: "Dùng bón lót hoặc bón bổ sung cho nhiều loại cây trồng theo hướng dẫn trên bao bì.",
-            usageInstructions: "Bón vào đất và phối hợp với chế độ dinh dưỡng phù hợp; liều lượng căn cứ nhãn sản phẩm và tình trạng vườn.",
-            sourceReference: "https://songgianh.com.vn/phan-huu-co-vi-sinh-cao-cap-song-gianh-p265.html",
-        },
-        "FER-KCL-001": {
-            mainUses: "Bổ sung kali, hỗ trợ vận chuyển đường và tổng hợp chất hữu cơ, giúp cây cứng khỏe và cải thiện năng suất, chất lượng nông sản.",
-            targetCrops: "Cây trồng có nhu cầu kali và không mẫn cảm với clo; cần thận trọng với sầu riêng và cây nhạy cảm clo.",
-            usageInstructions: "Chỉ bón theo kết quả phân tích đất, nhu cầu cây và hướng dẫn trên bao bì; không dùng thay thế kali sulphate cho cây nhạy cảm clo.",
-            safetyWarnings: "Không bón quá liều hoặc sát gốc; với sầu riêng nên có tư vấn kỹ thuật trước khi sử dụng nguồn kali clorua.",
-            sourceReference: "https://phanbonmiennam.com.vn/nha-nong/bai-3-kali-va-vai-tro-phan-kali-trong-canh-tac-nong-nghiep-con-nua/",
-        },
-    };
-
-    for (const fert of demoFertilizers) {
-        const fertilizerData = { ...fert, ...fertilizerDetails[fert.code], isActive: true };
-        const existing = await prisma.fertilizer.findUnique({ where: { code: fert.code } });
-        if (!existing) {
-            await prisma.fertilizer.create({ data: fertilizerData });
-            console.log(`   ✅ Created fertilizer: ${fert.code} - ${fert.name}`);
-        } else {
-            await prisma.fertilizer.update({ where: { code: fert.code }, data: fertilizerData });
-            console.log(`   ⏭️  Skipped (exists): ${fert.code} - ${fert.name}`);
-        }
-    }
-
     // ─── Seed Master Data: Thuốc BVTV (Demo) ─────────────────
     // Lưu ý: Không seed dữ liệu GACC không có nguồn xác nhận. Đây chỉ là demo.
     console.log("\n🌱 Seeding master data: Pesticides (demo)...");
@@ -301,6 +230,22 @@ async function main() {
             console.log(`   ⏭️  Skipped (exists): ${pest.code} - ${pest.tradeName}`);
         }
     }
+
+    const storeOwner = await prisma.user.upsert({
+        where: { phone: "0909000001" },
+        update: { role: "STORE_OWNER", isApproved: true, accountStatus: "APPROVED", isLocked: false },
+        create: { phone: "0909000001", email: "store.owner@triviet.vn", password: await bcryptjs.hash("123456", SALT_ROUNDS), fullName: "Chủ cửa hàng Vật tư Trị An", role: "STORE_OWNER", isApproved: true, accountStatus: "APPROVED", approvedAt: new Date() },
+    });
+    const store = await prisma.store.upsert({
+        where: { id: "seed-store-tri-an" },
+        update: { status: "APPROVED", deletedAt: null },
+        create: { id: "seed-store-tri-an", ownerId: storeOwner.id, representativeName: storeOwner.fullName || "Chủ cửa hàng", representativePhone: storeOwner.phone, representativeEmail: storeOwner.email, identityNumber: "079000000001", name: "Cửa hàng Vật tư Nông nghiệp Trị An", taxOrBusinessCode: "MST-TRIAN-001", address: "Trị An, Vĩnh Cửu, Đồng Nai", phone: "0909000001", openingHours: "07:00 - 18:00", description: "Cửa hàng vật tư mẫu phục vụ kiểm thử hệ thống.", status: "APPROVED", submittedAt: new Date(), approvedAt: new Date() },
+    });
+    await prisma.storeProduct.upsert({
+        where: { id: "seed-store-product-npk" },
+        update: { status: "APPROVED", deletedAt: null },
+        create: { id: "seed-store-product-npk", storeId: store.id, type: "FERTILIZER", name: "Đầu Trâu NPK 20-20-15", brand: "Đầu Trâu", manufacturer: "Bình Điền", origin: "Việt Nam", usagePurpose: "Bổ sung cân đối đạm, lân và kali cho cây trồng.", usageInstructions: "Dùng theo hướng dẫn trên bao bì và tư vấn kỹ thuật.", packaging: "Bao 25 kg", price: 520000, salePrice: 499000, stock: 30, unit: "bao", composition: "NPK 20-20-15", safetyWarnings: "Bảo quản khô ráo, tránh xa trẻ em.", status: "APPROVED" },
+    });
 
     console.log("\n============================================");
     console.log("🌱 Seed completed successfully!");
