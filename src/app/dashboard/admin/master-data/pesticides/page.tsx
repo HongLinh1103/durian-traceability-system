@@ -102,7 +102,7 @@ export default function PesticidesPage() {
                 <CardHeader>
 
                     <CardTitle className="mt-3 text-3xl" style={{ fontFamily: "var(--font-display)" }}>
-                        Quản lý danh mục hoạt chất và thuốc BVTV cấm sử dụng
+                        Quản lý danh mục hoạt chất và thuốc BVTV cấm sử dụng``
                     </CardTitle>
 
                 </CardHeader>
