@@ -19,10 +19,7 @@ export async function GET(request: Request) {
             ...(category ? { category } : {}),
             ...(search
                 ? {
-                      OR: [
-                          { title: { contains: search, mode: "insensitive" } },
-                          { summary: { contains: search, mode: "insensitive" } },
-                      ],
+                      title: { contains: search, mode: "insensitive" },
                   }
                 : {}),
         },
@@ -31,7 +28,6 @@ export async function GET(request: Request) {
             id: true,
             title: true,
             slug: true,
-            summary: true,
             category: true,
             fileName: true,
             fileUrl: true,

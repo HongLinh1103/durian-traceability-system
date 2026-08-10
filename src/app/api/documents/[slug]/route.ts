@@ -13,7 +13,6 @@ export async function GET(_request: Request, { params }: { params: { slug: strin
         select: {
             title: true,
             slug: true,
-            summary: true,
             category: true,
             fileName: true,
             fileUrl: true,

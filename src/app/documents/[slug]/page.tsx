@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Download, FileText } from "lucide-react";
+import { ArrowLeft, Download, Eye, FileText } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -20,10 +20,10 @@ export default async function DocumentDetailPage({ params }: { params: { slug: s
         select: {
             id: true,
             title: true,
-            summary: true,
             category: true,
             fileName: true,
             fileUrl: true,
+            mimeType: true,
             fileSize: true,
             publishedAt: true,
         },
@@ -44,7 +44,6 @@ export default async function DocumentDetailPage({ params }: { params: { slug: s
                 <div className="bg-gradient-to-br from-emerald-900 to-emerald-600 p-8 text-white">
                     <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">{document.category}</span>
                     <h1 className="mt-4 text-3xl font-black">{document.title}</h1>
-                    {document.summary && <p className="mt-3 leading-7 text-emerald-50">{document.summary}</p>}
                 </div>
                 <div className="space-y-6 p-6 sm:p-8">
                     <div className="flex items-start gap-4 rounded-3xl bg-slate-50 p-5">
@@ -57,6 +56,23 @@ export default async function DocumentDetailPage({ params }: { params: { slug: s
                             </p>
                         </div>
                     </div>
+                    {document.mimeType === "application/pdf" || document.mimeType.startsWith("text/") ? (
+                        <section aria-labelledby="document-preview-title">
+                            <h2 id="document-preview-title" className="mb-3 flex items-center gap-2 text-lg font-bold text-slate-900">
+                                <Eye className="h-5 w-5 text-brand-600" />
+                                Xem tài liệu trực tuyến
+                            </h2>
+                            <iframe
+                                src={`/api/documents/${encodeURIComponent(params.slug)}/view`}
+                                title={`Nội dung tài liệu ${document.title}`}
+                                className="h-[70vh] min-h-[520px] w-full rounded-2xl border border-slate-200 bg-white"
+                            />
+                        </section>
+                    ) : (
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                            Trình duyệt không hỗ trợ xem trực tiếp định dạng tệp này. Bạn có thể tải tài liệu về để mở bằng ứng dụng phù hợp.
+                        </div>
+                    )}
                     <a
                         href={document.fileUrl}
                         download={document.fileName}

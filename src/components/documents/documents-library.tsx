@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSession } from "next-auth/react";
-import { ArchiveRestore, Download, FilePlus2, FileText, Loader2, Search, Trash2, Upload, X } from "lucide-react";
+import { ArchiveRestore, Download, Eye, FilePlus2, FileText, Loader2, Search, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,6 @@ type DocumentItem = {
     id: string;
     title: string;
     slug: string;
-    summary?: string | null;
     category: string;
     status?: "DRAFT" | "PUBLISHED";
     fileName: string;
@@ -78,7 +77,7 @@ export function DocumentsLibrary() {
     const filteredDocuments = useMemo(() => {
         const term = search.trim().toLocaleLowerCase("vi");
         return documents.filter((item) => {
-            const matchesSearch = !term || `${item.title} ${item.summary ?? ""}`.toLocaleLowerCase("vi").includes(term);
+            const matchesSearch = !term || item.title.toLocaleLowerCase("vi").includes(term);
             return matchesSearch && (!category || item.category === category);
         });
     }, [category, documents, search]);
@@ -137,13 +136,18 @@ export function DocumentsLibrary() {
                     <h1 className="mt-2 text-4xl font-black text-slate-900">Tài liệu</h1>
                     <p className="mt-2 max-w-2xl text-slate-500">Tìm kiếm, mở và tải các tài liệu hướng dẫn, quy trình và tuân thủ.</p>
                 </div>
-
+                {isAdmin && (
+                    <Button onClick={() => setShowUpload(true)}>
+                        <FilePlus2 className="mr-2 h-5 w-5" />
+                        Thêm tài liệu
+                    </Button>
+                )}
             </div>
 
             <div className="mt-8 grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 sm:grid-cols-[1fr_240px]">
                 <div className="relative">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm theo tiêu đề hoặc mô tả..." className="pl-10" />
+                    <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm theo tiêu đề..." className="pl-10" />
                 </div>
                 <select
                     value={category}
@@ -183,11 +187,10 @@ export function DocumentsLibrary() {
                                 </div>
                             </div>
                             <h2 className="mt-4 text-lg font-bold text-slate-900">{item.title}</h2>
-                            <p className="mt-2 line-clamp-3 flex-1 text-sm leading-6 text-slate-500">{item.summary || "Không có mô tả."}</p>
-                            <p className="mt-4 text-xs text-slate-400">{item.fileName} · {formatBytes(item.fileSize)}</p>
+                            <p className="mt-4 flex-1 text-xs text-slate-400">{item.fileName} · {formatBytes(item.fileSize)}</p>
                             <div className="mt-5 grid grid-cols-2 gap-2">
                                 {!item.deletedAt && item.status !== "DRAFT" && (
-                                    <ContentReadLink kind="document" contentId={item.id} isNew={newDocumentIds.includes(item.id)} href={`/documents/${item.slug}`} onClick={() => setNewDocumentIds((ids) => ids.filter((id) => id !== item.id))} className="inline-flex h-10 items-center justify-center rounded-xl bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700">Mở</ContentReadLink>
+                                    <ContentReadLink kind="document" contentId={item.id} isNew={newDocumentIds.includes(item.id)} href={`/api/documents/${encodeURIComponent(item.slug)}/view`} target="_blank" rel="noopener noreferrer" onClick={() => setNewDocumentIds((ids) => ids.filter((id) => id !== item.id))} className="inline-flex h-10 items-center justify-center rounded-xl bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700"><Eye className="mr-1.5 h-4 w-4" />Xem</ContentReadLink>
                                 )}
                                 {!item.deletedAt && (
                                     <ContentReadLink kind="document" contentId={item.id} isNew={newDocumentIds.includes(item.id)} href={item.fileUrl} download={item.fileName} onClick={() => setNewDocumentIds((ids) => ids.filter((id) => id !== item.id))} className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50">

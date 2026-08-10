@@ -12,6 +12,16 @@ export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set([".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt"]);
+const MIME_TYPES: Record<string, string> = {
+    ".pdf": "application/pdf",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".txt": "text/plain; charset=utf-8",
+};
 
 async function requireAdmin() {
     const session = await getServerSession(authOptions);
@@ -61,7 +71,6 @@ export async function POST(request: Request) {
 
     const formData = await request.formData();
     const title = String(formData.get("title") ?? "").trim();
-    const summary = String(formData.get("summary") ?? "").trim();
     const category = String(formData.get("category") ?? "Tài liệu").trim() || "Tài liệu";
     const publishValue = formData.get("publish");
     const publish = publishValue === null || publishValue === "true";
@@ -89,13 +98,12 @@ export async function POST(request: Request) {
         data: {
             title,
             slug,
-            summary: summary || null,
             category,
             status: publish ? "PUBLISHED" : "DRAFT",
             fileName: path.basename(file.name),
             fileUrl: `/api/documents/${encodeURIComponent(slug)}/download`,
             storageKey: storageName,
-            mimeType: file.type || "application/octet-stream",
+            mimeType: MIME_TYPES[extension] || file.type || "application/octet-stream",
             fileSize: file.size,
             uploaderId: session.user.id,
             publishedAt: publish ? new Date() : null,
