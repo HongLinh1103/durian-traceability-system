@@ -10,6 +10,7 @@ type Order = {
     orderCode: string;
     status: string;
     subtotal: string;
+    shippingFee: string;
     createdAt: string;
     store: { name: string };
     items: { id: string; productName: string; quantity: number; unit: string }[];
@@ -74,7 +75,7 @@ export default function OrdersPage() {
                     <span className="font-semibold text-emerald-700">{statusLabels[order.status] ?? order.status}</span>
                 </div>
                 <ul className="mt-3 text-sm text-slate-700">{order.items.map((item) => <li key={item.id}>{item.productName} × {item.quantity} {item.unit}</li>)}</ul>
-                <p className="mt-3 font-bold">{Number(order.subtotal).toLocaleString("vi-VN")} đ</p>
+                <div className="mt-3 text-sm"><p>Tiền hàng: {Number(order.subtotal).toLocaleString("vi-VN")} đ</p><p>Phí vận chuyển: {Number(order.shippingFee).toLocaleString("vi-VN")} đ</p><p className="font-bold text-emerald-700">Tổng thanh toán: {(Number(order.subtotal) + Number(order.shippingFee)).toLocaleString("vi-VN")} đ</p></div>
                 <div className="mt-3 flex gap-2"><Button asChild size="sm" variant="outline"><Link href={`/orders/${order.id}`}>Chi tiết</Link></Button>{order.status === "PENDING" && <Button size="sm" variant="outline" onClick={() => void cancel(order.id)}>Hủy đơn</Button>}</div>
             </article>)}
         </div>}

@@ -27,6 +27,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/materials/fertilizers", label: "Phân bón", roles: ["FARMER", "AREA_MANAGER"] },
     { href: "/materials/pesticides", label: "Thuốc BVTV", roles: ["FARMER", "AREA_MANAGER"] },
     { href: "/materials/stores", label: "Cửa hàng vật tư", roles: ["FARMER", "AREA_MANAGER"] },
+    { href: "/cart", label: "Giỏ hàng", roles: ["FARMER"] },
     { href: "/orders", label: "Đơn mua của tôi", roles: ["FARMER"] },
     { href: "/dashboard/farmer/logs", label: "Nhật ký canh tác", roles: ["FARMER"] },
     { href: "/region-manager/gardens", label: "Quản lý vườn trồng", roles: ["AREA_MANAGER"] },
@@ -34,8 +35,8 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/admin/farming", label: "Quản lý canh tác", roles: ["ADMIN"] },
     { href: "/dashboard/admin/accounts", label: "Quản lý tài khoản", roles: ["ADMIN"], badge: true },
     { href: "/dashboard/admin/master-data/pesticides", label: "Danh mục cấm", roles: ["ADMIN"] },
-    { href: "/dashboard/store", label: "Cửa hàng", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/products", label: "Sản phẩm", roles: ["STORE_OWNER"] },
+    { href: "/dashboard/store/inventory", label: "Kho hàng", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/orders", label: "Đơn hàng", roles: ["STORE_OWNER"] },
 ];
 
@@ -129,7 +130,7 @@ export function Navbar() {
     const accessibleDashboards = userRole
         ? dashboardLinks.filter((l) => l.roles.includes(userRole))
         : [];
-    const materialLinks = accessibleDashboards.filter((link) => ["/materials", "/materials/fertilizers", "/materials/pesticides", "/materials/stores", "/orders"].includes(link.href));
+    const materialLinks = accessibleDashboards.filter((link) => ["/materials", "/materials/fertilizers", "/materials/pesticides", "/materials/stores", "/cart", "/orders"].includes(link.href));
     const primaryDashboardLinks = accessibleDashboards.filter((link) => !materialLinks.includes(link));
 
     const isAuthPage = pathname === "/login" || pathname === "/register";

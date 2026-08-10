@@ -44,6 +44,34 @@ enum StoreProductStatus {
   OUT_OF_STOCK
 }
 
+enum InventoryMovementType {
+  IMPORT
+  EXPORT
+  ORDER_SALE
+  ORDER_RETURN
+}
+
+enum InventoryDocumentType {
+  PN
+  PX
+  DC
+  HT
+}
+
+enum InventoryBusinessType {
+  SUPPLIER_IMPORT
+  STOCK_REPLENISHMENT
+  RETURNED_GOODS_IMPORT
+  SALE_EXPORT
+  DISPOSAL_EXPORT
+  TRANSFER_EXPORT
+  STOCKTAKE_INCREASE
+  STOCKTAKE_DECREASE
+  CUSTOMER_RETURN
+  SUPPLIER_RETURN
+  OPENING_BALANCE
+}
+
 enum OrderStatus {
   PENDING
   CONFIRMED
@@ -249,6 +277,7 @@ model Store {
   products  StoreProduct[]
   orders    Order[]
   auditLogs StoreAuditLog[]
+  inventoryDocuments InventoryDocument[]
 
   @@index([ownerId, status, deletedAt])
   @@index([status, deletedAt])
@@ -303,10 +332,55 @@ model StoreProduct {
   store             Store              @relation(fields: [storeId], references: [id], onDelete: Restrict)
   cartItems         CartItem[]
   orderItems        OrderItem[]
+  inventoryMovements InventoryMovement[]
 
   @@index([storeId, status, deletedAt])
   @@index([type, status, deletedAt])
   @@map("store_products")
+}
+
+model InventoryMovement {
+  id          String                @id @default(cuid())
+  productId   String
+  actorId     String?
+  type        InventoryMovementType
+  quantity    Int
+  stockBefore Int
+  stockAfter  Int
+  reference   String?
+  createdAt   DateTime              @default(now())
+  documentId  String
+
+  product StoreProduct @relation(fields: [productId], references: [id], onDelete: Restrict)
+  document InventoryDocument @relation(fields: [documentId], references: [id], onDelete: Restrict)
+
+  @@index([productId, createdAt])
+  @@index([type, createdAt])
+  @@index([documentId])
+  @@map("inventory_movements")
+}
+
+model InventoryDocument {
+  id            String                @id @default(cuid())
+  storeId       String
+  code          String                @unique
+  type          InventoryDocumentType
+  businessType  InventoryBusinessType
+  supplierName  String?
+  orderId       String?
+  actorId       String?
+  actorName     String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  store       Store               @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  order       Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  movements   InventoryMovement[]
+
+  @@index([storeId, createdAt])
+  @@index([orderId])
+  @@index([type, businessType, createdAt])
+  @@map("inventory_documents")
 }
 
 model CartItem {
@@ -336,6 +410,7 @@ model Order {
   note            String?
   paymentMethod   String               @default("COD")
   subtotal        Decimal              @db.Decimal(14, 2)
+  shippingFee     Decimal              @default(20000) @db.Decimal(14, 2)
   rejectionReason String?
   cancelledAt     DateTime?
   deletedAt       DateTime?
@@ -345,6 +420,7 @@ model Order {
   store           Store                @relation(fields: [storeId], references: [id], onDelete: Restrict)
   items           OrderItem[]
   histories       OrderStatusHistory[]
+  inventoryDocuments InventoryDocument[]
 
   @@index([farmerId, status, deletedAt])
   @@index([storeId, status, deletedAt])

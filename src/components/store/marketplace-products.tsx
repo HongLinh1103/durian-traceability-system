@@ -5,13 +5,15 @@ import { ImageIcon, Search, ShoppingCart, Store } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 
 type Product = { id: string; name: string; type: "FERTILIZER" | "PESTICIDE"; price: string; salePrice?: string | null; stock: number; unit: string; imageUrls: string[]; usagePurpose?: string | null; store: { name: string; address: string } };
 
 export function MarketplaceProducts({ type }: { type?: "FERTILIZER" | "PESTICIDE" }) {
+    const { toast } = useToast();
     const [items, setItems] = useState<Product[]>([]); const [query, setQuery] = useState(""); const [loading, setLoading] = useState(true);
     useEffect(() => { const controller = new AbortController(); const timer = window.setTimeout(() => { const params = new URLSearchParams(); if (type) params.set("type", type); if (query.trim()) params.set("q", query.trim()); setLoading(true); void fetch(`/api/marketplace/products?${params}`, { signal: controller.signal, cache: "no-store" }).then(r => r.json()).then(p => setItems(p.data || [])).catch(e => { if (e.name !== "AbortError") setItems([]); }).finally(() => setLoading(false)); }, 250); return () => { window.clearTimeout(timer); controller.abort(); }; }, [query, type]);
-    async function add(id: string, buyNow = false) { const response = await fetch("/api/cart", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ productId: id, quantity: 1 }) }); if (!response.ok) { alert("Vui lòng đăng nhập bằng tài khoản nông dân để mua hàng."); return; } if (buyNow) window.location.href = "/checkout"; else alert("Đã thêm sản phẩm vào giỏ hàng."); }
+    async function add(id: string, buyNow = false) { const response = await fetch("/api/cart", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ productId: id, quantity: 1 }) }); const payload = await response.json().catch(() => null); if (!response.ok) { toast({ title: "Không thể thêm vào giỏ", description: payload?.message || "Vui lòng đăng nhập bằng tài khoản nông dân để mua hàng.", variant: "destructive" }); return; } window.dispatchEvent(new Event("cart-updated")); if (buyNow) window.location.href = "/checkout"; else toast({ title: "Đã thêm vào giỏ hàng", description: "Bạn có thể tiếp tục mua sắm hoặc mở giỏ hàng để đặt hàng.", variant: "success" }); }
     return <div className="space-y-5">
         <label className="relative block"><Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" /><Input value={query} onChange={e => setQuery(e.target.value)} className="pl-10" placeholder="Tìm theo tên, thương hiệu hoặc công dụng..." /></label>
         {!loading && <p className="text-sm text-slate-500">Tìm thấy {items.length} sản phẩm đang bán</p>}

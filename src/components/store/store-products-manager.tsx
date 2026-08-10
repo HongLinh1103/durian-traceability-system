@@ -5,6 +5,7 @@ import { EyeOff, ImageIcon, Package, Pencil, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 
 type Product = {
     id: string;
@@ -21,6 +22,7 @@ type Product = {
 };
 
 export function StoreProductsManager() {
+    const { toast } = useToast();
     const [items, setItems] = useState<Product[]>([]);
     const [editing, setEditing] = useState<Product | null>(null);
 
@@ -56,10 +58,11 @@ export function StoreProductsManager() {
         });
         const payload = await response.json();
         if (!response.ok) {
-            alert(payload.message);
+            toast({ title: "Không thể thêm sản phẩm", description: payload.message || "Vui lòng kiểm tra lại thông tin.", variant: "destructive" });
             return;
         }
         form.reset();
+        toast({ title: "Đã thêm sản phẩm", description: "Sản phẩm đã được thêm vào danh sách cửa hàng.", variant: "success" });
         await load();
     }
 
@@ -68,9 +71,10 @@ export function StoreProductsManager() {
         const response = await fetch(`/api/store/products/${id}`, { method: "DELETE" });
         if (!response.ok) {
             const payload = await response.json();
-            alert(payload.message || "Không thể ẩn sản phẩm.");
+            toast({ title: "Không thể ẩn sản phẩm", description: payload.message || "Vui lòng thử lại.", variant: "destructive" });
             return;
         }
+        toast({ title: "Đã ẩn sản phẩm", description: "Sản phẩm không còn hiển thị trên gian hàng.", variant: "success" });
         await load();
     }
 
@@ -95,10 +99,11 @@ export function StoreProductsManager() {
         });
         const payload = await response.json();
         if (!response.ok) {
-            alert(payload.message || "Không thể cập nhật sản phẩm.");
+            toast({ title: "Không thể cập nhật sản phẩm", description: payload.message || "Vui lòng kiểm tra lại thông tin.", variant: "destructive" });
             return;
         }
         setEditing(null);
+        toast({ title: "Đã cập nhật sản phẩm", description: "Thông tin sản phẩm đã được lưu.", variant: "success" });
         await load();
     }
 
@@ -115,7 +120,7 @@ export function StoreProductsManager() {
             <Input name="unit" required placeholder="Đơn vị bán" />
             <Input name="imageUrl" type="url" placeholder="URL hình ảnh sản phẩm" />
             <Input name="usagePurpose" placeholder="Công dụng" />
-            <Button>Thêm sản phẩm</Button>
+            <Button type="submit">Thêm sản phẩm</Button>
         </form>
 
         <div className="my-5 flex items-center justify-between">

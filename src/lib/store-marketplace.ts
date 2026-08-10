@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { InventoryDocumentType, Prisma } from "@prisma/client";
 
 export const storeProfileSchema = z.object({
     representativeName: z.string().trim().min(2).max(120), representativePhone: z.string().trim().min(6).max(20),
@@ -45,6 +46,24 @@ export function verifyStoreDocumentSignature(documentId: string, expiresAt: numb
     return expected.length === received.length && timingSafeEqual(expected, received);
 }
 
-export function orderCode() {
-    return `DH-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+function datePart(date = new Date()) {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).format(date).replaceAll("-", "");
+}
+
+function nextSequence(lastCode?: string | null) {
+    const value = Number(lastCode?.split("-").at(-1) || 0) + 1;
+    if (value > 999) throw new Error("DAILY_CODE_LIMIT");
+    return String(value).padStart(3, "0");
+}
+
+export async function orderCode(tx: Prisma.TransactionClient, date = new Date()) {
+    const prefix = `DH-${datePart(date)}-`;
+    const last = await tx.order.findFirst({ where: { orderCode: { startsWith: prefix } }, select: { orderCode: true }, orderBy: { orderCode: "desc" } });
+    return `${prefix}${nextSequence(last?.orderCode)}`;
+}
+
+export async function inventoryDocumentCode(tx: Prisma.TransactionClient, type: InventoryDocumentType, date = new Date()) {
+    const prefix = `${type}-${datePart(date)}-`;
+    const last = await tx.inventoryDocument.findFirst({ where: { code: { startsWith: prefix } }, select: { code: true }, orderBy: { code: "desc" } });
+    return `${prefix}${nextSequence(last?.code)}`;
 }
