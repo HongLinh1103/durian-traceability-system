@@ -48,7 +48,15 @@ export async function getScopedRegion(userId: string, role: string, regionId: st
         include: {
             farms: {
                 where: { isActive: true, farmer: { deletedAt: null, isApproved: true } },
-                select: { id: true, farmCode: true, farmName: true, latitude: true, longitude: true, address: true, durianVariety: true, farmerId: true },
+                select: {
+                    id: true, farmCode: true, farmName: true, latitude: true, longitude: true,
+                    address: true, durianVariety: true, farmerId: true,
+                    farmingLogs: {
+                        orderBy: [{ actionDate: "desc" }, { createdAt: "desc" }],
+                        take: 1,
+                        select: { stage: true, actionDate: true },
+                    },
+                },
                 orderBy: { farmName: "asc" },
             },
         },

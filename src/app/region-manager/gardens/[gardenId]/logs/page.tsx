@@ -50,27 +50,30 @@ export default async function GardenLogsPage({ params }: { params: { gardenId: s
                 <h2 className="text-xl font-bold text-slate-900">Nhật ký canh tác đã ghi</h2>
             </div>
             <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] text-left text-sm">
+                <table className="w-full min-w-[900px] table-fixed text-left text-sm">
                     <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                         <tr>
-                            {["Ngày", "Giai đoạn", "Hoạt động", "Vật tư", "Liều lượng", "PHI", "GACC", "Ghi chú"].map((heading) => (
-                                <th key={heading} className="whitespace-nowrap px-4 py-3 font-semibold">{heading}</th>
-                            ))}
+                            <th className="w-36 whitespace-nowrap px-4 py-3 font-semibold">Ngày</th>
+                            <th className="w-24 whitespace-nowrap px-3 py-3 font-semibold">Giai đoạn</th>
+                            <th className="w-24 whitespace-nowrap px-3 py-3 font-semibold">Hoạt động</th>
+                            <th className="w-32 px-3 py-3 font-semibold">Vật tư</th>
+                            <th className="w-28 px-3 py-3 font-semibold">Liều lượng</th>
+                            <th className="w-14 px-2 py-3 font-semibold">PHI</th>
+                            <th className="w-56 px-4 py-3 font-semibold">Ghi chú</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {garden.farmingLogs.length === 0 ? (
-                            <tr><td colSpan={8} className="py-12 text-center text-slate-500">Vườn này chưa có nhật ký canh tác.</td></tr>
+                            <tr><td colSpan={7} className="py-12 text-center text-slate-500">Vườn này chưa có nhật ký canh tác.</td></tr>
                         ) : garden.farmingLogs.map((log) => (
                             <tr key={log.id} className="hover:bg-slate-50/70">
                                 <td className="whitespace-nowrap px-4 py-3">{log.actionDate.toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" })}</td>
                                 <td className="px-4 py-3">{stageLabels[log.stage] ?? log.stage}</td>
                                 <td className="px-4 py-3">{activityLabels[log.activityType] ?? log.activityType}</td>
-                                <td className="px-4 py-3">{log.chemicalName || "—"}</td>
-                                <td className="px-4 py-3">{log.dosage || "—"}</td>
+                                <td className="break-words px-3 py-3 text-xs leading-5">{log.chemicalName || "—"}</td>
+                                <td className="break-words px-3 py-3 text-xs leading-5">{log.dosage || "—"}</td>
                                 <td className="px-4 py-3">{log.phiDays ?? "—"}</td>
-                                <td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs font-semibold ${log.isGACCCompliant ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{log.isGACCCompliant ? "Đạt" : "Không đạt"}</span></td>
-                                <td className="max-w-64 whitespace-pre-wrap px-4 py-3">{log.notes || "—"}</td>
+                                <td className="w-56 max-w-56 whitespace-pre-wrap break-words px-4 py-3">{log.notes || "—"}</td>
                             </tr>
                         ))}
                     </tbody>

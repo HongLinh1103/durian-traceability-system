@@ -91,7 +91,9 @@ export async function getWeather(latitude: number, longitude: number): Promise<W
     url.searchParams.set("latitude", String(latitude));
     url.searchParams.set("longitude", String(longitude));
     url.searchParams.set("timezone", "auto");
-    url.searchParams.set("forecast_days", "7");
+    // Request one extra calendar day so the rolling hourly window still covers
+    // every displayed day when the user opens the page late in the day.
+    url.searchParams.set("forecast_days", "8");
     url.searchParams.set("current", "temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,rain,weather_code,wind_speed_10m,uv_index");
     url.searchParams.set("hourly", "temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m");
     url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,uv_index_max");
@@ -118,7 +120,7 @@ export async function getWeather(latitude: number, longitude: number): Promise<W
         weatherCode: numberAt(current.weather_code),
         description: weatherDescription(numberAt(current.weather_code)),
     };
-    const hourly: HourlyForecast[] = (hourlyRaw.time ?? []).slice(currentHourIndex, currentHourIndex + 72).map((time, offset: number) => {
+    const hourly: HourlyForecast[] = (hourlyRaw.time ?? []).slice(currentHourIndex, currentHourIndex + 168).map((time, offset: number) => {
         const index = currentHourIndex + offset;
         return {
             time: String(time),
@@ -129,7 +131,7 @@ export async function getWeather(latitude: number, longitude: number): Promise<W
             weatherCode: numberAt(hourlyRaw.weather_code?.[index]),
         };
     });
-    const daily: DailyForecast[] = (dailyRaw.time ?? []).map((date, index: number) => ({
+    const daily: DailyForecast[] = (dailyRaw.time ?? []).slice(0, 7).map((date, index: number) => ({
         date: String(date),
         weatherCode: numberAt(dailyRaw.weather_code?.[index]),
         description: weatherDescription(numberAt(dailyRaw.weather_code?.[index])),

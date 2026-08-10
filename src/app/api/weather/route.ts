@@ -24,7 +24,14 @@ export async function GET(request: Request) {
             const farmsWithCoordinates = region.farms.filter((farm) => farm.latitude != null && farm.longitude != null);
             const results = await Promise.allSettled(farmsWithCoordinates.map(async (farm) => {
                 const weather = await getWeather(farm.latitude!, farm.longitude!);
-                return { ...farm, weather, status: weatherStatus(weather) };
+                const { farmingLogs, ...farmData } = farm;
+                return {
+                    ...farmData,
+                    currentStage: farmingLogs[0]?.stage ?? null,
+                    stageUpdatedAt: farmingLogs[0]?.actionDate ?? null,
+                    weather,
+                    status: weatherStatus(weather),
+                };
             }));
             const farms = results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
             const center = farmsWithCoordinates.length ? {

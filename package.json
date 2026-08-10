@@ -18,7 +18,8 @@
         ,"seed:materials": "node scripts/seed-material-catalog.cjs",
         "seed:prohibited-chemicals": "node scripts/seed-prohibited-chemicals.cjs",
         "import:prohibited-chemicals": "node scripts/import-prohibited-chemicals-from-excel.cjs",
-        "seed:store-marketplace": "node scripts/seed-store-marketplace.cjs"
+        "seed:store-marketplace": "node scripts/seed-store-marketplace.cjs",
+        "seed:regional-farms": "node scripts/seed-regional-farms-and-logs.cjs"
     },
     "dependencies": {
         "@hookform/resolvers": "^3.10.0",

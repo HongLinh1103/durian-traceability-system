@@ -165,7 +165,11 @@ export async function generateWeatherAdvice(input: {
         const detail = failure?.error?.message;
         if (response.status === 401 || response.status === 403) throw new Error("Khóa Gemini không hợp lệ, bị chặn hoặc chưa được cấp quyền sử dụng API.");
         if (response.status === 404) throw new Error(`Model Gemini '${model}' không khả dụng cho khóa hiện tại.`);
-        if (response.status === 429) throw new Error("Gemini đã vượt giới hạn yêu cầu hoặc hạn mức. Vui lòng thử lại sau.");
+        if (response.status === 429) {
+            // Hạn mức chỉ ảnh hưởng Gemini; dữ liệu thời tiết và phân tích dự phòng vẫn dùng được.
+            aiCache.set(input.cacheKey, { expiresAt: Date.now() + AI_TTL_MS, value: fallback });
+            return { advice: fallback, source: "weather-rules" as const };
+        }
         throw new Error(detail ? `Gemini lỗi: ${detail}` : "Dịch vụ Gemini hiện không phản hồi.");
     }
     const result = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };

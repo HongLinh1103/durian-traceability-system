@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Bot, CloudRain, Loader2, LocateFixed, MapPin, RefreshCw, Send, Sun } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { AlertTriangle, Bot, CloudRain, History, Loader2, LocateFixed, MapPin, RefreshCw, Send, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
@@ -16,12 +17,11 @@ type Weather = {
     fetchedAt: string;
 };
 type Advice = { riskLevel: "LOW" | "MEDIUM" | "HIGH"; summary: string; recommendations: string[]; warnings: string[]; monitor: string[]; contextUsed: string[]; draftNotification?: string };
-type RegionalFarm = Farm & { status: Status; weather: Weather };
+type RegionalFarm = Farm & { status: Status; weather: Weather; currentStage: string | null; stageUpdatedAt: string | null };
 type Status = "NORMAL" | "HIGH_RAIN" | "STRONG_WIND" | "HOT" | "ALERT";
-type Filter = "ALL" | Status;
 
 const statusLabels: Record<Status, string> = { NORMAL: "Bình thường", HIGH_RAIN: "Mưa cao", STRONG_WIND: "Gió mạnh", HOT: "Nắng nóng", ALERT: "Có cảnh báo" };
-const filters: Array<{ value: Filter; label: string }> = [{ value: "ALL", label: "Tất cả" }, ...Object.entries(statusLabels).map(([value, label]) => ({ value: value as Status, label }))];
+const stageLabels: Record<string, string> = { MAKING_SPROUT: "Làm đọt", FLOWERING: "Ra hoa", FRUIT_SETTING: "Đậu trái", FRUIT_GROWING: "Nuôi trái", HARVEST: "Thu hoạch" };
 
 async function readJson(response: Response) {
     const payload = await response.json();
@@ -45,7 +45,6 @@ export function WeatherDashboard({ role }: { role: "FARMER" | "AREA_MANAGER" }) 
     const [weatherError, setWeatherError] = useState("");
     const [gpsError, setGpsError] = useState("");
     const [gpsNotice, setGpsNotice] = useState("");
-    const [filter, setFilter] = useState<Filter>("ALL");
     const [advice, setAdvice] = useState<Advice | null>(null);
     const [adviceSource, setAdviceSource] = useState<"gemini" | "weather-rules" | "cache" | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
@@ -209,7 +208,16 @@ export function WeatherDashboard({ role }: { role: "FARMER" | "AREA_MANAGER" }) 
         finally { setSending(false); }
     }
 
-    const filteredFarms = useMemo(() => regionalFarms.filter((farm) => filter === "ALL" || farm.status === filter), [filter, regionalFarms]);
+    function toggleAffectedFarm(farmId: string) {
+        setSelectedAffected((items) => items.includes(farmId) ? items.filter((id) => id !== farmId) : [...items, farmId]);
+        setConfirmSend(false);
+    }
+
+    function updateNotificationText(value: string) {
+        setNotificationText(value);
+        setConfirmSend(false);
+    }
+
     if (loadingContext) return <StateBox icon={<Loader2 className="h-8 w-8 animate-spin" />} title="Đang tải dữ liệu vườn..." />;
     if (contextError) return <StateBox icon={<AlertTriangle className="h-8 w-8" />} title={contextError} action={<Button onClick={() => void loadContext()}><RefreshCw className="mr-2 h-4 w-4" />Thử lại</Button>} />;
 
@@ -247,12 +255,22 @@ export function WeatherDashboard({ role }: { role: "FARMER" | "AREA_MANAGER" }) 
                         <CurrentWeather weather={weather} currentTime={currentTime} locationLabel={role === "FARMER" && !selectedFarmId ? "Vị trí hiện tại" : role === "FARMER" ? farms.find((farm) => farm.id === selectedFarmId)?.farmName ?? "Vườn đã chọn" : regions.find((region) => region.id === selectedRegionId)?.name ?? "Vùng đã chọn"} />
                         {role === "AREA_MANAGER" && (
                             <section className="space-y-4">
-                                <div className="flex flex-wrap gap-2">{filters.map((item) => <button key={item.value} onClick={() => setFilter(item.value)} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === item.value ? "bg-sky-700 text-white" : "border bg-white text-slate-600"}`}>{item.label}</button>)}</div>
-                                <div className="overflow-hidden rounded-3xl border bg-white"><div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-slate-50 text-slate-600"><tr><th className="p-4">Chọn</th><th className="p-4">Vườn</th><th className="p-4">Nhiệt độ</th><th className="p-4">Khả năng mưa</th><th className="p-4">Gió</th><th className="p-4">Trạng thái</th><th className="p-4">Chi tiết</th></tr></thead><tbody>{filteredFarms.map((farm) => <tr key={farm.id} className="border-t"><td className="p-4"><input type="checkbox" checked={selectedAffected.includes(farm.id)} onChange={() => setSelectedAffected((items) => items.includes(farm.id) ? items.filter((id) => id !== farm.id) : [...items, farm.id])} aria-label={`Chọn ${farm.farmName}`} /></td><td className="p-4"><b>{farm.farmName}</b><div className="text-xs text-slate-500">{farm.farmCode}</div></td><td className="p-4">{farm.weather.current.temperature}°C</td><td className="p-4">{farm.weather.current.precipitationProbability}%</td><td className="p-4">{farm.weather.current.windSpeed} km/h</td><td className="p-4"><StatusBadge status={farm.status} /></td><td className="p-4"><Button size="sm" variant="outline" onClick={() => setWeather(farm.weather)}>Xem</Button></td></tr>)}</tbody></table></div></div>
+                                <div className="flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                    <div>
+                                        <h2 className="font-bold text-slate-900">Vườn trong vùng và thông báo</h2>
+                                        <p className="mt-1 text-sm text-slate-600">Chọn các vườn cần liên hệ, sau đó soạn thông báo ngay bên dưới danh sách.</p>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="rounded-full bg-white px-3 py-2 text-sm font-semibold text-sky-800">Đã chọn {selectedAffected.length}/{regionalFarms.length} vườn</span>
+                                        <Button type="button" size="sm" variant="outline" onClick={() => { setSelectedAffected(regionalFarms.filter((farm) => farm.status !== "NORMAL").map((farm) => farm.id)); setConfirmSend(false); }}>Chọn vườn cảnh báo</Button>
+                                        {selectedAffected.length > 0 && <Button type="button" size="sm" variant="ghost" onClick={() => { setSelectedAffected([]); setConfirmSend(false); }}>Bỏ chọn</Button>}
+                                    </div>
+                                </div>
+                                <div className="overflow-hidden rounded-3xl border bg-white"><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-slate-50 text-slate-600"><tr><th className="p-4">Chọn</th><th className="p-4">Vườn</th><th className="p-4">Giai đoạn canh tác</th><th className="p-4">Nhiệt độ</th><th className="p-4">Khả năng mưa</th><th className="p-4">Gió</th><th className="p-4">Trạng thái</th><th className="p-4">Nhật ký</th></tr></thead><tbody>{regionalFarms.map((farm) => <tr key={farm.id} className="border-t"><td className="p-4"><input type="checkbox" checked={selectedAffected.includes(farm.id)} onChange={() => toggleAffectedFarm(farm.id)} aria-label={`Chọn ${farm.farmName}`} /></td><td className="p-4"><b>{farm.farmName}</b><div className="text-xs text-slate-500">{farm.farmCode}</div></td><td className="p-4"><span className="font-semibold text-emerald-700">{farm.currentStage ? stageLabels[farm.currentStage] ?? farm.currentStage : "Chưa cập nhật"}</span>{farm.stageUpdatedAt && <div className="mt-1 text-xs text-slate-500">Nhật ký {new Date(farm.stageUpdatedAt).toLocaleDateString("vi-VN")}</div>}</td><td className="p-4">{farm.weather.current.temperature}°C</td><td className="p-4">{farm.weather.current.precipitationProbability}%</td><td className="p-4">{farm.weather.current.windSpeed} km/h</td><td className="p-4"><StatusBadge status={farm.status} /></td><td className="p-4"><Button asChild size="sm" variant="outline"><Link href={`/region-manager/gardens/${farm.id}/logs`}><History className="mr-1.5 h-4 w-4" />Xem nhật ký</Link></Button></td></tr>)}</tbody></table></div></div>
+                                <NotificationComposer selectedCount={selectedAffected.length} text={notificationText} confirmed={confirmSend} sending={sending} onText={updateNotificationText} onConfirm={setConfirmSend} onSend={() => void sendNotification()} />
                             </section>
                         )}
                     <AiSection role={role} advice={advice} source={adviceSource} loading={aiLoading} error={aiError} onRetry={() => void loadAi()} />
-                        {role === "AREA_MANAGER" && <NotificationComposer selectedCount={selectedAffected.length} text={notificationText} confirmed={confirmSend} sending={sending} onText={setNotificationText} onConfirm={setConfirmSend} onSend={() => void sendNotification()} />}
                     </>
                 ) : <StateBox icon={<MapPin className="h-8 w-8" />} title={role === "FARMER" && !farms.length ? "Bạn chưa có vườn. Có thể dùng vị trí hiện tại để xem thời tiết." : "Chưa có vườn hoặc tọa độ phù hợp."} />}
         </main>
@@ -261,7 +279,11 @@ export function WeatherDashboard({ role }: { role: "FARMER" | "AREA_MANAGER" }) 
 
 function CurrentWeather({ weather, currentTime, locationLabel }: { weather: Weather; currentTime: Date; locationLabel: string }) {
     const [metric, setMetric] = useState<"temperature" | "rain" | "wind">("temperature");
-    const chartHours = weather.hourly.slice(0, 24).filter((_, index) => index % 3 === 0);
+    const [selectedDate, setSelectedDate] = useState(weather.daily[0]?.date ?? "");
+    useEffect(() => { setSelectedDate(weather.daily[0]?.date ?? ""); }, [weather]);
+    const selectedDay = weather.daily.find((day) => day.date === selectedDate) ?? weather.daily[0];
+    const selectedHours = weather.hourly.filter((hour) => hour.time.slice(0, 10) === selectedDate);
+    const chartHours = (selectedHours.length ? selectedHours : weather.hourly.slice(0, 24)).filter((_, index) => index % 3 === 0);
     const values = chartHours.map((hour) => metric === "temperature" ? hour.temperature : metric === "rain" ? hour.precipitation : hour.windSpeed);
     const max = Math.max(...values, 1);
     const min = Math.min(...values, 0);
@@ -270,7 +292,83 @@ function CurrentWeather({ weather, currentTime, locationLabel }: { weather: Weat
     const unit = metric === "temperature" ? "°" : metric === "rain" ? " mm" : " km/h";
     const tabs = [{ value: "temperature", label: "Nhiệt độ" }, { value: "rain", label: "Lượng mưa" }, { value: "wind", label: "Gió" }] as const;
     const WeatherIcon = weather.current.precipitationProbability >= 50 ? CloudRain : weather.current.uvIndex >= 6 ? Sun : CloudRain;
-    return <section className="space-y-4"><Card className="overflow-hidden"><CardContent className="p-5 sm:p-8"><div className="flex flex-col justify-between gap-6 lg:flex-row"><div className="flex flex-wrap items-center gap-5"><div className="rounded-full bg-sky-50 p-5 text-sky-600"><WeatherIcon className="h-14 w-14" /></div><div className="flex items-start"><span className="text-7xl font-light leading-none text-slate-900">{Math.round(weather.current.temperature)}</span><span className="mt-2 text-xl">°C</span></div><div className="border-l border-slate-200 pl-5 text-sm leading-6 text-slate-600"><p>Khả năng có mưa: <b>{weather.current.precipitationProbability}%</b></p><p>Độ ẩm: <b>{weather.current.humidity}%</b></p><p>Gió: <b>{weather.current.windSpeed} km/h</b></p><p>Cảm giác như: <b>{weather.current.apparentTemperature}°C</b></p></div></div><div className="text-left lg:text-right"><h2 className="text-2xl font-bold text-slate-900">Thời tiết</h2><time className="mt-1 block text-slate-600 capitalize" dateTime={currentTime.toISOString()}>{currentTime.toLocaleDateString("vi-VN", { weekday: "long" })} · {currentTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</time><p className="mt-1 text-lg text-slate-700">{weather.current.description}</p><p className="mt-2 flex items-center gap-1 text-sm text-slate-500 lg:justify-end"><MapPin className="h-4 w-4" />{locationLabel}</p></div></div><div className="mt-7 flex gap-2 border-b border-slate-200">{tabs.map((tab) => <button key={tab.value} onClick={() => setMetric(tab.value)} className={`border-b-2 px-3 py-3 text-sm font-semibold transition ${metric === tab.value ? "border-amber-400 text-slate-900" : "border-transparent text-slate-500"}`}>{tab.label}</button>)}</div><div className="mt-5 overflow-x-auto"><div className="min-w-[700px]"><div className="relative h-44"><svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-36 w-full overflow-visible"><defs><linearGradient id={`weather-chart-${metric}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={metric === "temperature" ? "#facc15" : metric === "rain" ? "#38bdf8" : "#94a3b8"} stopOpacity="0.35" /><stop offset="100%" stopColor="white" stopOpacity="0" /></linearGradient></defs><polygon points={`0,100 ${points} 100,100`} fill={`url(#weather-chart-${metric})`} /><polyline points={points} fill="none" stroke={metric === "temperature" ? "#eab308" : metric === "rain" ? "#0284c7" : "#64748b"} strokeWidth="1.5" vectorEffect="non-scaling-stroke" /></svg><div className="absolute inset-x-0 top-0 flex justify-between">{chartHours.map((hour, index) => <div key={hour.time} className="flex w-16 flex-col items-center text-xs"><b className="text-slate-500">{values[index]}{unit}</b><span className="mt-28 text-slate-500">{new Date(hour.time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span></div>)}</div></div></div></div><div className="mt-3 flex gap-3 overflow-x-auto pb-2">{weather.daily.map((day, index) => <div key={day.date} className={`min-w-32 rounded-2xl p-4 text-center ${index === 0 ? "bg-slate-100" : "bg-white"}`}><p className="font-bold capitalize">{new Date(`${day.date}T00:00:00`).toLocaleDateString("vi-VN", { weekday: "short" })}</p><CloudRain className={`mx-auto my-3 h-9 w-9 ${day.precipitationProbability >= 50 ? "text-sky-600" : "text-slate-400"}`} /><p className="font-semibold">{Math.round(day.temperatureMax)}° <span className="text-slate-400">{Math.round(day.temperatureMin)}°</span></p><p className="mt-1 text-xs text-sky-700">Mưa {day.precipitationProbability}%</p></div>)}</div><div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-xs text-slate-500"><span>Nguồn: Open-Meteo · Dữ liệu theo tọa độ, tự làm mới mỗi 10 phút</span><span>Cập nhật lúc {new Date(weather.fetchedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span></div></CardContent></Card>{weather.alerts.length > 0 && <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5"><h2 className="flex items-center gap-2 font-bold text-amber-900"><AlertTriangle className="h-5 w-5" />Cảnh báo thời tiết</h2><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-900">{weather.alerts.map((item) => <li key={item}>{item}</li>)}</ul></div>}</section>;
+    return (
+        <section className="space-y-4">
+            <Card className="overflow-hidden">
+                <CardContent className="p-5 sm:p-8">
+                    <div className="flex flex-col justify-between gap-6 lg:flex-row">
+                        <div className="flex flex-wrap items-center gap-5">
+                            <div className="rounded-full bg-sky-50 p-5 text-sky-600"><WeatherIcon className="h-14 w-14" /></div>
+                            <div className="flex items-start"><span className="text-7xl font-light leading-none text-slate-900">{Math.round(weather.current.temperature)}</span><span className="mt-2 text-xl">°C</span></div>
+                            <div className="border-l border-slate-200 pl-5 text-sm leading-6 text-slate-600">
+                                <p>Khả năng có mưa: <b>{weather.current.precipitationProbability}%</b></p>
+                                <p>Độ ẩm: <b>{weather.current.humidity}%</b></p>
+                                <p>Gió: <b>{weather.current.windSpeed} km/h</b></p>
+                                <p>Cảm giác như: <b>{weather.current.apparentTemperature}°C</b></p>
+                            </div>
+                        </div>
+                        <div className="text-left lg:text-right">
+                            <h2 className="text-2xl font-bold text-slate-900">Thời tiết</h2>
+                            <time className="mt-1 block capitalize text-slate-600" dateTime={currentTime.toISOString()}>{currentTime.toLocaleDateString("vi-VN", { weekday: "long" })} · {currentTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</time>
+                            <p className="mt-1 text-lg text-slate-700">{weather.current.description}</p>
+                            <p className="mt-2 flex items-center gap-1 text-sm text-slate-500 lg:justify-end"><MapPin className="h-4 w-4" />{locationLabel}</p>
+                        </div>
+                    </div>
+
+                    {selectedDay && (
+                        <div className="mt-7 rounded-2xl bg-slate-50 p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <p className="font-bold capitalize text-slate-900">{new Date(`${selectedDay.date}T00:00:00`).toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit" })}</p>
+                                    <p className="mt-1 text-sm text-slate-600">{selectedDay.description}</p>
+                                </div>
+                                <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-700">
+                                    <span><b>{Math.round(selectedDay.temperatureMax)}°</b> / {Math.round(selectedDay.temperatureMin)}°</span>
+                                    <span>Mưa <b>{selectedDay.precipitationProbability}%</b> · {selectedDay.precipitation} mm</span>
+                                    <span>Gió <b>{selectedDay.windSpeed} km/h</b></span>
+                                    <span>UV <b>{selectedDay.uvIndex}</b></span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="mt-5 flex gap-2 border-b border-slate-200">
+                        {tabs.map((tab) => <button type="button" key={tab.value} onClick={() => setMetric(tab.value)} className={`border-b-2 px-3 py-3 text-sm font-semibold transition ${metric === tab.value ? "border-amber-400 text-slate-900" : "border-transparent text-slate-500"}`}>{tab.label}</button>)}
+                    </div>
+                    <div className="mt-5 overflow-x-auto">
+                        <div className="min-w-[700px]">
+                            <div className="relative h-44">
+                                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-36 w-full overflow-visible">
+                                    <defs><linearGradient id={`weather-chart-${metric}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={metric === "temperature" ? "#facc15" : metric === "rain" ? "#38bdf8" : "#94a3b8"} stopOpacity="0.35" /><stop offset="100%" stopColor="white" stopOpacity="0" /></linearGradient></defs>
+                                    <polygon points={`0,100 ${points} 100,100`} fill={`url(#weather-chart-${metric})`} />
+                                    <polyline points={points} fill="none" stroke={metric === "temperature" ? "#eab308" : metric === "rain" ? "#0284c7" : "#64748b"} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                                </svg>
+                                <div className="absolute inset-x-0 top-0 flex justify-between">
+                                    {chartHours.map((hour, index) => <div key={hour.time} className="flex w-16 flex-col items-center text-xs"><b className="text-slate-500">{values[index]}{unit}</b><span className="mt-28 text-slate-500">{new Date(hour.time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span></div>)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+                        {weather.daily.map((day) => {
+                            const active = day.date === selectedDate;
+                            return (
+                                <button type="button" key={day.date} onClick={() => setSelectedDate(day.date)} aria-pressed={active} className={`min-w-32 rounded-2xl border p-4 text-center transition ${active ? "border-sky-300 bg-slate-100 shadow-sm ring-2 ring-sky-100" : "border-transparent bg-white hover:border-slate-200 hover:bg-slate-50"}`}>
+                                    <p className="font-bold capitalize">{new Date(`${day.date}T00:00:00`).toLocaleDateString("vi-VN", { weekday: "short" })}</p>
+                                    <CloudRain className={`mx-auto my-3 h-9 w-9 ${day.precipitationProbability >= 50 ? "text-sky-600" : "text-slate-400"}`} />
+                                    <p className="font-semibold">{Math.round(day.temperatureMax)}° <span className="text-slate-400">{Math.round(day.temperatureMin)}°</span></p>
+                                    <p className="mt-1 text-xs text-sky-700">Mưa {day.precipitationProbability}%</p>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-xs text-slate-500"><span>Nguồn: Open-Meteo · Dữ liệu theo tọa độ, tự làm mới mỗi 10 phút</span><span>Cập nhật lúc {new Date(weather.fetchedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span></div>
+                </CardContent>
+            </Card>
+            {weather.alerts.length > 0 && <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5"><h2 className="flex items-center gap-2 font-bold text-amber-900"><AlertTriangle className="h-5 w-5" />Cảnh báo thời tiết</h2><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-900">{weather.alerts.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+        </section>
+    );
 }
 
 function AiSection({ role, advice, source, loading, error, onRetry }: { role: string; advice: Advice | null; source: "gemini" | "weather-rules" | "cache" | null; loading: boolean; error: string; onRetry: () => void }) {
