@@ -22,6 +22,7 @@ type DashboardLink = {
 };
 
 const dashboardLinks: DashboardLink[] = [
+    { href: "/weather", label: "Thời tiết", roles: ["FARMER", "AREA_MANAGER"] },
     { href: "/materials", label: "Tất cả vật tư", roles: ["FARMER", "AREA_MANAGER"] },
     { href: "/materials/fertilizers", label: "Phân bón", roles: ["FARMER", "AREA_MANAGER"] },
     { href: "/materials/pesticides", label: "Thuốc BVTV", roles: ["FARMER", "AREA_MANAGER"] },
