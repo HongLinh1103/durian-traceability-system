@@ -16,10 +16,10 @@ export const storeProfileSchema = z.object({
 const productObjectSchema = z.object({
     type: z.enum(["FERTILIZER", "PESTICIDE"]), name: z.string().trim().min(2).max(200), brand: z.string().trim().max(120).optional(),
     manufacturer: z.string().trim().max(160).optional(), origin: z.string().trim().max(120).optional(), description: z.string().trim().max(3000).optional(),
-    usagePurpose: z.string().trim().max(2000).optional(), usageInstructions: z.string().trim().max(3000).optional(), packaging: z.string().trim().max(120).optional(),
+    usagePurpose: z.string().trim().max(12000).optional(), usageInstructions: z.string().trim().max(12000).optional(), packaging: z.string().trim().max(120).optional(),
     price: z.coerce.number().positive().max(1_000_000_000), salePrice: z.coerce.number().positive().max(1_000_000_000).optional().nullable(),
-    stock: z.coerce.number().int().min(0).max(1_000_000), unit: z.string().trim().min(1).max(50), imageUrls: z.array(z.string().url()).max(8).default([]),
-    composition: z.string().trim().max(2000).optional(), phiDays: z.coerce.number().int().min(0).max(365).optional().nullable(), safetyWarnings: z.string().trim().max(3000).optional(),
+    unit: z.string().trim().min(1).max(50), imageUrls: z.array(z.string().url()).max(8).default([]),
+    composition: z.string().trim().max(2000).optional(), phiDays: z.coerce.number().int().min(0).max(365).optional().nullable(), safetyWarnings: z.string().trim().max(12000).optional(),
     status: z.enum(["APPROVED", "HIDDEN", "OUT_OF_STOCK"]).optional(),
 });
 export const productSchema = productObjectSchema.refine((v) => v.salePrice == null || v.salePrice <= v.price, { message: "Giá khuyến mãi không được lớn hơn giá bán.", path: ["salePrice"] });

@@ -348,6 +348,7 @@ model InventoryMovement {
   stockBefore Int
   stockAfter  Int
   reference   String?
+  note        String?
   createdAt   DateTime              @default(now())
   documentId  String
 
@@ -367,6 +368,8 @@ model InventoryDocument {
   type          InventoryDocumentType
   businessType  InventoryBusinessType
   supplierName  String?
+  reason        String?
+  note          String?
   orderId       String?
   actorId       String?
   actorName     String?

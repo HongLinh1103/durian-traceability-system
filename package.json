@@ -14,8 +14,8 @@
         "db:start": "docker compose up -d postgres",
         "db:stop": "docker compose stop postgres",
         "seed": "npx tsx prisma/seed.ts",
-        "migrate:legacy-news": "node scripts/import-legacy-news.cjs"
-        ,"seed:materials": "node scripts/seed-material-catalog.cjs",
+        "migrate:legacy-news": "node scripts/import-legacy-news.cjs",
+        "seed:materials": "node scripts/seed-material-catalog.cjs",
         "seed:prohibited-chemicals": "node scripts/seed-prohibited-chemicals.cjs",
         "import:prohibited-chemicals": "node scripts/import-prohibited-chemicals-from-excel.cjs",
         "seed:store-marketplace": "node scripts/seed-store-marketplace.cjs",
@@ -38,6 +38,7 @@
         "react-dom": "18.3.1",
         "react-hook-form": "^7.53.2",
         "recharts": "^2.13.0",
+        "sanitize-html": "^2.17.6",
         "tailwind-merge": "^2.5.4",
         "zod": "^3.23.8"
     },
@@ -46,6 +47,7 @@
         "@types/node": "^22.7.6",
         "@types/react": "^18.3.12",
         "@types/react-dom": "^18.3.1",
+        "@types/sanitize-html": "^2.16.1",
         "autoprefixer": "^10.4.20",
         "eslint": "^8.57.1",
         "eslint-config-next": "14.2.17",
