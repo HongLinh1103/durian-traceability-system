@@ -8,6 +8,8 @@ const roleRedirects: Record<UserRole, string> = {
     AREA_MANAGER: "/dashboard/area-manager",
     FARMER: "/dashboard/farmer",
     STORE_OWNER: "/dashboard/store",
+    COLLECTOR: "/dashboard/partner",
+    PROCESSING_FACILITY: "/dashboard/partner",
 };
 
 const accessRules: Array<{ prefix: string; roles: UserRole[] }> = [

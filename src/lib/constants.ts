@@ -25,6 +25,7 @@ export const activityTypes = [
     "Thụ phấn",
     "Tỉa trái",
     "Kiểm tra sâu bệnh",
+    "Theo dõi trái",
     "Phun thuốc BVTV",
     "Bao trái",
     "Chống cành",
@@ -44,6 +45,6 @@ export const activitiesByStage: Record<GrowthStageLabel, readonly ActivityTypeLa
     "Ra hoa": ["Tưới nước", "Tỉa bông", "Thụ phấn", "Bón phân", "Phun phân bón lá", "Phun thuốc BVTV", "Kiểm tra sâu bệnh", "Khác"],
     "Đậu trái": ["Tỉa trái", "Bón phân", "Tưới nước", "Phun thuốc BVTV", "Bao trái", "Chống cành", "Kiểm tra sâu bệnh", "Khác"],
     "Nuôi trái": ["Bón phân", "Phun phân bón lá", "Tưới nước", "Phun thuốc BVTV", "Tỉa trái", "Bao trái", "Chống cành", "Kiểm tra sâu bệnh", "Khác"],
-    "Trước thu hoạch": ["Tưới nước", "Kiểm tra sâu bệnh", "Phun thuốc BVTV", "Chống cành", "Khác"],
+    "Trước thu hoạch": ["Tưới nước", "Bón phân", "Kiểm tra sâu bệnh", "Phun thuốc BVTV", "Theo dõi trái", "Khác"],
     "Thu hoạch": ["Thu hoạch", "Phân loại trái", "Vệ sinh vườn", "Khác"],
 };

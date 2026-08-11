@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import imageCompression from "browser-image-compression";
-import { AlertTriangle, Camera, CloudUpload, ImagePlus, Leaf, Mic, MicOff, RefreshCcw, Sprout, WifiOff, X } from "lucide-react";
+import { AlertTriangle, Camera, ClipboardPlus, CloudUpload, ImagePlus, Leaf, Mic, MicOff, RefreshCcw, Sprout, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,6 +69,7 @@ const activityLabels: Record<string, string> = {
     POLLINATION: "Thụ phấn",
     FRUIT_THINNING: "Tỉa trái",
     PEST_INSPECTION: "Kiểm tra sâu bệnh",
+    TRACK_FRUIT: "Theo dõi trái",
     FRUIT_BAGGING: "Bao trái",
     BRANCH_SUPPORT: "Chống cành",
     HARVEST: "Thu hoạch",
@@ -634,6 +636,11 @@ export default function NewFarmingLogPage() {
                                 <p className="mt-1 text-xs text-slate-500">Mặc định là thời gian hiện tại của thiết bị.</p>
                             </div>
                         </div>
+
+                        {stage === "Trước thu hoạch" && <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-5">
+                            <div className="flex items-start gap-3"><span className="rounded-2xl bg-white p-3 text-amber-700 shadow-sm"><ClipboardPlus className="h-6 w-6" /></span><div><h3 className="text-lg font-black text-slate-900">Chuẩn bị thu hoạch</h3><p className="mt-1 text-sm leading-6 text-slate-600">Lập kế hoạch thu hoạch và lựa chọn đơn vị thu mua nếu đã có nhu cầu bán.</p></div></div>
+                            {form.watch("farmId") ? <Button asChild className="mt-4 w-full sm:w-auto"><Link href={`/harvests/new?gardenId=${encodeURIComponent(form.watch("farmId"))}`}><ClipboardPlus className="mr-2 h-4 w-4" />Tạo phiếu thu hoạch</Link></Button> : <Button disabled className="mt-4 w-full sm:w-auto"><ClipboardPlus className="mr-2 h-4 w-4" />Chọn mã MSVT trước</Button>}
+                        </div>}
 
                         <div>
                             <Label>Giai đoạn sinh trưởng</Label>

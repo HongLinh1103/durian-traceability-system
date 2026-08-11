@@ -297,6 +297,7 @@ export async function PATCH(request: Request) {
                     where: { deletedAt: null },
                     select: { id: true, name: true, status: true },
                 },
+                partnerFacility: { select: { id: true, status: true } },
             },
         });
 
@@ -318,7 +319,10 @@ export async function PATCH(request: Request) {
             }
 
             const isLocked = action === "lock";
-            await prisma.user.update({ where: { id: userId }, data: { isLocked } });
+            await prisma.$transaction(async tx => {
+                await tx.user.update({ where: { id: userId }, data: { isLocked } });
+                if (user.partnerFacility) await tx.partnerFacility.update({ where: { id: user.partnerFacility.id }, data: { status: isLocked ? "SUSPENDED" : "APPROVED" } });
+            });
             return NextResponse.json({ success: true, message: isLocked ? "Đã khóa tài khoản." : "Đã mở khóa tài khoản." });
         }
 
@@ -399,6 +403,7 @@ export async function PATCH(request: Request) {
                         });
                     }));
                 }
+                if (user.partnerFacility) await tx.partnerFacility.update({ where: { id: user.partnerFacility.id }, data: { status: "APPROVED", reviewReason: null, approvedAt: new Date() } });
                 await Promise.all(
                     farmRegionAssignments.map(({ farm, region }, index) =>
                         tx.farm.update({
@@ -444,6 +449,7 @@ export async function PATCH(request: Request) {
                         await tx.storeAuditLog.create({ data: { storeId: store.id, actorId: actor.user.id, action: "STORE_REJECTED", fromStatus: store.status, toStatus: "REJECTED", reason } });
                     }));
                 }
+                if (user.partnerFacility) await tx.partnerFacility.update({ where: { id: user.partnerFacility.id }, data: { status: "REJECTED", reviewReason: reason, approvedAt: null } });
                 await tx.notification.create({
                     data: { userId, title: "Tài khoản bị từ chối", message: `Tài khoản của bạn đã bị từ chối phê duyệt. Lý do: ${reason}`, type: "ACCOUNT_REJECTED" },
                 });
@@ -467,6 +473,7 @@ export async function PATCH(request: Request) {
                         await tx.storeAuditLog.create({ data: { storeId: store.id, actorId: actor.user.id, action: "STORE_NEED_SUPPLEMENT", fromStatus: store.status, toStatus: "NEED_SUPPLEMENT", reason } });
                     }));
                 }
+                if (user.partnerFacility) await tx.partnerFacility.update({ where: { id: user.partnerFacility.id }, data: { status: "NEED_SUPPLEMENT", reviewReason: reason, approvedAt: null } });
                 await tx.notification.create({
                     data: { userId, title: "Hồ sơ cần bổ sung", message: `Hồ sơ đăng ký của bạn cần bổ sung thông tin: ${reason}`, type: "ACCOUNT_SUPPLEMENT_REQUIRED" },
                 });

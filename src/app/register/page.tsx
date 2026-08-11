@@ -10,6 +10,8 @@ import {
     Map,
     Sprout,
     Store,
+    Warehouse,
+    Factory,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +23,7 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 
-type AccountType = "FARMER" | "AREA_MANAGER" | "STORE_OWNER";
+type AccountType = "FARMER" | "AREA_MANAGER" | "STORE_OWNER" | "COLLECTOR" | "PROCESSING_FACILITY";
 
 const accountTypes = [
     {
@@ -47,6 +49,8 @@ const accountTypes = [
         icon: Store,
         iconClass: "bg-amber-100 text-amber-700",
     },
+    { value: "COLLECTOR" as const, title: "Vựa / Đơn vị thu mua", description: "Thu mua sầu riêng trực tiếp từ nhà vườn và quản lý giao nhận.", icon: Warehouse, iconClass: "bg-orange-100 text-orange-700" },
+    { value: "PROCESSING_FACILITY" as const, title: "Cơ sở chế biến", description: "Tiếp nhận nguyên liệu để sơ chế, chế biến và truy xuất nguồn gốc.", icon: Factory, iconClass: "bg-violet-100 text-violet-700" },
 ];
 
 export default function RegisterAccountTypePage() {
@@ -74,6 +78,11 @@ export default function RegisterAccountTypePage() {
             return;
         }
 
+        if (selected === "COLLECTOR" || selected === "PROCESSING_FACILITY") {
+            router.push(`/register/partner?type=${selected}`);
+            return;
+        }
+
         router.push("/register/area-manager");
     }
 
@@ -93,7 +102,7 @@ export default function RegisterAccountTypePage() {
 
                     <CardContent className="space-y-7">
                         <div
-                            className="grid gap-5 md:grid-cols-3"
+                            className="grid gap-5 md:grid-cols-2 lg:grid-cols-3"
                             role="radiogroup"
                             aria-label="Loại tài khoản"
                         >

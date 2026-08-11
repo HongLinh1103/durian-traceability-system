@@ -27,6 +27,7 @@ export const prismaActivityTypeMap = {
     "Thụ phấn": "POLLINATION",
     "Tỉa trái": "FRUIT_THINNING",
     "Kiểm tra sâu bệnh": "PEST_INSPECTION",
+    "Theo dõi trái": "TRACK_FRUIT",
     "Phun thuốc BVTV": "SPRAY_PESTICIDE",
     "Bao trái": "FRUIT_BAGGING",
     "Chống cành": "BRANCH_SUPPORT",

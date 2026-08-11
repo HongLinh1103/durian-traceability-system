@@ -94,6 +94,8 @@ const roleLabels: Record<string, string> = {
     FARMER: "Nông dân",
     AREA_MANAGER: "Trưởng BQL Vùng trồng",
     STORE_OWNER: "Cửa hàng vật tư",
+    COLLECTOR: "Vựa / Đơn vị thu mua",
+    PROCESSING_FACILITY: "Cơ sở chế biến",
     ADMIN: "Admin",
 };
 

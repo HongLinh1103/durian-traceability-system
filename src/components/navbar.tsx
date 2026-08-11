@@ -30,6 +30,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/cart", label: "Giỏ hàng", roles: ["FARMER"] },
     { href: "/orders", label: "Đơn mua của tôi", roles: ["FARMER"] },
     { href: "/dashboard/farmer/logs", label: "Nhật ký canh tác", roles: ["FARMER"] },
+    { href: "/dashboard/farmer/harvests", label: "Phiếu thu hoạch", roles: ["FARMER"] },
     { href: "/region-manager/gardens", label: "Quản lý vườn trồng", roles: ["AREA_MANAGER"] },
     { href: "/region-manager/farmers", label: "Hồ sơ nông dân", roles: ["AREA_MANAGER"], badge: true },
     { href: "/dashboard/admin/farming", label: "Quản lý canh tác", roles: ["ADMIN"] },
@@ -38,6 +39,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/store/products", label: "Sản phẩm", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/inventory", label: "Kho hàng", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/orders", label: "Đơn hàng", roles: ["STORE_OWNER"] },
+    { href: "/dashboard/partner", label: "Phiếu thu hoạch", roles: ["COLLECTOR", "PROCESSING_FACILITY"] },
 ];
 
 export function Navbar() {

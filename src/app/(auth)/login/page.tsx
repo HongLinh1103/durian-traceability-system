@@ -20,6 +20,11 @@ function getDashboardPath(role?: string): string {
             return "/dashboard/admin";
         case "AREA_MANAGER":
             return "/dashboard/area-manager";
+        case "STORE_OWNER":
+            return "/dashboard/store";
+        case "COLLECTOR":
+        case "PROCESSING_FACILITY":
+            return "/dashboard/partner";
         case "FARMER":
         default:
             return "/dashboard/farmer";

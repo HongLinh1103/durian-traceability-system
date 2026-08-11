@@ -19,6 +19,8 @@ const roleLabels: Record<string, string> = {
     FARMER: "Nông dân",
     AREA_MANAGER: "Trưởng ban quản lý vùng trồng",
     STORE_OWNER: "Chủ cửa hàng vật tư",
+    COLLECTOR: "Vựa / Đơn vị thu mua",
+    PROCESSING_FACILITY: "Cơ sở chế biến",
 };
 
 type ManagedRegion = {

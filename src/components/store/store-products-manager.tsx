@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { useToast } from "@/components/ui/toast";
 
 type Product = {
@@ -129,7 +130,7 @@ export function StoreProductsManager() {
             </select>
             <Input name="name" required placeholder="Tên sản phẩm" />
             <Input name="manufacturer" required placeholder="Tên công ty" />
-            <Input name="price" type="number" min="1" required placeholder="Giá bán" />
+            <CurrencyInput name="price" min={1} required placeholder="Giá bán" />
             <Input name="unit" required placeholder="Đơn vị bán" />
             <Input name="packaging" placeholder="Quy cách đóng gói (ví dụ: Bao 25 kg)" />
             <Input name="imageUrl" type="url" placeholder="URL hình ảnh sản phẩm" />
@@ -199,10 +200,10 @@ export function StoreProductsManager() {
                     <Input name="origin" defaultValue={editing.origin || ""} placeholder="Quốc gia hoặc nơi sản xuất" />
                 </label>
                 <label className="space-y-1.5 text-sm font-semibold text-slate-700">Giá bán
-                    <Input name="price" type="number" min="1" defaultValue={Number(editing.price)} required placeholder="Giá bán" />
+                    <CurrencyInput name="price" min={1} defaultValue={Number(editing.price)} required placeholder="Giá bán" />
                 </label>
                 <label className="space-y-1.5 text-sm font-semibold text-slate-700">Giá khuyến mãi
-                    <Input name="salePrice" type="number" min="1" defaultValue={editing.salePrice ? Number(editing.salePrice) : ""} placeholder="Để trống nếu không giảm giá" />
+                    <CurrencyInput name="salePrice" min={1} defaultValue={editing.salePrice ? Number(editing.salePrice) : ""} placeholder="Để trống nếu không giảm giá" />
                 </label>
                 <label className="space-y-1.5 text-sm font-semibold text-slate-700">Đơn vị bán
                     <Input name="unit" defaultValue={editing.unit} required placeholder="Đơn vị bán" />
