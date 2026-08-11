@@ -94,20 +94,40 @@ enum AccountStatus {
 
 /// Giai đoạn sinh trưởng của cây sầu riêng.
 enum GrowthStage {
+  POST_HARVEST_RECOVERY
   MAKING_SPROUT
+  FLOWER_INDUCTION
   FLOWERING
   FRUIT_SETTING
   FRUIT_GROWING
+  PRE_HARVEST
   HARVEST
 }
 
 /// Loại hoạt động trong nhật ký canh tác.
 enum ActivityType {
+  BASE_FERTILIZING
+  PLANTING
+  MULCHING
   SPRAY_PESTICIDE
   FERTILIZE
+  FOLIAR_FERTILIZING
   IRRIGATE
   PRUNE
   WEEDING
+  SHOOT_MANAGEMENT
+  WATER_STRESS
+  FLOWER_INDUCTION
+  FLOWER_THINNING
+  POLLINATION
+  FRUIT_THINNING
+  PEST_INSPECTION
+  FRUIT_BAGGING
+  BRANCH_SUPPORT
+  HARVEST
+  FRUIT_GRADING
+  GARDEN_SANITATION
+  OTHER
 }
 
 /// Trạng thái tuân thủ GACC cho thuốc bảo vệ thực vật.
@@ -623,6 +643,7 @@ model FarmingLog {
   stage           GrowthStage
   actionDate      DateTime
   activityType    ActivityType
+  otherActivity   String?
   chemicalName    String?
   dosage          String?
   phiDays         Int?

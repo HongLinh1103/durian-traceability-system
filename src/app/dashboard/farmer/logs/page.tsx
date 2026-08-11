@@ -41,6 +41,7 @@ export default async function FarmerLogsPage() {
             createdAt: true,
             stage: true,
             activityType: true,
+            otherActivity: true,
             chemicalName: true,
             dosage: true,
             phiDays: true,
@@ -89,7 +90,7 @@ export default async function FarmerLogsPage() {
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div>
                                         <CardTitle className="text-lg">
-                                            {activityLabels[log.activityType] ?? log.activityType}
+                                            {log.activityType === "OTHER" ? log.otherActivity || "Khác" : activityLabels[log.activityType] ?? log.activityType}
                                         </CardTitle>
                                         <CardDescription className="mt-1">
                                             {log.farm.farmCode} · {log.farm.farmName}

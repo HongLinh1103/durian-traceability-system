@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { farmingLogSchema, type FarmingLogInput } from "@/lib/validation";
-import { growthStages, activityTypes } from "@/lib/constants";
+import { activitiesByStage, growthStages, activityTypes, type GrowthStageLabel } from "@/lib/constants";
 import { evaluatePhiSafety, matchProhibitedChemical, type ProhibitedChemicalEntry } from "@/lib/workflow";
 import type { OfflineFarmingLogPayload } from "@/lib/offline-farming-logs";
 import { formatVietnameseDate, formatVietnameseDateTime, toIsoDate, toIsoDateTime } from "@/lib/date-format";
@@ -40,6 +40,7 @@ type FarmingLogItem = {
     actionDate: string;
     stage: string;
     activityType: string;
+    otherActivity: string | null;
     chemicalName: string | null;
     dosage: string | null;
     phiDays: number | null;
@@ -51,18 +52,38 @@ type FarmingLogItem = {
 };
 
 const activityLabels: Record<string, string> = {
-    SPRAY_PESTICIDE: "Phun thuốc",
+    BASE_FERTILIZING: "Bón lót",
+    PLANTING: "Trồng",
+    MULCHING: "Tủ gốc",
+    SPRAY_PESTICIDE: "Phun thuốc BVTV",
     FERTILIZE: "Bón phân",
+    FOLIAR_FERTILIZING: "Phun phân bón lá",
     IRRIGATE: "Tưới nước",
     WEEDING: "Làm cỏ",
-    PRUNE: "Cắt tỉa",
+    PRUNE: "Tỉa cành / tạo tán",
+    SHOOT_MANAGEMENT: "Quản lý đọt",
+    WATER_STRESS: "Xiết nước",
+    FLOWER_INDUCTION: "Xử lý ra hoa",
+    FLOWER_THINNING: "Tỉa bông",
+    POLLINATION: "Thụ phấn",
+    FRUIT_THINNING: "Tỉa trái",
+    PEST_INSPECTION: "Kiểm tra sâu bệnh",
+    FRUIT_BAGGING: "Bao trái",
+    BRANCH_SUPPORT: "Chống cành",
+    HARVEST: "Thu hoạch",
+    FRUIT_GRADING: "Phân loại trái",
+    GARDEN_SANITATION: "Vệ sinh vườn",
+    OTHER: "Khác",
 };
 
 const stageLabels: Record<string, string> = {
+    POST_HARVEST_RECOVERY: "Phục hồi sau thu hoạch",
     MAKING_SPROUT: "Làm đọt",
+    FLOWER_INDUCTION: "Xử lý ra hoa",
     FLOWERING: "Ra hoa",
     FRUIT_SETTING: "Đậu trái",
     FRUIT_GROWING: "Nuôi trái",
+    PRE_HARVEST: "Trước thu hoạch",
     HARVEST: "Thu hoạch",
 };
 
@@ -73,6 +94,7 @@ function buildLogFormData(values: FarmingLogInput, images: File[], isGACCComplia
     formData.append("stage", values.stage);
     formData.append("actionDate", toIsoDateTime(values.actionDate, values.actionTime));
     formData.append("activityType", values.activityType);
+    formData.append("otherActivity", values.otherActivity ?? "");
     formData.append("chemicalName", values.chemicalName);
     formData.append("dosage", values.dosage);
     formData.append("phiDays", String(values.phiDays));
@@ -104,6 +126,14 @@ async function loadOfflineLogsModule() {
     return import("@/lib/offline-farming-logs");
 }
 
+function centerPillInScroller(element: HTMLElement) {
+    const scroller = element.parentElement;
+    if (!scroller) return;
+
+    const targetLeft = element.offsetLeft - (scroller.clientWidth - element.offsetWidth) / 2;
+    scroller.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+}
+
 export default function NewFarmingLogPage() {
     const { toast } = useToast();
     const galleryInputRef = useRef<HTMLInputElement | null>(null);
@@ -132,6 +162,7 @@ export default function NewFarmingLogPage() {
         defaultValues: {
             stage: growthStages[0],
             activityType: activityTypes[0],
+            otherActivity: "",
             phiDays: 0,
             isGACCCompliant: true,
             actionDate: formatVietnameseDate(now),
@@ -150,8 +181,16 @@ export default function NewFarmingLogPage() {
     const plannedHarvestDate = form.watch("plannedHarvestDate");
     const stage = form.watch("stage");
     const activityType = form.watch("activityType");
-    const isSpraying = activityType === activityTypes[0];
-    const isFertilizing = activityType === activityTypes[1];
+    const availableActivities = activitiesByStage[stage];
+    const isSpraying = activityType === "Phun thuốc BVTV";
+    const isFertilizing = ["Bón lót", "Bón phân", "Phun phân bón lá"].includes(activityType);
+
+    const selectStage = (nextStage: GrowthStageLabel) => {
+        form.setValue("stage", nextStage, { shouldDirty: true, shouldValidate: true });
+        if (!activitiesByStage[nextStage].includes(activityType)) {
+            form.setValue("activityType", activitiesByStage[nextStage][0], { shouldDirty: true, shouldValidate: true });
+        }
+    };
 
     useEffect(() => {
         let cancelled = false;
@@ -173,6 +212,9 @@ export default function NewFarmingLogPage() {
 
     useEffect(() => {
         form.setValue("chemicalName", "", { shouldValidate: false });
+        if (activityType !== "Khác") {
+            form.setValue("otherActivity", "", { shouldValidate: false });
+        }
     }, [activityType, form]);
 
     useEffect(() => {
@@ -494,6 +536,7 @@ export default function NewFarmingLogPage() {
             form.reset({
                 stage: growthStages[0],
                 activityType: activityTypes[0],
+                otherActivity: "",
                 phiDays: 0,
                 isGACCCompliant: true,
                 actionDate: formatVietnameseDate(new Date()),
@@ -535,7 +578,7 @@ export default function NewFarmingLogPage() {
     });
 
     return (
-        <main className="mx-auto min-h-screen max-w-4xl px-3 py-4 sm:px-6 lg:px-8">
+        <main className="mx-auto min-h-screen max-w-4xl overflow-x-clip px-3 py-4 sm:px-6 lg:px-8">
             <Card className="overflow-hidden border-white/70 shadow-soft">
                 <CardHeader className="space-y-4">
                     <div className="flex items-center gap-3">
@@ -563,7 +606,7 @@ export default function NewFarmingLogPage() {
                 </CardHeader>
 
                 <CardContent>
-                    <form className="space-y-6" onSubmit={onSubmit}>
+                    <form className="min-w-0 space-y-6" onSubmit={onSubmit}>
                         <div>
                             <Label htmlFor="farmId">Mã MSVT</Label>
                             <select id="farmId" className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" {...form.register("farmId")}>
@@ -578,34 +621,6 @@ export default function NewFarmingLogPage() {
                             <p className="mt-1 text-xs text-red-600">{form.formState.errors.farmId?.message}</p>
                         </div>
 
-                        <div>
-                            <Label>Giai đoạn sinh trưởng</Label>
-                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                                {growthStages.map((item) => (
-                                    <button
-                                        key={item}
-                                        type="button"
-                                        onClick={() => form.setValue("stage", item, { shouldDirty: true })}
-                                        className={`min-h-12 rounded-3xl border px-3 py-3 text-sm font-semibold transition ${form.watch("stage") === item ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-200 bg-white text-slate-700"}`}
-                                    >
-                                        {item}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div>
-                            <Label>Hoạt động</Label>
-                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                                {activityTypes.map((activity) => (
-                                    <label key={activity} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-3xl border px-4 py-3 ${form.watch("activityType") === activity ? "border-brand-600 bg-brand-50" : "border-slate-200 bg-white"}`}>
-                                        <input type="radio" value={activity} {...form.register("activityType")} className="h-4 w-4 accent-green-600" />
-                                        <span className="font-semibold text-slate-700">{activity}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <Label htmlFor="actionDate">Ngày thực hiện</Label>
@@ -618,6 +633,58 @@ export default function NewFarmingLogPage() {
                                 <p className="mt-1 text-xs text-red-600">{form.formState.errors.actionTime?.message}</p>
                                 <p className="mt-1 text-xs text-slate-500">Mặc định là thời gian hiện tại của thiết bị.</p>
                             </div>
+                        </div>
+
+                        <div>
+                            <Label>Giai đoạn sinh trưởng</Label>
+                            <div className="relative -mr-1">
+                                <div className="flex snap-x snap-mandatory flex-nowrap gap-3 overflow-x-auto px-1 pb-3 pr-16 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                    {growthStages.map((item) => (
+                                        <button
+                                            key={item}
+                                            type="button"
+                                            onClick={(event) => {
+                                                selectStage(item);
+                                                centerPillInScroller(event.currentTarget);
+                                            }}
+                                            className={`min-h-12 min-w-[8.5rem] shrink-0 snap-start whitespace-nowrap rounded-full border px-5 py-3 text-sm font-semibold transition-all ${form.watch("stage") === item ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200 ring-2 ring-brand-100" : "border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50"}`}
+                                            aria-pressed={form.watch("stage") === item}
+                                        >
+                                            {item === "Phục hồi sau thu hoạch" ? "Phục hồi" : item}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="pointer-events-none absolute inset-y-1 right-0 w-10 bg-gradient-to-l from-white via-white/85 to-transparent" aria-hidden="true" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <Label>Hoạt động</Label>
+                            <input type="hidden" {...form.register("activityType")} />
+                            <div className="relative -mr-1">
+                                <div className="flex snap-x snap-mandatory flex-nowrap gap-3 overflow-x-auto px-1 pb-3 pr-16 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                {availableActivities.map((activity) => (
+                                    <button
+                                        key={activity}
+                                        type="button"
+                                        onClick={(event) => {
+                                            form.setValue("activityType", activity, { shouldDirty: true, shouldValidate: true });
+                                            centerPillInScroller(event.currentTarget);
+                                        }}
+                                        className={`flex min-h-12 min-w-[8.5rem] shrink-0 snap-start cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border px-5 py-3 text-sm font-semibold transition-all ${form.watch("activityType") === activity ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200 ring-2 ring-brand-100" : "border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50"}`}
+                                        aria-pressed={form.watch("activityType") === activity}
+                                    >
+                                        <span>{activity}</span>
+                                    </button>
+                                ))}
+                                </div>
+                                <div className="pointer-events-none absolute inset-y-1 right-0 w-10 bg-gradient-to-l from-white via-white/85 to-transparent" aria-hidden="true" />
+                            </div>
+                            {activityType === "Khác" && <div className="mt-3">
+                                <Label htmlFor="otherActivity">Tên hoạt động khác</Label>
+                                <Input id="otherActivity" className="w-full min-w-0" maxLength={120} placeholder="Ví dụ: Kiểm tra độ ẩm đất" {...form.register("otherActivity")} />
+                                <p className="mt-1 text-xs text-red-600">{form.formState.errors.otherActivity?.message}</p>
+                            </div>}
                         </div>
 
                         {(isSpraying || isFertilizing) && <div className="grid gap-4 md:grid-cols-2">
@@ -751,7 +818,7 @@ export default function NewFarmingLogPage() {
                                     <div className="flex flex-wrap items-start justify-between gap-3">
                                         <div>
                                             <p className="font-bold text-slate-900">
-                                                {activityLabels[log.activityType] ?? log.activityType}
+                                                {log.activityType === "OTHER" ? log.otherActivity || "Khác" : activityLabels[log.activityType] ?? log.activityType}
                                             </p>
                                             <p className="mt-1 text-sm text-slate-500">
                                                 {log.farm.farmCode} · {log.farm.farmName}

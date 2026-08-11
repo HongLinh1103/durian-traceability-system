@@ -64,6 +64,7 @@ async function submitQueuedLog(record: OfflineFarmingLogRecord) {
     formData.append("stage", record.payload.stage);
     formData.append("actionDate", toIsoDateTime(record.payload.actionDate, record.payload.actionTime));
     formData.append("activityType", record.payload.activityType);
+    formData.append("otherActivity", record.payload.otherActivity ?? "");
     formData.append("chemicalName", record.payload.chemicalName ?? "");
     formData.append("dosage", record.payload.dosage ?? "");
     formData.append("phiDays", String(record.payload.phiDays));

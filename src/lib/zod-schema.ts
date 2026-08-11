@@ -189,6 +189,7 @@ export const farmingLogSchema = z.object({
     actionDate: z.string().min(1, "Chọn ngày thực hiện").refine(isValidVietnameseDate, "Ngày phải có định dạng dd/MM/yyyy"),
     actionTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Giờ phải có định dạng HH:mm"),
     activityType: z.enum(activityTypes),
+    otherActivity: z.string().trim().max(120, "Tên hoạt động không quá 120 ký tự").optional().default(""),
     chemicalName: z.string().trim().optional().default(""),
     dosage: z.string().trim().optional().default(""),
     phiDays: z.coerce.number().int().min(0, "PHI không hợp lệ").default(0),
@@ -199,7 +200,10 @@ export const farmingLogSchema = z.object({
     notes: z.string().optional(),
     isGACCCompliant: z.boolean().default(true),
 }).superRefine((data, ctx) => {
-    if (data.activityType === activityTypes[0]) {
+    if (data.activityType === "Khác" && !data.otherActivity) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["otherActivity"], message: "Nhập tên hoạt động khác" });
+    }
+    if (data.activityType === "Phun thuốc BVTV") {
         if (!data.chemicalName) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["chemicalName"], message: "Nhập tên thuốc" });
         }
@@ -207,7 +211,7 @@ export const farmingLogSchema = z.object({
             ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dosage"], message: "Nhập liều lượng" });
         }
     }
-    if (data.activityType === activityTypes[1]) {
+    if (["Bón lót", "Bón phân", "Phun phân bón lá"].includes(data.activityType)) {
         if (!data.chemicalName) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["chemicalName"], message: "Nhập tên phân bón" });
         }

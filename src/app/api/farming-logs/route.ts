@@ -35,6 +35,7 @@ export async function GET() {
                 actionDate: true,
                 stage: true,
                 activityType: true,
+                otherActivity: true,
                 chemicalName: true,
                 dosage: true,
                 phiDays: true,
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
         const farmId = String(formData.get("farmId") ?? "");
         const stage = String(formData.get("stage") ?? "") as PrismaGrowthStageLabel;
         const activityType = String(formData.get("activityType") ?? "") as PrismaActivityTypeLabel;
+        const otherActivity = String(formData.get("otherActivity") ?? "").trim();
         const actionDate = String(formData.get("actionDate") ?? "");
         const chemicalName = String(formData.get("chemicalName") ?? "");
         const dosage = String(formData.get("dosage") ?? "");
@@ -68,13 +70,14 @@ export async function POST(request: Request) {
         const isGACCCompliant = toBoolean(formData.get("isGACCCompliant"));
         const uploadedImages = formData.getAll("images").filter((item): item is File => item instanceof File);
         const normalizedActivityType = toPrismaActivityType(activityType);
-        const requiresChemicalName = normalizedActivityType === "SPRAY_PESTICIDE" || normalizedActivityType === "FERTILIZE";
-        const requiresDosage = normalizedActivityType === "SPRAY_PESTICIDE" || normalizedActivityType === "FERTILIZE";
+        const requiresChemicalName = ["SPRAY_PESTICIDE", "FERTILIZE", "BASE_FERTILIZING", "FOLIAR_FERTILIZING"].includes(normalizedActivityType);
+        const requiresDosage = requiresChemicalName;
 
         if (
             !farmId ||
             !stage ||
             !activityType ||
+            (activityType === "Khác" && !otherActivity) ||
             !actionDate ||
             (requiresChemicalName && !chemicalName) ||
             (requiresDosage && !dosage)
@@ -117,6 +120,7 @@ export async function POST(request: Request) {
                 stage: toPrismaGrowthStage(stage),
                 actionDate: new Date(actionDate),
                 activityType: normalizedActivityType,
+                otherActivity: normalizedActivityType === "OTHER" ? otherActivity : null,
                 chemicalName: requiresChemicalName ? chemicalName : null,
                 dosage: requiresDosage ? dosage : null,
                 phiDays: requiresDosage ? phiDays : null,
