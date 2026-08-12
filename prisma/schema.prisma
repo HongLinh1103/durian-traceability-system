@@ -179,6 +179,12 @@ enum ActivityType {
   OTHER
 }
 
+enum PlanStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+}
+
 /// Trạng thái tuân thủ GACC cho thuốc bảo vệ thực vật.
 enum GaccChemicalStatus {
   ALLOWED
@@ -316,6 +322,7 @@ model User {
   createdHarvests        HarvestRecord[]         @relation("HarvestFarmer")
   partnerHarvests        HarvestRecord[]         @relation("HarvestBuyer")
   harvestActions         HarvestStatusHistory[]
+  farmingPlans           FarmingPlan[]
 
   @@index([role])
   @@index([role, accountStatus, deletedAt])
@@ -732,6 +739,7 @@ model Farm {
   region      GrowingRegion?  @relation(fields: [growingRegionId], references: [id], onDelete: SetNull)
   farmingLogs FarmingLog[]
   harvests    HarvestRecord[]
+  farmingPlans FarmingPlan[]
 
   @@index([farmerId])
   @@index([farmCode])
@@ -841,13 +849,40 @@ model FarmingLog {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   harvestRecordId String?      @unique
+  planId          String?      @unique
 
   farm          Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
   harvestRecord HarvestRecord? @relation(fields: [harvestRecordId], references: [id], onDelete: SetNull)
+  plan          FarmingPlan?   @relation(fields: [planId], references: [id], onDelete: SetNull)
 
   @@index([farmId, actionDate])
   @@index([stage])
   @@index([activityType])
+}
+
+model FarmingPlan {
+  id           String       @id @default(cuid())
+  farmerId     String
+  farmId       String
+  plannedDate  DateTime
+  title        String
+  stage        GrowthStage
+  activityType ActivityType
+  otherActivity String?
+  notes        String?
+  status       PlanStatus   @default(PLANNED)
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  farmer User        @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  farm   Farm        @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  log    FarmingLog?
+
+  @@index([farmerId, plannedDate, status])
+  @@index([farmId, plannedDate])
+  @@map("farming_plans")
 }
 
 model ProhibitedChemical {

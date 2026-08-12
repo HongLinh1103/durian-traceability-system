@@ -13,8 +13,8 @@ export default function CartPage() {
     useEffect(() => { void load(); }, [load]);
     const total = useMemo(() => items.reduce((sum, item) => sum + Number(item.product.salePrice ?? item.product.price) * item.quantity, 0), [items]);
     const shippingFee = useMemo(() => new Set(items.map((item) => item.product.store.id)).size * 20_000, [items]);
-    async function change(item: Item, quantity: number) { if (quantity < 1 || quantity > item.product.stock) return; setBusyId(item.id); setError(""); const response = await fetch("/api/cart", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: item.id, quantity }) }); const payload = await response.json(); if (!response.ok) setError(payload.message || "Không thể cập nhật số lượng."); await load(); setBusyId(""); }
-    async function remove(id: string) { setBusyId(id); await fetch(`/api/cart?id=${encodeURIComponent(id)}`, { method: "DELETE" }); await load(); setBusyId(""); }
+    async function change(item: Item, quantity: number) { if (quantity < 1 || quantity > item.product.stock) return; setBusyId(item.id); setError(""); const response = await fetch("/api/cart", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: item.id, quantity }) }); const payload = await response.json(); if (!response.ok) setError(payload.message || "Không thể cập nhật số lượng."); else window.dispatchEvent(new Event("cart-updated")); await load(); setBusyId(""); }
+    async function remove(id: string) { setBusyId(id); const response = await fetch(`/api/cart?id=${encodeURIComponent(id)}`, { method: "DELETE" }); if (response.ok) window.dispatchEvent(new Event("cart-updated")); await load(); setBusyId(""); }
     return <main className="mx-auto min-h-[calc(100vh-64px)] max-w-5xl space-y-5 px-4 py-7 sm:px-6">
         <div><h1 className="text-3xl font-black text-slate-950">Giỏ hàng</h1><p className="mt-1 text-sm text-slate-500">Kiểm tra sản phẩm và số lượng trước khi đặt hàng.</p></div>
         {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}

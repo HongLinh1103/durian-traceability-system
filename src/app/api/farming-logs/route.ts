@@ -68,6 +68,7 @@ export async function POST(request: Request) {
         const plannedHarvestDate = String(formData.get("plannedHarvestDate") ?? "");
         const notes = String(formData.get("notes") ?? "");
         const isGACCCompliant = toBoolean(formData.get("isGACCCompliant"));
+        const planId = String(formData.get("planId") ?? "").trim();
         const uploadedImages = formData.getAll("images").filter((item): item is File => item instanceof File);
         const normalizedActivityType = toPrismaActivityType(activityType);
         const requiresChemicalName = ["SPRAY_PESTICIDE", "FERTILIZE", "BASE_FERTILIZING", "FOLIAR_FERTILIZING"].includes(normalizedActivityType);
@@ -114,8 +115,10 @@ export async function POST(request: Request) {
             }),
         );
 
-        const created = await prisma.farmingLog.create({
-            data: {
+        const plan = planId ? await prisma.farmingPlan.findFirst({ where: { id: planId, farmerId: session.user.id, farmId, status: { not: "COMPLETED" } }, select: { id: true } }) : null;
+        if (planId && !plan) return NextResponse.json({ ok: false, error: "Kế hoạch không hợp lệ hoặc đã hoàn thành." }, { status: 400 });
+        const created = await prisma.$transaction(async (tx) => {
+            const log = await tx.farmingLog.create({ data: {
                 farmId,
                 stage: toPrismaGrowthStage(stage),
                 actionDate: new Date(actionDate),
@@ -129,7 +132,10 @@ export async function POST(request: Request) {
                     (isGACCCompliant && prohibitedMatch.status === "none"),
                 notes: [notes, plannedHarvestDate ? `Ngày thu hoạch dự kiến: ${plannedHarvestDate}` : ""].filter(Boolean).join("\n"),
                 images,
-            },
+                planId: plan?.id ?? null,
+            } });
+            if (plan) await tx.farmingPlan.update({ where: { id: plan.id }, data: { status: "COMPLETED", completedAt: new Date() } });
+            return log;
         });
 
         return NextResponse.json({ ok: true, id: created.id });

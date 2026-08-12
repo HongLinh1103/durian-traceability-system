@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BookOpen, ChevronRight } from "lucide-react";
+import { BookOpen, CalendarDays, ChevronRight } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { HeroBanner } from "@/components/home/HeroBanner";
@@ -38,6 +38,12 @@ export default async function FarmerDashboardPage() {
                         <div><p className="font-bold text-slate-900">Nhật ký canh tác</p><p className="text-sm text-slate-500">Xem và cập nhật hoạt động canh tác của vườn.</p></div>
                     </div>
                     <Button asChild><Link href="/dashboard/farmer/logs">Xem nhật ký<ChevronRight className="ml-2 h-4 w-4" /></Link></Button>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
+                    <div className="flex items-center gap-3"><span className="rounded-2xl bg-sky-50 p-3 text-sky-700"><CalendarDays className="h-6 w-6" /></span><div><p className="font-bold text-slate-900">Kế hoạch canh tác</p><p className="text-sm text-slate-500">Lên lịch công việc và nhận nhắc việc trong ngày.</p></div></div>
+                    <Button asChild><Link href="/dashboard/farmer/plans">Mở kế hoạch<ChevronRight className="ml-2 h-4 w-4" /></Link></Button>
                 </CardContent>
             </Card>
         </main>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import imageCompression from "browser-image-compression";
@@ -137,8 +138,12 @@ function centerPillInScroller(element: HTMLElement) {
 }
 
 export default function NewFarmingLogPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const { toast } = useToast();
     const galleryInputRef = useRef<HTMLInputElement | null>(null);
+    const stageScrollerRef = useRef<HTMLDivElement | null>(null);
+    const activityScrollerRef = useRef<HTMLDivElement | null>(null);
     const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
     const cameraStreamRef = useRef<MediaStream | null>(null);
     const speechRef = useRef<SpeechRecognitionInstanceLike | null>(null);
@@ -158,6 +163,7 @@ export default function NewFarmingLogPage() {
     const [prohibitedEntries, setProhibitedEntries] = useState<ProhibitedChemicalEntry[]>([]);
     const [masterDataLoading, setMasterDataLoading] = useState(true);
     const now = useMemo(() => new Date(), []);
+    const planId = searchParams.get("planId") ?? "";
 
     const form = useForm<FarmingLogInput>({
         resolver: zodResolver(farmingLogSchema),
@@ -193,6 +199,19 @@ export default function NewFarmingLogPage() {
             form.setValue("activityType", activitiesByStage[nextStage][0], { shouldDirty: true, shouldValidate: true });
         }
     };
+
+    useEffect(() => {
+        if (!planId) return;
+        const frame = window.requestAnimationFrame(() => {
+            for (const scroller of [stageScrollerRef.current, activityScrollerRef.current]) {
+                const selected = scroller?.querySelector<HTMLElement>('[aria-pressed="true"]');
+                if (!scroller || !selected) continue;
+                const targetLeft = selected.offsetLeft - (scroller.clientWidth - selected.offsetWidth) / 2;
+                scroller.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+            }
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [activityType, planId, stage]);
 
     useEffect(() => {
         let cancelled = false;
@@ -339,6 +358,24 @@ export default function NewFarmingLogPage() {
             cancelled = true;
         };
     }, [loadFarmingData]);
+
+    useEffect(() => {
+        if (!planId || farmsLoading) return;
+        const plannedFarmId = searchParams.get("farmId");
+        const plannedStage = searchParams.get("stage") as GrowthStageLabel | null;
+        const plannedActivity = searchParams.get("activity");
+        const plannedDate = searchParams.get("date");
+        const plannedTime = searchParams.get("time");
+        if (plannedFarmId && farms.some((farm) => farm.id === plannedFarmId)) form.setValue("farmId", plannedFarmId);
+        if (plannedStage && growthStages.includes(plannedStage)) {
+            form.setValue("stage", plannedStage);
+            if (plannedActivity && activitiesByStage[plannedStage].includes(plannedActivity as never)) form.setValue("activityType", plannedActivity as FarmingLogInput["activityType"]);
+        }
+        if (plannedDate) form.setValue("actionDate", formatVietnameseDate(new Date(`${plannedDate}T00:00:00`)));
+        if (plannedTime) form.setValue("actionTime", plannedTime);
+        form.setValue("notes", searchParams.get("notes") ?? "");
+        form.setValue("otherActivity", searchParams.get("otherActivity") ?? "");
+    }, [farms, farmsLoading, form, planId, searchParams]);
 
     const handleVoiceToggle = () => {
         const SpeechRecognitionConstructor = getSpeechRecognitionConstructor();
@@ -502,9 +539,11 @@ export default function NewFarmingLogPage() {
             const payloadIsCompliant = !isProhibited && isSafeForHarvest;
 
             if (typeof navigator !== "undefined" && navigator.onLine) {
+                const formData = buildLogFormData(values, attachedImages, payloadIsCompliant);
+                if (planId) formData.append("planId", planId);
                 const response = await fetch("/api/farming-logs", {
                     method: "POST",
-                    body: buildLogFormData(values, attachedImages, payloadIsCompliant),
+                    body: formData,
                 });
 
                 if (!response.ok) {
@@ -517,7 +556,15 @@ export default function NewFarmingLogPage() {
                     variant: isSafeForHarvest ? "success" : "destructive",
                 });
                 await loadFarmingData();
+                if (planId) {
+                    window.dispatchEvent(new Event("plans-updated"));
+                    router.push("/dashboard/farmer/plans");
+                    return;
+                }
             } else {
+                if (planId) {
+                    throw new Error("Cần kết nối Internet để hoàn thành công việc trong kế hoạch.");
+                }
                 const { queueOfflineFarmingLog } = await loadOfflineLogsModule();
                 const offlinePayload: OfflineFarmingLogPayload = {
                     ...values,
@@ -552,6 +599,14 @@ export default function NewFarmingLogPage() {
             setAttachedImages([]);
             setImageStatus("Chưa có ảnh nào");
         } catch (error) {
+            if (planId) {
+                toast({
+                    title: "Chưa thể hoàn thành kế hoạch",
+                    description: error instanceof Error ? error.message : "Vui lòng kiểm tra kết nối và thử lại.",
+                    variant: "destructive",
+                });
+                return;
+            }
             try {
                 const { queueOfflineFarmingLog } = await loadOfflineLogsModule();
                 const offlinePayload: OfflineFarmingLogPayload = {
@@ -642,10 +697,10 @@ export default function NewFarmingLogPage() {
                             {form.watch("farmId") ? <Button asChild className="mt-4 w-full sm:w-auto"><Link href={`/harvests/new?gardenId=${encodeURIComponent(form.watch("farmId"))}`}><ClipboardPlus className="mr-2 h-4 w-4" />Tạo phiếu thu hoạch</Link></Button> : <Button disabled className="mt-4 w-full sm:w-auto"><ClipboardPlus className="mr-2 h-4 w-4" />Chọn mã MSVT trước</Button>}
                         </div>}
 
-                        <div>
+                        <div className="min-w-0">
                             <Label>Giai đoạn sinh trưởng</Label>
-                            <div className="relative -mr-1">
-                                <div className="flex snap-x snap-mandatory flex-nowrap gap-3 overflow-x-auto px-1 pb-3 pr-16 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <div className="relative w-full min-w-0 max-w-full">
+                                <div ref={stageScrollerRef} className="flex w-full touch-pan-x snap-x snap-proximity flex-nowrap gap-3 overflow-x-auto overscroll-x-contain px-1 pb-3 pr-16 pt-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                     {growthStages.map((item) => (
                                         <button
                                             key={item}
@@ -654,7 +709,7 @@ export default function NewFarmingLogPage() {
                                                 selectStage(item);
                                                 centerPillInScroller(event.currentTarget);
                                             }}
-                                            className={`min-h-12 min-w-[8.5rem] shrink-0 snap-start whitespace-nowrap rounded-full border px-5 py-3 text-sm font-semibold transition-all ${form.watch("stage") === item ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200 ring-2 ring-brand-100" : "border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50"}`}
+                                            className={`min-h-12 min-w-[8.5rem] shrink-0 touch-pan-x snap-start whitespace-nowrap rounded-full border px-5 py-3 text-sm font-semibold transition-all ${form.watch("stage") === item ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200 ring-2 ring-brand-100" : "border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50"}`}
                                             aria-pressed={form.watch("stage") === item}
                                         >
                                             {item === "Phục hồi sau thu hoạch" ? "Phục hồi" : item}
@@ -665,11 +720,11 @@ export default function NewFarmingLogPage() {
                             </div>
                         </div>
 
-                        <div>
+                        <div className="min-w-0">
                             <Label>Hoạt động</Label>
                             <input type="hidden" {...form.register("activityType")} />
-                            <div className="relative -mr-1">
-                                <div className="flex snap-x snap-mandatory flex-nowrap gap-3 overflow-x-auto px-1 pb-3 pr-16 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <div className="relative w-full min-w-0 max-w-full">
+                                <div ref={activityScrollerRef} className="flex w-full touch-pan-x snap-x snap-proximity flex-nowrap gap-3 overflow-x-auto overscroll-x-contain px-1 pb-3 pr-16 pt-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                 {availableActivities.map((activity) => (
                                     <button
                                         key={activity}
@@ -678,7 +733,7 @@ export default function NewFarmingLogPage() {
                                             form.setValue("activityType", activity, { shouldDirty: true, shouldValidate: true });
                                             centerPillInScroller(event.currentTarget);
                                         }}
-                                        className={`flex min-h-12 min-w-[8.5rem] shrink-0 snap-start cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border px-5 py-3 text-sm font-semibold transition-all ${form.watch("activityType") === activity ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200 ring-2 ring-brand-100" : "border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50"}`}
+                                        className={`flex min-h-12 min-w-[8.5rem] shrink-0 touch-pan-x snap-start cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border px-5 py-3 text-sm font-semibold transition-all ${form.watch("activityType") === activity ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200 ring-2 ring-brand-100" : "border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50"}`}
                                         aria-pressed={form.watch("activityType") === activity}
                                     >
                                         <span>{activity}</span>

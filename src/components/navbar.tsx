@@ -19,6 +19,7 @@ type DashboardLink = {
     label: string;
     roles: string[];
     badge?: boolean;
+    planBadge?: boolean;
 };
 
 const dashboardLinks: DashboardLink[] = [
@@ -30,6 +31,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/cart", label: "Giỏ hàng", roles: ["FARMER"] },
     { href: "/orders", label: "Đơn mua của tôi", roles: ["FARMER"] },
     { href: "/dashboard/farmer/logs", label: "Nhật ký canh tác", roles: ["FARMER"] },
+    { href: "/dashboard/farmer/plans", label: "Kế hoạch", roles: ["FARMER"], planBadge: true },
     { href: "/dashboard/farmer/harvests", label: "Phiếu thu hoạch", roles: ["FARMER"] },
     { href: "/region-manager/gardens", label: "Quản lý vườn trồng", roles: ["AREA_MANAGER"] },
     { href: "/region-manager/farmers", label: "Hồ sơ nông dân", roles: ["AREA_MANAGER"], badge: true },
@@ -48,6 +50,8 @@ export function Navbar() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [materialsOpen, setMaterialsOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
+    const [cartCount, setCartCount] = useState(0);
+    const [duePlanCount, setDuePlanCount] = useState(0);
     const [contentCounts, setContentCounts] = useState({ documents: 0, news: 0 });
     const [hydrated, setHydrated] = useState(false);
     const [currentUserName, setCurrentUserName] = useState<string | null>(null);
@@ -129,6 +133,41 @@ export function Navbar() {
         };
     }, [isAuthed, pathname, userRole]);
 
+    useEffect(() => {
+        if (!isAuthed || userRole !== "FARMER") { setDuePlanCount(0); return; }
+        let cancelled = false;
+        const fetchDuePlans = async () => { try { const response = await fetch("/api/farming-plans?due=true", { cache: "no-store" }); const payload = await response.json(); if (!cancelled && payload.success) setDuePlanCount(payload.dueCount ?? 0); } catch { /* non-blocking reminder */ } };
+        void fetchDuePlans();
+        window.addEventListener("plans-updated", fetchDuePlans);
+        const interval = window.setInterval(fetchDuePlans, 5 * 60_000);
+        return () => { cancelled = true; window.removeEventListener("plans-updated", fetchDuePlans); window.clearInterval(interval); };
+    }, [isAuthed, pathname, userRole]);
+
+    useEffect(() => {
+        if (!isAuthed || userRole !== "FARMER") {
+            setCartCount(0);
+            return;
+        }
+        let cancelled = false;
+        const fetchCartCount = async () => {
+            try {
+                const response = await fetch("/api/cart", { cache: "no-store" });
+                const payload = await response.json();
+                if (!cancelled && payload.success) {
+                    setCartCount((payload.data ?? []).reduce((total: number, item: { quantity?: number }) => total + (item.quantity ?? 0), 0));
+                }
+            } catch {
+                // Cart badge must never block navigation.
+            }
+        };
+        void fetchCartCount();
+        window.addEventListener("cart-updated", fetchCartCount);
+        return () => {
+            cancelled = true;
+            window.removeEventListener("cart-updated", fetchCartCount);
+        };
+    }, [isAuthed, pathname, userRole]);
+
     const accessibleDashboards = userRole
         ? dashboardLinks.filter((l) => l.roles.includes(userRole))
         : [];
@@ -193,7 +232,7 @@ export function Navbar() {
                             <button type="button" onClick={() => setMaterialsOpen((open) => !open)} aria-expanded={materialsOpen} aria-haspopup="menu" className={cn("flex items-center gap-1 whitespace-nowrap rounded-2xl px-3 py-2 text-sm font-semibold transition", (pathname.startsWith("/materials") || pathname.startsWith("/orders")) ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900")}>
                                 Vật tư <ChevronDown className={cn("h-4 w-4 transition-transform", materialsOpen && "rotate-180")} />
                             </button>
-                            {materialsOpen && <div role="menu" className="absolute left-0 top-full z-[70] mt-2 min-w-56 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">{materialLinks.map((link) => <Link key={link.href} href={link.href} role="menuitem" onClick={() => setMaterialsOpen(false)} className={cn("block rounded-xl px-3 py-2 text-sm font-semibold transition", pathname === link.href ? "bg-brand-50 text-brand-700" : "text-slate-700 hover:bg-brand-50 hover:text-brand-700")}>{link.label}</Link>)}</div>}
+                            {materialsOpen && <div role="menu" className="absolute left-0 top-full z-[70] mt-2 min-w-56 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">{materialLinks.map((link) => <Link key={link.href} href={link.href} role="menuitem" onClick={() => setMaterialsOpen(false)} className={cn("flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition", pathname === link.href ? "bg-brand-50 text-brand-700" : "text-slate-700 hover:bg-brand-50 hover:text-brand-700")}><span>{link.label}</span>{link.href === "/cart" && cartCount > 0 && <CartBadge count={cartCount} />}</Link>)}</div>}
                         </div>
                     )}
                     {isAuthed &&
@@ -214,6 +253,7 @@ export function Navbar() {
                                         {pendingCount > 99 ? "99+" : pendingCount}
                                     </span>
                                 )}
+                                {link.planBadge && duePlanCount > 0 && <CartBadge count={duePlanCount} />}
                             </Link>
                         ))}
                 </div>
@@ -318,7 +358,7 @@ export function Navbar() {
                         {isAuthed && materialLinks.length > 0 && (
                             <div className="rounded-2xl border border-slate-100 p-2">
                                 <button type="button" onClick={() => setMaterialsOpen((open) => !open)} aria-expanded={materialsOpen} className="flex w-full items-center justify-between px-2 py-2 text-sm font-bold text-slate-700">Vật tư <ChevronDown className={cn("h-4 w-4 transition-transform", materialsOpen && "rotate-180")} /></button>
-                                {materialsOpen && <div className="space-y-1 border-t border-slate-100 pt-1">{materialLinks.map((link) => <Link key={link.href} href={link.href} onClick={() => { setMaterialsOpen(false); setMobileOpen(false); }} className="block rounded-xl px-4 py-2 text-sm text-slate-600 hover:bg-brand-50">{link.label}</Link>)}</div>}
+                                {materialsOpen && <div className="space-y-1 border-t border-slate-100 pt-1">{materialLinks.map((link) => <Link key={link.href} href={link.href} onClick={() => { setMaterialsOpen(false); setMobileOpen(false); }} className="flex items-center justify-between gap-3 rounded-xl px-4 py-2 text-sm text-slate-600 hover:bg-brand-50"><span>{link.label}</span>{link.href === "/cart" && cartCount > 0 && <CartBadge count={cartCount} />}</Link>)}</div>}
                             </div>
                         )}
                         {isAuthed &&
@@ -340,6 +380,7 @@ export function Navbar() {
                                             {pendingCount > 99 ? "99+" : pendingCount}
                                         </span>
                                     )}
+                                    {link.planBadge && duePlanCount > 0 && <CartBadge count={duePlanCount} />}
                                 </Link>
                             ))}
 
@@ -380,4 +421,8 @@ export function Navbar() {
             )}
         </header>
     );
+}
+
+function CartBadge({ count }: { count: number }) {
+    return <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white" aria-label={`${count} sản phẩm trong giỏ`}>{count > 99 ? "99+" : count}</span>;
 }
