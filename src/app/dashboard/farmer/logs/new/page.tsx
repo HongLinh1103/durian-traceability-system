@@ -8,7 +8,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import imageCompression from "browser-image-compression";
 import { AlertTriangle, Camera, ClipboardPlus, CloudUpload, ImagePlus, Leaf, Mic, MicOff, RefreshCcw, Sprout, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +17,8 @@ import { farmingLogSchema, type FarmingLogInput } from "@/lib/validation";
 import { activitiesByStage, growthStages, activityTypes, type GrowthStageLabel } from "@/lib/constants";
 import { evaluatePhiSafety, matchProhibitedChemical, type ProhibitedChemicalEntry } from "@/lib/workflow";
 import type { OfflineFarmingLogPayload } from "@/lib/offline-farming-logs";
-import { formatVietnameseDate, formatVietnameseDateTime, toIsoDate, toIsoDateTime } from "@/lib/date-format";
+import { formatVietnameseDate, toIsoDate, toIsoDateTime } from "@/lib/date-format";
+import { VietnameseDatePicker } from "@/components/ui/vietnamese-date-picker";
 
 type SpeechRecognitionResultLike = { transcript: string };
 type SpeechRecognitionResultSetLike = { 0?: SpeechRecognitionResultLike };
@@ -51,43 +51,6 @@ type FarmingLogItem = {
     isGACCCompliant: boolean;
     createdAt: string;
     farm: { farmCode: string; farmName: string };
-};
-
-const activityLabels: Record<string, string> = {
-    BASE_FERTILIZING: "Bón lót",
-    PLANTING: "Trồng",
-    MULCHING: "Tủ gốc",
-    SPRAY_PESTICIDE: "Phun thuốc BVTV",
-    FERTILIZE: "Bón phân",
-    FOLIAR_FERTILIZING: "Phun phân bón lá",
-    IRRIGATE: "Tưới nước",
-    WEEDING: "Làm cỏ",
-    PRUNE: "Tỉa cành / tạo tán",
-    SHOOT_MANAGEMENT: "Quản lý đọt",
-    WATER_STRESS: "Xiết nước",
-    FLOWER_INDUCTION: "Xử lý ra hoa",
-    FLOWER_THINNING: "Tỉa bông",
-    POLLINATION: "Thụ phấn",
-    FRUIT_THINNING: "Tỉa trái",
-    PEST_INSPECTION: "Kiểm tra sâu bệnh",
-    TRACK_FRUIT: "Theo dõi trái",
-    FRUIT_BAGGING: "Bao trái",
-    BRANCH_SUPPORT: "Chống cành",
-    HARVEST: "Thu hoạch",
-    FRUIT_GRADING: "Phân loại trái",
-    GARDEN_SANITATION: "Vệ sinh vườn",
-    OTHER: "Khác",
-};
-
-const stageLabels: Record<string, string> = {
-    POST_HARVEST_RECOVERY: "Phục hồi sau thu hoạch",
-    MAKING_SPROUT: "Làm đọt",
-    FLOWER_INDUCTION: "Xử lý ra hoa",
-    FLOWERING: "Ra hoa",
-    FRUIT_SETTING: "Đậu trái",
-    FRUIT_GROWING: "Nuôi trái",
-    PRE_HARVEST: "Trước thu hoạch",
-    HARVEST: "Thu hoạch",
 };
 
 function buildLogFormData(values: FarmingLogInput, images: File[], isGACCCompliant: boolean) {
@@ -137,6 +100,37 @@ function centerPillInScroller(element: HTMLElement) {
     scroller.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
 }
 
+function scrollPillsHorizontally(event: React.WheelEvent<HTMLDivElement>) {
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+    const scroller = event.currentTarget;
+    if (scroller.scrollWidth <= scroller.clientWidth) return;
+    event.preventDefault();
+    scroller.scrollLeft += event.deltaY;
+}
+
+function beginPillDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "touch") return;
+    const scroller = event.currentTarget;
+    scroller.dataset.dragStartX = String(event.clientX);
+    scroller.dataset.dragStartScroll = String(scroller.scrollLeft);
+    scroller.dataset.dragging = "false";
+}
+
+function movePillDrag(event: React.PointerEvent<HTMLDivElement>) {
+    const scroller = event.currentTarget;
+    if (event.pointerType === "touch" || event.buttons !== 1 || !scroller.dataset.dragStartX) return;
+    const distance = event.clientX - Number(scroller.dataset.dragStartX ?? event.clientX);
+    if (Math.abs(distance) > 4) scroller.dataset.dragging = "true";
+    scroller.scrollLeft = Number(scroller.dataset.dragStartScroll ?? 0) - distance;
+}
+
+function endPillDrag(event: React.PointerEvent<HTMLDivElement>) {
+    const scroller = event.currentTarget;
+    window.setTimeout(() => { scroller.dataset.dragging = "false"; }, 0);
+    delete scroller.dataset.dragStartX;
+    delete scroller.dataset.dragStartScroll;
+}
+
 export default function NewFarmingLogPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -159,7 +153,6 @@ export default function NewFarmingLogPage() {
     const [cameraError, setCameraError] = useState("");
     const [farms, setFarms] = useState<FarmOption[]>([]);
     const [farmsLoading, setFarmsLoading] = useState(true);
-    const [recentLogs, setRecentLogs] = useState<FarmingLogItem[]>([]);
     const [prohibitedEntries, setProhibitedEntries] = useState<ProhibitedChemicalEntry[]>([]);
     const [masterDataLoading, setMasterDataLoading] = useState(true);
     const now = useMemo(() => new Date(), []);
@@ -337,7 +330,6 @@ export default function NewFarmingLogPage() {
             };
             if (response.ok && payload.ok && payload.data) {
                 setFarms(payload.data.farms);
-                setRecentLogs(payload.data.logs);
                 const currentFarmId = form.getValues("farmId");
                 if (
                     payload.data.farms[0] &&
@@ -681,7 +673,7 @@ export default function NewFarmingLogPage() {
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <Label htmlFor="actionDate">Ngày thực hiện</Label>
-                                <Input id="actionDate" type="text" inputMode="numeric" maxLength={10} placeholder="dd/MM/yyyy" {...form.register("actionDate")} />
+                                <VietnameseDatePicker id="actionDate" value={toIsoDate(actionDate)} onChange={(value) => form.setValue("actionDate", formatVietnameseDate(new Date(`${value}T00:00:00`)), { shouldDirty: true, shouldValidate: true })} />
                                 <p className="mt-1 text-xs text-red-600">{form.formState.errors.actionDate?.message}</p>
                             </div>
                             <div>
@@ -700,16 +692,17 @@ export default function NewFarmingLogPage() {
                         <div className="min-w-0">
                             <Label>Giai đoạn sinh trưởng</Label>
                             <div className="relative w-full min-w-0 max-w-full">
-                                <div ref={stageScrollerRef} className="flex w-full touch-pan-x snap-x snap-proximity flex-nowrap gap-3 overflow-x-auto overscroll-x-contain px-1 pb-3 pr-16 pt-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                <div ref={stageScrollerRef} onWheel={scrollPillsHorizontally} onPointerDown={beginPillDrag} onPointerMove={movePillDrag} onPointerUp={endPillDrag} onPointerCancel={endPillDrag} className="flex w-full cursor-grab touch-pan-x snap-x snap-proximity flex-nowrap gap-3 overflow-x-auto overscroll-x-contain px-1 pb-3 pr-16 pt-1 select-none active:cursor-grabbing [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                     {growthStages.map((item) => (
                                         <button
                                             key={item}
                                             type="button"
                                             onClick={(event) => {
+                                                if (event.currentTarget.parentElement?.dataset.dragging === "true") return;
                                                 selectStage(item);
                                                 centerPillInScroller(event.currentTarget);
                                             }}
-                                            className={`min-h-12 min-w-[8.5rem] shrink-0 touch-pan-x snap-start whitespace-nowrap rounded-full border px-5 py-3 text-sm font-semibold transition-all ${form.watch("stage") === item ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200 ring-2 ring-brand-100" : "border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50"}`}
+                                            className={`min-h-12 min-w-[8.5rem] shrink-0 touch-pan-x snap-start whitespace-nowrap rounded-full border px-5 py-3 text-sm font-semibold transition-all ${form.watch("stage") === item ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200" : "border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50"}`}
                                             aria-pressed={form.watch("stage") === item}
                                         >
                                             {item === "Phục hồi sau thu hoạch" ? "Phục hồi" : item}
@@ -724,16 +717,17 @@ export default function NewFarmingLogPage() {
                             <Label>Hoạt động</Label>
                             <input type="hidden" {...form.register("activityType")} />
                             <div className="relative w-full min-w-0 max-w-full">
-                                <div ref={activityScrollerRef} className="flex w-full touch-pan-x snap-x snap-proximity flex-nowrap gap-3 overflow-x-auto overscroll-x-contain px-1 pb-3 pr-16 pt-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                <div ref={activityScrollerRef} onWheel={scrollPillsHorizontally} onPointerDown={beginPillDrag} onPointerMove={movePillDrag} onPointerUp={endPillDrag} onPointerCancel={endPillDrag} className="flex w-full cursor-grab touch-pan-x snap-x snap-proximity flex-nowrap gap-3 overflow-x-auto overscroll-x-contain px-1 pb-3 pr-16 pt-1 select-none active:cursor-grabbing [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                 {availableActivities.map((activity) => (
                                     <button
                                         key={activity}
                                         type="button"
                                         onClick={(event) => {
+                                            if (event.currentTarget.parentElement?.dataset.dragging === "true") return;
                                             form.setValue("activityType", activity, { shouldDirty: true, shouldValidate: true });
                                             centerPillInScroller(event.currentTarget);
                                         }}
-                                        className={`flex min-h-12 min-w-[8.5rem] shrink-0 touch-pan-x snap-start cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border px-5 py-3 text-sm font-semibold transition-all ${form.watch("activityType") === activity ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200 ring-2 ring-brand-100" : "border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50"}`}
+                                        className={`flex min-h-12 min-w-[8.5rem] shrink-0 touch-pan-x snap-start cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border px-5 py-3 text-sm font-semibold transition-all ${form.watch("activityType") === activity ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200" : "border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50"}`}
                                         aria-pressed={form.watch("activityType") === activity}
                                     >
                                         <span>{activity}</span>
@@ -787,7 +781,7 @@ export default function NewFarmingLogPage() {
 
                         <div>
                             <Label htmlFor="plannedHarvestDate">Ngày thu hoạch dự kiến</Label>
-                            <Input id="plannedHarvestDate" type="text" inputMode="numeric" maxLength={10} placeholder="dd/MM/yyyy" {...form.register("plannedHarvestDate")} />
+                            <VietnameseDatePicker id="plannedHarvestDate" value={plannedHarvestDate ? toIsoDate(plannedHarvestDate) : ""} onChange={(value) => form.setValue("plannedHarvestDate", formatVietnameseDate(new Date(`${value}T00:00:00`)), { shouldDirty: true, shouldValidate: true })} />
                             <p className="mt-1 text-xs text-red-600">{form.formState.errors.plannedHarvestDate?.message}</p>
                             {safetyMessage ? <p className={`mt-2 rounded-2xl px-4 py-3 text-sm font-medium ${safetyMessage.startsWith("Cảnh báo") ? "bg-red-50 text-red-700" : "bg-brand-50 text-brand-800"}`}>{safetyMessage}</p> : null}
                         </div>
@@ -858,57 +852,6 @@ export default function NewFarmingLogPage() {
                             </Button>
                         ) : null}
                     </form>
-                </CardContent>
-            </Card>
-
-            <Card className="mt-6 border-white/70 shadow-soft">
-                <CardHeader>
-                    <CardTitle>Nhật ký đã ghi</CardTitle>
-                    <CardDescription>
-                        Các bản ghi được tải trực tiếp từ database của vườn đang đăng nhập.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {recentLogs.length === 0 ? (
-                        <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                            Chưa có nhật ký canh tác nào.
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {recentLogs.map((log) => (
-                                <article key={log.id} className="rounded-3xl border border-slate-200 bg-white p-4">
-                                    <div className="flex flex-wrap items-start justify-between gap-3">
-                                        <div>
-                                            <p className="font-bold text-slate-900">
-                                                {log.activityType === "OTHER" ? log.otherActivity || "Khác" : activityLabels[log.activityType] ?? log.activityType}
-                                            </p>
-                                            <p className="mt-1 text-sm text-slate-500">
-                                                {log.farm.farmCode} · {log.farm.farmName}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-semibold text-emerald-700">
-                                                {formatVietnameseDateTime(new Date(log.actionDate))}
-                                            </p>
-                                            <p className="text-xs text-slate-500">
-                                                {stageLabels[log.stage] ?? log.stage}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                                        {log.chemicalName && <Badge className="bg-blue-50 text-blue-700">{log.chemicalName}</Badge>}
-                                        {log.dosage && <Badge className="bg-violet-50 text-violet-700">{log.dosage}</Badge>}
-                                        {log.phiDays != null && <Badge className="bg-amber-50 text-amber-700">PHI: {log.phiDays} ngày</Badge>}
-                                        {log.images.length > 0 && <Badge className="bg-slate-100 text-slate-700">{log.images.length} ảnh</Badge>}
-                                        <Badge className={log.isGACCCompliant ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}>
-                                            {log.isGACCCompliant ? "Phù hợp GACC" : "Cần kiểm tra GACC"}
-                                        </Badge>
-                                    </div>
-                                    {log.notes && <p className="mt-3 whitespace-pre-wrap text-sm text-slate-600">{log.notes}</p>}
-                                </article>
-                            ))}
-                        </div>
-                    )}
                 </CardContent>
             </Card>
 

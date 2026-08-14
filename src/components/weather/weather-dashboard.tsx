@@ -30,6 +30,31 @@ async function readJson(response: Response) {
     return payload;
 }
 
+function beginHorizontalDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "touch") return;
+    const scroller = event.currentTarget;
+    scroller.setPointerCapture(event.pointerId);
+    scroller.dataset.dragStartX = String(event.clientX);
+    scroller.dataset.dragStartScroll = String(scroller.scrollLeft);
+    scroller.dataset.dragging = "false";
+}
+
+function moveHorizontalDrag(event: React.PointerEvent<HTMLDivElement>) {
+    const scroller = event.currentTarget;
+    if (event.pointerType === "touch" || event.buttons !== 1 || !scroller.dataset.dragStartX) return;
+    const distance = event.clientX - Number(scroller.dataset.dragStartX);
+    if (Math.abs(distance) > 4) scroller.dataset.dragging = "true";
+    scroller.scrollLeft = Number(scroller.dataset.dragStartScroll ?? 0) - distance;
+}
+
+function endHorizontalDrag(event: React.PointerEvent<HTMLDivElement>) {
+    const scroller = event.currentTarget;
+    if (scroller.hasPointerCapture(event.pointerId)) scroller.releasePointerCapture(event.pointerId);
+    window.setTimeout(() => { scroller.dataset.dragging = "false"; }, 0);
+    delete scroller.dataset.dragStartX;
+    delete scroller.dataset.dragStartScroll;
+}
+
 export function WeatherDashboard({ role }: { role: "FARMER" | "AREA_MANAGER" }) {
     const { toast } = useToast();
     const [loadingContext, setLoadingContext] = useState(true);
@@ -348,7 +373,7 @@ function CurrentWeather({ weather }: { weather: Weather }) {
 
                     <div className="mt-5">
                         <h3 className="mb-3 text-sm font-bold text-slate-800">Dự báo theo giờ</h3>
-                        <div className="flex gap-2 overflow-x-auto pb-3">
+                        <div onPointerDown={beginHorizontalDrag} onPointerMove={moveHorizontalDrag} onPointerUp={endHorizontalDrag} onPointerCancel={endHorizontalDrag} className="flex cursor-grab select-none gap-2 overflow-x-auto pb-3 active:cursor-grabbing [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             {(selectedHours.length ? selectedHours : weather.hourly.slice(0, 24)).map((hour) => {
                                 const presentation = getWeatherPresentation(hour.weatherCode, hour.isDay);
                                 const HourIcon = presentation.icon;
@@ -368,7 +393,7 @@ function CurrentWeather({ weather }: { weather: Weather }) {
                     <div className="mt-5 flex gap-2 border-b border-slate-200">
                         {tabs.map((tab) => <button type="button" key={tab.value} onClick={() => setMetric(tab.value)} className={`border-b-2 px-3 py-3 text-sm font-semibold transition ${metric === tab.value ? "border-amber-400 text-slate-900" : "border-transparent text-slate-500"}`}>{tab.label}</button>)}
                     </div>
-                    <div className="mt-5 overflow-x-auto">
+                    <div onPointerDown={beginHorizontalDrag} onPointerMove={moveHorizontalDrag} onPointerUp={endHorizontalDrag} onPointerCancel={endHorizontalDrag} className="mt-5 cursor-grab select-none overflow-x-auto active:cursor-grabbing [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         <div className="min-w-[700px]">
                             <div className="relative h-44">
                                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-36 w-full overflow-visible">
@@ -383,13 +408,13 @@ function CurrentWeather({ weather }: { weather: Weather }) {
                         </div>
                     </div>
 
-                    <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+                    <div onPointerDown={beginHorizontalDrag} onPointerMove={moveHorizontalDrag} onPointerUp={endHorizontalDrag} onPointerCancel={endHorizontalDrag} className="mt-3 flex cursor-grab select-none gap-3 overflow-x-auto pb-2 active:cursor-grabbing [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         {weather.daily.map((day) => {
                             const active = day.date === selectedDate;
                             const presentation = getWeatherPresentation(day.weatherCode, true);
                             const DayIcon = presentation.icon;
                             return (
-                                <button type="button" key={day.date} onClick={() => setSelectedDate(day.date)} aria-pressed={active} className={`min-w-32 rounded-2xl border p-4 text-center transition ${active ? "border-sky-300 bg-slate-100 shadow-sm ring-2 ring-sky-100" : "border-transparent bg-white hover:border-slate-200 hover:bg-slate-50"}`}>
+                                <button type="button" key={day.date} onClick={(event) => { if (event.currentTarget.parentElement?.dataset.dragging !== "true") setSelectedDate(day.date); }} aria-pressed={active} className={`min-w-32 rounded-2xl border p-4 text-center transition ${active ? "border-sky-300 bg-slate-100 shadow-sm ring-2 ring-sky-100" : "border-transparent bg-white hover:border-slate-200 hover:bg-slate-50"}`}>
                                     <p className="font-bold capitalize">{new Date(`${day.date}T00:00:00`).toLocaleDateString("vi-VN", { weekday: "short" })}</p>
                                     <DayIcon className={`mx-auto my-3 h-9 w-9 ${weatherIconColor(day.weatherCode, true)}`} aria-hidden="true" />
                                     <span className="sr-only">{presentation.label}</span>

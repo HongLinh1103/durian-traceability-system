@@ -37,7 +37,7 @@ export default async function FarmerDashboardPage() {
                         <span className="rounded-2xl bg-emerald-50 p-3 text-emerald-700"><BookOpen className="h-6 w-6" /></span>
                         <div><p className="font-bold text-slate-900">Nhật ký canh tác</p><p className="text-sm text-slate-500">Xem và cập nhật hoạt động canh tác của vườn.</p></div>
                     </div>
-                    <Button asChild><Link href="/dashboard/farmer/logs">Xem nhật ký<ChevronRight className="ml-2 h-4 w-4" /></Link></Button>
+                    <Button asChild><Link href="/dashboard/farmer/journal?tab=cultivation">Xem nhật ký<ChevronRight className="ml-2 h-4 w-4" /></Link></Button>
                 </CardContent>
             </Card>
             <Card>

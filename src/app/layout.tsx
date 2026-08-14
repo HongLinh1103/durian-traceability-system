@@ -36,7 +36,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <html lang="vi" className={sans.variable}>
             <body>
                 <Providers session={session}>
-                    <Navbar />
+                    <Navbar initialSession={session} />
                     {children}
                 </Providers>
             </body>

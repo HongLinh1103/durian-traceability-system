@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import type { Session } from "next-auth";
 import { useEffect, useState } from "react";
 import { ChevronDown, Leaf, LogIn, LogOut, Menu, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,53 +21,58 @@ type DashboardLink = {
     roles: string[];
     badge?: boolean;
     planBadge?: boolean;
+    collectorBadge?: boolean;
 };
 
 const dashboardLinks: DashboardLink[] = [
-    { href: "/weather", label: "Thời tiết", roles: ["FARMER", "AREA_MANAGER"] },
     { href: "/materials", label: "Tất cả vật tư", roles: ["FARMER", "AREA_MANAGER"] },
     { href: "/materials/fertilizers", label: "Phân bón", roles: ["FARMER", "AREA_MANAGER"] },
     { href: "/materials/pesticides", label: "Thuốc BVTV", roles: ["FARMER", "AREA_MANAGER"] },
     { href: "/materials/stores", label: "Cửa hàng vật tư", roles: ["FARMER", "AREA_MANAGER"] },
     { href: "/cart", label: "Giỏ hàng", roles: ["FARMER"] },
     { href: "/orders", label: "Đơn mua của tôi", roles: ["FARMER"] },
-    { href: "/dashboard/farmer/logs", label: "Nhật ký canh tác", roles: ["FARMER"] },
+    { href: "/dashboard/farmer/journal", label: "Nhật ký", roles: ["FARMER"] },
     { href: "/dashboard/farmer/plans", label: "Kế hoạch", roles: ["FARMER"], planBadge: true },
     { href: "/dashboard/farmer/harvests", label: "Phiếu thu hoạch", roles: ["FARMER"] },
     { href: "/region-manager/gardens", label: "Quản lý vườn trồng", roles: ["AREA_MANAGER"] },
     { href: "/region-manager/farmers", label: "Hồ sơ nông dân", roles: ["AREA_MANAGER"], badge: true },
     { href: "/dashboard/admin/farming", label: "Quản lý canh tác", roles: ["ADMIN"] },
     { href: "/dashboard/admin/accounts", label: "Quản lý tài khoản", roles: ["ADMIN"], badge: true },
+    { href: "/dashboard/admin/catalog", label: "Danh mục", roles: ["ADMIN"] },
     { href: "/dashboard/admin/master-data/pesticides", label: "Danh mục cấm", roles: ["ADMIN"] },
     { href: "/dashboard/store/products", label: "Sản phẩm", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/inventory", label: "Kho hàng", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/orders", label: "Đơn hàng", roles: ["STORE_OWNER"] },
-    { href: "/dashboard/partner", label: "Phiếu thu hoạch", roles: ["COLLECTOR", "PROCESSING_FACILITY"] },
+    { href: "/dashboard/partner", label: "Tổng quan", roles: ["COLLECTOR"] },
+    { href: "/dashboard/partner/harvests", label: "Phiếu thu hoạch", roles: ["COLLECTOR", "PROCESSING_FACILITY"] },
+    { href: "/dashboard/partner/orders", label: "Đơn thu mua", roles: ["COLLECTOR"] },
+    { href: "/dashboard/partner/lots", label: "Lô hàng", roles: ["COLLECTOR"] },
+    { href: "/dashboard/partner/finance", label: "Tài chính", roles: ["COLLECTOR"] },
+    { href: "/dashboard/partner/notifications", label: "Thông báo", roles: ["COLLECTOR"], collectorBadge: true },
 ];
 
-export function Navbar() {
+export function Navbar({ initialSession }: { initialSession: Session | null }) {
     const pathname = usePathname();
-    const { data: session, status } = useSession();
+    const { data: clientSession, status } = useSession();
+    const session = status === "loading" ? (clientSession ?? initialSession) : clientSession;
     const [mobileOpen, setMobileOpen] = useState(false);
     const [materialsOpen, setMaterialsOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
     const [cartCount, setCartCount] = useState(0);
     const [duePlanCount, setDuePlanCount] = useState(0);
+    const [collectorNoticeCount, setCollectorNoticeCount] = useState(0);
     const [contentCounts, setContentCounts] = useState({ documents: 0, news: 0 });
-    const [hydrated, setHydrated] = useState(false);
     const [currentUserName, setCurrentUserName] = useState<string | null>(null);
-
-    useEffect(() => {
-        setHydrated(true);
-    }, []);
 
     useEffect(() => {
         setMaterialsOpen(false);
     }, [pathname]);
 
-    const isAuthed = hydrated && status === "authenticated";
-    const isLoading = !hydrated || status === "loading";
+    const isAuthed = Boolean(session);
+    const isLoading = status === "loading" && !session;
     const userRole = isAuthed ? (session?.user?.role ?? null) : null;
+    const isCollector = userRole === "COLLECTOR";
+    const visiblePublicLinks = isCollector ? [] : publicLinks;
     useEffect(() => {
         if (!isAuthed) { setCurrentUserName(null); return; }
         void fetch("/api/auth/me", { cache: "no-store" })
@@ -144,6 +150,14 @@ export function Navbar() {
     }, [isAuthed, pathname, userRole]);
 
     useEffect(() => {
+        if (!isAuthed || userRole !== "COLLECTOR") { setCollectorNoticeCount(0); return; }
+        let cancelled = false;
+        const fetchCollectorNotices = async () => { try { const response = await fetch("/api/harvests", { cache: "no-store" }); const payload = await response.json(); if (!cancelled && payload.success) setCollectorNoticeCount((payload.data ?? []).filter((item: { status: string }) => ["WAITING_CONFIRMATION", "HARVESTED"].includes(item.status)).length); } catch { /* non-blocking */ } };
+        void fetchCollectorNotices(); const interval = window.setInterval(fetchCollectorNotices, 60_000);
+        return () => { cancelled = true; window.clearInterval(interval); };
+    }, [isAuthed, pathname, userRole]);
+
+    useEffect(() => {
         if (!isAuthed || userRole !== "FARMER") {
             setCartCount(0);
             return;
@@ -185,7 +199,7 @@ export function Navbar() {
         >
             <nav className="flex h-[64px] w-full items-center gap-2 px-3 pt-2 sm:px-4 xl:px-5">
                 {/* Logo */}
-                <Link href="/" className="flex shrink-0 items-center gap-2">
+                <Link href={isCollector ? "/dashboard/partner" : "/"} className="flex shrink-0 items-center gap-2">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600">
                         <Leaf className="h-5 w-5 text-white" />
                     </div>
@@ -199,7 +213,7 @@ export function Navbar() {
 
                 {/* Desktop Navigation */}
                 <div className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-visible px-1 py-2 xl:flex">
-                    {publicLinks.map((link) => {
+                    {visiblePublicLinks.map((link) => {
                         const href = link.href === "/" && userRole === "AREA_MANAGER"
                             ? "/dashboard/area-manager"
                             : link.href === "/" && userRole === "ADMIN"
@@ -242,7 +256,7 @@ export function Navbar() {
                                 href={link.href}
                                 className={cn(
                                     "relative whitespace-nowrap rounded-2xl px-2.5 py-2 text-sm font-semibold transition 2xl:px-3",
-                                    pathname.startsWith(link.href)
+                                    (link.href === "/dashboard/partner" ? pathname === link.href : pathname.startsWith(link.href))
                                         ? "bg-brand-50 text-brand-700"
                                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
                                 )}
@@ -253,7 +267,12 @@ export function Navbar() {
                                         {pendingCount > 99 ? "99+" : pendingCount}
                                     </span>
                                 )}
-                                {link.planBadge && duePlanCount > 0 && <CartBadge count={duePlanCount} />}
+                                {link.planBadge && duePlanCount > 0 && (
+                                    <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white" aria-label={`${duePlanCount} kế hoạch cần thực hiện`}>
+                                        {duePlanCount > 99 ? "99+" : duePlanCount}
+                                    </span>
+                                )}
+                                {link.collectorBadge && collectorNoticeCount > 0 && <CartBadge count={collectorNoticeCount} />}
                             </Link>
                         ))}
                 </div>
@@ -325,7 +344,7 @@ export function Navbar() {
                             </Link>
                         )}
 
-                        {publicLinks.map((link) => {
+                        {visiblePublicLinks.map((link) => {
                             const href = link.href === "/" && userRole === "AREA_MANAGER"
                                 ? "/dashboard/area-manager"
                                 : link.href === "/" && userRole === "ADMIN"
@@ -369,7 +388,7 @@ export function Navbar() {
                                     onClick={() => setMobileOpen(false)}
                                     className={cn(
                                         "flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition",
-                                        pathname.startsWith(link.href)
+                                        (link.href === "/dashboard/partner" ? pathname === link.href : pathname.startsWith(link.href))
                                             ? "bg-brand-50 text-brand-700"
                                             : "text-slate-600 hover:bg-slate-50",
                                     )}
@@ -381,6 +400,7 @@ export function Navbar() {
                                         </span>
                                     )}
                                     {link.planBadge && duePlanCount > 0 && <CartBadge count={duePlanCount} />}
+                                    {link.collectorBadge && collectorNoticeCount > 0 && <CartBadge count={collectorNoticeCount} />}
                                 </Link>
                             ))}
 

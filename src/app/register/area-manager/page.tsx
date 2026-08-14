@@ -6,6 +6,7 @@ import { Check, CheckCircle2, ChevronLeft, ChevronRight, FileUp, Loader2, Send }
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { VietnameseDatePicker } from "@/components/ui/vietnamese-date-picker";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/PasswordInput";
 import { useToast } from "@/components/ui/toast";
@@ -115,7 +116,7 @@ export default function AreaManagerRegistrationPage() {
                             <Field label="Số điện thoại"><Input name="phone" required inputMode="tel" pattern="0[35789][0-9]{8}" autoComplete="tel" /></Field>
                             <Field label="Email"><Input name="email" required type="email" autoComplete="email" /></Field>
                             <Field label="Số CCCD / CMND"><Input name="identityNumber" required inputMode="numeric" pattern="[0-9]{9}|[0-9]{12}" /></Field>
-                            <Field label="Ngày cấp"><Input name="identityIssuedDate" required type="date" max={new Date().toISOString().slice(0, 10)} /></Field>
+                            <Field label="Ngày cấp"><VietnameseDatePicker name="identityIssuedDate" required max={new Date().toISOString().slice(0, 10)} /></Field>
                             <Field label="Nơi cấp"><Input name="identityIssuedPlace" required /></Field>
                             <FileField name="identityFront" label="Ảnh mặt trước CCCD" accept="image/jpeg,image/png,image/webp" />
                             <FileField name="identityBack" label="Ảnh mặt sau CCCD" accept="image/jpeg,image/png,image/webp" />

@@ -24,7 +24,7 @@ export async function GET() {
                 isActive: true,
             },
             orderBy: { createdAt: "asc" },
-            select: { id: true, farmCode: true, farmName: true },
+            select: { id: true, farmCode: true, farmName: true, durianVariety: true },
         }),
         prisma.farmingLog.findMany({
             where: { farm: { farmerId: session.user.id } },

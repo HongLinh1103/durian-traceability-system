@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { VietnameseDatePicker } from "@/components/ui/vietnamese-date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
@@ -205,7 +206,7 @@ export function NewsManager() {
                                 <Field label="Mô tả"><Textarea rows={5} value={edit.description} onChange={(event) => setEdit({ ...edit, description: event.target.value })} /></Field>
                                 <Field label="Ảnh đại diện"><Input type="url" value={edit.imageUrl} onChange={(event) => setEdit({ ...edit, imageUrl: event.target.value })} /></Field>
                                 <Field label="Tên nguồn"><Input value={edit.sourceName} onChange={(event) => setEdit({ ...edit, sourceName: event.target.value })} /></Field>
-                                <Field label="Ngày đăng của nguồn"><Input type="date" value={edit.sourcePublishedAt} onChange={(event) => setEdit({ ...edit, sourcePublishedAt: event.target.value })} /></Field>
+                                <Field label="Ngày đăng của nguồn"><VietnameseDatePicker value={edit.sourcePublishedAt} onChange={(value) => setEdit({ ...edit, sourcePublishedAt: value })} /></Field>
                                 <Field label="Link bài gốc"><Input type="url" value={edit.originalUrl} onChange={(event) => setEdit({ ...edit, originalUrl: event.target.value })} /></Field>
                             </div>
                             <div>

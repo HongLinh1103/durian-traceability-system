@@ -208,6 +208,7 @@ model DurianVariety {
   id                 String    @id @default(cuid())
   code               String    @unique
   name               String    @unique
+  alternativeName    String?
   scientificName     String?
   description        String?
   origin             String?
@@ -218,6 +219,36 @@ model DurianVariety {
   deletedAt          DateTime?
 
   @@map("durian_varieties")
+}
+
+model CultivationStageCatalog {
+  id         String                       @id @default(cuid())
+  code       String                       @unique
+  name       String
+  sortOrder  Int                          @default(0)
+  isActive   Boolean                      @default(true)
+  createdAt  DateTime                     @default(now())
+  updatedAt  DateTime                     @updatedAt
+  activities CultivationActivityCatalog[]
+
+  @@index([isActive, sortOrder])
+  @@map("cultivation_stage_catalogs")
+}
+
+model CultivationActivityCatalog {
+  id        String                  @id @default(cuid())
+  stageId   String
+  code      String
+  name      String
+  sortOrder Int                     @default(0)
+  isActive  Boolean                 @default(true)
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+  stage     CultivationStageCatalog @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([stageId, code])
+  @@index([stageId, isActive, sortOrder])
+  @@map("cultivation_activity_catalogs")
 }
 
 /// Danh mục Thuốc bảo vệ thực vật (Master Data)
@@ -323,6 +354,7 @@ model User {
   partnerHarvests        HarvestRecord[]         @relation("HarvestBuyer")
   harvestActions         HarvestStatusHistory[]
   farmingPlans           FarmingPlan[]
+  weatherObservations    WeatherObservation[]
 
   @@index([role])
   @@index([role, accountStatus, deletedAt])
@@ -735,15 +767,48 @@ model Farm {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  farmer      User            @relation(fields: [farmerId], references: [id], onDelete: Cascade)
-  region      GrowingRegion?  @relation(fields: [growingRegionId], references: [id], onDelete: SetNull)
-  farmingLogs FarmingLog[]
-  harvests    HarvestRecord[]
-  farmingPlans FarmingPlan[]
+  farmer              User                 @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  region              GrowingRegion?       @relation(fields: [growingRegionId], references: [id], onDelete: SetNull)
+  farmingLogs         FarmingLog[]
+  harvests            HarvestRecord[]
+  farmingPlans        FarmingPlan[]
+  weatherObservations WeatherObservation[]
 
   @@index([farmerId])
   @@index([farmCode])
   @@index([growingRegionId])
+}
+
+model WeatherObservation {
+  id             String    @id @default(cuid())
+  farmerId       String
+  farmId         String
+  observedAt     DateTime
+  condition      String
+  temperature    Float?
+  temperatureMax Float?
+  temperatureMin Float?
+  humidity       Float?
+  soilHumidity   Float?
+  rainLevel      String?
+  rainStartedAt  String?
+  rainfallMm     Float?
+  windLevel      String
+  windDirection  String?
+  windSpeed      Float?
+  phenomena      String[]  @default([])
+  note           String?
+  images         String[]  @default([])
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  farmer User @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  farm   Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmerId, observedAt])
+  @@index([farmId, observedAt])
+  @@map("weather_observations")
 }
 
 model HarvestRecord {
@@ -756,6 +821,7 @@ model HarvestRecord {
   buyerUserId              String?
   status                   HarvestStatus          @default(DRAFT)
   expectedHarvestDate      DateTime
+  durianVariety            String
   plotArea                 String?
   expectedTreeCount        Int?
   expectedFruitCount       Int?
@@ -789,12 +855,27 @@ model HarvestRecord {
   buyerFacility            PartnerFacility?       @relation(fields: [buyerFacilityId], references: [id], onDelete: SetNull)
   buyerUser                User?                  @relation("HarvestBuyer", fields: [buyerUserId], references: [id], onDelete: SetNull)
   histories                HarvestStatusHistory[]
+  varietyItems             HarvestVarietyItem[]
   farmingLog               FarmingLog?
 
   @@index([farmerId, status, createdAt])
   @@index([buyerUserId, status, createdAt])
   @@index([farmId, expectedHarvestDate])
   @@map("harvest_records")
+}
+
+model HarvestVarietyItem {
+  id             String        @id @default(cuid())
+  harvestId      String
+  durianVariety  String
+  expectedWeight Decimal       @db.Decimal(14, 2)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  harvest        HarvestRecord @relation(fields: [harvestId], references: [id], onDelete: Cascade)
+
+  @@unique([harvestId, durianVariety])
+  @@index([harvestId])
+  @@map("harvest_variety_items")
 }
 
 model HarvestStatusHistory {
@@ -861,20 +942,20 @@ model FarmingLog {
 }
 
 model FarmingPlan {
-  id           String       @id @default(cuid())
-  farmerId     String
-  farmId       String
-  plannedDate  DateTime
-  title        String
-  stage        GrowthStage
-  activityType ActivityType
+  id            String       @id @default(cuid())
+  farmerId      String
+  farmId        String
+  plannedDate   DateTime
+  title         String
+  stage         GrowthStage
+  activityType  ActivityType
   otherActivity String?
-  notes        String?
-  status       PlanStatus   @default(PLANNED)
-  startedAt    DateTime?
-  completedAt  DateTime?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  notes         String?
+  status        PlanStatus   @default(PLANNED)
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   farmer User        @relation(fields: [farmerId], references: [id], onDelete: Cascade)
   farm   Farm        @relation(fields: [farmId], references: [id], onDelete: Cascade)
