@@ -74,9 +74,8 @@ const navigationByRole: Record<string, { items: NavItem[]; actions: QuickAction[
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
-            { label: "Quản lý vườn trồng", description: "Xem danh sách và hồ sơ vườn", href: "/region-manager/gardens", icon: MapPinned },
-            { label: "Hồ sơ nông dân", description: "Duyệt hồ sơ thuộc vùng trồng", href: "/region-manager/farmers", icon: Users },
-            { label: "Vật tư nông nghiệp", description: "Tra cứu sản phẩm và cửa hàng", href: "/materials", icon: ShoppingBag },
+            { label: "Tài liệu", description: "Tra cứu tài liệu hướng dẫn và quy trình", href: "/documents", icon: BookOpenCheck },
+            { label: "Tin tức", description: "Theo dõi tin tức nông nghiệp mới", href: "/news", icon: Bell },
         ],
     },
     STORE_OWNER: {
@@ -139,6 +138,7 @@ export function MobileBottomNavigation() {
     const isActive = (item: NavItem) => (item.matches ?? [item.href]).some(match => pathname === match || pathname.startsWith(`${match}/`));
     const [first, second, third, fourth] = configuration.items;
     const isAdmin = session?.user?.role === "ADMIN";
+    const isExpansionMenu = isAdmin || session?.user?.role === "AREA_MANAGER";
 
     return (
         <>
@@ -147,11 +147,11 @@ export function MobileBottomNavigation() {
                 <div className="grid h-[76px] grid-cols-5 items-end px-1">
                     <BottomItem item={first} active={isActive(first)} />
                     <BottomItem item={second} active={isActive(second)} />
-                    <button type="button" onClick={() => setActionsOpen(true)} className="group flex h-full flex-col items-center justify-end gap-1 pb-2" aria-label={isAdmin ? "Mở thêm chức năng quản trị" : "Mở tác vụ nhanh"}>
+                    <button type="button" onClick={() => setActionsOpen(true)} className="group flex h-full flex-col items-center justify-end gap-1 pb-2" aria-label={isExpansionMenu ? "Mở thêm chức năng" : "Mở tác vụ nhanh"}>
                         <span className="grid h-16 w-16 -translate-y-3 place-items-center rounded-full border-[5px] border-white bg-brand-600 text-white shadow-lg transition group-active:scale-95">
                             <Plus className="h-8 w-8" strokeWidth={2.5} />
                         </span>
-                        {!isAdmin && <span className="-mt-3 text-[11px] font-bold text-brand-700">Tạo mới</span>}
+                        {!isExpansionMenu && <span className="-mt-3 text-[11px] font-bold text-brand-700">Tạo mới</span>}
                     </button>
                     <BottomItem item={third} active={isActive(third)} />
                     <BottomItem item={fourth} active={isActive(fourth)} />
@@ -163,7 +163,7 @@ export function MobileBottomNavigation() {
                     <section className="w-full rounded-t-[28px] bg-white px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl">
                         <div className="mx-auto h-1.5 w-12 rounded-full bg-slate-200" />
                         <div className="mb-4 mt-3 flex items-center justify-between">
-                            <div><p className="text-xs font-bold uppercase tracking-wider text-brand-600">{isAdmin ? "Chức năng mở rộng" : "Tác vụ nhanh"}</p><h2 className="mt-1 text-xl font-black text-slate-900">Bạn muốn làm gì?</h2></div>
+                            <div><p className="text-xs font-bold uppercase tracking-wider text-brand-600">{isExpansionMenu ? "Chức năng mở rộng" : "Tác vụ nhanh"}</p><h2 className="mt-1 text-xl font-black text-slate-900">Bạn muốn làm gì?</h2></div>
                             <button type="button" onClick={() => setActionsOpen(false)} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-600" aria-label="Đóng tác vụ nhanh"><X className="h-5 w-5" /></button>
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">
