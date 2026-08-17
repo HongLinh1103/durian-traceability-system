@@ -5,7 +5,6 @@ import { BookOpenCheck, LandPlot, MapPinned, Users } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { HeroBanner } from "@/components/home/HeroBanner";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -35,22 +34,16 @@ export default async function AdminDashboardPage() {
                 <HeroBanner compact showContent={false} />
             </div>
 
-            <section className="flex items-center justify-between gap-3 sm:items-end">
+            <section>
                 <div className="min-w-0">
                     <p className="hidden text-sm font-semibold text-emerald-700 sm:block">Trang chủ quản trị hệ thống</p>
                     <h1 className="text-xl font-black leading-tight text-slate-900 sm:mt-1 sm:text-3xl">
-                        Xin chào, {session.user.fullName || "Admin"}
+                        Tổng quan hệ thống hôm nay
                     </h1>
-                    <p className="mt-2 hidden text-sm text-slate-600 sm:block">
-                        Theo dõi nhanh tài khoản, vùng trồng, vườn trồng và dữ liệu nhật ký toàn hệ thống.
+                    <p className="mt-1 text-sm text-slate-600 sm:mt-2">
+                        Xin chào, {session.user.fullName || "Admin"}. Theo dõi nhanh tình hình vận hành toàn hệ thống.
                     </p>
                 </div>
-                <Button asChild className="h-10 shrink-0 rounded-xl px-3 text-xs sm:h-12 sm:rounded-2xl sm:px-4 sm:text-sm">
-                    <Link href="/dashboard/admin/accounts">
-                        <Users className="h-4 w-4 sm:mr-2" />
-                        <span className="sr-only sm:not-sr-only">Quản lý tài khoản</span>
-                    </Link>
-                </Button>
             </section>
 
             <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

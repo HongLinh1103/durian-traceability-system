@@ -139,7 +139,7 @@ export function MobileBottomNavigation() {
 
     return (
         <>
-            <div aria-hidden className="h-[calc(5.25rem+env(safe-area-inset-bottom))] xl:hidden" />
+            <div aria-hidden className="h-[calc(7rem+env(safe-area-inset-bottom))] xl:hidden" />
             <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[80] border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl xl:hidden" aria-label="Điều hướng mobile">
                 <div className="grid h-[76px] grid-cols-5 items-end px-1">
                     <BottomItem item={first} active={isActive(first)} />

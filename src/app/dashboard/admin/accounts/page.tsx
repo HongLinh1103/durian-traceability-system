@@ -263,31 +263,31 @@ export default function AdminAccountsPage() {
     };
 
     return (
-        <main className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <main className="mx-auto min-h-screen max-w-6xl px-3 pb-28 pt-4 sm:px-6 sm:py-6 lg:px-8">
             <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between gap-4">
+                <CardHeader className="p-4 sm:p-6">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                         <div>
                             <Badge className="w-fit">ADMIN · Quản lý tài khoản</Badge>
-                            <CardTitle className="mt-3 text-3xl" style={{ fontFamily: "var(--font-display)" }}>
+                            <CardTitle className="mt-2 text-2xl sm:mt-3 sm:text-3xl" style={{ fontFamily: "var(--font-display)" }}>
                                 Phê duyệt tài khoản
                             </CardTitle>
-                            <CardDescription>
+                            <CardDescription className="mt-1 text-sm">
                                 Quản lý và phê duyệt tài khoản người dùng đăng ký mới.
                             </CardDescription>
                         </div>
-                        <div className="flex items-center gap-2 rounded-2xl bg-amber-50 px-4 py-3 text-amber-700">
-                            <Clock className="h-5 w-5" />
-                            <span className="text-sm font-semibold">
+                        <div className="flex w-fit items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-amber-700 sm:rounded-2xl sm:px-4 sm:py-3">
+                            <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
+                            <span className="whitespace-nowrap text-xs font-semibold sm:text-sm">
                                 {pagination.totalItems} tài khoản {statusFilter === "PENDING" ? "chờ duyệt" : ""}
                             </span>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 p-4 pt-0 sm:space-y-4 sm:p-6 sm:pt-0">
                     {/* Filters */}
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="relative flex-1 min-w-[200px]">
+                    <div className="space-y-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3 sm:space-y-0">
+                        <div className="relative min-w-[200px] flex-1">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <Input
                                 placeholder="Tìm kiếm tên, số điện thoại, email..."
@@ -296,12 +296,13 @@ export default function AdminAccountsPage() {
                                 className="pl-10"
                             />
                         </div>
-                        <div className="flex gap-2">
-                            {["PENDING", "NEEDS_SUPPLEMENT", "APPROVED", "REJECTED", "all"].map((s) => (
+                        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            {["all", "PENDING", "NEEDS_SUPPLEMENT", "APPROVED", "REJECTED"].map((s) => (
                                 <Button
                                     key={s}
                                     variant={statusFilter === s ? "default" : "outline"}
                                     size="sm"
+                                    className="shrink-0 whitespace-nowrap rounded-full"
                                     onClick={() => { setStatusFilter(s); setPage(1); }}
                                 >
                                     {s === "PENDING" ? "Chờ duyệt" : s === "NEEDS_SUPPLEMENT" ? "Cần bổ sung" : s === "APPROVED" ? "Đã duyệt" : s === "REJECTED" ? "Từ chối" : "Tất cả"}
@@ -329,7 +330,32 @@ export default function AdminAccountsPage() {
                             </p>
                         </div>
                     ) : (
-                        <div className="overflow-hidden rounded-2xl border border-slate-200">
+                        <>
+                            <div className="space-y-3 md:hidden">
+                                {accounts.map((account) => {
+                                    const statusInfo = statusLabels[account.accountStatus] ?? statusLabels.PENDING;
+                                    return (
+                                        <article key={account.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <h2 className="truncate font-bold text-slate-900">{account.fullName || "Chưa có tên"}</h2>
+                                                    <p className="mt-1 break-all text-sm text-slate-500">{account.email || "Chưa có email"}</p>
+                                                    <p className="mt-0.5 text-sm font-medium text-slate-700">{account.phone}</p>
+                                                </div>
+                                                <Badge className={statusInfo.className}>{statusInfo.label}</Badge>
+                                            </div>
+                                            <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-slate-100 py-3 text-sm">
+                                                <div><dt className="text-xs text-slate-500">Vai trò</dt><dd className="mt-1 font-semibold text-slate-800">{roleLabels[account.role] ?? account.role}</dd></div>
+                                                <div><dt className="text-xs text-slate-500">Ngày đăng ký</dt><dd className="mt-1 font-semibold text-slate-800">{new Date(account.createdAt).toLocaleDateString("vi-VN")}</dd></div>
+                                            </dl>
+                                            <Button type="button" variant="outline" className="mt-3 w-full" onClick={() => setSelectedAccount(account)}>
+                                                <Eye className="mr-2 h-4 w-4" />Xem chi tiết
+                                            </Button>
+                                        </article>
+                                    );
+                                })}
+                            </div>
+                            <div className="hidden overflow-hidden rounded-2xl border border-slate-200 md:block">
                             <div className="overflow-x-auto">
                                 <table className="w-full min-w-[760px] text-left text-sm">
                                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -369,7 +395,8 @@ export default function AdminAccountsPage() {
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
+                            </div>
+                        </>
                     )}
 
                     {/* Pagination */}

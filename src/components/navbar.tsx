@@ -202,7 +202,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
     return (
         <header
             className={cn(
-                "sticky top-0 z-50 w-full border-b border-white/80 bg-white/70 backdrop-blur-lg",
+                "relative z-50 w-full border-b border-white/80 bg-white/70 backdrop-blur-lg xl:sticky xl:top-0",
                 isAuthPage && "hidden",
             )}
         >
@@ -330,7 +330,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="ml-auto shrink-0 xl:hidden"
+                        className="ml-auto h-9 shrink-0 rounded-xl px-2.5 text-xs xl:hidden"
                         onClick={() => void signOut({ callbackUrl: "/" })}
                     >
                         <LogOut className="mr-1.5 h-4 w-4" />

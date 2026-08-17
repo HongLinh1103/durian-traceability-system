@@ -199,14 +199,14 @@ export default function FarmingManagementPage() {
                 <p className="mt-2 text-sm text-slate-500">Theo dõi tình trạng vườn, mùa vụ và tiến độ cập nhật nhật ký canh tác.</p>
             </div>
 
-            <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <section className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {statCards.map((item) => {
                     const Icon = item.icon;
                     return (
-                        <div key={item.label} className="rounded-[20px] border border-slate-200 bg-white p-3.5 shadow-sm">
-                            <div className={`inline-flex rounded-xl p-2 ${item.tone}`}><Icon className="h-4 w-4" /></div>
-                            <p className="mt-2.5 text-xl font-black leading-none text-slate-900">{item.value}</p>
-                            <p className="mt-1 text-xs leading-5 text-slate-500">{item.label}</p>
+                        <div key={item.label} className="min-h-32 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:min-h-0 sm:rounded-[20px]">
+                            <div className={`inline-flex rounded-xl p-2.5 ${item.tone}`}><Icon className="h-5 w-5" /></div>
+                            <p className="mt-3 text-[28px] font-black leading-none text-slate-900 sm:text-xl">{item.value}</p>
+                            <p className="mt-2 text-sm font-medium leading-snug text-slate-600 sm:mt-1 sm:text-xs sm:font-normal sm:text-slate-500">{item.label}</p>
                         </div>
                     );
                 })}
