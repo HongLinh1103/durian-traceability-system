@@ -5,6 +5,7 @@ import "@/app/globals.css";
 import { authOptions } from "@/lib/auth";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
+import { MobileBottomNavigation } from "@/components/mobile-bottom-navigation";
 
 const sans = Plus_Jakarta_Sans({ subsets: ["latin", "vietnamese"], variable: "--font-sans" });
 
@@ -38,6 +39,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
                 <Providers session={session}>
                     <Navbar initialSession={session} />
                     {children}
+                    <MobileBottomNavigation />
                 </Providers>
             </body>
         </html>
