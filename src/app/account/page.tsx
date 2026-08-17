@@ -58,10 +58,7 @@ export default async function AccountPage() {
             birthDate: user.birthDate?.toISOString().slice(0, 10) || "",
             gender: user.gender || "",
             role: user.role,
-            accountStatus: user.accountStatus,
-            isApproved: user.isApproved,
             createdAt: user.createdAt.toISOString(),
-            updatedAt: user.updatedAt.toISOString(),
             lastLoginAt: user.lastLoginAt?.toISOString() || null,
             passwordUpdatedAt: user.passwordUpdatedAt?.toISOString() || null,
         }} />;

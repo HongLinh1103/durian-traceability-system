@@ -3,8 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { BadgeCheck, CalendarDays, Camera, KeyRound, LockKeyhole, Save, ShieldCheck, UserRound } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { CalendarDays, Camera, Eye, EyeOff, KeyRound, LockKeyhole, Save, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,10 +18,7 @@ type AdminProfileProps = {
     birthDate: string;
     gender: string;
     role: string;
-    accountStatus: string;
-    isApproved: boolean;
     createdAt: string;
-    updatedAt: string;
     lastLoginAt: string | null;
     passwordUpdatedAt: string | null;
 };
@@ -98,8 +94,8 @@ export function AdminProfile({ profile }: { profile: AdminProfileProps }) {
                 <p className="mt-1 text-sm text-slate-500">Quản lý thông tin cá nhân và bảo mật tài khoản.</p>
             </header>
 
-            <form onSubmit={saveProfile} className="grid gap-5 lg:grid-cols-2">
-                <ProfileCard title="1. Thông tin cá nhân" icon={UserRound}>
+            <form onSubmit={saveProfile} className="space-y-5">
+                <ProfileCard title="Thông tin cá nhân" icon={UserRound}>
                     <div className="mb-5 flex items-center gap-4">
                         <button type="button" onClick={() => fileInput.current?.click()} className="group relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-emerald-50 bg-emerald-100 text-emerald-700">
                             {avatar ? <Image src={avatar} alt="Ảnh đại diện" fill unoptimized className="object-cover" /> : <UserRound className="h-12 w-12" />}
@@ -114,34 +110,25 @@ export function AdminProfile({ profile }: { profile: AdminProfileProps }) {
                     <Button className="mt-2 w-full sm:w-auto" disabled={saving}><Save className="mr-2 h-4 w-4" />{saving ? "Đang lưu..." : "Lưu thông tin"}</Button>
                 </ProfileCard>
 
-                <ProfileCard title="2. Thông tin hệ thống" icon={CalendarDays}>
+                <ProfileCard title="Thông tin hệ thống" icon={CalendarDays}>
                     <Info label="Vai trò hệ thống" value={profile.role} />
                     <Info label="Ngày tạo tài khoản" value={formatDateTime(profile.createdAt)} />
                     <Info label="Lần đăng nhập gần nhất" value={formatDateTime(profile.lastLoginAt)} />
-                    <Info label="Cập nhật hồ sơ gần nhất" value={formatDateTime(profile.updatedAt)} />
                 </ProfileCard>
             </form>
 
-            <div className="grid gap-5 lg:grid-cols-2">
-                <ProfileCard title="3. Bảo mật" icon={LockKeyhole}>
+            <div>
+                <ProfileCard title="Bảo mật" icon={LockKeyhole}>
                     <Info label="Mật khẩu" value="••••••••••••" />
                     <Info label="Cập nhật lần cuối" value={formatDateTime(profile.passwordUpdatedAt)} />
                     {!changingPassword ? <Button type="button" className="mt-3" onClick={() => setChangingPassword(true)}><KeyRound className="mr-2 h-4 w-4" />Đổi mật khẩu</Button> : (
                         <form onSubmit={changePassword} className="mt-4 space-y-4 rounded-2xl bg-slate-50 p-4">
-                            <Field label="Mật khẩu hiện tại"><Input name="currentPassword" type="password" required autoComplete="current-password" /></Field>
-                            <Field label="Mật khẩu mới"><Input name="newPassword" type="password" required minLength={8} autoComplete="new-password" /></Field>
-                            <Field label="Xác nhận mật khẩu mới"><Input name="confirmPassword" type="password" required minLength={8} autoComplete="new-password" /></Field>
+                            <Field label="Mật khẩu hiện tại"><PasswordInput name="currentPassword" autoComplete="current-password" /></Field>
+                            <Field label="Mật khẩu mới"><PasswordInput name="newPassword" autoComplete="new-password" minLength={8} /></Field>
+                            <Field label="Xác nhận mật khẩu mới"><PasswordInput name="confirmPassword" autoComplete="new-password" minLength={8} /></Field>
                             <div className="flex gap-2"><Button disabled={saving}>{saving ? "Đang cập nhật..." : "Cập nhật mật khẩu"}</Button><Button type="button" variant="outline" onClick={() => setChangingPassword(false)}>Hủy</Button></div>
                         </form>
                     )}
-                </ProfileCard>
-
-                <ProfileCard title="4. Trạng thái tài khoản" icon={ShieldCheck}>
-                    <div className="flex items-center justify-between rounded-2xl bg-emerald-50 p-4">
-                        <div><p className="text-sm text-emerald-700">Trạng thái phê duyệt</p><p className="mt-1 font-bold text-emerald-950">{profile.isApproved ? "Đã phê duyệt" : "Chờ phê duyệt"}</p></div>
-                        <Badge className={profile.isApproved ? "bg-emerald-600 text-white" : "bg-amber-100 text-amber-800"}><BadgeCheck className="mr-1 h-4 w-4" />{profile.accountStatus}</Badge>
-                    </div>
-                    <p className="mt-4 text-sm leading-6 text-slate-500">Tài khoản quản trị có quyền quản lý người dùng, dữ liệu canh tác và các danh mục dùng chung của hệ thống.</p>
                 </ProfileCard>
             </div>
         </main>
@@ -154,6 +141,11 @@ function ProfileCard({ title, icon: Icon, children }: { title: string; icon: typ
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return <div className="space-y-1.5"><Label>{label}</Label>{children}</div>;
+}
+
+function PasswordInput({ name, autoComplete, minLength }: { name: string; autoComplete: string; minLength?: number }) {
+    const [visible, setVisible] = useState(false);
+    return <div className="relative"><Input name={name} type={visible ? "text" : "password"} required minLength={minLength} autoComplete={autoComplete} className="pr-12" /><button type="button" onClick={() => setVisible((current) => !current)} className="absolute inset-y-0 right-1 flex w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-emerald-700" aria-label={visible ? "Ẩn mật khẩu" : "Hiện mật khẩu"} title={visible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}>{visible ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button></div>;
 }
 
 function Info({ label, value }: { label: string; value: string }) {
