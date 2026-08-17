@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Edit, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Search, Edit, Trash2, Layers3, ShieldAlert, Sprout } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { MasterDataTable, type ColumnDef, type PaginationMeta } from "@/components/admin/master-data/master-data-table";
 import { ConfirmActionDialog } from "@/components/admin/master-data/confirm-action-dialog";
@@ -97,15 +98,14 @@ export default function PesticidesPage() {
     };
 
     return (
-        <main className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <main className="mx-auto min-h-screen w-full max-w-[1600px] space-y-5 px-4 py-7 sm:px-6">
+            <div><p className="text-xs font-black uppercase tracking-[.2em] text-emerald-700">Quản trị dữ liệu chuẩn</p><h1 className="mt-1 text-3xl font-black">Danh mục</h1><p className="mt-2 text-slate-500">Quản lý dữ liệu dùng chung cho vườn, nhật ký, kế hoạch và thu hoạch.</p></div>
+            <nav className="grid grid-cols-3 gap-2 rounded-3xl border bg-white p-2 shadow-sm" aria-label="Loại danh mục">
+                <Link href="/dashboard/admin/catalog" className="flex min-h-12 items-center justify-center gap-2 rounded-2xl px-3 py-3 text-center font-bold text-slate-600 hover:bg-emerald-50"><Sprout className="h-5 w-5" />Cây giống</Link>
+                <Link href="/dashboard/admin/catalog?tab=cultivation" className="flex min-h-12 items-center justify-center gap-2 rounded-2xl px-3 py-3 text-center font-bold text-slate-600 hover:bg-emerald-50"><Layers3 className="h-5 w-5" />Giai đoạn - Công việc</Link>
+                <span className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-3 py-3 text-center font-bold text-white shadow-sm"><ShieldAlert className="h-5 w-5" />Danh mục cấm</span>
+            </nav>
             <Card>
-                <CardHeader>
-
-                    <CardTitle className="mt-3 text-3xl" style={{ fontFamily: "var(--font-display)" }}>
-                        Quản lý danh mục hoạt chất và thuốc BVTV cấm sử dụng``
-                    </CardTitle>
-
-                </CardHeader>
                 <CardContent className="space-y-4">
                     <section className="space-y-3">
 

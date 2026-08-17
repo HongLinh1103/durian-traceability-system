@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Edit3, Eye, EyeOff, Layers3, Plus, Search, Sprout, X } from "lucide-react";
+import { Edit3, Eye, EyeOff, Layers3, Plus, Search, ShieldAlert, Sprout, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +16,8 @@ type Stage = { id: string; code: string; name: string; sortOrder: number; isActi
 
 export function CatalogManager() {
     const { toast } = useToast();
-    const [tab, setTab] = useState<"varieties" | "cultivation">("varieties");
+    const searchParams = useSearchParams();
+    const [tab, setTab] = useState<"varieties" | "cultivation">(() => searchParams.get("tab") === "cultivation" ? "cultivation" : "varieties");
     const [varieties, setVarieties] = useState<Variety[]>([]);
     const [stages, setStages] = useState<Stage[]>([]);
     const [selectedStageId, setSelectedStageId] = useState("");
@@ -72,9 +75,10 @@ export function CatalogManager() {
 
     return <main className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-7 sm:px-6">
         <div><p className="text-xs font-black uppercase tracking-[.2em] text-emerald-700">Quản trị dữ liệu chuẩn</p><h1 className="mt-1 text-3xl font-black">Danh mục</h1><p className="mt-2 text-slate-500">Quản lý dữ liệu dùng chung cho vườn, nhật ký, kế hoạch và thu hoạch.</p></div>
-        <nav className="grid grid-cols-2 gap-2 rounded-3xl border bg-white p-2 shadow-sm" aria-label="Loại danh mục">
+        <nav className="grid grid-cols-3 gap-2 rounded-3xl border bg-white p-2 shadow-sm" aria-label="Loại danh mục">
             <button onClick={() => setTab("varieties")} className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl px-3 py-3 text-center font-bold ${tab === "varieties" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600 hover:bg-emerald-50"}`}><Sprout className="h-5 w-5"/>Cây giống</button>
             <button onClick={() => setTab("cultivation")} className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl px-3 py-3 text-center font-bold ${tab === "cultivation" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600 hover:bg-emerald-50"}`}><Layers3 className="h-5 w-5"/>Giai đoạn - Công việc</button>
+            <Link href="/dashboard/admin/master-data/pesticides" className="flex min-h-12 items-center justify-center gap-2 rounded-2xl px-3 py-3 text-center font-bold text-slate-600 hover:bg-emerald-50"><ShieldAlert className="h-5 w-5"/>Danh mục cấm</Link>
         </nav>
         {tab === "varieties" ? <section className="overflow-hidden rounded-3xl border bg-white shadow-sm">
             <div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center sm:justify-between"><div className="relative w-full max-w-lg"><Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400"/><Input className="h-12 pl-11" value={search} onChange={event => setSearch(event.target.value)} placeholder="Tìm theo tên giống..."/></div><Button className="h-12" onClick={() => setVarietyForm("new")}><Plus className="mr-2 h-4 w-4"/>Thêm giống</Button></div>

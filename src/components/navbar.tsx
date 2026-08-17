@@ -39,7 +39,6 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/admin/farming", label: "Quản lý canh tác", roles: ["ADMIN"] },
     { href: "/dashboard/admin/accounts", label: "Quản lý tài khoản", roles: ["ADMIN"], badge: true },
     { href: "/dashboard/admin/catalog", label: "Danh mục", roles: ["ADMIN"] },
-    { href: "/dashboard/admin/master-data/pesticides", label: "Danh mục cấm", roles: ["ADMIN"] },
     { href: "/dashboard/store/products", label: "Sản phẩm", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/inventory", label: "Kho hàng", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/orders", label: "Đơn hàng", roles: ["STORE_OWNER"] },
@@ -325,15 +324,28 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                     )}
                 </div>
 
-                {/* Mobile Toggle */}
-                <button
-                    type="button"
-                    onClick={() => setMobileOpen(!mobileOpen)}
-                    className="ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 xl:hidden"
-                    aria-label={mobileOpen ? "Dong menu" : "Mo menu"}
-                >
-                    {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                </button>
+                {/* Admin đã có thanh điều hướng đáy: chỉ giữ đăng xuất ở thanh trên. */}
+                {isAuthed && userRole === "ADMIN" ? (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto shrink-0 xl:hidden"
+                        onClick={() => void signOut({ callbackUrl: "/" })}
+                    >
+                        <LogOut className="mr-1.5 h-4 w-4" />
+                        Đăng xuất
+                    </Button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => setMobileOpen(!mobileOpen)}
+                        className="ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 xl:hidden"
+                        aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
+                    >
+                        {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                    </button>
+                )}
             </nav>
 
             {/* Mobile Menu */}

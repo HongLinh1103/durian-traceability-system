@@ -60,10 +60,8 @@ const navigationByRole: Record<string, { items: NavItem[]; actions: QuickAction[
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
-            { label: "Quản lý tài khoản", description: "Duyệt và cập nhật tài khoản", href: "/dashboard/admin/accounts", icon: Users },
-            { label: "Quản lý canh tác", description: "Xem vùng trồng và vườn trồng", href: "/dashboard/admin/farming", icon: LandPlot },
-            { label: "Danh mục", description: "Giống, giai đoạn và công việc", href: "/dashboard/admin/catalog", icon: ClipboardList },
-            { label: "Danh mục cấm", description: "Quản lý thuốc bảo vệ thực vật", href: "/dashboard/admin/master-data/pesticides", icon: BookOpenCheck },
+            { label: "Tài liệu", description: "Quản lý và đăng tài liệu mới", href: "/documents", icon: BookOpenCheck },
+            { label: "Tin tức", description: "Quản lý và đăng tin tức mới", href: "/dashboard/admin/news", icon: Bell },
         ],
     },
     AREA_MANAGER: {
