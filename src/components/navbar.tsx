@@ -66,7 +66,17 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
 
     useEffect(() => {
         setMaterialsOpen(false);
+        setMobileOpen(false);
     }, [pathname]);
+
+    useEffect(() => {
+        if (!mobileOpen) return;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [mobileOpen]);
 
     const isAuthed = Boolean(session);
     const isLoading = status === "loading" && !session;
@@ -328,8 +338,24 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
 
             {/* Mobile Menu */}
             {mobileOpen && (
-                <div className="border-t border-slate-200 bg-white px-3 pb-6 pt-4 sm:px-4 xl:hidden">
-                    <div className="space-y-2">
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Điều hướng chính"
+                    className="fixed inset-0 z-[100] h-[100dvh] w-screen overflow-y-auto overscroll-contain bg-white xl:hidden"
+                >
+                    <div className="sticky top-0 z-10 flex min-h-16 items-center justify-between border-b border-slate-100 bg-white px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+                        <Link href={isCollector ? "/dashboard/partner" : "/"} onClick={() => setMobileOpen(false)} className="flex items-center gap-2">
+                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600">
+                                <Leaf className="h-5 w-5 text-white" />
+                            </span>
+                            <span className="text-lg font-black text-slate-900" style={{ fontFamily: "var(--font-display)" }}>TriViet</span>
+                        </Link>
+                        <button type="button" onClick={() => setMobileOpen(false)} className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100" aria-label="Đóng menu">
+                            <X className="h-6 w-6" />
+                        </button>
+                    </div>
+                    <div className="space-y-2 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
                         {isAuthed && (
                             <Link href="/account" onClick={() => setMobileOpen(false)} className="mb-2 flex items-center gap-3 rounded-2xl bg-brand-50 px-4 py-3 transition hover:bg-brand-100">
                                 <UserRound className="h-5 w-5 text-brand-600" />
