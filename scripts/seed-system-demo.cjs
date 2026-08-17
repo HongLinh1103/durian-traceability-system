@@ -11,23 +11,23 @@ const atDay = (offset, hour = 8) => {
 
 async function seedRegions() {
   const items = [
-    ["0901234567", "079086000101", "MSVT-DN-LK-001", "Vung trong sau rieng Long Khanh", "Long Khanh", "Xuan Lap", "MSVT-TP-0001"],
-    ["0901234568", "079086000102", "MSVT-DN-TP-001", "Vung trong sau rieng Tan Phu", "Tan Phu", "Phu An", "MSVT-PA-0001"],
-    ["0909123456", "079086000103", "MSVT-DN-TRIAN-001", "Vung trong sau rieng Tri An", "Vinh Cuu", "Tri An", "MSVT-LH-0001"],
+    ["0901234567", "079086000101", "MSVT-DN-LK-001", "Vùng trồng sầu riêng Long Khánh", "Long Khánh", "Xuân Lập", "MSVT-TP-0001"],
+    ["0901234568", "079086000102", "MSVT-DN-TP-001", "Vùng trồng sầu riêng Tân Phú", "Tân Phú", "Phú An", "MSVT-PA-0001"],
+    ["0909123456", "079086000103", "MSVT-DN-TRIAN-001", "Vùng trồng sầu riêng Trị An", "Vĩnh Cửu", "Trị An", "MSVT-LH-0001"],
   ];
   for (const [phone, identityNumber, code, name, district, ward, farmCode] of items) {
     const manager = await prisma.user.findUnique({ where: { phone } });
     if (!manager) continue;
     const region = await prisma.growingRegion.upsert({
       where: { code },
-      update: { name, province: "Dong Nai", district, ward, cropVarieties: ["Dona", "Ri6", "Monthong"], isActive: true, approvedAt: now },
-      create: { code, name, province: "Dong Nai", district, ward, cropVarieties: ["Dona", "Ri6", "Monthong"], isActive: true, approvedAt: now },
+      update: { name, province: "Đồng Nai", district, ward, cropVarieties: ["Dona", "Ri6", "Monthong"], isActive: true, approvedAt: now },
+      create: { code, name, province: "Đồng Nai", district, ward, cropVarieties: ["Dona", "Ri6", "Monthong"], isActive: true, approvedAt: now },
     });
-    const managedRegions = [{ id: region.id, code, name, province: "Dong Nai", district, ward, durianVarieties: region.cropVarieties }];
+    const managedRegions = [{ id: region.id, code, name, province: "Đồng Nai", district, ward, durianVarieties: region.cropVarieties }];
     await prisma.areaManagerApplication.upsert({
       where: { userId: manager.id },
       update: { managedRegions },
-      create: { userId: manager.id, identityNumber, identityIssuedDate: new Date("2021-01-01"), identityIssuedPlace: "Cuc Canh sat QLHC ve TTXH", identityFrontKey: `seed/${code}/front.jpg`, identityBackKey: `seed/${code}/back.jpg`, organizationName: `Ban quan ly ${name}`, position: "Truong ban", officeProvince: "Dong Nai", officeDistrict: district, officeWard: ward, officeDetailedAddress: `Trung tam ${ward}`, authorityDocumentKey: `seed/${code}/decision.pdf`, managedRegions },
+      create: { userId: manager.id, identityNumber, identityIssuedDate: new Date("2021-01-01"), identityIssuedPlace: "Cục Cảnh sát QLHC về TTXH", identityFrontKey: `seed/${code}/front.jpg`, identityBackKey: `seed/${code}/back.jpg`, organizationName: `Ban quản lý ${name}`, position: "Trưởng ban", officeProvince: "Đồng Nai", officeDistrict: district, officeWard: ward, officeDetailedAddress: `Trung tâm ${ward}`, authorityDocumentKey: `seed/${code}/decision.pdf`, managedRegions },
     });
     await prisma.farm.updateMany({ where: { farmCode }, data: { growingRegionId: region.id, growingRegion: name } });
   }
