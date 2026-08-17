@@ -11,3 +11,7 @@ public/uploads/documents/*
 !public/uploads/documents/.gitkeep
 .storage/
 *.tsbuildinfo
+.vercel
+.env*
+.agents/
+skills-lock.json

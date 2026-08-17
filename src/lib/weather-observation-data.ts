@@ -25,11 +25,12 @@ export async function observationData(request: Request, farmerId: string, existi
     const form = await request.formData();
     const farmId = String(form.get("farmId") || "");
     const date = String(form.get("date") || "");
-    const condition = String(form.get("condition") || "");
+    const selectedConditions = form.getAll("condition").map(String).filter(value => conditions.includes(value));
+    const condition = [...new Set(selectedConditions)].join(",");
     const windLevel = "NONE";
     const farm = await prisma.farm.findFirst({ where: { id: farmId, farmerId, isActive: true }, select: { id: true } });
     if (!farm) throw new Error("Vườn không tồn tại hoặc không thuộc tài khoản này.");
-    if (!date || !conditions.includes(condition)) throw new Error("Vui lòng nhập đầy đủ ngày và tình trạng trời.");
+    if (!date || !selectedConditions.length) throw new Error("Vui lòng nhập đầy đủ ngày và chọn ít nhất một tình trạng trời.");
     const observedAt = new Date(`${date}T${vietnamTime(existingObservedAt ?? new Date())}:00+07:00`);
     if (Number.isNaN(observedAt.getTime())) throw new Error("Ngày ghi nhận không hợp lệ.");
     const temperatureMax = num(form.get("temperatureMax"));
@@ -53,7 +54,7 @@ export async function observationData(request: Request, farmerId: string, existi
         soilHumidity,
         rainLevel: null,
         rainStartedAt: null,
-        rainfallMm: rainConditions.includes(condition) ? rainfallMm : null,
+        rainfallMm: selectedConditions.some(value => rainConditions.includes(value)) ? rainfallMm : null,
         windLevel,
         windDirection: String(form.get("windDirection") || "") || null,
         windSpeed,

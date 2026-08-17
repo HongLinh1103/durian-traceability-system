@@ -537,9 +537,15 @@ export default function NewFarmingLogPage() {
                     method: "POST",
                     body: formData,
                 });
+                const responsePayload = await response.json().catch(() => null) as { error?: string } | null;
 
                 if (!response.ok) {
-                    throw new Error("Không thể lưu nhật ký lên máy chủ");
+                    toast({
+                        title: "Không thể lưu nhật ký",
+                        description: responsePayload?.error || "Máy chủ không thể lưu dữ liệu. Vui lòng thử lại.",
+                        variant: "destructive",
+                    });
+                    return;
                 }
 
                 toast({
@@ -624,6 +630,14 @@ export default function NewFarmingLogPage() {
                 });
             }
         }
+    }, (errors) => {
+        const firstError = Object.values(errors).find((error) => error?.message);
+        toast({
+            title: "Chưa thể lưu nhật ký",
+            description: typeof firstError?.message === "string" ? firstError.message : "Vui lòng kiểm tra các trường bắt buộc.",
+            variant: "destructive",
+        });
+        window.requestAnimationFrame(() => document.querySelector<HTMLElement>("[aria-invalid='true']")?.scrollIntoView({ behavior: "smooth", block: "center" }));
     });
 
     return (
@@ -841,8 +855,8 @@ export default function NewFarmingLogPage() {
                             </div>
                         ) : null}
 
-                        <Button type="submit" size="lg" className="w-full">
-                            Lưu nhật ký
+                        <Button type="submit" size="lg" className="w-full" disabled={form.formState.isSubmitting || farmsLoading || farms.length === 0}>
+                            {form.formState.isSubmitting ? "Đang lưu..." : "Lưu nhật ký"}
                         </Button>
 
                         {queuedCount > 0 ? (

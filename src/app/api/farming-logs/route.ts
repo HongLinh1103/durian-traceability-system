@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import { matchProhibitedChemical } from "@/lib/workflow";
-import { toPrismaActivityType, toPrismaGrowthStage, type PrismaActivityTypeLabel, type PrismaGrowthStageLabel } from "@/lib/mappings";
+import { prismaActivityTypeMap, prismaGrowthStageMap, toPrismaActivityType, toPrismaGrowthStage, type PrismaActivityTypeLabel, type PrismaGrowthStageLabel } from "@/lib/mappings";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -70,6 +70,13 @@ export async function POST(request: Request) {
         const isGACCCompliant = toBoolean(formData.get("isGACCCompliant"));
         const planId = String(formData.get("planId") ?? "").trim();
         const uploadedImages = formData.getAll("images").filter((item): item is File => item instanceof File);
+        if (!(stage in prismaGrowthStageMap) || !(activityType in prismaActivityTypeMap)) {
+            return NextResponse.json({ ok: false, error: "Giai đoạn hoặc hoạt động không hợp lệ." }, { status: 400 });
+        }
+        const parsedActionDate = new Date(actionDate);
+        if (Number.isNaN(parsedActionDate.getTime())) {
+            return NextResponse.json({ ok: false, error: "Ngày thực hiện không hợp lệ." }, { status: 400 });
+        }
         const normalizedActivityType = toPrismaActivityType(activityType);
         const requiresChemicalName = ["SPRAY_PESTICIDE", "FERTILIZE", "BASE_FERTILIZING", "FOLIAR_FERTILIZING"].includes(normalizedActivityType);
         const requiresDosage = requiresChemicalName;
@@ -121,7 +128,7 @@ export async function POST(request: Request) {
             const log = await tx.farmingLog.create({ data: {
                 farmId,
                 stage: toPrismaGrowthStage(stage),
-                actionDate: new Date(actionDate),
+                actionDate: parsedActionDate,
                 activityType: normalizedActivityType,
                 otherActivity: normalizedActivityType === "OTHER" ? otherActivity : null,
                 chemicalName: requiresChemicalName ? chemicalName : null,
