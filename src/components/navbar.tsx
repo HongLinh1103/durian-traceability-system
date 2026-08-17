@@ -25,10 +25,10 @@ type DashboardLink = {
 };
 
 const dashboardLinks: DashboardLink[] = [
-    { href: "/materials", label: "Tất cả vật tư", roles: ["FARMER", "AREA_MANAGER"] },
-    { href: "/materials/fertilizers", label: "Phân bón", roles: ["FARMER", "AREA_MANAGER"] },
-    { href: "/materials/pesticides", label: "Thuốc BVTV", roles: ["FARMER", "AREA_MANAGER"] },
-    { href: "/materials/stores", label: "Cửa hàng vật tư", roles: ["FARMER", "AREA_MANAGER"] },
+    { href: "/materials", label: "Tất cả vật tư", roles: ["FARMER"] },
+    { href: "/materials/fertilizers", label: "Phân bón", roles: ["FARMER"] },
+    { href: "/materials/pesticides", label: "Thuốc BVTV", roles: ["FARMER"] },
+    { href: "/materials/stores", label: "Cửa hàng vật tư", roles: ["FARMER"] },
     { href: "/cart", label: "Giỏ hàng", roles: ["FARMER"] },
     { href: "/orders", label: "Đơn mua của tôi", roles: ["FARMER"] },
     { href: "/dashboard/farmer/journal", label: "Nhật ký", roles: ["FARMER"] },
@@ -229,7 +229,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                 ? "/dashboard/admin"
                                 : link.href === "/" && userRole === "FARMER"
                                     ? "/dashboard/farmer"
-                                : link.href;
+                                    : link.href;
                         return (
                             <Link
                                 key={link.href}
@@ -389,7 +389,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                     ? "/dashboard/admin"
                                     : link.href === "/" && userRole === "FARMER"
                                         ? "/dashboard/farmer"
-                                    : link.href;
+                                        : link.href;
                             return (
                                 <Link
                                     key={link.href}

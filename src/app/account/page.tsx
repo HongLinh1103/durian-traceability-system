@@ -35,6 +35,16 @@ type ManagedRegion = {
     durianVarieties?: string[];
 };
 
+function normalizeManagedRegions(value: unknown): ManagedRegion[] {
+    if (Array.isArray(value)) {
+        return value.filter((item): item is ManagedRegion => Boolean(item && typeof item === "object"));
+    }
+    if (value && typeof value === "object") {
+        return [value as ManagedRegion];
+    }
+    return [];
+}
+
 export default async function AccountPage() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) redirect("/login");
@@ -66,7 +76,11 @@ export default async function AccountPage() {
 
     const managerProfile = user.areaManagerApplication;
     const storeProfile = user.stores[0] ?? null;
-    const region = (managerProfile?.managedRegions ?? {}) as ManagedRegion;
+    const managedRegions = normalizeManagedRegions(managerProfile?.managedRegions);
+    const primaryRegion = managedRegions[0] ?? {};
+    const regionSummary = managedRegions.length
+        ? managedRegions.map((region) => [region.code, region.name].filter(Boolean).join(" - ")).join(", ")
+        : [primaryRegion.code, primaryRegion.name].filter(Boolean).join(" - ") || "—";
     const address = [user.address, user.ward, user.district, user.province]
         .filter(Boolean)
         .join(", ");
@@ -171,12 +185,13 @@ export default async function AccountPage() {
                         <Info label="Nơi cấp" value={managerProfile.identityIssuedPlace} />
                     </Section>
                     <Section title="Vùng trồng phụ trách" icon={Sprout}>
-                        <Info label="Mã vùng" value={region.code} />
-                        <Info label="Tên vùng" value={region.name} />
-                        <Info label="Địa bàn" value={[region.ward, region.district, region.province].filter(Boolean).join(", ")} />
-                        <Info label="Quy mô" value={region.areaSize != null ? `${region.areaSize} ha` : null} />
-                        <Info label="Số hộ thành viên" value={region.farmerCount != null ? `${region.farmerCount} hộ` : null} />
-                        <Info label="Giống chủ lực" value={region.durianVarieties?.join(", ")} />
+                        <Info label="Mã vùng" value={managedRegions.length ? managedRegions.map((region) => region.code).filter(Boolean).join(", ") : primaryRegion.code} />
+                        <Info label="Tên vùng" value={managedRegions.length ? managedRegions.map((region) => region.name).filter(Boolean).join(", ") : primaryRegion.name} />
+                        <Info label="Địa bàn" value={managedRegions.length ? managedRegions.map((region) => [region.ward, region.district, region.province].filter(Boolean).join(", ")).filter(Boolean).join("; ") : [primaryRegion.ward, primaryRegion.district, primaryRegion.province].filter(Boolean).join(", ")} />
+                        <Info label="Quy mô" value={managedRegions.length ? managedRegions.map((region) => `${region.name || region.code || "Vùng"}: ${region.areaSize != null ? `${region.areaSize} ha` : "—"}`).join("; ") : primaryRegion.areaSize != null ? `${primaryRegion.areaSize} ha` : null} />
+                        <Info label="Số hộ thành viên" value={managedRegions.length ? managedRegions.map((region) => `${region.name || region.code || "Vùng"}: ${region.farmerCount != null ? `${region.farmerCount} hộ` : "—"}`).join("; ") : primaryRegion.farmerCount != null ? `${primaryRegion.farmerCount} hộ` : null} />
+                        <Info label="Giống chủ lực" value={managedRegions.length ? managedRegions.map((region) => region.durianVarieties?.join(", ")).filter(Boolean).join("; ") : primaryRegion.durianVarieties?.join(", ")} />
+                        <Info label="Vùng phụ trách" value={regionSummary} />
                     </Section>
                 </div>
             )}

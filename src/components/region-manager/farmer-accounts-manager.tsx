@@ -131,8 +131,8 @@ export function FarmerAccountsManager() {
                 </div>
             </header>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                {statCards.map(({ label, value, icon: Icon }) => <Card key={label}><CardContent className="flex items-center gap-3 p-5"><span className="rounded-xl bg-emerald-100 p-2.5 text-emerald-700"><Icon className="h-5 w-5" /></span><div><p className="text-sm text-slate-500">{label}</p><p className="text-2xl font-black">{value}</p></div></CardContent></Card>)}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5">
+                {statCards.map(({ label, value, icon: Icon }) => <Card key={label}><CardContent className="flex items-center gap-3 p-4 sm:p-5"><span className="rounded-xl bg-emerald-100 p-2.5 text-emerald-700"><Icon className="h-5 w-5" /></span><div><p className="text-sm text-slate-500">{label}</p><p className="text-xl font-black sm:text-2xl">{value}</p></div></CardContent></Card>)}
             </div>
 
             <Card>

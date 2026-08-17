@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { Building2, ClipboardCheck, MapPinned, Sprout, Users } from "lucide-react";
@@ -67,21 +68,50 @@ export default async function AreaManagerDashboard() {
         : [[], 0];
     const memberHouseholdCount = new Set(managedFarms.map((farm) => farm.farmerId)).size;
 
+    const summaries = [
+        { label: "Hồ sơ cần duyệt", value: pendingProfileCount, icon: ClipboardCheck, href: "/region-manager/farmers" },
+        { label: "Tổng số vườn", value: managedFarms.length, icon: Sprout, href: "/region-manager/gardens" },
+        { label: "Số hộ thành viên", value: memberHouseholdCount, icon: Users, href: "/region-manager/farmers" },
+    ];
+
     return (
-        <main className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6 lg:px-8">
-            <HeroBanner compact showContent={false} />
-
-            <div>
-                <p className="text-sm font-medium text-emerald-700">Trưởng ban quản lý vùng trồng</p>
-                <h1 className="text-3xl font-bold text-slate-900">Xin chào, {user.fullName}</h1>
-                <p className="mt-1 text-slate-600">Theo dõi tổ chức và vùng trồng bạn đang phụ trách.</p>
+        <main className="mx-auto max-w-6xl space-y-4 px-3 py-4 sm:space-y-7 sm:px-6 sm:py-6 lg:px-8">
+            <div className="hidden sm:block">
+                <HeroBanner compact showContent={false} />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Summary icon={ClipboardCheck} label="Hồ sơ cần duyệt" value={pendingProfileCount.toLocaleString("vi-VN")} />
-                <Summary icon={Sprout} label="Tổng số vườn" value={managedFarms.length.toLocaleString("vi-VN")} />
-                <Summary icon={Users} label="Số hộ thành viên" value={memberHouseholdCount.toLocaleString("vi-VN")} />
-            </div>
+            <section>
+                <div className="min-w-0">
+                    <p className="hidden text-sm font-semibold text-emerald-700 sm:block">Trưởng ban quản lý vùng trồng</p>
+                    <h1 className="text-xl font-black leading-tight text-slate-900 sm:mt-1 sm:text-3xl">
+                        Xin chào, {user.fullName || "Ban quản lý vùng trồng"}
+                    </h1>
+                    <p className="mt-1 text-sm text-slate-600 sm:mt-2">
+                        Theo dõi tổ chức và vùng trồng bạn đang phụ trách.
+                    </p>
+                </div>
+            </section>
+
+            <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+                {summaries.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                        <Link key={item.label} href={item.href} className="group">
+                            <Card className="h-full min-h-32 rounded-2xl border-emerald-100 transition group-hover:-translate-y-0.5 group-hover:border-emerald-200 group-hover:shadow-md sm:min-h-0 sm:rounded-[24px]">
+                                <CardContent className="p-3.5 sm:p-5">
+                                    <span className="inline-flex rounded-xl bg-emerald-50 p-2.5 text-emerald-700 sm:rounded-2xl sm:p-3">
+                                        <Icon className="h-5 w-5" />
+                                    </span>
+                                    <p className="mt-3 text-[28px] font-black leading-none text-slate-900 sm:mt-4 sm:text-2xl">
+                                        {item.value.toLocaleString("vi-VN")}
+                                    </p>
+                                    <p className="mt-2 text-sm font-medium leading-snug text-slate-600 sm:mt-1 sm:font-normal sm:text-slate-500">{item.label}</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    );
+                })}
+            </section>
 
             <div className="grid gap-5 lg:grid-cols-2">
                 <Card>
