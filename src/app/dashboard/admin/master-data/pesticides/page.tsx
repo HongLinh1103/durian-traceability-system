@@ -100,10 +100,10 @@ export default function PesticidesPage() {
     return (
         <main className="mx-auto min-h-screen w-full max-w-[1600px] space-y-5 px-4 py-7 sm:px-6">
             <div><p className="text-xs font-black uppercase tracking-[.2em] text-emerald-700">Quản trị dữ liệu chuẩn</p><h1 className="mt-1 text-3xl font-black">Danh mục</h1><p className="mt-2 text-slate-500">Quản lý dữ liệu dùng chung cho vườn, nhật ký, kế hoạch và thu hoạch.</p></div>
-            <nav className="grid grid-cols-3 gap-2 rounded-3xl border bg-white p-2 shadow-sm" aria-label="Loại danh mục">
-                <Link href="/dashboard/admin/catalog" className="flex min-h-12 items-center justify-center gap-2 rounded-2xl px-3 py-3 text-center font-bold text-slate-600 hover:bg-emerald-50"><Sprout className="h-5 w-5" />Cây giống</Link>
-                <Link href="/dashboard/admin/catalog?tab=cultivation" className="flex min-h-12 items-center justify-center gap-2 rounded-2xl px-3 py-3 text-center font-bold text-slate-600 hover:bg-emerald-50"><Layers3 className="h-5 w-5" />Giai đoạn - Công việc</Link>
-                <span className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-3 py-3 text-center font-bold text-white shadow-sm"><ShieldAlert className="h-5 w-5" />Danh mục cấm</span>
+            <nav className="grid grid-cols-3 gap-1 rounded-2xl border bg-white p-1.5 shadow-sm sm:gap-2 sm:rounded-3xl sm:p-2" aria-label="Loại danh mục">
+                <Link href="/dashboard/admin/catalog" className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-center text-[11px] font-bold leading-tight text-slate-600 hover:bg-emerald-50 sm:min-h-12 sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-3 sm:text-base"><Sprout className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" /><span className="whitespace-nowrap">Cây giống</span></Link>
+                <Link href="/dashboard/admin/catalog?tab=cultivation" className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-center text-[11px] font-bold leading-tight text-slate-600 hover:bg-emerald-50 sm:min-h-12 sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-3 sm:text-base"><Layers3 className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" /><span><span className="whitespace-nowrap">Giai đoạn</span><span className="hidden sm:inline"> – </span><br className="sm:hidden"/><span className="whitespace-nowrap">Công việc</span></span></Link>
+                <span className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-brand-600 px-1 py-2 text-center text-[11px] font-bold leading-tight text-white shadow-soft sm:min-h-12 sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-3 sm:text-base"><ShieldAlert className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" /><span className="whitespace-nowrap">Danh mục cấm</span></span>
             </nav>
             <Card>
                 <CardContent className="space-y-4">

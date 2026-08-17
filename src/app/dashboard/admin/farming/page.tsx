@@ -238,7 +238,45 @@ export default function FarmingManagementPage() {
                     <h2 className="text-lg font-bold text-slate-900">Danh sách vườn trồng</h2>
                     <p className="text-sm text-slate-500">Các vườn đã đăng ký trong hệ thống Triviet.</p>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="space-y-3 p-3 md:hidden">
+                    {loading ? (
+                        <div className="py-14 text-center"><Loader2 className="mx-auto h-7 w-7 animate-spin text-brand-600" /></div>
+                    ) : farms.length === 0 ? (
+                        <div className="rounded-2xl bg-slate-50 px-4 py-12 text-center font-medium text-slate-500">Chưa có vườn trồng nào được đăng ký.</div>
+                    ) : farms.map((farm) => (
+                        <article key={farm.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="text-xs font-bold uppercase tracking-wide text-brand-700">{farm.farmCode}</p>
+                                    <h3 className="mt-1 text-lg font-black leading-snug text-slate-900">{farm.farmName}</h3>
+                                </div>
+                                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${farm.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                                    {farm.isActive ? "Hoạt động" : "Tạm ngừng"}
+                                </span>
+                            </div>
+
+                            <dl className="mt-4 grid gap-3 text-sm">
+                                <MobileFarmDetail label="Chủ vườn" value={farm.ownerName} />
+                                <MobileFarmDetail label="Vùng trực thuộc" value={farm.growingRegion || "Chưa phân vùng"} />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <MobileFarmDetail label="Diện tích" value={`${farm.areaSize.toLocaleString("vi-VN")} ha`} />
+                                    <MobileFarmDetail label="Giống" value={farm.durianVariety} />
+                                </div>
+                                <MobileFarmDetail label="Nhật ký gần nhất" value={farm.latestLogDate ? new Date(farm.latestLogDate).toLocaleDateString("vi-VN") : "Chưa có nhật ký"} />
+                            </dl>
+
+                            <div className="mt-4 grid grid-cols-[1fr_auto] gap-2 border-t border-slate-100 pt-4">
+                                <button type="button" onClick={() => void openLogs(farm)} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-50 px-3 text-sm font-bold text-brand-700 transition active:bg-brand-100">
+                                    <Eye className="h-4 w-4" /> Xem chi tiết
+                                </button>
+                                <button type="button" disabled={processingId === farm.id} onClick={() => void toggleFarm(farm)} aria-label={farm.isActive ? "Tạm ngừng vườn" : "Kích hoạt lại vườn"} className={`grid h-11 w-11 place-items-center rounded-xl border transition disabled:opacity-60 ${farm.isActive ? "border-red-100 text-red-600 active:bg-red-50" : "border-emerald-100 text-emerald-600 active:bg-emerald-50"}`}>
+                                    {processingId === farm.id ? <Loader2 className="h-5 w-5 animate-spin" /> : farm.isActive ? <PauseCircle className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
+                                </button>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+                <div className="hidden overflow-x-auto md:block">
                     <table className="w-full min-w-[1050px] text-left text-sm">
                         <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                             <tr>
@@ -349,6 +387,15 @@ function DetailPanel({ title, children }: { title: string; children: React.React
             <h3 className="mb-3 font-bold text-slate-900">{title}</h3>
             <dl className="space-y-2">{children}</dl>
         </section>
+    );
+}
+
+function MobileFarmDetail({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="min-w-0">
+            <dt className="text-xs font-semibold text-slate-500">{label}</dt>
+            <dd className="mt-0.5 break-words font-semibold text-slate-800">{value}</dd>
+        </div>
     );
 }
 

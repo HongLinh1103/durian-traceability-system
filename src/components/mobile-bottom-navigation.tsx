@@ -139,7 +139,6 @@ export function MobileBottomNavigation() {
     const isActive = (item: NavItem) => (item.matches ?? [item.href]).some(match => pathname === match || pathname.startsWith(`${match}/`));
     const [first, second, third, fourth] = configuration.items;
     const isAdmin = session?.user?.role === "ADMIN";
-    const actionMenuLabel = isAdmin ? "Mở rộng" : "Tạo mới";
 
     return (
         <>
@@ -152,7 +151,7 @@ export function MobileBottomNavigation() {
                         <span className="grid h-16 w-16 -translate-y-3 place-items-center rounded-full border-[5px] border-white bg-brand-600 text-white shadow-lg transition group-active:scale-95">
                             <Plus className="h-8 w-8" strokeWidth={2.5} />
                         </span>
-                        <span className="-mt-3 text-[11px] font-bold text-brand-700">{actionMenuLabel}</span>
+                        {!isAdmin && <span className="-mt-3 text-[11px] font-bold text-brand-700">Tạo mới</span>}
                     </button>
                     <BottomItem item={third} active={isActive(third)} />
                     <BottomItem item={fourth} active={isActive(fourth)} />
