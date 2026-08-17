@@ -30,41 +30,43 @@ export default async function AdminDashboardPage() {
     ];
 
     return (
-        <main className="mx-auto max-w-6xl space-y-7 px-4 py-6 sm:px-6 lg:px-8">
-            <HeroBanner compact showContent={false} />
+        <main className="mx-auto max-w-6xl space-y-4 px-3 py-4 sm:space-y-7 sm:px-6 sm:py-6 lg:px-8">
+            <div className="hidden sm:block">
+                <HeroBanner compact showContent={false} />
+            </div>
 
-            <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                    <p className="text-sm font-semibold text-emerald-700">Trang chủ quản trị hệ thống</p>
-                    <h1 className="mt-1 text-3xl font-black text-slate-900">
+            <section className="flex items-center justify-between gap-3 sm:items-end">
+                <div className="min-w-0">
+                    <p className="hidden text-sm font-semibold text-emerald-700 sm:block">Trang chủ quản trị hệ thống</p>
+                    <h1 className="text-xl font-black leading-tight text-slate-900 sm:mt-1 sm:text-3xl">
                         Xin chào, {session.user.fullName || "Admin"}
                     </h1>
-                    <p className="mt-2 text-sm text-slate-600">
+                    <p className="mt-2 hidden text-sm text-slate-600 sm:block">
                         Theo dõi nhanh tài khoản, vùng trồng, vườn trồng và dữ liệu nhật ký toàn hệ thống.
                     </p>
                 </div>
-                <Button asChild>
+                <Button asChild className="h-10 shrink-0 rounded-xl px-3 text-xs sm:h-12 sm:rounded-2xl sm:px-4 sm:text-sm">
                     <Link href="/dashboard/admin/accounts">
-                        <Users className="mr-2 h-4 w-4" />
-                        Quản lý tài khoản
+                        <Users className="h-4 w-4 sm:mr-2" />
+                        <span className="sr-only sm:not-sr-only">Quản lý tài khoản</span>
                     </Link>
                 </Button>
             </section>
 
-            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                 {summaries.map((item) => {
                     const Icon = item.icon;
                     return (
                         <Link key={item.label} href={item.href} className="group">
-                            <Card className="h-full rounded-[24px] border-emerald-100 transition group-hover:-translate-y-0.5 group-hover:border-emerald-200 group-hover:shadow-md">
-                                <CardContent className="p-5">
-                                    <span className="inline-flex rounded-2xl bg-emerald-50 p-3 text-emerald-700">
+                            <Card className="h-full min-h-32 rounded-2xl border-emerald-100 transition group-hover:-translate-y-0.5 group-hover:border-emerald-200 group-hover:shadow-md sm:min-h-0 sm:rounded-[24px]">
+                                <CardContent className="p-3.5 sm:p-5">
+                                    <span className="inline-flex rounded-xl bg-emerald-50 p-2.5 text-emerald-700 sm:rounded-2xl sm:p-3">
                                         <Icon className="h-5 w-5" />
                                     </span>
-                                    <p className="mt-4 text-2xl font-black text-slate-900">
+                                    <p className="mt-3 text-[28px] font-black leading-none text-slate-900 sm:mt-4 sm:text-2xl">
                                         {item.value.toLocaleString("vi-VN")}
                                     </p>
-                                    <p className="mt-1 text-sm text-slate-500">{item.label}</p>
+                                    <p className="mt-2 text-sm font-medium leading-snug text-slate-600 sm:mt-1 sm:font-normal sm:text-slate-500">{item.label}</p>
                                 </CardContent>
                             </Card>
                         </Link>
