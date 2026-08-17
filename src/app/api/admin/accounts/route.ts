@@ -73,7 +73,8 @@ export async function GET(request: Request) {
         const [data, totalItems] = await Promise.all([
             prisma.user.findMany({
                 where,
-                orderBy: { createdAt: "desc" },
+                // Ưu tiên hồ sơ chưa xử lý, sau đó mới nhất xếp trước.
+                orderBy: [{ accountStatus: "asc" }, { createdAt: "desc" }],
                 skip: (page - 1) * pageSize,
                 take: pageSize,
                 select: {

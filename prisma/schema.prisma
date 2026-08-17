@@ -320,6 +320,8 @@ model User {
   password                String
   fullName                String?
   avatar                  String?
+  birthDate               DateTime?
+  gender                  String?
   address                 String?
   province                String?
   district                String?
@@ -335,6 +337,8 @@ model User {
   isLocked                Boolean       @default(false)
   accountStatus           AccountStatus @default(PENDING)
   approvedAt              DateTime?
+  lastLoginAt             DateTime?
+  passwordUpdatedAt       DateTime?
   deletedAt               DateTime?
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt

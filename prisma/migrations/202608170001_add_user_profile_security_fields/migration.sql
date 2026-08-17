@@ -1,0 +1,5 @@
+ALTER TABLE "User"
+ADD COLUMN "birthDate" TIMESTAMP(3),
+ADD COLUMN "gender" TEXT,
+ADD COLUMN "lastLoginAt" TIMESTAMP(3),
+ADD COLUMN "passwordUpdatedAt" TIMESTAMP(3);

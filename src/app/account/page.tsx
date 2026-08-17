@@ -13,6 +13,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminProfile } from "@/components/account/admin-profile";
 
 const roleLabels: Record<string, string> = {
     ADMIN: "Quản trị viên",
@@ -47,6 +48,24 @@ export default async function AccountPage() {
         },
     });
     if (!user) redirect("/login");
+
+    if (user.role === "ADMIN") {
+        return <AdminProfile profile={{
+            fullName: user.fullName || "",
+            phone: user.phone,
+            email: user.email || "",
+            avatar: user.avatar,
+            birthDate: user.birthDate?.toISOString().slice(0, 10) || "",
+            gender: user.gender || "",
+            role: user.role,
+            accountStatus: user.accountStatus,
+            isApproved: user.isApproved,
+            createdAt: user.createdAt.toISOString(),
+            updatedAt: user.updatedAt.toISOString(),
+            lastLoginAt: user.lastLoginAt?.toISOString() || null,
+            passwordUpdatedAt: user.passwordUpdatedAt?.toISOString() || null,
+        }} />;
+    }
 
     const managerProfile = user.areaManagerApplication;
     const storeProfile = user.stores[0] ?? null;

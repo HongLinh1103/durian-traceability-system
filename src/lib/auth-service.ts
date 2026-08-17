@@ -101,6 +101,11 @@ export async function authenticateLoginAttempt({ identifier, password, rememberM
         };
     }
 
+    await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+    });
+
     return {
         ok: true,
         user: toAuthenticatedUser(user),
