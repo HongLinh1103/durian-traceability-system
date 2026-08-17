@@ -10,6 +10,7 @@ import {
     ClipboardList,
     Home,
     LandPlot,
+    LibraryBig,
     MapPinned,
     NotebookPen,
     Package,
@@ -62,6 +63,7 @@ const navigationByRole: Record<string, { items: NavItem[]; actions: QuickAction[
         actions: [
             { label: "Tài liệu", description: "Quản lý và đăng tài liệu mới", href: "/documents", icon: BookOpenCheck },
             { label: "Tin tức", description: "Quản lý và đăng tin tức mới", href: "/dashboard/admin/news", icon: Bell },
+            { label: "Danh mục", description: "Quản lý cây giống, giai đoạn, công việc và danh mục cấm", href: "/dashboard/admin/catalog", icon: LibraryBig },
         ],
     },
     AREA_MANAGER: {
@@ -136,6 +138,8 @@ export function MobileBottomNavigation() {
 
     const isActive = (item: NavItem) => (item.matches ?? [item.href]).some(match => pathname === match || pathname.startsWith(`${match}/`));
     const [first, second, third, fourth] = configuration.items;
+    const isAdmin = session?.user?.role === "ADMIN";
+    const actionMenuLabel = isAdmin ? "Mở rộng" : "Tạo mới";
 
     return (
         <>
@@ -144,11 +148,11 @@ export function MobileBottomNavigation() {
                 <div className="grid h-[76px] grid-cols-5 items-end px-1">
                     <BottomItem item={first} active={isActive(first)} />
                     <BottomItem item={second} active={isActive(second)} />
-                    <button type="button" onClick={() => setActionsOpen(true)} className="group flex h-full flex-col items-center justify-end gap-1 pb-2" aria-label="Mở tác vụ nhanh">
+                    <button type="button" onClick={() => setActionsOpen(true)} className="group flex h-full flex-col items-center justify-end gap-1 pb-2" aria-label={isAdmin ? "Mở thêm chức năng quản trị" : "Mở tác vụ nhanh"}>
                         <span className="grid h-16 w-16 -translate-y-3 place-items-center rounded-full border-[5px] border-white bg-brand-600 text-white shadow-lg transition group-active:scale-95">
                             <Plus className="h-8 w-8" strokeWidth={2.5} />
                         </span>
-                        <span className="-mt-3 text-[11px] font-bold text-brand-700">Tạo mới</span>
+                        <span className="-mt-3 text-[11px] font-bold text-brand-700">{actionMenuLabel}</span>
                     </button>
                     <BottomItem item={third} active={isActive(third)} />
                     <BottomItem item={fourth} active={isActive(fourth)} />
@@ -160,7 +164,7 @@ export function MobileBottomNavigation() {
                     <section className="w-full rounded-t-[28px] bg-white px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl">
                         <div className="mx-auto h-1.5 w-12 rounded-full bg-slate-200" />
                         <div className="mb-4 mt-3 flex items-center justify-between">
-                            <div><p className="text-xs font-bold uppercase tracking-wider text-brand-600">Tác vụ nhanh</p><h2 className="mt-1 text-xl font-black text-slate-900">Bạn muốn làm gì?</h2></div>
+                            <div><p className="text-xs font-bold uppercase tracking-wider text-brand-600">{isAdmin ? "Chức năng mở rộng" : "Tác vụ nhanh"}</p><h2 className="mt-1 text-xl font-black text-slate-900">Bạn muốn làm gì?</h2></div>
                             <button type="button" onClick={() => setActionsOpen(false)} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-600" aria-label="Đóng tác vụ nhanh"><X className="h-5 w-5" /></button>
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">

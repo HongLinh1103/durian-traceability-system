@@ -90,18 +90,39 @@ type FarmDetail = {
 const INITIAL_STATS: Stats = { totalFarms: 0, activeFarms: 0, inSeasonFarms: 0 };
 
 const activityLabels: Record<string, string> = {
+    BASE_FERTILIZING: "Bón lót",
+    PLANTING: "Trồng",
+    MULCHING: "Tủ gốc",
     SPRAY_PESTICIDE: "Phun thuốc BVTV",
     FERTILIZE: "Bón phân",
+    FOLIAR_FERTILIZING: "Phun phân bón lá",
     IRRIGATE: "Tưới nước",
-    PRUNE: "Cắt tỉa",
+    PRUNE: "Tỉa cành / tạo tán",
     WEEDING: "Làm cỏ",
+    SHOOT_MANAGEMENT: "Quản lý đọt",
+    WATER_STRESS: "Xiết nước",
+    FLOWER_INDUCTION: "Xử lý ra hoa",
+    FLOWER_THINNING: "Tỉa bông",
+    POLLINATION: "Thụ phấn",
+    FRUIT_THINNING: "Tỉa trái",
+    PEST_INSPECTION: "Kiểm tra sâu bệnh",
+    TRACK_FRUIT: "Theo dõi trái",
+    FRUIT_BAGGING: "Bao trái",
+    BRANCH_SUPPORT: "Chống cành",
+    HARVEST: "Thu hoạch",
+    FRUIT_GRADING: "Phân loại trái",
+    GARDEN_SANITATION: "Vệ sinh vườn",
+    OTHER: "Khác",
 };
 
 const stageLabels: Record<string, string> = {
-    MAKING_SPROUT: "Ra đọt",
+    POST_HARVEST_RECOVERY: "Phục hồi sau thu hoạch",
+    MAKING_SPROUT: "Làm đọt",
+    FLOWER_INDUCTION: "Xử lý ra hoa",
     FLOWERING: "Ra hoa",
     FRUIT_SETTING: "Đậu trái",
     FRUIT_GROWING: "Nuôi trái",
+    PRE_HARVEST: "Trước thu hoạch",
     HARVEST: "Thu hoạch",
 };
 

@@ -21,7 +21,10 @@
         "seed:prohibited-chemicals": "node scripts/seed-prohibited-chemicals.cjs",
         "import:prohibited-chemicals": "node scripts/import-prohibited-chemicals-from-excel.cjs",
         "seed:store-marketplace": "node scripts/seed-store-marketplace.cjs",
-        "seed:regional-farms": "node scripts/seed-regional-farms-and-logs.cjs"
+        "seed:regional-farms": "node scripts/seed-regional-farms-and-logs.cjs",
+        "seed:role-accounts": "node scripts/seed-role-accounts.cjs",
+        "seed:system-demo": "node scripts/seed-system-demo.cjs",
+        "seed:farming-history": "node scripts/seed-farming-history.cjs"
     },
     "dependencies": {
         "@hookform/resolvers": "^3.10.0",

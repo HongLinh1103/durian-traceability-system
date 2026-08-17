@@ -8,8 +8,15 @@ import { getManagedRegionScope } from "@/lib/region-manager-scope";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-const activityLabels: Record<string, string> = { SPRAY_PESTICIDE: "Phun thuốc", FERTILIZE: "Bón phân", IRRIGATE: "Tưới nước", PRUNE: "Cắt tỉa", WEEDING: "Làm cỏ" };
-const stageLabels: Record<string, string> = { MAKING_SPROUT: "Làm đọt", FLOWERING: "Ra hoa", FRUIT_SETTING: "Đậu trái", FRUIT_GROWING: "Nuôi trái", HARVEST: "Thu hoạch" };
+const activityLabels: Record<string, string> = {
+    BASE_FERTILIZING: "Bón lót", PLANTING: "Trồng", MULCHING: "Tủ gốc", SPRAY_PESTICIDE: "Phun thuốc BVTV",
+    FERTILIZE: "Bón phân", FOLIAR_FERTILIZING: "Phun phân bón lá", IRRIGATE: "Tưới nước", PRUNE: "Tỉa cành / tạo tán",
+    WEEDING: "Làm cỏ", SHOOT_MANAGEMENT: "Quản lý đọt", WATER_STRESS: "Xiết nước", FLOWER_INDUCTION: "Xử lý ra hoa",
+    FLOWER_THINNING: "Tỉa bông", POLLINATION: "Thụ phấn", FRUIT_THINNING: "Tỉa trái", PEST_INSPECTION: "Kiểm tra sâu bệnh",
+    TRACK_FRUIT: "Theo dõi trái", FRUIT_BAGGING: "Bao trái", BRANCH_SUPPORT: "Chống cành", HARVEST: "Thu hoạch",
+    FRUIT_GRADING: "Phân loại trái", GARDEN_SANITATION: "Vệ sinh vườn", OTHER: "Khác",
+};
+const stageLabels: Record<string, string> = { POST_HARVEST_RECOVERY: "Phục hồi sau thu hoạch", MAKING_SPROUT: "Làm đọt", FLOWER_INDUCTION: "Xử lý ra hoa", FLOWERING: "Ra hoa", FRUIT_SETTING: "Đậu trái", FRUIT_GROWING: "Nuôi trái", PRE_HARVEST: "Trước thu hoạch", HARVEST: "Thu hoạch" };
 export const dynamic = "force-dynamic";
 
 export default async function GardenLogsPage({ params }: { params: { gardenId: string } }) {
