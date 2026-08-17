@@ -85,7 +85,7 @@ export function PesticideForm({ initialData, onSuccess, onCancel, inline = false
     });
 
     return (
-        <div className={inline ? "rounded-3xl border border-red-100 bg-red-50/30 p-5" : "fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 pt-10 backdrop-blur-sm"}>
+        <div className={inline ? "rounded-3xl border border-brand-100 bg-brand-50/20 p-4 sm:p-5" : "fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 pt-10 backdrop-blur-sm"}>
             <div className={inline ? "w-full" : "mx-4 w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl"}>
                 <div className="mb-5 flex items-center justify-between">
                     <h3 className="text-xl font-bold text-slate-900">{isEditing ? "Chỉnh sửa chất cấm" : "Thêm chất cấm mới"}</h3>

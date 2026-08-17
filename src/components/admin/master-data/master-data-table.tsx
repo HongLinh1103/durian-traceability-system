@@ -29,6 +29,7 @@ type MasterDataTableProps<T> = {
     onPageChange: (page: number) => void;
     emptyMessage?: string;
     keyExtractor: (item: T) => string;
+    renderMobileItem?: (item: T, index: number) => ReactNode;
 };
 
 /**
@@ -44,6 +45,7 @@ export function MasterDataTable<T>({
     onPageChange,
     emptyMessage = "Chưa có dữ liệu.",
     keyExtractor,
+    renderMobileItem,
 }: MasterDataTableProps<T>) {
     // --- Loading State ---
     if (isLoading) {
@@ -122,7 +124,9 @@ export function MasterDataTable<T>({
 
             {/* Cards - Mobile */}
             <div className="divide-y divide-slate-100 sm:hidden">
-                {data.map((item, index) => (
+                {data.map((item, index) => renderMobileItem ? (
+                    <div key={keyExtractor(item)}>{renderMobileItem(item, index)}</div>
+                ) : (
                     <div key={keyExtractor(item)} className="space-y-2 p-4">
                         {columns.map((col) => (
                             <div key={col.key} className="flex items-center justify-between gap-2">

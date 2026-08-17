@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, Edit, Trash2, Layers3, ShieldAlert, Sprout } from "lucide-react";
+import { Search, Edit, Trash2, Layers3, MoreHorizontal, ShieldAlert, Sprout } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
@@ -51,6 +51,7 @@ export default function PesticidesPage() {
     const [error, setError] = useState<string | null>(null);
     const [editingItem, setEditingItem] = useState<Pesticide | null>(null);
     const [confirmAction, setConfirmAction] = useState<{ type: string; item: Pesticide } | null>(null);
+    const [mobileMenuId, setMobileMenuId] = useState<string | null>(null);
 
     const loadData = useCallback(async (page: number = 1) => {
         setIsLoading(true);
@@ -101,12 +102,12 @@ export default function PesticidesPage() {
         <main className="mx-auto min-h-screen w-full max-w-[1600px] space-y-5 px-4 py-7 sm:px-6">
             <div><p className="text-xs font-black uppercase tracking-[.2em] text-emerald-700">Quản trị dữ liệu chuẩn</p><h1 className="mt-1 text-3xl font-black">Danh mục</h1><p className="mt-2 text-slate-500">Quản lý dữ liệu dùng chung cho vườn, nhật ký, kế hoạch và thu hoạch.</p></div>
             <nav className="grid grid-cols-3 gap-1 rounded-2xl border bg-white p-1.5 shadow-sm sm:gap-2 sm:rounded-3xl sm:p-2" aria-label="Loại danh mục">
-                <Link href="/dashboard/admin/catalog" className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-center text-[11px] font-bold leading-tight text-slate-600 hover:bg-emerald-50 sm:min-h-12 sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-3 sm:text-base"><Sprout className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" /><span className="whitespace-nowrap">Cây giống</span></Link>
-                <Link href="/dashboard/admin/catalog?tab=cultivation" className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-center text-[11px] font-bold leading-tight text-slate-600 hover:bg-emerald-50 sm:min-h-12 sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-3 sm:text-base"><Layers3 className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" /><span><span className="whitespace-nowrap">Giai đoạn</span><span className="hidden sm:inline"> – </span><br className="sm:hidden"/><span className="whitespace-nowrap">Công việc</span></span></Link>
-                <span className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-brand-600 px-1 py-2 text-center text-[11px] font-bold leading-tight text-white shadow-soft sm:min-h-12 sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-3 sm:text-base"><ShieldAlert className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" /><span className="whitespace-nowrap">Danh mục cấm</span></span>
+                <Link href="/dashboard/admin/catalog" className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-center text-sm font-bold leading-tight text-slate-600 hover:bg-emerald-50 sm:min-h-12 sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-3 sm:text-base"><Sprout className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" /><span className="whitespace-nowrap">Cây giống</span></Link>
+                <Link href="/dashboard/admin/catalog?tab=cultivation" className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-center text-sm font-bold leading-tight text-slate-600 hover:bg-emerald-50 sm:min-h-12 sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-3 sm:text-base"><Layers3 className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" /><span><span className="whitespace-nowrap">Giai đoạn</span><span className="hidden sm:inline"> – </span><br className="sm:hidden"/><span className="whitespace-nowrap">Công việc</span></span></Link>
+                <span className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-brand-600 px-1 py-2 text-center text-sm font-bold leading-tight text-white shadow-soft sm:min-h-12 sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-3 sm:text-base"><ShieldAlert className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" /><span className="whitespace-nowrap">Danh mục cấm</span></span>
             </nav>
             <Card>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-8 p-3 pt-3 sm:p-6">
                     <section className="space-y-3">
 
                         <PesticideForm
@@ -118,10 +119,10 @@ export default function PesticidesPage() {
                         />
                     </section>
 
-                    <div className="border-t border-slate-200 pt-6">
-                        <h2 className="mb-3 text-xl font-bold text-slate-900">Danh sách các chất cấm đã ghi nhận</h2>
+                    <div className="border-t border-slate-200 pt-8">
+                        <h2 className="mb-4 text-xl font-bold text-slate-900">Danh mục thuốc BVTV cấm</h2>
                         {/* Filters */}
-                        <div className="flex flex-wrap items-center gap-3">
+                        <div className="mb-4 flex flex-wrap items-center gap-3">
                             <div className="relative flex-1 min-w-[200px]">
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                                 <Input
@@ -165,6 +166,20 @@ export default function PesticidesPage() {
                             onPageChange={(page) => loadData(page)}
                             emptyMessage="Chưa có chất cấm nào được ghi nhận."
                             keyExtractor={(item) => item.id}
+                            renderMobileItem={(item, index) => (
+                                <article className="relative flex min-h-20 items-center gap-3 px-3 py-3">
+                                    <span className="w-6 shrink-0 text-center text-xs font-bold text-slate-400">{(pagination.page - 1) * pagination.pageSize + index + 1}.</span>
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="truncate text-base font-bold text-slate-900">{item.pesticideName || item.activeIngredient || item.tradeName}</h3>
+                                        <span className="mt-1 inline-flex max-w-full truncate rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{item.category || "Chưa phân loại"}</span>
+                                    </div>
+                                    <button type="button" onClick={() => setMobileMenuId(current => current === item.id ? null : item.id)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-500 active:bg-slate-100" aria-label={`Mở thao tác cho ${item.pesticideName || item.activeIngredient || item.tradeName}`}><MoreHorizontal className="h-5 w-5" /></button>
+                                    {mobileMenuId === item.id && <div className="absolute right-3 top-14 z-20 min-w-36 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+                                        <button type="button" onClick={() => { setEditingItem(item); setMobileMenuId(null); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-brand-50"><Edit className="h-4 w-4 text-brand-600" />Sửa</button>
+                                        <button type="button" onClick={() => { setConfirmAction({ type: "delete", item }); setMobileMenuId(null); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" />Xóa</button>
+                                    </div>}
+                                </article>
+                            )}
                         />
                     </div>
                 </CardContent>
