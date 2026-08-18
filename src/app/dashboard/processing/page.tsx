@@ -1,0 +1,93 @@
+import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { AlertTriangle, Boxes, Factory, PackageCheck, Truck, QrCode } from "lucide-react";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { buildFinishedProductLots, buildProcessingLots, buildRawMaterialLots, getProcessingHarvestSources } from "@/lib/processing-facility";
+
+export default async function Page() {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") redirect("/login");
+
+    const [facility, sources] = await Promise.all([
+        prisma.partnerFacility.findUnique({ where: { ownerId: session.user.id } }),
+        getProcessingHarvestSources(session.user.id),
+    ]);
+
+    const rawLots = buildRawMaterialLots(sources);
+    const processingLots = buildProcessingLots(rawLots);
+    const finishedLots = buildFinishedProductLots(processingLots);
+
+    const waitingInspection = rawLots.filter((lot) => lot.status === "WAITING_INSPECTION").length;
+    const activeProcessing = processingLots.filter((lot) => lot.status === "IN_PROGRESS").length;
+    const pausedProcessing = processingLots.filter((lot) => lot.status === "PAUSED").length;
+    const pendingDispatch = finishedLots.filter((lot) => lot.dispatchStatus === "PENDING" || lot.dispatchStatus === "IN_TRANSIT").length;
+    const missingQr = finishedLots.filter((lot) => !lot.qrIssued).length;
+
+    const today = new Date();
+    const todayKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(today);
+    const receivedTodayWeight = rawLots
+        .filter((lot) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(lot.receivedAt) === todayKey)
+        .reduce((sum, lot) => sum + lot.actualReceivedWeight, 0);
+    const totalFinishedWeight = finishedLots.reduce((sum, lot) => sum + lot.totalWeight, 0);
+
+    const tasks = [
+        { label: "Lô nguyên liệu chờ kiểm tra", value: waitingInspection, tone: waitingInspection > 0 ? "amber" : "emerald" },
+        { label: "Lô chế biến quá thời gian dự kiến", value: pausedProcessing, tone: pausedProcessing > 0 ? "rose" : "emerald" },
+        { label: "Lô thành phẩm chưa phát hành QR", value: missingQr, tone: missingQr > 0 ? "amber" : "emerald" },
+        { label: "Giao nhận chờ xác nhận", value: pendingDispatch, tone: pendingDispatch > 0 ? "sky" : "emerald" },
+    ];
+
+    return (
+        <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
+            <header className="rounded-3xl bg-gradient-to-br from-cyan-700 to-teal-500 p-6 text-white shadow-lg">
+                <p className="text-sm font-bold text-cyan-100">{facility?.name ?? "Cơ sở chế biến"}</p>
+                <h1 className="mt-2 text-3xl font-black">Tổng quan cơ sở chế biến</h1>
+                <p className="mt-2 text-cyan-50">Theo dõi tiếp nhận nguyên liệu, mẻ chế biến, thành phẩm và công việc ưu tiên trong ngày.</p>
+            </header>
+
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <KpiCard icon={Boxes} label="Lô chờ tiếp nhận / kiểm tra" value={String(waitingInspection)} />
+                <KpiCard icon={Factory} label="Lô đang chế biến" value={String(activeProcessing)} />
+                <KpiCard icon={PackageCheck} label="Lô thành phẩm" value={String(finishedLots.length)} />
+                <KpiCard icon={Truck} label="Lô chờ xuất / giao" value={String(pendingDispatch)} />
+                <KpiCard icon={Boxes} label="Khối lượng tiếp nhận hôm nay" value={`${receivedTodayWeight.toLocaleString("vi-VN")} kg`} />
+                <KpiCard icon={PackageCheck} label="Tổng sản lượng thành phẩm" value={`${totalFinishedWeight.toLocaleString("vi-VN")} kg`} />
+                <KpiCard icon={QrCode} label="QR đã phát hành" value={String(finishedLots.filter((lot) => lot.qrIssued).length)} />
+                <KpiCard icon={AlertTriangle} label="Mục cần xử lý" value={String(tasks.filter((task) => task.value > 0).length)} />
+            </section>
+
+            <section className="rounded-3xl border bg-white p-5 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 className="text-xl font-black text-slate-900">Cần xử lý</h2>
+                        <p className="mt-1 text-sm text-slate-500">Hiển thị trực tiếp các việc cần thao tác để không bỏ sót công đoạn.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Link href="/dashboard/processing/raw-materials" className="rounded-xl bg-cyan-600 px-3 py-2 text-sm font-semibold text-white">Xem nguyên liệu</Link>
+                        <Link href="/dashboard/processing/finished-products" className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">Xem thành phẩm</Link>
+                    </div>
+                </div>
+                <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {tasks.map((task) => (
+                        <li key={task.label} className={`rounded-2xl border px-4 py-3 ${task.tone === "rose" ? "border-rose-200 bg-rose-50 text-rose-800" : task.tone === "amber" ? "border-amber-200 bg-amber-50 text-amber-800" : task.tone === "sky" ? "border-sky-200 bg-sky-50 text-sky-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
+                            <p className="text-sm font-semibold">{task.label}</p>
+                            <p className="mt-1 text-2xl font-black">{task.value}</p>
+                        </li>
+                    ))}
+                </ul>
+            </section>
+        </main>
+    );
+}
+
+function KpiCard({ icon: Icon, label, value }: { icon: typeof Boxes; label: string; value: string }) {
+    return (
+        <article className="rounded-3xl border bg-white p-5 shadow-sm">
+            <Icon className="h-6 w-6 text-cyan-700" />
+            <p className="mt-4 text-sm text-slate-500">{label}</p>
+            <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
+        </article>
+    );
+}

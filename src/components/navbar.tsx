@@ -43,11 +43,14 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/store/inventory", label: "Kho hàng", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/orders", label: "Đơn hàng", roles: ["STORE_OWNER"] },
     { href: "/dashboard/partner", label: "Tổng quan", roles: ["COLLECTOR"] },
-    { href: "/dashboard/partner/harvests", label: "Phiếu thu hoạch", roles: ["COLLECTOR", "PROCESSING_FACILITY"] },
+    { href: "/dashboard/partner/harvests", label: "Phiếu thu hoạch", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/orders", label: "Đơn thu mua", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/lots", label: "Lô hàng", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/finance", label: "Tài chính", roles: ["COLLECTOR"] },
-    { href: "/dashboard/partner/notifications", label: "Thông báo", roles: ["COLLECTOR"], collectorBadge: true },
+    { href: "/dashboard/processing", label: "Tổng quan", roles: ["PROCESSING_FACILITY"] },
+    { href: "/dashboard/processing/raw-materials", label: "Nguyên liệu", roles: ["PROCESSING_FACILITY"], collectorBadge: true },
+    { href: "/dashboard/processing/processing", label: "Chế biến", roles: ["PROCESSING_FACILITY"] },
+    { href: "/dashboard/processing/finished-products", label: "Thành phẩm", roles: ["PROCESSING_FACILITY"] },
 ];
 
 export function Navbar({ initialSession }: { initialSession: Session | null }) {
@@ -80,6 +83,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
     const isAuthed = Boolean(session);
     const isLoading = status === "loading" && !session;
     const userRole = isAuthed ? (session?.user?.role ?? null) : null;
+    const hasMobileBottomNav = Boolean(userRole && ["ADMIN", "AREA_MANAGER", "FARMER", "STORE_OWNER", "COLLECTOR", "PROCESSING_FACILITY"].includes(userRole));
     const isCollector = userRole === "COLLECTOR";
     const visiblePublicLinks = isCollector ? [] : publicLinks;
     useEffect(() => {
@@ -159,9 +163,23 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
     }, [isAuthed, pathname, userRole]);
 
     useEffect(() => {
-        if (!isAuthed || userRole !== "COLLECTOR") { setCollectorNoticeCount(0); return; }
+        if (!isAuthed || !["COLLECTOR", "PROCESSING_FACILITY"].includes(userRole ?? "")) { setCollectorNoticeCount(0); return; }
         let cancelled = false;
-        const fetchCollectorNotices = async () => { try { const response = await fetch("/api/harvests", { cache: "no-store" }); const payload = await response.json(); if (!cancelled && payload.success) setCollectorNoticeCount((payload.data ?? []).filter((item: { status: string }) => ["WAITING_CONFIRMATION", "HARVESTED"].includes(item.status)).length); } catch { /* non-blocking */ } };
+        const fetchCollectorNotices = async () => {
+            try {
+                const response = await fetch("/api/harvests", { cache: "no-store" });
+                const payload = await response.json();
+                if (!cancelled && payload.success) {
+                    const rows = payload.data ?? [];
+                    const count = userRole === "COLLECTOR"
+                        ? rows.filter((item: { status: string }) => ["WAITING_CONFIRMATION", "HARVESTED"].includes(item.status)).length
+                        : rows.filter((item: { status: string }) => ["WAITING_CONFIRMATION", "CONFIRMED", "HARVESTING"].includes(item.status)).length;
+                    setCollectorNoticeCount(count);
+                }
+            } catch {
+                // non-blocking
+            }
+        };
         void fetchCollectorNotices(); const interval = window.setInterval(fetchCollectorNotices, 60_000);
         return () => { cancelled = true; window.clearInterval(interval); };
     }, [isAuthed, pathname, userRole]);
@@ -324,8 +342,8 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                     )}
                 </div>
 
-                {/* Admin đã có thanh điều hướng đáy: chỉ giữ đăng xuất ở thanh trên. */}
-                {isAuthed && userRole === "ADMIN" ? (
+                {/* Mobile role pages use fixed bottom navigation, so header only keeps logout action. */}
+                {isAuthed && hasMobileBottomNav ? (
                     <Button
                         type="button"
                         variant="outline"
@@ -336,7 +354,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                         <LogOut className="mr-1.5 h-4 w-4" />
                         Đăng xuất
                     </Button>
-                ) : userRole !== "AREA_MANAGER" ? (
+                ) : (
                     <button
                         type="button"
                         onClick={() => setMobileOpen(!mobileOpen)}
@@ -345,11 +363,11 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                     >
                         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                     </button>
-                ) : null}
+                )}
             </nav>
 
             {/* Mobile Menu */}
-            {mobileOpen && (
+            {!hasMobileBottomNav && mobileOpen && (
                 <div
                     role="dialog"
                     aria-modal="true"

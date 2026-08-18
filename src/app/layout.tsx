@@ -38,7 +38,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             <body>
                 <Providers session={session}>
                     <Navbar initialSession={session} />
-                    {children}
+                    <div className="min-h-screen pb-[calc(5.5rem+env(safe-area-inset-bottom))] xl:pb-0">
+                        {children}
+                    </div>
                     <MobileBottomNavigation />
                 </Providers>
             </body>
