@@ -148,7 +148,51 @@ export function FarmerAccountsManager() {
             </Card>
 
             <Card className="overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="space-y-3 md:hidden">
+                    {loading ? (
+                        <div className="px-4 py-16 text-center text-sm text-slate-500">Đang tải dữ liệu...</div>
+                    ) : farmers.length === 0 ? (
+                        <div className="px-4 py-16 text-center text-sm text-slate-500">Không có tài khoản nông dân phù hợp.</div>
+                    ) : (
+                        farmers.map((farmer) => {
+                            const state = statuses[farmer.accountStatus] ?? statuses.PENDING;
+                            const regionCodes = Array.from(new Set(farmer.farms.map((farm) => farm.region?.code).filter(Boolean))).join(", ") || "—";
+                            return (
+                                <article key={farmer.id} className="border-b border-slate-200 bg-white p-4 last:border-b-0">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <h2 className="truncate font-bold text-slate-900">{farmer.fullName || "Chưa có tên"}</h2>
+                                            <p className="mt-1 text-sm text-slate-500">{farmer.phone}</p>
+                                            <p className="mt-0.5 break-all text-xs text-slate-500">{farmer.email || "Chưa có email"}</p>
+                                        </div>
+                                        <Badge className={state.className}>{state.label}</Badge>
+                                    </div>
+
+                                    <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-slate-100 py-3 text-sm">
+                                        <div>
+                                            <dt className="text-xs text-slate-500">Mã hồ sơ</dt>
+                                            <dd className="mt-1 font-semibold text-slate-800">{farmer.id.slice(-10).toUpperCase()}</dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-xs text-slate-500">Số vườn</dt>
+                                            <dd className="mt-1 font-semibold text-slate-800">{farmer.farms.length}</dd>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <dt className="text-xs text-slate-500">Vùng trồng</dt>
+                                            <dd className="mt-1 font-semibold text-slate-800">{regionCodes}</dd>
+                                        </div>
+                                    </dl>
+
+                                    <Button type="button" variant="outline" className="mt-3 w-full" onClick={() => setSelected(farmer)}>
+                                        <Eye className="mr-2 h-4 w-4" />Xem chi tiết
+                                    </Button>
+                                </article>
+                            );
+                        })
+                    )}
+                </div>
+
+                <div className="hidden overflow-x-auto md:block">
                     <table className="w-full min-w-[1100px] text-left text-sm">
                         <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr>{["Mã hồ sơ", "Họ và tên", "Số điện thoại", "Email", "Số vườn", "Vùng trồng", "Ngày đăng ký", "Trạng thái hồ sơ", "Thao tác"].map((heading) => <th key={heading} className="px-4 py-3">{heading}</th>)}</tr></thead>
                         <tbody className="divide-y">

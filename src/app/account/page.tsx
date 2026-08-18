@@ -59,7 +59,7 @@ export default async function AccountPage() {
     });
     if (!user) redirect("/login");
 
-    if (user.role === "ADMIN") {
+    if (user.role === "ADMIN" || user.role === "AREA_MANAGER") {
         return <AdminProfile profile={{
             fullName: user.fullName || "",
             phone: user.phone,

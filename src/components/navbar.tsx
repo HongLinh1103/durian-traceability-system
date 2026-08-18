@@ -336,7 +336,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                         <LogOut className="mr-1.5 h-4 w-4" />
                         Đăng xuất
                     </Button>
-                ) : (
+                ) : userRole !== "AREA_MANAGER" ? (
                     <button
                         type="button"
                         onClick={() => setMobileOpen(!mobileOpen)}
@@ -345,7 +345,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                     >
                         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                     </button>
-                )}
+                ) : null}
             </nav>
 
             {/* Mobile Menu */}

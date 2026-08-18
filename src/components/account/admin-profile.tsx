@@ -86,10 +86,12 @@ export function AdminProfile({ profile }: { profile: AdminProfileProps }) {
         reader.readAsDataURL(file);
     }
 
+    const profileTitle = profile.role === "AREA_MANAGER" ? "Hồ sơ trưởng ban vùng trồng" : "Hồ sơ quản trị viên";
+
     return (
         <main className="mx-auto max-w-6xl space-y-5 px-3 pb-28 pt-4 sm:px-6 sm:py-8">
             <header>
-                <p className="text-xs font-black uppercase tracking-[.18em] text-emerald-700">Hồ sơ quản trị viên</p>
+                <p className="text-xs font-black uppercase tracking-[.18em] text-emerald-700">{profileTitle}</p>
                 <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-3xl">Cá nhân</h1>
                 <p className="mt-1 text-sm text-slate-500">Quản lý thông tin cá nhân và bảo mật tài khoản.</p>
             </header>
