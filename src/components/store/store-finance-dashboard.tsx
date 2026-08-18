@@ -1,22 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-    AlertCircle,
     ArrowDownRight,
-    ArrowUpRight,
-    BadgeAlert,
     Boxes,
     Building2,
-    Calendar,
     CheckCircle2,
     CircleDollarSign,
-    Clock,
     DollarSign,
-    Download,
-    Eye,
-    Filter,
-    HelpCircle,
     LandPlot,
     Layers,
     Package,
@@ -25,22 +16,16 @@ import {
     Plus,
     Receipt,
     RefreshCw,
-    Scale,
     Search,
-    ShoppingBag,
     ShoppingCart,
-    Store,
     Tag,
     Trash2,
-    TrendingDown,
     TrendingUp,
     Truck,
     UserCheck,
-    Wallet,
     WalletCards,
     X,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -201,7 +186,7 @@ export function StoreFinanceDashboard() {
     const [orderSearch, setOrderSearch] = useState("");
     const [productSearch, setProductSearch] = useState("");
 
-    async function loadFinanceData() {
+    const loadFinanceData = useCallback(async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -229,11 +214,11 @@ export function StoreFinanceDashboard() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [range, customFrom, customTo, categoryFilter, toast]);
 
     useEffect(() => {
         void loadFinanceData();
-    }, [range, customFrom, customTo, categoryFilter]);
+    }, [loadFinanceData]);
 
     async function handleCreateExpense(e: React.FormEvent) {
         e.preventDefault();
@@ -409,7 +394,7 @@ export function StoreFinanceDashboard() {
                             <button
                                 key={item.key}
                                 type="button"
-                                onClick={() => setRange(item.key as any)}
+                                onClick={() => setRange(item.key as "today" | "7days" | "30days" | "thisMonth" | "custom")}
                                 className={`rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold transition ${
                                     range === item.key
                                         ? "bg-brand-600 text-white shadow-soft"
@@ -444,7 +429,7 @@ export function StoreFinanceDashboard() {
                             <VietnameseDatePicker
                                 value={customFrom}
                                 onChange={setCustomFrom}
-                                placeholder="dd/mm/yyyy"
+                                placeholder="Chọn ngày bắt đầu"
                                 className="mt-1"
                             />
                         </div>
@@ -453,7 +438,7 @@ export function StoreFinanceDashboard() {
                             <VietnameseDatePicker
                                 value={customTo}
                                 onChange={setCustomTo}
-                                placeholder="dd/mm/yyyy"
+                                placeholder="Chọn ngày kết thúc"
                                 className="mt-1"
                             />
                         </div>
@@ -476,7 +461,7 @@ export function StoreFinanceDashboard() {
                         <button
                             key={tab.key}
                             type="button"
-                            onClick={() => setActiveTab(tab.key as any)}
+                            onClick={() => setActiveTab(tab.key as "overview" | "orders" | "expenses" | "products" | "debts_inventory")}
                             className={`flex shrink-0 items-center gap-2 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-bold transition ${
                                 isActive
                                     ? "bg-brand-50 text-brand-700 ring-1 ring-brand-200"

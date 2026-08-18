@@ -6,11 +6,8 @@ import { useRef, useState } from "react";
 import {
     BadgeCheck,
     Building2,
-    Calendar,
     CalendarDays,
     Camera,
-    CheckCircle2,
-    Clock,
     Eye,
     EyeOff,
     Factory,
@@ -18,15 +15,10 @@ import {
     LandPlot,
     Leaf,
     LockKeyhole,
-    MapPin,
     Save,
-    ShoppingBag,
     Sprout,
     Store,
-    Trees,
-    UserCheck,
     UserRound,
-    Wheat,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -251,9 +243,6 @@ export function UserProfile({ profile, farms = [], stores = [], partnerFacility,
 
     const roleName = roleLabels[profile.role] || profile.role;
     const roleSubtitle = roleSubtitles[profile.role] || "Hồ sơ cá nhân và bảo mật tài khoản";
-    const fullAddress = [profile.address, profile.ward, profile.district, profile.province]
-        .filter(Boolean)
-        .join(", ");
 
     return (
         <main className="mx-auto max-w-6xl space-y-6 px-3 pb-28 pt-4 sm:px-6 sm:py-8">

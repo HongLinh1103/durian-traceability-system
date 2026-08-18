@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Calendar, CheckCircle2, ChevronRight, Eye, FileText, Scale, Trees, Truck, X } from "lucide-react";
+import { Calendar, ChevronRight, Eye, FileText, Scale, Trees, Truck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";

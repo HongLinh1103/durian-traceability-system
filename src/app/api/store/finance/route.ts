@@ -1,6 +1,5 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -103,8 +102,6 @@ export async function GET(request: Request) {
         });
 
         // 1. Calculations for Orders, Revenue, COGS, and Receivables
-        const completedStatuses = ["DELIVERED", "COMPLETED", "SHIPPING", "CONFIRMED", "PREPARING", "READY_FOR_DELIVERY"];
-        
         let totalRevenue = 0;
         let totalCogs = 0;
         let completedOrderCount = 0;

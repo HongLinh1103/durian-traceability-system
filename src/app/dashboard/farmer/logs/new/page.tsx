@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import imageCompression from "browser-image-compression";
-import { AlertTriangle, ArrowLeft, Camera, ClipboardPlus, CloudUpload, ImagePlus, Leaf, Mic, MicOff, RefreshCcw, Sprout, WifiOff, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Camera, CloudUpload, ImagePlus, Leaf, Mic, MicOff, RefreshCcw, Sprout, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -621,7 +620,7 @@ export default function NewFarmingLogPage() {
                     description: "Hệ thống sẽ đồng bộ lại khi kết nối Internet trở về.",
                     variant: "success",
                 });
-            } catch (offlineError) {
+            } catch {
                 toast({
                     title: "Không thể lưu nhật ký",
                     description: error instanceof Error ? error.message : "Vui lòng kiểm tra kết nối hoặc thử lại.",

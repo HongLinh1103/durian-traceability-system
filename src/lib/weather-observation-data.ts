@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
 const conditions = ["SUNNY", "PARTLY_CLOUDY", "CLOUDY", "OVERCAST", "LIGHT_RAIN", "RAIN", "THUNDERSTORM", "FOG"];
-const rainConditions = ["LIGHT_RAIN", "RAIN", "THUNDERSTORM"];
 
 function num(value: FormDataEntryValue | null) {
     if (value == null || String(value).trim() === "") return null;

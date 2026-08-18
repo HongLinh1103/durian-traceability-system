@@ -2,26 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { createPortal } from "react-dom";
 import {
-    AlertCircle,
     ArrowLeft,
     Building2,
     Calendar,
     CheckCircle2,
-    Clock,
     DollarSign,
     FileText,
     History,
-    LandPlot,
     MapPin,
-    Package,
     Scale,
     Sparkles,
     Trees,
     Truck,
-    User,
     Wheat,
     X,
 } from "lucide-react";
@@ -32,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
-import { formatVietnameseDate, formatVietnameseDateTime } from "@/lib/date-format";
+import { formatVietnameseDateTime } from "@/lib/date-format";
 
 const statusLabels: Record<string, { label: string; color: string; badgeBg: string }> = {
     DRAFT: { label: "Bản nháp", color: "text-slate-700", badgeBg: "bg-slate-100 text-slate-700 border-slate-200" },
