@@ -11,11 +11,14 @@ import {
     CircleDollarSign,
     ClipboardList,
     DollarSign,
+    MapPin,
     Package,
     PackageCheck,
+    Phone,
     Plus,
     Store,
     TrendingUp,
+    UserCheck,
 } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -199,9 +202,20 @@ export default async function StoreDashboardPage() {
                     <h1 className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">
                         {store.name}
                     </h1>
-                    <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-                        Chủ sở hữu: <b className="text-slate-700">{session.user.fullName || "Nguyễn Văn Minh"}</b> · Hotline: <b className="text-slate-700">{store.phone || session.user.phone}</b> · Địa chỉ: {store.address || "Vĩnh Cửu, Đồng Nai"}
-                    </p>
+                    <div className="mt-3 space-y-1.5 text-xs text-slate-600 sm:text-sm">
+                        <div className="flex items-center gap-2">
+                            <UserCheck className="h-4 w-4 text-slate-400 shrink-0" />
+                            <span>Chủ sở hữu: <b className="text-slate-800">{session.user.fullName || "Nguyễn Văn Minh"}</b></span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-slate-400 shrink-0" />
+                            <span>Hotline: <b className="text-slate-800">{store.phone || session.user.phone}</b></span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                            <span>Địa chỉ: <span className="text-slate-700">{store.address || "Số 88 Quốc Lộ 1A, Xã Trị An, Huyện Vĩnh Cửu, Tỉnh Đồng Nai"}</span></span>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
