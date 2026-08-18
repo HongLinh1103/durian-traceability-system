@@ -237,8 +237,8 @@ export default async function StoreDashboardPage() {
                             </span>
                         </div>
                         <div className="mt-3">
-                            <span className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
-                                {todayRevenue.toLocaleString("vi-VN")} đ
+                            <span className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl whitespace-nowrap">
+                                {todayRevenue.toLocaleString("vi-VN")}&nbsp;đ
                             </span>
                         </div>
                         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
@@ -450,7 +450,7 @@ export default async function StoreDashboardPage() {
                 </div>
 
                 {/* Cột Phải: Tổng quan tài chính & công nợ 30 ngày qua */}
-                <div className="flex flex-col justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-xs">
+                <div className="flex flex-col justify-between rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-xs">
                     <div>
                         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                             <div className="flex items-center gap-2">
@@ -467,35 +467,35 @@ export default async function StoreDashboardPage() {
                             </Button>
                         </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-3">
-                            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5">
-                                <span className="text-xs text-slate-500 font-medium">Doanh thu 30 ngày</span>
-                                <div className="mt-1 text-lg font-black text-slate-900">
-                                    {revenue30Days.toLocaleString("vi-VN")} đ
+                        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3 sm:p-3.5">
+                                <span className="text-xs text-slate-500 font-medium line-clamp-1">Doanh thu 30 ngày</span>
+                                <div className="mt-1 text-sm sm:text-base lg:text-lg font-black text-slate-900 whitespace-nowrap tracking-tight">
+                                    {revenue30Days.toLocaleString("vi-VN")}&nbsp;đ
                                 </div>
                             </div>
 
-                            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3.5">
-                                <span className="text-xs text-emerald-800 font-medium">Lợi nhuận gộp</span>
-                                <div className="mt-1 text-lg font-black text-emerald-800">
-                                    {grossProfit30Days.toLocaleString("vi-VN")} đ
+                            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3 sm:p-3.5">
+                                <span className="text-xs text-emerald-800 font-medium line-clamp-1">Lợi nhuận gộp</span>
+                                <div className="mt-1 text-sm sm:text-base lg:text-lg font-black text-emerald-800 whitespace-nowrap tracking-tight">
+                                    {grossProfit30Days.toLocaleString("vi-VN")}&nbsp;đ
                                 </div>
-                                <span className="text-[11px] font-semibold text-emerald-700">
+                                <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-700 whitespace-nowrap">
                                     Biên gộp: {grossMarginPercent}%
                                 </span>
                             </div>
 
-                            <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3.5">
-                                <span className="text-xs text-amber-800 font-medium">Công nợ phải thu</span>
-                                <div className="mt-1 text-lg font-black text-amber-900">
-                                    {totalReceivable.toLocaleString("vi-VN")} đ
+                            <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3 sm:p-3.5">
+                                <span className="text-xs text-amber-800 font-medium line-clamp-1">Công nợ phải thu</span>
+                                <div className="mt-1 text-sm sm:text-base lg:text-lg font-black text-amber-900 whitespace-nowrap tracking-tight">
+                                    {totalReceivable.toLocaleString("vi-VN")}&nbsp;đ
                                 </div>
                             </div>
 
-                            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5">
-                                <span className="text-xs text-slate-500 font-medium">Chi phí vận hành</span>
-                                <div className="mt-1 text-lg font-black text-slate-900">
-                                    {totalExpenses30Days.toLocaleString("vi-VN")} đ
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3 sm:p-3.5">
+                                <span className="text-xs text-slate-500 font-medium line-clamp-1">Chi phí vận hành</span>
+                                <div className="mt-1 text-sm sm:text-base lg:text-lg font-black text-slate-900 whitespace-nowrap tracking-tight">
+                                    {totalExpenses30Days.toLocaleString("vi-VN")}&nbsp;đ
                                 </div>
                             </div>
                         </div>

@@ -1284,8 +1284,8 @@ function MetricCard({
                     <Icon className="h-4 w-4" />
                 </span>
             </div>
-            <p className={`mt-3 text-lg sm:text-2xl font-black ${color}`}>{value}</p>
-            <p className="mt-1 text-xs text-slate-500">{subtext}</p>
+            <p className={`mt-3 text-base sm:text-2xl font-black whitespace-nowrap tracking-tight ${color}`}>{value}</p>
+            <p className="mt-1 text-xs text-slate-500 whitespace-nowrap truncate">{subtext}</p>
         </article>
     );
 }
