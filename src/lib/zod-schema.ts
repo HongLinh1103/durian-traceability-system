@@ -186,7 +186,7 @@ export const resetPasswordSchema = z
 export const farmingLogSchema = z.object({
     farmId: z.string().min(1, "Chọn mã MSVT"),
     stage: z.enum(growthStages),
-    actionDate: z.string().min(1, "Chọn ngày thực hiện").refine(isValidVietnameseDate, "Ngày phải có định dạng dd/MM/yyyy"),
+    actionDate: z.string().min(1, "Chọn ngày thực hiện").refine(isValidVietnameseDate, "Ngày phải có định dạng dd/mm/yyyy"),
     actionTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Giờ phải có định dạng HH:mm"),
     activityType: z.enum(activityTypes),
     otherActivity: z.string().trim().max(120, "Tên hoạt động không quá 120 ký tự").optional().default(""),
@@ -195,7 +195,7 @@ export const farmingLogSchema = z.object({
     phiDays: z.coerce.number().int().min(0, "PHI không hợp lệ").default(0),
     plannedHarvestDate: z.string().refine(
         (value) => !value || isValidVietnameseDate(value),
-        "Ngày phải có định dạng dd/MM/yyyy",
+        "Ngày phải có định dạng dd/mm/yyyy",
     ).optional(),
     notes: z.string().optional(),
     isGACCCompliant: z.boolean().default(true),

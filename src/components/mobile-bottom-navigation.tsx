@@ -8,6 +8,7 @@ import {
     Bell,
     Boxes,
     BookOpenCheck,
+    CircleDollarSign,
     Cog,
     ClipboardList,
     Factory,
@@ -94,9 +95,10 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
+            { label: "Tài chính", description: "Doanh thu, chi phí, lợi nhuận và công nợ", href: "/dashboard/store/finance", icon: CircleDollarSign },
+            { label: "Kho hàng", description: "Nhập kho và quản lý tồn kho", href: "/dashboard/store/inventory", icon: Package },
             { label: "Tài liệu", description: "Tra cứu tài liệu vận hành cửa hàng", href: "/documents", icon: BookOpenCheck },
             { label: "Tin tức", description: "Theo dõi cập nhật thị trường vật tư", href: "/news", icon: Bell },
-            { label: "Kho hàng", description: "Nhập kho và quản lý tồn kho", href: "/dashboard/store/inventory", icon: Package },
         ],
     },
     COLLECTOR: {
@@ -200,11 +202,10 @@ export function MobileBottomNavigation() {
                     <div className="grid h-[76px] grid-cols-5 items-end px-1">
                         <BottomItem item={first} active={isActive(first)} badgeCount={badgeFor(first)} />
                         <BottomItem item={second} active={isActive(second)} badgeCount={badgeFor(second)} />
-                        <button type="button" onClick={() => setActionsOpen(true)} className="group flex h-full flex-col items-center justify-end gap-1 pb-2" aria-label={isExpansionMenu ? "Mở thêm chức năng" : "Mở tác vụ nhanh"}>
-                            <span className="grid h-16 w-16 -translate-y-3 place-items-center rounded-full border-[5px] border-white bg-brand-600 text-white shadow-lg transition group-active:scale-95">
+                        <button type="button" onClick={() => setActionsOpen(true)} className="group flex h-full items-center justify-center pb-2" aria-label={isExpansionMenu ? "Mở thêm chức năng" : "Mở tác vụ nhanh"}>
+                            <span className="grid h-16 w-16 -translate-y-3.5 place-items-center rounded-full border-[5px] border-white bg-brand-600 text-white shadow-xl transition group-active:scale-95">
                                 <Plus className="h-8 w-8" strokeWidth={2.5} />
                             </span>
-                            {!isExpansionMenu && <span className="-mt-3 text-[11px] font-bold text-brand-700">Mở nhanh</span>}
                         </button>
                         <BottomItem item={third} active={isActive(third)} badgeCount={badgeFor(third)} />
                         <BottomItem item={fourth} active={isActive(fourth)} badgeCount={badgeFor(fourth)} />

@@ -8,6 +8,8 @@ const checkoutSchema = z.object({
     recipientPhone: z.string().trim().min(9, "Số điện thoại không hợp lệ.").max(20),
     shippingAddress: z.string().trim().min(5, "Địa chỉ nhận hàng quá ngắn.").max(500),
     note: z.string().trim().max(1000).optional(),
+    productId: z.string().optional(),
+    quantity: z.number().int().positive().optional(),
 });
 
 export async function GET() {
@@ -26,6 +28,85 @@ export async function POST(request: Request) {
     if (!session) return NextResponse.json({ success: false, message: "Chỉ tài khoản nông dân được đặt hàng." }, { status: 403 });
     const parsed = checkoutSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ success: false, message: parsed.error.issues[0]?.message }, { status: 400 });
+
+    // 1. Direct Buy Now (Single Product)
+    if (parsed.data.productId) {
+        const product = await prisma.storeProduct.findFirst({
+            where: {
+                id: parsed.data.productId,
+                deletedAt: null,
+                store: { status: "APPROVED", deletedAt: null },
+            },
+            include: { store: true },
+        });
+
+        if (!product || product.status !== "APPROVED") {
+            return NextResponse.json({ success: false, message: "Sản phẩm không khả dụng hoặc đã bị gỡ." }, { status: 404 });
+        }
+
+        const qty = parsed.data.quantity ?? 1;
+        if (product.stock < qty) {
+            return NextResponse.json({ success: false, message: `Sản phẩm ${product.name} chỉ còn ${product.stock} ${product.unit}.` }, { status: 409 });
+        }
+
+        try {
+            const unitPrice = product.salePrice ?? product.price;
+            const subtotal = Number(unitPrice) * qty;
+            const order = await prisma.$transaction(async (tx) => {
+                const generatedOrderCode = await orderCode(tx);
+                const created = await tx.order.create({
+                    data: {
+                        orderCode: generatedOrderCode,
+                        farmerId: session.user.id,
+                        storeId: product.storeId,
+                        recipientName: parsed.data.recipientName,
+                        recipientPhone: parsed.data.recipientPhone,
+                        shippingAddress: parsed.data.shippingAddress,
+                        note: parsed.data.note,
+                        subtotal,
+                        shippingFee: 20_000,
+                        items: {
+                            create: [
+                                {
+                                    productId: product.id,
+                                    productName: product.name,
+                                    productImage: product.imageUrls[0] || null,
+                                    unitPrice,
+                                    quantity: qty,
+                                    unit: product.unit,
+                                    storeName: product.store.name,
+                                },
+                            ],
+                        },
+                        histories: {
+                            create: {
+                                actorId: session.user.id,
+                                toStatus: "PENDING",
+                                note: "Nông dân đặt mua ngay, thanh toán COD.",
+                            },
+                        },
+                    },
+                });
+                await tx.notification.create({
+                    data: {
+                        userId: product.store.ownerId,
+                        title: "Có đơn hàng mới",
+                        message: `Đơn ${created.orderCode} đang chờ cửa hàng xác nhận.`,
+                        type: "ORDER_NEW",
+                    },
+                });
+                return created;
+            });
+            return NextResponse.json({ success: true, data: [order] }, { status: 201 });
+        } catch (error) {
+            const message = error instanceof Error && error.message === "DAILY_CODE_LIMIT"
+                ? "Đã vượt giới hạn 999 đơn hàng trong ngày."
+                : "Không thể tạo đơn hàng. Vui lòng thử lại.";
+            return NextResponse.json({ success: false, message }, { status: 409 });
+        }
+    }
+
+    // 2. Cart-based Checkout (All items in cart)
     const cart = await prisma.cartItem.findMany({ where: { userId: session.user.id }, include: { product: { include: { store: true } } } });
     if (!cart.length) return NextResponse.json({ success: false, message: "Giỏ hàng trống." }, { status: 400 });
 
@@ -44,7 +125,7 @@ export async function POST(request: Request) {
                 const subtotal = items.reduce((sum, item) => sum + Number(item.product.salePrice ?? item.product.price) * item.quantity, 0);
                 const generatedOrderCode = await orderCode(tx);
                 const created = await tx.order.create({ data: {
-                    orderCode: generatedOrderCode, farmerId: session.user.id, storeId, ...parsed.data, subtotal, shippingFee: 20_000,
+                    orderCode: generatedOrderCode, farmerId: session.user.id, storeId, recipientName: parsed.data.recipientName, recipientPhone: parsed.data.recipientPhone, shippingAddress: parsed.data.shippingAddress, note: parsed.data.note, subtotal, shippingFee: 20_000,
                     items: { create: items.map((item) => ({ productId: item.productId, productName: item.product.name, productImage: item.product.imageUrls[0] || null, unitPrice: item.product.salePrice ?? item.product.price, quantity: item.quantity, unit: item.product.unit, storeName: item.product.store.name })) },
                     histories: { create: { actorId: session.user.id, toStatus: "PENDING", note: "Nông dân đặt hàng, thanh toán COD." } },
                 } });

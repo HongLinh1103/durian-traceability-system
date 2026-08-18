@@ -42,6 +42,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/store/products", label: "Sản phẩm", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/inventory", label: "Kho hàng", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/orders", label: "Đơn hàng", roles: ["STORE_OWNER"] },
+    { href: "/dashboard/store/finance", label: "Tài chính", roles: ["STORE_OWNER"] },
     { href: "/dashboard/partner", label: "Tổng quan", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/harvests", label: "Phiếu thu hoạch", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/orders", label: "Đơn thu mua", roles: ["COLLECTOR"] },

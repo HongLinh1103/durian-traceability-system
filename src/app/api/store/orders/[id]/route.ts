@@ -3,7 +3,14 @@ import { z } from "zod";
 import { getOwnedStore, inventoryDocumentCode, requireRole } from "@/lib/store-marketplace";
 import { prisma } from "@/lib/prisma";
 
-const transitions: Record<string, string[]> = { PENDING: ["CONFIRMED", "REJECTED"], CONFIRMED: ["PREPARING"], PREPARING: ["READY_FOR_DELIVERY"], READY_FOR_DELIVERY: ["SHIPPING"], SHIPPING: ["DELIVERED"], DELIVERED: ["COMPLETED"] };
+const transitions: Record<string, string[]> = {
+    PENDING: ["CONFIRMED", "PREPARING", "REJECTED"],
+    CONFIRMED: ["PREPARING", "READY_FOR_DELIVERY", "SHIPPING"],
+    PREPARING: ["READY_FOR_DELIVERY", "SHIPPING"],
+    READY_FOR_DELIVERY: ["SHIPPING"],
+    SHIPPING: ["DELIVERED", "COMPLETED"],
+    DELIVERED: ["COMPLETED"],
+};
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
     const session = await requireRole(["STORE_OWNER"]);
@@ -12,13 +19,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (!store) return NextResponse.json({ success: false }, { status: 404 });
     const parsed = z.object({ status: z.enum(["CONFIRMED", "PREPARING", "READY_FOR_DELIVERY", "SHIPPING", "DELIVERED", "COMPLETED", "REJECTED"]), reason: z.string().trim().max(1000).optional() }).safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ success: false }, { status: 400 });
-    const order = await prisma.order.findFirst({ where: { id: params.id, storeId: store.id, deletedAt: null }, include: { items: true } });
+    const order = await prisma.order.findFirst({ where: { id: params.id, storeId: store.id, deletedAt: null }, include: { items: true, inventoryDocuments: true } });
     if (!order || !transitions[order.status]?.includes(parsed.data.status)) return NextResponse.json({ success: false, message: "Chuyển trạng thái không hợp lệ." }, { status: 400 });
     if (parsed.data.status === "REJECTED" && !parsed.data.reason) return NextResponse.json({ success: false, message: "Cần nhập lý do từ chối." }, { status: 400 });
 
     try {
         const data = await prisma.$transaction(async (tx) => {
-            if (parsed.data.status === "CONFIRMED") {
+            const needsExportDoc = ["CONFIRMED", "PREPARING"].includes(parsed.data.status) && !order.inventoryDocuments.some(d => d.type === "PX");
+            if (needsExportDoc) {
                 const code = await inventoryDocumentCode(tx, "PX");
                 const actor = await tx.user.findUnique({ where: { id: session.user.id }, select: { fullName: true } });
                 const document = await tx.inventoryDocument.create({ data: { storeId: store.id, code, type: "PX", businessType: "SALE_EXPORT", orderId: order.id, actorId: session.user.id, actorName: actor?.fullName || "Chủ cửa hàng" } });

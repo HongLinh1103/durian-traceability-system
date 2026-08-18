@@ -1,8 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Camera, Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Edit3, Plus, Sun, Trash2, X } from "lucide-react";
+import {
+    Camera,
+    Cloud,
+    CloudDrizzle,
+    CloudFog,
+    CloudLightning,
+    CloudRain,
+    CloudSun,
+    Edit3,
+    ImagePlus,
+    Plus,
+    Sun,
+    Trash2,
+    X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,27 +24,980 @@ import { Textarea } from "@/components/ui/textarea";
 import { VietnameseDatePicker } from "@/components/ui/vietnamese-date-picker";
 import { useToast } from "@/components/ui/toast";
 
-type Farm={id:string;farmCode:string;farmName:string};
-type Observation={id:string;farmId:string;observedAt:string;condition:string;temperature:number|null;temperatureMax:number|null;temperatureMin:number|null;humidity:number|null;soilHumidity:number|null;rainLevel:string|null;rainStartedAt:string|null;rainfallMm:number|null;windLevel:string;windDirection:string|null;windSpeed:number|null;phenomena:string[];note:string|null;images:string[];farm:{farmName:string;farmCode:string}};
-const conditions=[{v:"SUNNY",l:"Nắng",I:Sun},{v:"PARTLY_CLOUDY",l:"Có mây",I:CloudSun},{v:"CLOUDY",l:"Nhiều mây",I:Cloud},{v:"LIGHT_RAIN",l:"Mưa nhẹ",I:CloudRain},{v:"RAIN",l:"Mưa",I:CloudRain},{v:"THUNDERSTORM",l:"Mưa dông",I:CloudLightning},{v:"FOG",l:"Sương mù",I:CloudFog}];
-const windLabels:Record<string,string>={NONE:"Không gió",LIGHT:"Gió nhẹ",MODERATE:"Gió vừa",STRONG:"Gió mạnh"};
-const phenomena=["Sấm sét","Gió giật","Sương","Mưa kéo dài","Ngập / đọng nước","Nắng gắt","Khác"];
-const dateKey=(date=new Date())=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ho_Chi_Minh"}).format(date);
-const timeKey=()=>new Intl.DateTimeFormat("vi-VN",{timeZone:"Asia/Ho_Chi_Minh",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());
-let temperatureDefaults:{max:number|string;min:number|string}={max:"",min:""};
+type Farm = { id: string; farmCode: string; farmName: string };
+type Observation = {
+    id: string;
+    farmId: string;
+    observedAt: string;
+    timeOfDay?: string | null;
+    condition: string;
+    temperature: number | null;
+    temperatureMax: number | null;
+    temperatureMin: number | null;
+    humidity: number | null;
+    soilCondition?: string | null;
+    soilHumidity: number | null;
+    rainLevel: string | null;
+    rainStartedAt: string | null;
+    rainfallMm: number | null;
+    windLevel: string;
+    windDirection: string | null;
+    windSpeed: number | null;
+    phenomena: string[];
+    note: string | null;
+    images: string[];
+    farm: { farmName: string; farmCode: string };
+};
 
-export function WeatherJournal(){
- const {toast}=useToast();const [farms,setFarms]=useState<Farm[]>([]);const [rows,setRows]=useState<Observation[]>([]);const [farmId,setFarmId]=useState("");const [range,setRange]=useState<"today"|"week"|"month">("today");const [from,setFrom]=useState("");const [to,setTo]=useState("");const [open,setOpen]=useState(false);const [editing,setEditing]=useState<Observation|null>(null);const [busy,setBusy]=useState(false);const [selectedConditions,setSelectedConditions]=useState<string[]>(["SUNNY"]);
- useEffect(()=>{void fetch("/api/farming-logs",{cache:"no-store"}).then(r=>r.json()).then(p=>{const f=p.data?.farms||[];setFarms(f);if(f[0])setFarmId(f[0].id);});},[]);
- const dates=useMemo(()=>{if(from||to)return{from,to};const now=new Date();if(range==="today")return{from:dateKey(now),to:dateKey(now)};const start=new Date(now);if(range==="week")start.setDate(now.getDate()-6);else start.setDate(1);return{from:dateKey(start),to:dateKey(now)};},[range,from,to]);
- const load=useCallback(async()=>{if(!farmId)return;const q=new URLSearchParams({farmId,...dates});const p=await fetch(`/api/weather-observations?${q}`,{cache:"no-store"}).then(r=>r.json());if(p.success)setRows(p.data);},[farmId,dates]);useEffect(()=>{void load();},[load]);
- function showForm(row?:Observation){temperatureDefaults={max:row?.temperatureMax??row?.temperature??"",min:row?.temperatureMin??""};setEditing(row||null);setSelectedConditions(row?.condition.split(",").filter(Boolean)||["SUNNY"]);setOpen(true);}
- async function save(event:React.FormEvent<HTMLFormElement>){event.preventDefault();if(busy)return;const formElement=event.currentTarget;if(!formElement.reportValidity())return;setBusy(true);const form=new FormData(formElement);try{const response=await fetch(editing?`/api/weather-observations/${editing.id}`:"/api/weather-observations",{method:editing?"PUT":"POST",body:form});const p=await response.json().catch(()=>null) as {message?:string}|null;if(!response.ok)throw new Error(p?.message||"Máy chủ không thể lưu nhật ký thời tiết.");toast({title:editing?"Đã cập nhật nhật ký":"Đã lưu nhật ký thời tiết",variant:"success"});setOpen(false);setEditing(null);await load();}catch(e){toast({title:"Không thể lưu",description:e instanceof Error?e.message:"Vui lòng thử lại.",variant:"destructive"});}finally{setBusy(false);}}
- async function remove(row:Observation){if(!confirm(`Xóa nhật ký thời tiết ngày ${new Date(row.observedAt).toLocaleDateString("vi-VN")} lúc ${new Date(row.observedAt).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})}?`))return;const response=await fetch(`/api/weather-observations/${row.id}`,{method:"DELETE"});if(response.ok){toast({title:"Đã xóa nhật ký",variant:"success"});await load();}}
- return <main className="mx-auto max-w-7xl space-y-5 px-4 py-7 sm:px-6"><section className="rounded-[28px] border border-emerald-100 bg-white p-5 shadow-sm"><div className="grid gap-3 lg:grid-cols-[1.2fr_auto_1fr_1fr_auto] lg:items-center"><select className="h-12 rounded-2xl border px-4" value={farmId} onChange={e=>setFarmId(e.target.value)}>{farms.map(f=><option key={f.id} value={f.id}>{f.farmName} · {f.farmCode}</option>)}</select><div className="flex gap-2">{([['today','Hôm nay'],['week','Tuần này'],['month','Tháng này']] as const).map(([v,l])=><button key={v} onClick={()=>{setRange(v);setFrom("");setTo("");}} className={`rounded-full px-4 py-2 text-sm font-bold ${range===v&&!from&&!to?"bg-emerald-600 text-white":"bg-slate-100 text-slate-600"}`}>{l}</button>)}</div><VietnameseDatePicker value={from} onChange={setFrom}/><VietnameseDatePicker value={to} onChange={setTo}/><Button className="h-12 shrink-0 whitespace-nowrap bg-emerald-600 px-6 text-white hover:bg-emerald-700" onClick={()=>showForm()}><Plus className="mr-2 h-4 w-4"/>Ghi nhận thời tiết</Button></div></section><section className="space-y-3">{rows.map(row=>{const rowConditions=row.condition.split(",").map(value=>conditions.find(x=>x.v===value)).filter((value):value is (typeof conditions)[number]=>Boolean(value));const c=rowConditions[0]??conditions[2];const Icon=c.I;return <article key={row.id} className="rounded-3xl border bg-white p-5 shadow-sm"><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600"><Icon className="h-7 w-7"/></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b className="text-lg">{new Date(row.observedAt).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})} · {rowConditions.map(value=>value.l).join(" · ")}</b><span className="text-sm text-slate-500">{new Date(row.observedAt).toLocaleDateString("vi-VN")}</span></div><p className="text-sm text-slate-500">{row.farm.farmName}{row.temperature!=null?` · ${row.temperature}°C`:""} · {windLabels[row.windLevel]||row.windLevel}{row.windDirection?` · Hướng ${row.windDirection}`:""}</p>{row.note&&<p className="mt-2 text-slate-700">“{row.note}”</p>}</div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={()=>showForm(row)}><Edit3 className="h-4 w-4"/><span className="sr-only">Sửa</span></Button><Button variant="outline" size="sm" onClick={()=>void remove(row)}><Trash2 className="h-4 w-4 text-red-600"/><span className="sr-only">Xóa</span></Button></div></div></article>})}{!rows.length&&<div className="rounded-3xl border border-dashed bg-white p-12 text-center text-slate-500">Chưa có ghi nhận thời tiết trong khoảng thời gian này.</div>}</section>{open&&typeof document!=="undefined"&&createPortal(<div className="fixed inset-0 z-[120] grid h-[100dvh] w-screen place-items-center overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm"><form onSubmit={save} className="my-6 w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-sm font-bold text-sky-600">NHẬT KÝ THỜI TIẾT</p><h2 className="mt-1 text-2xl font-black">{editing?"Sửa ghi nhận":"Ghi nhận mới"}</h2></div><button type="button" onClick={()=>setOpen(false)} className="rounded-xl p-2 hover:bg-slate-100"><X/></button></div><div className="mt-6 grid gap-4 sm:grid-cols-2"><Field label="Vườn *"><select name="farmId" defaultValue={editing?.farmId||farmId} required className="h-12 w-full rounded-2xl border px-4">{farms.map(f=><option key={f.id} value={f.id}>{f.farmName}</option>)}</select></Field><div className="grid grid-cols-2 gap-3"><Field label="Ngày *"><VietnameseDatePicker name="date" required defaultValue={editing?dateKey(new Date(editing.observedAt)):dateKey()}/></Field><Field label="Giờ *"><Input name="time" type="time" required defaultValue={editing?new Date(editing.observedAt).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit",hour12:false}):timeKey()}/></Field></div><div className="sm:col-span-2"><Label>Tình trạng trời *</Label>{selectedConditions.map(value=><input key={value} type="hidden" name="condition" value={value}/>)}<div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">{conditions.map(({v,l,I})=><button type="button" key={v} onClick={()=>setSelectedConditions(current=>current.includes(v)?current.filter(value=>value!==v):[...current,v])} className={`flex items-center gap-2 rounded-2xl border p-3 font-semibold ${selectedConditions.includes(v)?"border-sky-500 bg-sky-50 text-sky-700":"text-slate-600"}`}><I className="h-5 w-5"/>{l}</button>)}</div></div><Field label="Nhiệt độ hiện tại (°C)"><Input name="temperature" type="number" step="0.1" defaultValue={editing?.temperature??""}/></Field><Field label="Mức độ gió *"><select name="windLevel" required defaultValue={editing?.windLevel||"LIGHT"} className="h-12 w-full rounded-2xl border px-4">{Object.entries(windLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></Field><Field label="Hướng gió"><select name="windDirection" defaultValue={editing?.windDirection||"Không xác định"} className="h-12 w-full rounded-2xl border px-4">{["Bắc","Đông Bắc","Đông","Đông Nam","Nam","Tây Nam","Tây","Tây Bắc","Không xác định"].map(x=><option key={x}>{x}</option>)}</select></Field><Field label="Tốc độ gió (km/h)"><Input name="windSpeed" type="number" min="0" step="0.1" defaultValue={editing?.windSpeed??""}/></Field>{selectedConditions.some(value=>["LIGHT_RAIN","RAIN","THUNDERSTORM"].includes(value))&&<><Field label="Mức độ mưa"><select name="rainLevel" defaultValue={editing?.rainLevel||"Vừa"} className="h-12 w-full rounded-2xl border px-4"><option>Nhẹ</option><option>Vừa</option><option>Lớn</option></select></Field><Field label="Thời gian bắt đầu"><Input name="rainStartedAt" type="time" defaultValue={editing?.rainStartedAt||""}/></Field><Field label="Lượng mưa (mm)"><Input name="rainfallMm" type="number" min="0" step="0.1" defaultValue={editing?.rainfallMm??""}/></Field></>}<Field label="Độ ẩm không khí (%)"><Input name="humidity" type="number" min="0" max="100" defaultValue={editing?.humidity??""}/></Field><Field label="Độ ẩm đất (%)"><Input name="soilHumidity" type="number" min="0" max="100" defaultValue={editing?.soilHumidity??""}/></Field><div className="sm:col-span-2"><Label>Hiện tượng kèm theo</Label><div className="mt-2 flex flex-wrap gap-2">{phenomena.map(x=><label key={x} className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2 text-sm"><input name="phenomena" type="checkbox" value={x} defaultChecked={editing?.phenomena.includes(x)}/>{x}</label>)}</div></div><div className="sm:col-span-2"><Label>Ảnh thời tiết tại vườn</Label>{editing?.images.map(image=><input key={image.slice(-20)} type="hidden" name="existingImages" value={image}/>)}<label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed p-5 text-sky-700"><Camera className="h-5 w-5"/>Chụp ảnh / chọn từ thư viện<input name="images" type="file" accept="image/*" multiple className="sr-only"/></label></div><div className="sm:col-span-2"><Label>Ghi chú</Label><Textarea name="note" defaultValue={editing?.note||""} placeholder="Ví dụ: Mưa khoảng 30 phút, cuối vườn có đọng nước..."/></div></div><div className="mt-6 flex justify-end gap-3"><Button type="button" variant="outline" onClick={()=>setOpen(false)}>Hủy</Button><Button type="submit" disabled={busy||!farms.length}>{busy?"Đang lưu...":"Lưu nhật ký"}</Button></div></form></div>,document.body)}</main>;
-}
-function Field({label,children}:{label:string;children:React.ReactNode}){
- if(["Giờ *","Mức độ mưa","Thời gian bắt đầu","Mức độ gió *"].includes(label))return null;
- if(label==="Nhiệt độ hiện tại (°C)")return <><div><Label>Nhiệt độ cao nhất (°C)</Label><div className="mt-1"><Input name="temperatureMax" type="number" step="0.1" defaultValue={temperatureDefaults.max}/></div></div><div><Label>Nhiệt độ thấp nhất (°C)</Label><div className="mt-1"><Input name="temperatureMin" type="number" step="0.1" defaultValue={temperatureDefaults.min}/></div></div></>;
- return <div><Label>{label}</Label><div className="mt-1">{children}</div></div>;
+const weatherConditions = [
+    { v: "SUNNY", l: "Nắng", Icon: Sun },
+    { v: "PARTLY_CLOUDY", l: "Có mây", Icon: CloudSun },
+    { v: "CLOUDY", l: "Nhiều mây", Icon: Cloud },
+    { v: "OVERCAST", l: "Âm u", Icon: Cloud },
+    { v: "LIGHT_RAIN", l: "Mưa nhẹ", Icon: CloudDrizzle },
+    { v: "RAIN", l: "Mưa", Icon: CloudRain },
+    { v: "THUNDERSTORM", l: "Mưa dông", Icon: CloudLightning },
+    { v: "FOG", l: "Sương mù", Icon: CloudFog },
+];
+
+const timeOfDayOptions = ["Cả ngày", "Sáng", "Trưa", "Chiều", "Tối"];
+
+const windLevelOptions = ["Gió nhẹ", "Không gió", "Gió vừa", "Gió mạnh", "Gió rất mạnh"];
+
+const windDirectionOptions = [
+    "Đông Nam",
+    "Đông",
+    "Đông Bắc",
+    "Bắc",
+    "Tây Bắc",
+    "Tây",
+    "Tây Nam",
+    "Nam",
+    "Không xác định",
+];
+
+const soilConditionOptions = [
+    "Ẩm",
+    "Khô",
+    "Rất khô / Nứt nẻ",
+    "Ướt",
+    "Ngập nước",
+    "Bình thường",
+];
+
+const rainLevelOptions = [
+    "Mưa vừa",
+    "Mưa nhẹ / Phùn",
+    "Mưa to",
+    "Mưa rất to",
+    "Không mưa",
+];
+
+const phenomenaList = [
+    "Sấm sét",
+    "Gió giật",
+    "Sương",
+    "Mưa kéo dài",
+    "Ngập / đọng nước",
+    "Nắng gắt",
+    "Mưa đá",
+    "Khác",
+];
+
+const dateKey = (date = new Date()) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(date);
+
+export function WeatherJournal() {
+    const { toast } = useToast();
+    const [farms, setFarms] = useState<Farm[]>([]);
+    const [rows, setRows] = useState<Observation[]>([]);
+    const [farmId, setFarmId] = useState("");
+    const [range, setRange] = useState<"today" | "week" | "month">("today");
+    const [from, setFrom] = useState("");
+    const [to, setTo] = useState("");
+    const [open, setOpen] = useState(false);
+    const [editing, setEditing] = useState<Observation | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    // Form state
+    const [selectedConditions, setSelectedConditions] = useState<string[]>(["SUNNY"]);
+    const [selectedPhenomena, setSelectedPhenomena] = useState<string[]>([]);
+    const [selectedTimeOfDay, setSelectedTimeOfDay] = useState("Cả ngày");
+    const [selectedWindLevel, setSelectedWindLevel] = useState("Gió nhẹ");
+    const [selectedWindDirection, setSelectedWindDirection] = useState("Đông Nam");
+    const [selectedSoilCondition, setSelectedSoilCondition] = useState("Ẩm");
+    const [selectedRainLevel, setSelectedRainLevel] = useState("Mưa vừa");
+    const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+    const [existingImages, setExistingImages] = useState<string[]>([]);
+    const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+
+    const cameraInputRef = useRef<HTMLInputElement | null>(null);
+    const galleryInputRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+        let isMounted = true;
+        fetch("/api/farming-logs", { cache: "no-store" })
+            .then(r => (r.ok ? r.json() : null))
+            .then(p => {
+                if (!isMounted || !p) return;
+                const f = p.data?.farms || [];
+                setFarms(f);
+                if (f[0]) setFarmId(f[0].id);
+            })
+            .catch(err => {
+                console.error("Error loading farms:", err);
+            });
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const dates = useMemo(() => {
+        if (from || to) return { from, to };
+        const now = new Date();
+        if (range === "today") return { from: dateKey(now), to: dateKey(now) };
+        const start = new Date(now);
+        if (range === "week") start.setDate(now.getDate() - 6);
+        else start.setDate(1);
+        return { from: dateKey(start), to: dateKey(now) };
+    }, [range, from, to]);
+
+    const load = useCallback(async () => {
+        if (!farmId) return;
+        try {
+            const q = new URLSearchParams({ farmId, ...dates });
+            const res = await fetch(`/api/weather-observations?${q}`, { cache: "no-store" });
+            if (!res.ok) return;
+            const p = (await res.json().catch(() => null)) as { success?: boolean; data?: Observation[] } | null;
+            if (p?.success && Array.isArray(p.data)) {
+                setRows(p.data);
+            }
+        } catch (error) {
+            console.error("Error loading weather observations:", error);
+        }
+    }, [farmId, dates]);
+
+    useEffect(() => {
+        void load();
+    }, [load]);
+
+    function showForm(row?: Observation) {
+        setEditing(row || null);
+        if (row) {
+            setSelectedConditions(row.condition.split(",").filter(Boolean));
+            setSelectedPhenomena(row.phenomena || []);
+            setSelectedTimeOfDay(row.timeOfDay || "Cả ngày");
+            setSelectedWindLevel(row.windLevel || "Gió nhẹ");
+            setSelectedWindDirection(row.windDirection || "Đông Nam");
+            setSelectedSoilCondition(row.soilCondition || "Ẩm");
+            setSelectedRainLevel(row.rainLevel || "Mưa vừa");
+            setExistingImages(row.images || []);
+        } else {
+            setSelectedConditions(["SUNNY"]);
+            setSelectedPhenomena([]);
+            setSelectedTimeOfDay("Cả ngày");
+            setSelectedWindLevel("Gió nhẹ");
+            setSelectedWindDirection("Đông Nam");
+            setSelectedSoilCondition("Ẩm");
+            setSelectedRainLevel("Mưa vừa");
+            setExistingImages([]);
+        }
+        setImagePreviews([]);
+        setFilesToUpload([]);
+        setOpen(true);
+    }
+
+    function toggleCondition(v: string) {
+        setSelectedConditions(current =>
+            current.includes(v)
+                ? current.length > 1
+                    ? current.filter(x => x !== v)
+                    : current
+                : [...current, v],
+        );
+    }
+
+    function togglePhenomenon(item: string) {
+        setSelectedPhenomena(current =>
+            current.includes(item) ? current.filter(x => x !== item) : [...current, item],
+        );
+    }
+
+    function handleFileSelection(e: React.ChangeEvent<HTMLInputElement>) {
+        if (!e.target.files?.length) return;
+        const newFiles = Array.from(e.target.files);
+        setFilesToUpload(prev => [...prev, ...newFiles]);
+
+        newFiles.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = ev => {
+                if (typeof ev.target?.result === "string") {
+                    setImagePreviews(prev => [...prev, ev.target!.result as string]);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+        e.target.value = "";
+    }
+
+    function removePreviewImage(index: number) {
+        setImagePreviews(prev => prev.filter((_, i) => i !== index));
+        setFilesToUpload(prev => prev.filter((_, i) => i !== index));
+    }
+
+    function removeExistingImage(index: number) {
+        setExistingImages(prev => prev.filter((_, i) => i !== index));
+    }
+
+    async function save(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        if (busy) return;
+        const formElement = event.currentTarget;
+        if (!formElement.reportValidity()) return;
+        setBusy(true);
+
+        const form = new FormData(formElement);
+        // Append additional files
+        filesToUpload.forEach(file => {
+            form.append("images", file);
+        });
+
+        try {
+            const response = await fetch(
+                editing ? `/api/weather-observations/${editing.id}` : "/api/weather-observations",
+                {
+                    method: editing ? "PUT" : "POST",
+                    body: form,
+                },
+            );
+            const p = (await response.json().catch(() => null)) as { message?: string } | null;
+            if (!response.ok) throw new Error(p?.message || "Máy chủ không thể lưu nhật ký thời tiết.");
+
+            toast({
+                title: editing ? "Đã cập nhật nhật ký" : "Đã lưu nhật ký thời tiết",
+                variant: "success",
+            });
+            setOpen(false);
+            setEditing(null);
+            await load();
+        } catch (e) {
+            toast({
+                title: "Không thể lưu",
+                description: e instanceof Error ? e.message : "Vui lòng thử lại.",
+                variant: "destructive",
+            });
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function remove(row: Observation) {
+        const formattedDate = new Date(row.observedAt).toLocaleDateString("vi-VN");
+        if (!confirm(`Bạn có chắc muốn xóa nhật ký thời tiết ngày ${formattedDate}?`)) return;
+        const response = await fetch(`/api/weather-observations/${row.id}`, { method: "DELETE" });
+        if (response.ok) {
+            toast({ title: "Đã xóa nhật ký thời tiết", variant: "success" });
+            await load();
+        }
+    }
+
+    return (
+        <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
+            {/* Filter Section */}
+            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:flex lg:flex-1 lg:items-center">
+                        <select
+                            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-800 lg:w-64"
+                            value={farmId}
+                            onChange={e => setFarmId(e.target.value)}
+                        >
+                            {farms.map(f => (
+                                <option key={f.id} value={f.id}>
+                                    {f.farmName} · {f.farmCode}
+                                </option>
+                            ))}
+                        </select>
+
+                        <div className="flex gap-1.5 sm:gap-2">
+                            {(
+                                [
+                                    ["today", "Hôm nay"],
+                                    ["week", "Tuần này"],
+                                    ["month", "Tháng này"],
+                                ] as const
+                            ).map(([v, l]) => (
+                                <button
+                                    key={v}
+                                    type="button"
+                                    onClick={() => {
+                                        setRange(v);
+                                        setFrom("");
+                                        setTo("");
+                                    }}
+                                    className={`flex-1 rounded-2xl px-3 py-2.5 text-xs font-bold transition sm:px-4 sm:text-sm ${
+                                        range === v && !from && !to
+                                            ? "bg-brand-600 text-white shadow-soft"
+                                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                    }`}
+                                >
+                                    {l}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 lg:w-72">
+                            <VietnameseDatePicker value={from} onChange={setFrom} placeholder="Từ ngày" />
+                            <VietnameseDatePicker value={to} onChange={setTo} placeholder="Đến ngày" />
+                        </div>
+                    </div>
+
+                    <Button
+                        className="h-12 shrink-0 whitespace-nowrap bg-brand-600 px-6 text-white hover:bg-brand-700 shadow-soft"
+                        onClick={() => showForm()}
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Ghi nhận thời tiết
+                    </Button>
+                </div>
+            </section>
+
+            {/* Weather List */}
+            <section className="space-y-4">
+                {rows.map(row => {
+                    const rowConditions = row.condition
+                        .split(",")
+                        .map(val => weatherConditions.find(x => x.v === val))
+                        .filter((val): val is (typeof weatherConditions)[number] => Boolean(val));
+                    const primaryCondition = rowConditions[0] ?? weatherConditions[0];
+                    const ConditionIcon = primaryCondition.Icon;
+
+                    return (
+                        <article
+                            key={row.id}
+                            className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-brand-300"
+                        >
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+                                        <ConditionIcon className="h-7 w-7" />
+                                    </div>
+                                    <div className="min-w-0 space-y-1.5">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <b className="text-lg text-slate-900">
+                                                {rowConditions.map(val => val.l).join(" · ")}
+                                            </b>
+                                            {row.timeOfDay && (
+                                                <span className="rounded-lg bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                                                    {row.timeOfDay}
+                                                </span>
+                                            )}
+                                            <span className="text-sm font-medium text-slate-500">
+                                                {new Date(row.observedAt).toLocaleDateString("vi-VN")}
+                                            </span>
+                                        </div>
+
+                                        <p className="text-sm text-slate-600">
+                                            <b>{row.farm.farmName}</b>
+                                            {row.temperatureMax != null && row.temperatureMin != null
+                                                ? ` · ${row.temperatureMin}°C - ${row.temperatureMax}°C`
+                                                : row.temperature != null
+                                                  ? ` · ${row.temperature}°C`
+                                                  : ""}
+                                            {row.windLevel ? ` · ${row.windLevel}` : ""}
+                                            {row.windDirection ? ` (${row.windDirection})` : ""}
+                                            {row.windSpeed != null ? ` ${row.windSpeed} km/h` : ""}
+                                        </p>
+
+                                        <div className="flex flex-wrap gap-2 pt-1 text-xs text-slate-600">
+                                            {row.humidity != null && (
+                                                <span className="rounded-lg bg-sky-50 px-2 py-1 text-sky-700">
+                                                    Độ ẩm KK: {row.humidity}%
+                                                </span>
+                                            )}
+                                            {row.soilCondition && (
+                                                <span className="rounded-lg bg-amber-50 px-2 py-1 text-amber-800">
+                                                    Đất: {row.soilCondition}
+                                                    {row.soilHumidity != null ? ` (${row.soilHumidity}%)` : ""}
+                                                </span>
+                                            )}
+                                            {row.rainLevel && (
+                                                <span className="rounded-lg bg-blue-50 px-2 py-1 text-blue-700">
+                                                    Mưa: {row.rainLevel}
+                                                    {row.rainfallMm != null ? ` (${row.rainfallMm} mm)` : ""}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {row.phenomena && row.phenomena.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5 pt-1">
+                                                {row.phenomena.map(ph => (
+                                                    <span
+                                                        key={ph}
+                                                        className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600"
+                                                    >
+                                                        {ph}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {row.note && (
+                                            <p className="pt-1 text-sm italic text-slate-700">
+                                                “{row.note}”
+                                            </p>
+                                        )}
+
+                                        {row.images && row.images.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 pt-2">
+                                                {row.images.map((img, index) => (
+                                                    <img
+                                                        key={index}
+                                                        src={img}
+                                                        alt={`Ảnh thời tiết ${index + 1}`}
+                                                        className="h-16 w-16 rounded-xl object-cover border border-slate-200"
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex shrink-0 gap-2 self-end sm:self-start">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-9 px-3 text-slate-700 hover:bg-brand-50 hover:text-brand-700"
+                                        onClick={() => showForm(row)}
+                                    >
+                                        <Edit3 className="mr-1.5 h-4 w-4" />
+                                        Sửa
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-9 px-3 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                        onClick={() => void remove(row)}
+                                    >
+                                        <Trash2 className="mr-1.5 h-4 w-4" />
+                                        Xóa
+                                    </Button>
+                                </div>
+                            </div>
+                        </article>
+                    );
+                })}
+
+                {!rows.length && (
+                    <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center text-slate-500">
+                        <Sun className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+                        <b className="text-base text-slate-700">Chưa có nhật ký thời tiết nào</b>
+                        <p className="mt-1 text-sm text-slate-500">
+                            Bấm “Ghi nhận thời tiết” để lưu thông tin nhiệt độ, gió, mưa và độ ẩm tại vườn.
+                        </p>
+                    </div>
+                )}
+            </section>
+
+            {/* Modal Form */}
+            {open &&
+                typeof document !== "undefined" &&
+                createPortal(
+                    <div className="fixed inset-0 z-[140] flex items-center justify-center overflow-y-auto bg-slate-950/50 p-3 sm:p-4 backdrop-blur-sm">
+                        <form
+                            onSubmit={save}
+                            className="my-auto w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl bg-white p-5 sm:p-7 shadow-2xl space-y-6"
+                        >
+                            {/* Modal Header */}
+                            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+                                <div>
+                                    <span className="inline-block rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-800">
+                                        NHẬT KÝ THỜI TIẾT
+                                    </span>
+                                    <h2 className="mt-2 text-xl font-black text-slate-900 sm:text-2xl">
+                                        {editing ? "Chỉnh sửa nhật ký thời tiết" : "Ghi nhận nhật ký thời tiết"}
+                                    </h2>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setOpen(false)}
+                                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                    aria-label="Đóng form"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-5">
+                                {/* Vườn & Ngày */}
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <Label htmlFor="weather-farm">Vườn *</Label>
+                                        <div className="mt-1.5">
+                                            <select
+                                                id="weather-farm"
+                                                name="farmId"
+                                                defaultValue={editing?.farmId || farmId}
+                                                required
+                                                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                            >
+                                                {farms.map(f => (
+                                                    <option key={f.id} value={f.id}>
+                                                        {f.farmName} ({f.farmCode})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <Label>Ngày *</Label>
+                                            <div className="mt-1.5">
+                                                <VietnameseDatePicker
+                                                    name="date"
+                                                    required
+                                                    defaultValue={
+                                                        editing
+                                                            ? dateKey(new Date(editing.observedAt))
+                                                            : dateKey()
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="weather-timeOfDay">Thời điểm</Label>
+                                            <div className="mt-1.5">
+                                                <select
+                                                    id="weather-timeOfDay"
+                                                    name="timeOfDay"
+                                                    value={selectedTimeOfDay}
+                                                    onChange={e => setSelectedTimeOfDay(e.target.value)}
+                                                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                                >
+                                                    {timeOfDayOptions.map(t => (
+                                                        <option key={t} value={t}>
+                                                            {t}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Tình trạng trời */}
+                                <div>
+                                    <div className="flex items-center justify-between">
+                                        <Label>Tình trạng trời *</Label>
+                                        <span className="text-xs text-slate-500">Có thể chọn nhiều mục</span>
+                                    </div>
+                                    {selectedConditions.map(val => (
+                                        <input key={val} type="hidden" name="condition" value={val} />
+                                    ))}
+                                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                        {weatherConditions.map(({ v, l, Icon }) => {
+                                            const isSelected = selectedConditions.includes(v);
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    key={v}
+                                                    onClick={() => toggleCondition(v)}
+                                                    className={`flex items-center gap-2 rounded-2xl border p-3 text-left text-sm font-bold transition ${
+                                                        isSelected
+                                                            ? "border-brand-600 bg-brand-50 text-brand-800 shadow-sm"
+                                                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                                                    }`}
+                                                >
+                                                    <Icon
+                                                        className={`h-5 w-5 shrink-0 ${
+                                                            isSelected ? "text-brand-600" : "text-slate-400"
+                                                        }`}
+                                                    />
+                                                    <span className="truncate">{l}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Nhiệt độ cao nhất & thấp nhất */}
+                                <div className="grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4">
+                                    <div>
+                                        <Label htmlFor="temperatureMax">Nhiệt độ cao nhất</Label>
+                                        <div className="relative mt-1.5">
+                                            <Input
+                                                id="temperatureMax"
+                                                name="temperatureMax"
+                                                type="number"
+                                                step="0.1"
+                                                placeholder="VD: 34"
+                                                defaultValue={editing?.temperatureMax ?? editing?.temperature ?? ""}
+                                                className="h-12 pr-10 bg-white"
+                                            />
+                                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
+                                                °C
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="temperatureMin">Nhiệt độ thấp nhất</Label>
+                                        <div className="relative mt-1.5">
+                                            <Input
+                                                id="temperatureMin"
+                                                name="temperatureMin"
+                                                type="number"
+                                                step="0.1"
+                                                placeholder="VD: 24"
+                                                defaultValue={editing?.temperatureMin ?? ""}
+                                                className="h-12 pr-10 bg-white"
+                                            />
+                                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
+                                                °C
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Gió */}
+                                <div className="grid gap-3 sm:grid-cols-3">
+                                    <div>
+                                        <Label htmlFor="weather-windLevel">Mức độ gió</Label>
+                                        <div className="mt-1.5">
+                                            <select
+                                                id="weather-windLevel"
+                                                name="windLevel"
+                                                value={selectedWindLevel}
+                                                onChange={e => setSelectedWindLevel(e.target.value)}
+                                                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                            >
+                                                {windLevelOptions.map(item => (
+                                                    <option key={item} value={item}>
+                                                        {item}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="weather-windDirection">Hướng gió</Label>
+                                        <div className="mt-1.5">
+                                            <select
+                                                id="weather-windDirection"
+                                                name="windDirection"
+                                                value={selectedWindDirection}
+                                                onChange={e => setSelectedWindDirection(e.target.value)}
+                                                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                            >
+                                                {windDirectionOptions.map(dir => (
+                                                    <option key={dir} value={dir}>
+                                                        {dir}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="flex items-center justify-between">
+                                            <Label htmlFor="weather-windSpeed">Tốc độ gió</Label>
+                                            <span className="text-[11px] text-slate-400">Không bắt buộc</span>
+                                        </div>
+                                        <div className="relative mt-1.5">
+                                            <Input
+                                                id="weather-windSpeed"
+                                                name="windSpeed"
+                                                type="number"
+                                                min="0"
+                                                step="0.1"
+                                                placeholder="VD: 15"
+                                                defaultValue={editing?.windSpeed ?? ""}
+                                                className="h-12 pr-14"
+                                            />
+                                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                                                km/h
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Độ ẩm & Đất */}
+                                <div className="grid gap-3 sm:grid-cols-3">
+                                    <div>
+                                        <Label htmlFor="weather-humidity">Độ ẩm không khí</Label>
+                                        <div className="relative mt-1.5">
+                                            <Input
+                                                id="weather-humidity"
+                                                name="humidity"
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                placeholder="VD: 75"
+                                                defaultValue={editing?.humidity ?? ""}
+                                                className="h-12 pr-8"
+                                            />
+                                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
+                                                %
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="weather-soilCondition">Tình trạng đất</Label>
+                                        <div className="mt-1.5">
+                                            <select
+                                                id="weather-soilCondition"
+                                                name="soilCondition"
+                                                value={selectedSoilCondition}
+                                                onChange={e => setSelectedSoilCondition(e.target.value)}
+                                                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                            >
+                                                {soilConditionOptions.map(item => (
+                                                    <option key={item} value={item}>
+                                                        {item}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="flex items-center justify-between">
+                                            <Label htmlFor="weather-soilHumidity">Độ ẩm đất</Label>
+                                            <span className="text-[11px] text-slate-400">Không bắt buộc</span>
+                                        </div>
+                                        <div className="relative mt-1.5">
+                                            <Input
+                                                id="weather-soilHumidity"
+                                                name="soilHumidity"
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                placeholder="VD: 60"
+                                                defaultValue={editing?.soilHumidity ?? ""}
+                                                className="h-12 pr-8"
+                                            />
+                                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
+                                                %
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Nếu có mưa */}
+                                <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-wider text-blue-800">
+                                        Nếu có mưa:
+                                    </p>
+                                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                        <div>
+                                            <Label htmlFor="weather-rainLevel">Mức độ mưa</Label>
+                                            <div className="mt-1.5">
+                                                <select
+                                                    id="weather-rainLevel"
+                                                    name="rainLevel"
+                                                    value={selectedRainLevel}
+                                                    onChange={e => setSelectedRainLevel(e.target.value)}
+                                                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                                >
+                                                    {rainLevelOptions.map(r => (
+                                                        <option key={r} value={r}>
+                                                            {r}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div className="flex items-center justify-between">
+                                                <Label htmlFor="weather-rainfallMm">Lượng mưa</Label>
+                                                <span className="text-[11px] text-slate-400">Không bắt buộc</span>
+                                            </div>
+                                            <div className="relative mt-1.5">
+                                                <Input
+                                                    id="weather-rainfallMm"
+                                                    name="rainfallMm"
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.1"
+                                                    placeholder="VD: 25"
+                                                    defaultValue={editing?.rainfallMm ?? ""}
+                                                    className="h-12 pr-12 bg-white"
+                                                />
+                                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                                                    mm
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Hiện tượng kèm theo */}
+                                <div>
+                                    <Label>Hiện tượng kèm theo</Label>
+                                    {selectedPhenomena.map(val => (
+                                        <input key={val} type="hidden" name="phenomena" value={val} />
+                                    ))}
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {phenomenaList.map(item => {
+                                            const isSelected = selectedPhenomena.includes(item);
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    key={item}
+                                                    onClick={() => togglePhenomenon(item)}
+                                                    className={`rounded-2xl border px-3.5 py-2 text-xs font-bold transition sm:text-sm ${
+                                                        isSelected
+                                                            ? "border-brand-600 bg-brand-50 text-brand-800 shadow-sm"
+                                                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                                                    }`}
+                                                >
+                                                    {item}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Ảnh ghi nhận */}
+                                <div>
+                                    <Label>Ảnh ghi nhận</Label>
+                                    <input
+                                        ref={cameraInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        className="sr-only"
+                                        onChange={handleFileSelection}
+                                    />
+                                    <input
+                                        ref={galleryInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="sr-only"
+                                        onChange={handleFileSelection}
+                                    />
+
+                                    {/* Existing image hidden inputs */}
+                                    {existingImages.map((img, index) => (
+                                        <input
+                                            key={`ex-${index}`}
+                                            type="hidden"
+                                            name="existingImages"
+                                            value={img}
+                                        />
+                                    ))}
+
+                                    <div className="mt-2 flex gap-3">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="flex-1 h-12 rounded-2xl border-dashed border-slate-300 text-slate-700 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700"
+                                            onClick={() => cameraInputRef.current?.click()}
+                                        >
+                                            <Camera className="mr-2 h-4 w-4 text-brand-600" />
+                                            Chụp ảnh
+                                        </Button>
+
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="flex-1 h-12 rounded-2xl border-dashed border-slate-300 text-slate-700 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700"
+                                            onClick={() => galleryInputRef.current?.click()}
+                                        >
+                                            <ImagePlus className="mr-2 h-4 w-4 text-brand-600" />
+                                            Chọn ảnh
+                                        </Button>
+                                    </div>
+
+                                    {/* Previews */}
+                                    {(existingImages.length > 0 || imagePreviews.length > 0) && (
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {existingImages.map((src, index) => (
+                                                <div
+                                                    key={`prev-ex-${index}`}
+                                                    className="relative h-20 w-20 overflow-hidden rounded-2xl border border-slate-200"
+                                                >
+                                                    <img
+                                                        src={src}
+                                                        alt="Ảnh đã lưu"
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeExistingImage(index)}
+                                                        className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-slate-900/70 text-white hover:bg-red-600"
+                                                        aria-label="Xóa ảnh"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {imagePreviews.map((src, index) => (
+                                                <div
+                                                    key={`prev-new-${index}`}
+                                                    className="relative h-20 w-20 overflow-hidden rounded-2xl border border-brand-300"
+                                                >
+                                                    <img
+                                                        src={src}
+                                                        alt="Ảnh mới chọn"
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removePreviewImage(index)}
+                                                        className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-slate-900/70 text-white hover:bg-red-600"
+                                                        aria-label="Xóa ảnh"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Ghi chú */}
+                                <div>
+                                    <Label htmlFor="weather-note">Ghi chú</Label>
+                                    <div className="mt-1.5">
+                                        <Textarea
+                                            id="weather-note"
+                                            name="note"
+                                            defaultValue={editing?.note || ""}
+                                            placeholder="Ghi chú thêm về diễn biến thời tiết, sương muối, nắng gắt ảnh hưởng hoa/trái..."
+                                            className="min-h-24 rounded-2xl"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-12 min-w-24 rounded-2xl"
+                                    onClick={() => setOpen(false)}
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={busy || !farms.length}
+                                    className="h-12 min-w-36 rounded-2xl bg-brand-600 px-6 font-bold text-white hover:bg-brand-700 shadow-soft"
+                                >
+                                    {busy ? "Đang lưu..." : "Lưu nhật ký"}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>,
+                    document.body,
+                )}
+        </main>
+    );
 }

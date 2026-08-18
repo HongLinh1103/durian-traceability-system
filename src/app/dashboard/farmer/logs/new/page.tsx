@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import imageCompression from "browser-image-compression";
-import { AlertTriangle, Camera, ClipboardPlus, CloudUpload, ImagePlus, Leaf, Mic, MicOff, RefreshCcw, Sprout, WifiOff, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Camera, ClipboardPlus, CloudUpload, ImagePlus, Leaf, Mic, MicOff, RefreshCcw, Sprout, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -621,8 +621,7 @@ export default function NewFarmingLogPage() {
                     description: "Hệ thống sẽ đồng bộ lại khi kết nối Internet trở về.",
                     variant: "success",
                 });
-                return;
-            } catch {
+            } catch (offlineError) {
                 toast({
                     title: "Không thể lưu nhật ký",
                     description: error instanceof Error ? error.message : "Vui lòng kiểm tra kết nối hoặc thử lại.",
@@ -641,7 +640,18 @@ export default function NewFarmingLogPage() {
     });
 
     return (
-        <main className="mx-auto min-h-screen max-w-4xl overflow-x-clip px-3 py-4 sm:px-6 lg:px-8">
+        <main className="mx-auto min-h-screen max-w-4xl overflow-x-clip px-3 py-4 sm:px-6 lg:px-8 space-y-4">
+            <div className="flex items-center gap-3">
+                <button
+                    type="button"
+                    onClick={() => router.back()}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    <span>Quay lại</span>
+                </button>
+            </div>
+
             <Card className="overflow-hidden border-white/70 shadow-soft">
                 <CardHeader className="space-y-4">
                     <div className="flex items-center gap-3">
@@ -697,11 +707,6 @@ export default function NewFarmingLogPage() {
                                 <p className="mt-1 text-xs text-slate-500">Mặc định là thời gian hiện tại của thiết bị.</p>
                             </div>
                         </div>
-
-                        {stage === "Trước thu hoạch" && <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-5">
-                            <div className="flex items-start gap-3"><span className="rounded-2xl bg-white p-3 text-amber-700 shadow-sm"><ClipboardPlus className="h-6 w-6" /></span><div><h3 className="text-lg font-black text-slate-900">Chuẩn bị thu hoạch</h3><p className="mt-1 text-sm leading-6 text-slate-600">Lập kế hoạch thu hoạch và lựa chọn đơn vị thu mua nếu đã có nhu cầu bán.</p></div></div>
-                            {form.watch("farmId") ? <Button asChild className="mt-4 w-full sm:w-auto"><Link href={`/harvests/new?gardenId=${encodeURIComponent(form.watch("farmId"))}`}><ClipboardPlus className="mr-2 h-4 w-4" />Tạo phiếu thu hoạch</Link></Button> : <Button disabled className="mt-4 w-full sm:w-auto"><ClipboardPlus className="mr-2 h-4 w-4" />Chọn mã MSVT trước</Button>}
-                        </div>}
 
                         <div className="min-w-0">
                             <Label>Giai đoạn sinh trưởng</Label>

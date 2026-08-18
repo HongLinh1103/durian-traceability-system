@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
+import { VietnameseDatePicker } from "@/components/ui/vietnamese-date-picker";
 
 type AdminProfileProps = {
     fullName: string;
@@ -108,7 +109,19 @@ export function AdminProfile({ profile }: { profile: AdminProfileProps }) {
                     </div>
                     <Field label="Họ và tên"><Input name="fullName" required defaultValue={profile.fullName} /></Field>
                     <div className="grid gap-4 sm:grid-cols-2"><Field label="Số điện thoại"><Input name="phone" required inputMode="tel" defaultValue={profile.phone} /></Field><Field label="Email"><Input name="email" type="email" required defaultValue={profile.email} /></Field></div>
-                    <div className="grid gap-4 sm:grid-cols-2"><Field label="Ngày sinh"><Input name="birthDate" type="date" defaultValue={profile.birthDate} /></Field><Field label="Giới tính (tùy chọn)"><select name="gender" defaultValue={profile.gender} className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm"><option value="">Chưa chọn</option><option value="FEMALE">Nữ</option><option value="MALE">Nam</option><option value="OTHER">Khác</option></select></Field></div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <Field label="Ngày sinh">
+                            <VietnameseDatePicker name="birthDate" defaultValue={profile.birthDate} placeholder="dd/mm/yyyy" max={new Date().toISOString().slice(0, 10)} />
+                        </Field>
+                        <Field label="Giới tính (tùy chọn)">
+                            <select name="gender" defaultValue={profile.gender} className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm">
+                                <option value="">Chưa chọn</option>
+                                <option value="FEMALE">Nữ</option>
+                                <option value="MALE">Nam</option>
+                                <option value="OTHER">Khác</option>
+                            </select>
+                        </Field>
+                    </div>
                     <Button className="mt-2 w-full sm:w-auto" disabled={saving}><Save className="mr-2 h-4 w-4" />{saving ? "Đang lưu..." : "Lưu thông tin"}</Button>
                 </ProfileCard>
 

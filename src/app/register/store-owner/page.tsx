@@ -23,7 +23,7 @@ export default function StoreOwnerRegistrationPage() {
         <form onSubmit={submit} className="mt-6 grid gap-4 rounded-3xl border bg-white p-6 md:grid-cols-2">
             {fields.map(([name, placeholder]) => <Input key={name} name={name} placeholder={placeholder} required={["representativeName", "representativePhone", "identityNumber", "name", "address", "phone"].includes(name)} type={["latitude", "longitude"].includes(name) ? "number" : name === "representativeEmail" ? "email" : "text"} step="any" />)}
             <Input name="password" type="password" minLength={6} required placeholder="Mật khẩu (tối thiểu 6 ký tự)" />
-            <VietnameseDatePicker name="issuedAt" placeholder="Ngày cấp (dd/MM/yyyy)" /><VietnameseDatePicker name="expiresAt" placeholder="Ngày hết hạn (dd/MM/yyyy)" />
+            <VietnameseDatePicker name="issuedAt" placeholder="Ngày cấp (dd/mm/yyyy)" /><VietnameseDatePicker name="expiresAt" placeholder="Ngày hết hạn (dd/mm/yyyy)" />
             <FileField name="signboardImage" label="Ảnh biển hiệu *" accept=".jpg,.jpeg,.png" required />
             <FileField name="businessRegistration" label="Giấy đăng ký kinh doanh *" accept=".pdf,.jpg,.jpeg,.png" required />
             <FileField name="pesticideLicense" label="Giấy phép kinh doanh thuốc BVTV" accept=".pdf,.jpg,.jpeg,.png" />

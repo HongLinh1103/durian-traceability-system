@@ -21,6 +21,8 @@
         "seed:prohibited-chemicals": "node scripts/seed-prohibited-chemicals.cjs",
         "import:prohibited-chemicals": "node scripts/import-prohibited-chemicals-from-excel.cjs",
         "seed:store-marketplace": "node scripts/seed-store-marketplace.cjs",
+        "seed:store-demo": "npx tsx prisma/seed-store-demo.ts",
+        "seed:store-finance": "npx tsx scripts/seed-store-finance-data.ts",
         "seed:regional-farms": "node scripts/seed-regional-farms-and-logs.cjs",
         "seed:role-accounts": "node scripts/seed-role-accounts.cjs",
         "seed:system-demo": "node scripts/seed-system-demo.cjs",

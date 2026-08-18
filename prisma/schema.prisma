@@ -61,6 +61,7 @@ enum HarvestStatus {
 enum HarvestDeliveryMethod {
   BUYER_PICKUP
   FARMER_DELIVERY
+  OTHER
 }
 
 enum StoreStatus {
@@ -130,6 +131,31 @@ enum OrderStatus {
   COMPLETED
   CANCELLED
   REJECTED
+}
+
+enum OrderPaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+enum ExpensePaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+enum StoreExpenseCategory {
+  IMPORT_GOODS
+  SHIPPING
+  LABOR
+  WAREHOUSE
+  UTILITIES
+  PACKAGING
+  DELIVERY
+  MARKETING
+  MAINTENANCE
+  OTHER
 }
 
 /// Trạng thái duyệt tài khoản sau onboarding.
@@ -461,6 +487,7 @@ model Store {
   orders             Order[]
   auditLogs          StoreAuditLog[]
   inventoryDocuments InventoryDocument[]
+  expenses           StoreExpense[]
 
   @@index([ownerId, status, deletedAt])
   @@index([status, deletedAt])
@@ -501,6 +528,7 @@ model StoreProduct {
   packaging          String?
   price              Decimal             @db.Decimal(14, 2)
   salePrice          Decimal?            @db.Decimal(14, 2)
+  costPrice          Decimal?            @db.Decimal(14, 2)
   stock              Int                 @default(0)
   unit               String
   imageUrls          String[]            @default([])
@@ -530,6 +558,8 @@ model InventoryMovement {
   quantity    Int
   stockBefore Int
   stockAfter  Int
+  unitCost    Decimal?              @db.Decimal(14, 2)
+  totalCost   Decimal?              @db.Decimal(14, 2)
   reference   String?
   note        String?
   createdAt   DateTime              @default(now())
@@ -590,6 +620,9 @@ model Order {
   farmerId           String
   storeId            String
   status             OrderStatus          @default(PENDING)
+  paymentStatus      OrderPaymentStatus   @default(UNPAID)
+  paidAmount         Decimal?             @db.Decimal(14, 2)
+  paidAt             DateTime?
   recipientName      String
   recipientPhone     String
   shippingAddress    String
@@ -620,6 +653,7 @@ model OrderItem {
   productName  String
   productImage String?
   unitPrice    Decimal       @db.Decimal(14, 2)
+  costPrice    Decimal?      @db.Decimal(14, 2)
   quantity     Int
   unit         String
   storeName    String
@@ -642,6 +676,31 @@ model OrderStatusHistory {
 
   @@index([orderId, createdAt])
   @@map("order_status_histories")
+}
+
+model StoreExpense {
+  id            String               @id @default(cuid())
+  storeId       String
+  category      StoreExpenseCategory
+  expenseDate   DateTime
+  amount        Decimal              @db.Decimal(14, 2)
+  title         String
+  note          String?
+  recipient     String?
+  paymentMethod String               @default("CASH")
+  status        ExpensePaymentStatus @default(PAID)
+  paidAmount    Decimal?             @db.Decimal(14, 2)
+  receiptImage  String?
+  referenceId   String?
+  createdById   String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, expenseDate])
+  @@index([storeId, category])
+  @@map("store_expenses")
 }
 
 model StoreAuditLog {
@@ -788,11 +847,13 @@ model WeatherObservation {
   farmerId       String
   farmId         String
   observedAt     DateTime
+  timeOfDay      String?
   condition      String
   temperature    Float?
   temperatureMax Float?
   temperatureMin Float?
   humidity       Float?
+  soilCondition  String?
   soilHumidity   Float?
   rainLevel      String?
   rainStartedAt  String?
@@ -869,13 +930,14 @@ model HarvestRecord {
 }
 
 model HarvestVarietyItem {
-  id             String        @id @default(cuid())
-  harvestId      String
-  durianVariety  String
-  expectedWeight Decimal       @db.Decimal(14, 2)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  harvest        HarvestRecord @relation(fields: [harvestId], references: [id], onDelete: Cascade)
+  id                 String        @id @default(cuid())
+  harvestId          String
+  durianVariety      String
+  expectedWeight     Decimal       @db.Decimal(14, 2)
+  expectedPricePerKg Decimal?      @db.Decimal(14, 2)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  harvest            HarvestRecord @relation(fields: [harvestId], references: [id], onDelete: Cascade)
 
   @@unique([harvestId, durianVariety])
   @@index([harvestId])
