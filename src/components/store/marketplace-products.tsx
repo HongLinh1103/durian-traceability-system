@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 
-type Product = { id: string; name: string; type: "FERTILIZER" | "PESTICIDE"; price: string; salePrice?: string | null; stock: number; unit: string; status: string; imageUrls: string[]; usagePurpose?: string | null; store: { name: string; address: string } };
+type Product = { id: string; name: string; type: "FERTILIZER" | "PESTICIDE" | "EQUIPMENT"; price: string; salePrice?: string | null; stock: number; unit: string; status: string; imageUrls: string[]; usagePurpose?: string | null; store: { name: string; address: string } };
 
-export function MarketplaceProducts({ type }: { type?: "FERTILIZER" | "PESTICIDE" }) {
+export function MarketplaceProducts({ type }: { type?: "FERTILIZER" | "PESTICIDE" | "EQUIPMENT" }) {
     const { toast } = useToast();
     const [items, setItems] = useState<Product[]>([]); const [query, setQuery] = useState(""); const [loading, setLoading] = useState(true);
     useEffect(() => { const controller = new AbortController(); const timer = window.setTimeout(() => { const params = new URLSearchParams(); if (type) params.set("type", type); if (query.trim()) params.set("q", query.trim()); setLoading(true); void fetch(`/api/marketplace/products?${params}`, { signal: controller.signal, cache: "no-store" }).then(r => r.json()).then(p => setItems(p.data || [])).catch(e => { if (e.name !== "AbortError") setItems([]); }).finally(() => setLoading(false)); }, 250); return () => { window.clearTimeout(timer); controller.abort(); }; }, [query, type]);
@@ -85,10 +85,12 @@ export function MarketplaceProducts({ type }: { type?: "FERTILIZER" | "PESTICIDE
                                 className={
                                     product.type === "FERTILIZER"
                                         ? "w-fit bg-brand-50 text-brand-700"
-                                        : "w-fit bg-amber-50 text-amber-800"
+                                        : product.type === "PESTICIDE"
+                                            ? "w-fit bg-amber-50 text-amber-800"
+                                            : "w-fit bg-blue-50 text-blue-800"
                                 }
                             >
-                                {product.type === "FERTILIZER" ? "Phân bón" : "Thuốc BVTV"}
+                                {product.type === "FERTILIZER" ? "Phân bón" : product.type === "PESTICIDE" ? "Thuốc BVTV" : "Dụng cụ / Khác"}
                             </Badge>
                             <h3 className="mt-2 line-clamp-2 min-h-10 text-sm font-bold text-slate-900">
                                 {product.name}

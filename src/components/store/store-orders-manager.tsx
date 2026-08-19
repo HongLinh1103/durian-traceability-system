@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 
 type OrderItem = {
     id: string;
@@ -108,6 +109,7 @@ export function getDisplayStatus(status: string): {
 }
 
 export function StoreOrdersManager() {
+    const { toast } = useToast();
     const [items, setItems] = useState<Order[]>([]);
     const [filter, setFilter] = useState<"ALL" | "PENDING" | "PREPARING" | "SHIPPING" | "COMPLETED" | "CANCELLED">("ALL");
     const [searchQuery, setSearchQuery] = useState("");
@@ -202,9 +204,42 @@ export function StoreOrdersManager() {
             });
             const payload = await response.json();
             if (!response.ok) throw new Error(payload.message || "Không thể cập nhật trạng thái.");
+
+            if (targetStatus === "PREPARING") {
+                toast({
+                    title: "Đã xác nhận đơn hàng",
+                    description: `Đơn ${order.orderCode} đã chuyển sang chuẩn bị hàng và tự động tạo phiếu xuất kho PX.`,
+                    variant: "success",
+                });
+            } else if (targetStatus === "SHIPPING") {
+                toast({
+                    title: "Bắt đầu giao hàng",
+                    description: `Đơn ${order.orderCode} đang được vận chuyển đến nông dân.`,
+                    variant: "success",
+                });
+            } else if (targetStatus === "COMPLETED") {
+                toast({
+                    title: "Đơn hàng hoàn tất",
+                    description: `Đơn ${order.orderCode} đã giao thành công và hoàn tất.`,
+                    variant: "success",
+                });
+            } else if (targetStatus === "REJECTED") {
+                toast({
+                    title: "Đã từ chối đơn hàng",
+                    description: `Đơn ${order.orderCode} đã bị từ chối.`,
+                    variant: "success",
+                });
+            }
+
             await load();
         } catch (cause) {
-            setError(cause instanceof Error ? cause.message : "Không thể cập nhật trạng thái.");
+            const msg = cause instanceof Error ? cause.message : "Không thể cập nhật trạng thái.";
+            setError(msg);
+            toast({
+                title: "Cập nhật thất bại",
+                description: msg,
+                variant: "destructive",
+            });
         } finally {
             setProcessingId("");
         }

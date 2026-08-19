@@ -39,6 +39,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/admin/farming", label: "Quản lý canh tác", roles: ["ADMIN"] },
     { href: "/dashboard/admin/accounts", label: "Quản lý tài khoản", roles: ["ADMIN"], badge: true },
     { href: "/dashboard/admin/catalog", label: "Danh mục", roles: ["ADMIN"] },
+    { href: "/dashboard/store", label: "Tổng quan", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/products", label: "Sản phẩm", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/inventory", label: "Kho hàng", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/orders", label: "Đơn hàng", roles: ["STORE_OWNER"] },
@@ -216,6 +217,25 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
     const materialLinks = accessibleDashboards.filter((link) => ["/materials", "/materials/fertilizers", "/materials/pesticides", "/materials/stores", "/cart", "/orders"].includes(link.href));
     const primaryDashboardLinks = accessibleDashboards.filter((link) => !materialLinks.includes(link));
 
+    const getLogoHref = () => {
+        switch (userRole) {
+            case "ADMIN":
+                return "/dashboard/admin";
+            case "AREA_MANAGER":
+                return "/dashboard/area-manager";
+            case "FARMER":
+                return "/dashboard/farmer";
+            case "STORE_OWNER":
+                return "/dashboard/store";
+            case "COLLECTOR":
+                return "/dashboard/partner";
+            case "PROCESSING_FACILITY":
+                return "/dashboard/processing";
+            default:
+                return "/";
+        }
+    };
+
     const isAuthPage = pathname === "/login" || pathname === "/register";
 
     return (
@@ -227,7 +247,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
         >
             <nav className="flex h-[64px] w-full items-center gap-2 px-3 pt-2 sm:px-4 xl:px-5">
                 {/* Logo */}
-                <Link href={isCollector ? "/dashboard/partner" : "/"} className="flex shrink-0 items-center gap-2">
+                <Link href={getLogoHref()} className="flex shrink-0 items-center gap-2">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600">
                         <Leaf className="h-5 w-5 text-white" />
                     </div>
@@ -248,7 +268,9 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                 ? "/dashboard/admin"
                                 : link.href === "/" && userRole === "FARMER"
                                     ? "/dashboard/farmer"
-                                    : link.href;
+                                    : link.href === "/" && userRole === "STORE_OWNER"
+                                        ? "/dashboard/store"
+                                        : link.href;
                         return (
                             <Link
                                 key={link.href}
@@ -284,7 +306,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                 href={link.href}
                                 className={cn(
                                     "relative whitespace-nowrap rounded-2xl px-2.5 py-2 text-sm font-semibold transition 2xl:px-3",
-                                    (link.href === "/dashboard/partner" ? pathname === link.href : pathname.startsWith(link.href))
+                                    (["/dashboard/partner", "/dashboard/store", "/dashboard/processing"].includes(link.href) ? pathname === link.href : pathname.startsWith(link.href))
                                         ? "bg-brand-50 text-brand-700"
                                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
                                 )}
@@ -376,7 +398,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                     className="fixed inset-0 z-[100] h-[100dvh] w-screen overflow-y-auto overscroll-contain bg-white xl:hidden"
                 >
                     <div className="sticky top-0 z-10 flex min-h-16 items-center justify-between border-b border-slate-100 bg-white px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-                        <Link href={isCollector ? "/dashboard/partner" : "/"} onClick={() => setMobileOpen(false)} className="flex items-center gap-2">
+                        <Link href={getLogoHref()} onClick={() => setMobileOpen(false)} className="flex items-center gap-2">
                             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600">
                                 <Leaf className="h-5 w-5 text-white" />
                             </span>
@@ -408,7 +430,9 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                     ? "/dashboard/admin"
                                     : link.href === "/" && userRole === "FARMER"
                                         ? "/dashboard/farmer"
-                                        : link.href;
+                                        : link.href === "/" && userRole === "STORE_OWNER"
+                                            ? "/dashboard/store"
+                                            : link.href;
                             return (
                                 <Link
                                     key={link.href}
@@ -445,7 +469,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                     onClick={() => setMobileOpen(false)}
                                     className={cn(
                                         "flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition",
-                                        (link.href === "/dashboard/partner" ? pathname === link.href : pathname.startsWith(link.href))
+                                        (["/dashboard/partner", "/dashboard/store", "/dashboard/processing"].includes(link.href) ? pathname === link.href : pathname.startsWith(link.href))
                                             ? "bg-brand-50 text-brand-700"
                                             : "text-slate-600 hover:bg-slate-50",
                                     )}

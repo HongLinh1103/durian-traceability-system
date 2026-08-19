@@ -417,6 +417,7 @@ export function StoreFinanceDashboard() {
                             <option value="ALL">Tất cả sản phẩm</option>
                             <option value="FERTILIZER">Phân bón</option>
                             <option value="PESTICIDE">Thuốc BVTV</option>
+                            <option value="EQUIPMENT">Dụng cụ / Vật tư khác</option>
                         </select>
                     </div>
                 </div>
@@ -966,7 +967,7 @@ export function StoreFinanceDashboard() {
                                             <td className="py-3 px-4">
                                                 <p className="font-bold text-slate-900">{prod.name}</p>
                                                 <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                                                    {prod.type === "FERTILIZER" ? "Phân bón" : "Thuốc BVTV"}
+                                                    {prod.type === "FERTILIZER" ? "Phân bón" : prod.type === "PESTICIDE" ? "Thuốc BVTV" : "Dụng cụ / Khác"}
                                                 </span>
                                             </td>
                                             <td className="py-3 px-4 text-center font-bold text-slate-800">
@@ -1068,7 +1069,7 @@ export function StoreFinanceDashboard() {
                                                 <td className="py-3 px-4">
                                                     <p className="font-bold text-slate-900">{item.name}</p>
                                                     <span className="text-[10px] text-slate-400">
-                                                        {item.type === "FERTILIZER" ? "Phân bón" : "Thuốc BVTV"}
+                                                        {item.type === "FERTILIZER" ? "Phân bón" : item.type === "PESTICIDE" ? "Thuốc BVTV" : "Dụng cụ / Khác"}
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 text-center font-bold text-slate-800">

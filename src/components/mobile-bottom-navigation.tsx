@@ -203,8 +203,8 @@ export function MobileBottomNavigation() {
                         <BottomItem item={first} active={isActive(first)} badgeCount={badgeFor(first)} />
                         <BottomItem item={second} active={isActive(second)} badgeCount={badgeFor(second)} />
                         <button type="button" onClick={() => setActionsOpen(true)} className="group flex h-full items-center justify-center pb-2" aria-label={isExpansionMenu ? "Mở thêm chức năng" : "Mở tác vụ nhanh"}>
-                            <span className="grid h-16 w-16 -translate-y-3.5 place-items-center rounded-full border-[5px] border-white bg-brand-600 text-white shadow-xl transition group-active:scale-95">
-                                <Plus className="h-8 w-8" strokeWidth={2.5} />
+                            <span className="grid h-13 w-13 sm:h-14 sm:w-14 -translate-y-2.5 place-items-center rounded-full border-[4px] border-white bg-brand-600 text-white shadow-xl transition group-active:scale-95">
+                                <Plus className="h-7 w-7" strokeWidth={2.5} />
                             </span>
                         </button>
                         <BottomItem item={third} active={isActive(third)} badgeCount={badgeFor(third)} />
@@ -240,5 +240,23 @@ export function MobileBottomNavigation() {
 
 function BottomItem({ item, active, badgeCount = 0 }: { item: NavItem; active: boolean; badgeCount?: number }) {
     const Icon = item.icon;
-    return <Link href={item.href} className={cn("relative flex h-full min-w-0 flex-col items-center justify-end gap-1 pb-2 text-slate-400 transition", active && "text-brand-700")}><Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />{badgeCount > 0 && <span className="absolute right-3 top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{badgeCount > 9 ? "9+" : badgeCount}</span>}<span className={cn("max-w-full truncate text-[10px] font-semibold", active && "font-bold")}>{item.label}</span></Link>;
+    return (
+        <Link
+            href={item.href}
+            className={cn(
+                "relative flex h-full min-w-0 flex-col items-center justify-end gap-1 pb-2 text-slate-400 transition",
+                active && "text-brand-700",
+            )}
+        >
+            <Icon className="h-5 w-5 shrink-0" strokeWidth={active ? 2.5 : 2} />
+            {badgeCount > 0 && (
+                <span className="absolute right-2 sm:right-3 top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                    {badgeCount > 9 ? "9+" : badgeCount}
+                </span>
+            )}
+            <span className={cn("max-w-full truncate text-[10px] leading-tight font-semibold text-center px-0.5", active && "font-bold text-brand-700")}>
+                {item.label}
+            </span>
+        </Link>
+    );
 }

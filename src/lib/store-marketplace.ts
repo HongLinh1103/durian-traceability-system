@@ -14,7 +14,7 @@ export const storeProfileSchema = z.object({
 });
 
 const productObjectSchema = z.object({
-    type: z.enum(["FERTILIZER", "PESTICIDE"]), name: z.string().trim().min(2).max(200), brand: z.string().trim().max(120).optional(),
+    type: z.enum(["FERTILIZER", "PESTICIDE", "EQUIPMENT"]), name: z.string().trim().min(2).max(200), brand: z.string().trim().max(120).optional(),
     manufacturer: z.string().trim().max(160).optional(), origin: z.string().trim().max(120).optional(), description: z.string().trim().max(3000).optional(),
     usagePurpose: z.string().trim().max(12000).optional(), usageInstructions: z.string().trim().max(12000).optional(), packaging: z.string().trim().max(120).optional(),
     price: z.coerce.number().positive().max(1_000_000_000), salePrice: z.coerce.number().positive().max(1_000_000_000).optional().nullable(),

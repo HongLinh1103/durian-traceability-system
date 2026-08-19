@@ -82,6 +82,7 @@ enum StoreDocumentType {
 enum StoreProductType {
   FERTILIZER
   PESTICIDE
+  EQUIPMENT
 }
 
 enum StoreProductStatus {

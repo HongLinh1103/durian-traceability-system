@@ -34,7 +34,188 @@ export function FarmingPlanCalendar() {
  async function save(id?:string){setSaving(true);setError("");try{const title=draft.activity==="Khác"?draft.otherActivity.trim():draft.activity;const response=await fetch(id?`/api/farming-plans/${id}`:"/api/farming-plans",{method:id?"PATCH":"POST",headers:{"content-type":"application/json"},body:JSON.stringify({farmId:draft.farmId,plannedDate:draft.date,plannedTime:draft.time,title,stage:draft.stage,activityType:draft.activity,otherActivity:draft.otherActivity,notes:draft.notes})});const payload=await response.json();if(!response.ok)throw new Error(payload.message||"Không thể lưu công việc.");cancel();await load();window.dispatchEvent(new Event("plans-updated"));}catch(e){setError(e instanceof Error?e.message:"Không thể lưu công việc.");}finally{setSaving(false);}}
  async function remove(plan:Plan){if(!confirm(`Xóa công việc “${plan.title}”?`))return;await fetch(`/api/farming-plans/${plan.id}`,{method:"DELETE"});await load();window.dispatchEvent(new Event("plans-updated"));} async function start(plan:Plan){const response=await fetch(`/api/farming-plans/${plan.id}`,{method:"PATCH"});if(!response.ok)return;const time=timeText(plan.plannedDate);const params=new URLSearchParams({planId:plan.id,farmId:plan.farmId,date:dateKey(plan.plannedDate),stage:stageLabels[plan.stage]??plan.stage,activity:activityLabels[plan.activityType]??plan.activityType,notes:plan.notes??"",...(time!=="—"?{time}:{}),...(plan.otherActivity?{otherActivity:plan.otherActivity}:{})});router.push(`/dashboard/farmer/logs/new?${params}`);}
  const editor=(id?:string)=><><td className="p-2"><PlanDateInput value={draft.date} onChange={date=>setDraft(d=>({...d,date}))}/></td><td className="p-2"><PlanTimeInput value={draft.time} onChange={time=>setDraft(d=>({...d,time}))}/></td><td className="p-2"><select className="h-10 min-w-44 rounded-xl border px-3" value={draft.farmId} onChange={e=>setDraft(d=>({...d,farmId:e.target.value}))}>{farms.map(f=><option key={f.id} value={f.id}>{f.farmName}</option>)}</select></td><td className="p-2"><select className="h-10 min-w-40 rounded-xl border px-3" value={draft.stage} onChange={e=>stageChange(e.target.value as GrowthStageLabel)}><option value="" disabled>Chọn giai đoạn</option>{growthStages.map(v=><option key={v}>{v}</option>)}</select></td><td className="p-2"><select className="h-10 min-w-40 rounded-xl border px-3 disabled:bg-slate-100 disabled:text-slate-400" value={draft.activity} disabled={!draft.stage} onChange={e=>setDraft(d=>({...d,activity:e.target.value}))}><option value="" disabled>Chọn hoạt động</option>{draft.stage&&activitiesByStage[draft.stage].map(v=><option key={v}>{v}</option>)}</select>{draft.activity==="Khác"&&<Input className="mt-2" value={draft.otherActivity} onChange={e=>setDraft(d=>({...d,otherActivity:e.target.value}))}/>}</td><td className="p-2"><Input className="min-w-48" placeholder="Vật tư, ghi chú..." value={draft.notes} onChange={e=>setDraft(d=>({...d,notes:e.target.value}))}/></td><td className="p-2"><span className="whitespace-nowrap rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">Chưa thực hiện</span></td><td className="p-2"><div className="flex gap-1"><Button size="sm" className="bg-brand-600 hover:bg-brand-700 text-white shadow-soft" disabled={saving||!draft.farmId||!draft.date||!draft.stage||!draft.activity} onClick={()=>void save(id)}><Check className="h-4 w-4"/></Button><Button size="sm" variant="ghost" onClick={cancel}><X className="h-4 w-4"/></Button></div></td></>;
- return <main className="mx-auto min-h-screen max-w-[1500px] space-y-5 px-4 py-7 sm:px-6 lg:px-8"><header className="flex flex-col gap-4 rounded-3xl bg-gradient-to-br from-brand-800 to-brand-600 p-6 text-white shadow-lg sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-brand-100">Quản lý canh tác</p><h1 className="mt-2 text-3xl font-black">Kế hoạch công việc</h1><p className="mt-2 text-sm text-brand-50">Theo dõi và cập nhật các công việc dự kiến tại vườn.</p></div><Button className="bg-white text-brand-700 hover:bg-brand-50 shadow-soft font-bold" onClick={add}><Plus className="mr-2 h-4 w-4"/>Thêm công việc</Button></header>{error&&<div className="rounded-2xl bg-red-50 p-3 text-red-700">{error}</div>}<section className="space-y-4 rounded-3xl border bg-white p-5 shadow-sm"><div className="flex flex-wrap gap-2">{([['all','Tất cả'],['today','Hôm nay'],['upcoming','Sắp tới'],['overdue','Quá hạn'],['completed','Đã thực hiện']] as [Quick,string][]).map(([value,label])=><button key={value} onClick={()=>setQuick(value)} className={`rounded-full px-4 py-2 text-sm font-bold transition ${quick===value?"bg-brand-600 text-white shadow-soft":"bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{label}</button>)}</div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5"><select aria-label="Lọc theo vườn" className="h-11 rounded-xl border px-3" value={farmFilter} onChange={e=>setFarmFilter(e.target.value)}><option value="">Tất cả vườn</option>{farms.map(f=><option key={f.id} value={f.id}>{f.farmName}</option>)}</select><div className="grid grid-cols-2 gap-2"><select aria-label="Chọn tháng" className="h-11 rounded-xl border px-3" value={selectedMonth} onChange={e=>setMonthPart(e.target.value)}><option value="">Tất cả tháng</option>{Array.from({length:12},(_,index)=>String(index+1).padStart(2,"0")).map(value=><option key={value} value={value}>Tháng {Number(value)}</option>)}</select><select aria-label="Chọn năm" className="h-11 rounded-xl border px-3" value={selectedYear} onChange={e=>setYearPart(e.target.value)}><option value="">Năm</option>{years.map(year=><option key={year} value={year}>{year}</option>)}</select></div><select aria-label="Lọc theo giai đoạn" className="h-11 rounded-xl border px-3" value={stageFilter} onChange={e=>setStageFilter(e.target.value)}><option value="">Tất cả giai đoạn</option>{Object.entries(stageLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select><select aria-label="Lọc theo hoạt động" className="h-11 rounded-xl border px-3" value={activityFilter} onChange={e=>setActivityFilter(e.target.value)}><option value="">Tất cả hoạt động</option>{Object.entries(activityLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select><div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-400"/><Input className="pl-9" placeholder="Tìm kiếm..." value={search} onChange={e=>setSearch(e.target.value)}/></div></div></section><section className="overflow-hidden rounded-3xl border bg-white shadow-sm"><div className="overflow-x-auto"><table className="w-full min-w-[1180px] text-sm"><thead className="bg-slate-50 text-left text-xs uppercase text-slate-500"><tr>{["Ngày","Giờ","Vườn","Giai đoạn","Hoạt động","Chi tiết / Vật tư","Trạng thái","Thao tác"].map(v=><th key={v} className="p-4">{v}</th>)}</tr></thead><tbody className="divide-y">{adding&&<tr className="bg-brand-50/60">{editor()}</tr>}{loading?<tr><td colSpan={8} className="py-16"><Loader2 className="mx-auto animate-spin text-brand-600"/></td></tr>:filtered.length===0&&!adding?<tr><td colSpan={8} className="py-16 text-center text-slate-500">Chưa có công việc phù hợp.</td></tr>:filtered.map(plan=>editingId===plan.id?<tr key={plan.id} className="bg-brand-50/60">{editor(plan.id)}</tr>:<Row key={plan.id} plan={plan} today={today} edit={edit} remove={remove} start={start}/>)}</tbody></table></div></section></main>;
+ return (
+  <main className="mx-auto min-h-screen max-w-[1500px] space-y-5 px-3.5 py-5 sm:px-6 lg:px-8">
+    <header className="flex flex-col gap-4 rounded-3xl bg-gradient-to-br from-brand-800 to-brand-600 p-4 sm:p-6 text-white shadow-lg sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[.2em] text-brand-100">Quản lý canh tác</p>
+        <h1 className="mt-1 text-2xl sm:text-3xl font-black">Kế hoạch công việc</h1>
+        <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-brand-50">Theo dõi và cập nhật các công việc dự kiến tại vườn.</p>
+      </div>
+      <Button className="w-full sm:w-auto bg-white text-brand-700 hover:bg-brand-50 shadow-soft font-bold" onClick={add}>
+        <Plus className="mr-2 h-4 w-4" />Thêm công việc
+      </Button>
+    </header>
+
+    {error && <div className="rounded-2xl bg-red-50 p-3 text-red-700">{error}</div>}
+
+    <section className="space-y-4 rounded-3xl border bg-white p-4 sm:p-5 shadow-sm">
+      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+        {([['all', 'Tất cả'], ['today', 'Hôm nay'], ['upcoming', 'Sắp tới'], ['overdue', 'Quá hạn'], ['completed', 'Đã thực hiện']] as [Quick, string][]).map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => setQuick(value)}
+            className={`shrink-0 rounded-full px-4 py-2 text-xs sm:text-sm font-bold transition ${quick === value ? "bg-brand-600 text-white shadow-soft" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <select aria-label="Lọc theo vườn" className="h-11 rounded-xl border px-3 text-sm bg-white" value={farmFilter} onChange={e => setFarmFilter(e.target.value)}>
+          <option value="">Tất cả vườn</option>
+          {farms.map(f => <option key={f.id} value={f.id}>{f.farmName}</option>)}
+        </select>
+        <div className="grid grid-cols-2 gap-2">
+          <select aria-label="Chọn tháng" className="h-11 rounded-xl border px-3 text-sm bg-white" value={selectedMonth} onChange={e => setMonthPart(e.target.value)}>
+            <option value="">Tất cả tháng</option>
+            {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0")).map(value => <option key={value} value={value}>Tháng {Number(value)}</option>)}
+          </select>
+          <select aria-label="Chọn năm" className="h-11 rounded-xl border px-3 text-sm bg-white" value={selectedYear} onChange={e => setYearPart(e.target.value)}>
+            <option value="">Năm</option>
+            {years.map(year => <option key={year} value={year}>{year}</option>)}
+          </select>
+        </div>
+        <select aria-label="Lọc theo giai đoạn" className="h-11 rounded-xl border px-3 text-sm bg-white" value={stageFilter} onChange={e => setStageFilter(e.target.value)}>
+          <option value="">Tất cả giai đoạn</option>
+          {Object.entries(stageLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+        <select aria-label="Lọc theo hoạt động" className="h-11 rounded-xl border px-3 text-sm bg-white" value={activityFilter} onChange={e => setActivityFilter(e.target.value)}>
+          <option value="">Tất cả hoạt động</option>
+          {Object.entries(activityLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+        <div className="relative">
+          <Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+          <Input className="pl-9 text-sm" placeholder="Tìm kiếm..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+      </div>
+    </section>
+
+    <section className="overflow-hidden rounded-3xl border bg-white shadow-sm">
+      {/* Mobile Card List View */}
+      <div className="space-y-3 p-3.5 md:hidden">
+        {loading ? (
+          <div className="py-12 text-center"><Loader2 className="mx-auto h-7 w-7 animate-spin text-brand-600" /></div>
+        ) : filtered.length === 0 && !adding ? (
+          <div className="py-12 text-center text-sm text-slate-500">Chưa có công việc phù hợp.</div>
+        ) : (
+          filtered.map(plan => (
+            <MobilePlanCard
+              key={plan.id}
+              plan={plan}
+              today={today}
+              edit={edit}
+              remove={remove}
+              start={start}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full min-w-[1180px] text-sm">
+          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+            <tr>
+              {["Ngày", "Giờ", "Vườn", "Giai đoạn", "Hoạt động", "Chi tiết / Vật tư", "Trạng thái", "Thao tác"].map(v => (
+                <th key={v} className="p-4">{v}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {adding && <tr className="bg-brand-50/60">{editor()}</tr>}
+            {loading ? (
+              <tr><td colSpan={8} className="py-16"><Loader2 className="mx-auto animate-spin text-brand-600" /></td></tr>
+            ) : filtered.length === 0 && !adding ? (
+              <tr><td colSpan={8} className="py-16 text-center text-slate-500">Chưa có công việc phù hợp.</td></tr>
+            ) : (
+              filtered.map(plan => (
+                editingId === plan.id ? (
+                  <tr key={plan.id} className="bg-brand-50/60">{editor(plan.id)}</tr>
+                ) : (
+                  <Row key={plan.id} plan={plan} today={today} edit={edit} remove={remove} start={start} />
+                )
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+ );
+}
+
+function MobilePlanCard({
+  plan,
+  today,
+  edit,
+  remove,
+  start,
+}: {
+  plan: Plan;
+  today: string;
+  edit: (p: Plan) => void;
+  remove: (p: Plan) => void;
+  start: (p: Plan) => void;
+}) {
+  const date = dateKey(plan.plannedDate);
+  const done = plan.status === "COMPLETED";
+  const overdue = date < today && !done;
+  return (
+    <article className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xs font-bold text-slate-400">
+            {new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")} · {timeText(plan.plannedDate)}
+          </p>
+          <h3 className="mt-0.5 text-base font-bold text-slate-900">{plan.farm.farmName}</h3>
+        </div>
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${done ? "bg-brand-100 text-brand-700" : overdue ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+          {done ? "Đã thực hiện" : overdue ? "Quá hạn" : "Chưa thực hiện"}
+        </span>
+      </div>
+
+      <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 text-xs">
+        <div>
+          <dt className="text-slate-400">Giai đoạn</dt>
+          <dd className="mt-0.5 font-bold text-slate-800">{stageLabels[plan.stage]}</dd>
+        </div>
+        <div>
+          <dt className="text-slate-400">Hoạt động</dt>
+          <dd className="mt-0.5 font-bold text-brand-700">
+            {plan.otherActivity || activityLabels[plan.activityType] || plan.title}
+          </dd>
+        </div>
+        {plan.notes && (
+          <div className="col-span-2">
+            <dt className="text-slate-400">Chi tiết / Vật tư</dt>
+            <dd className="mt-0.5 text-slate-600">{plan.notes}</dd>
+          </div>
+        )}
+      </dl>
+
+      <div className="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+        {done ? (
+          <Button asChild size="sm" variant="ghost" className="text-xs font-semibold text-brand-700">
+            <Link href="/dashboard/farmer/logs"><Eye className="mr-1 h-4 w-4" />Xem nhật ký</Link>
+          </Button>
+        ) : (
+          <>
+            <Button size="sm" variant="ghost" className="h-9 rounded-xl text-red-600 hover:bg-red-50 text-xs" onClick={() => void remove(plan)}>
+              <Trash2 className="mr-1 h-3.5 w-3.5" />Xóa
+            </Button>
+            <Button size="sm" variant="outline" className="h-9 rounded-xl text-slate-700 hover:bg-slate-50 text-xs" onClick={() => edit(plan)}>
+              <Pencil className="mr-1 h-3.5 w-3.5" />Sửa
+            </Button>
+            <Button size="sm" className="h-9 rounded-xl bg-brand-600 text-white hover:bg-brand-700 text-xs font-bold shadow-soft" onClick={() => void start(plan)}>
+              <ClipboardCheck className="mr-1 h-4 w-4" />Thực hiện
+            </Button>
+          </>
+        )}
+      </div>
+    </article>
+  );
 }
 
 function Row({plan,today,edit,remove,start}:{plan:Plan;today:string;edit:(p:Plan)=>void;remove:(p:Plan)=>void;start:(p:Plan)=>void}){const date=dateKey(plan.plannedDate);const done=plan.status==="COMPLETED";const overdue=date<today&&!done;return <tr className="hover:bg-slate-50"><td className="whitespace-nowrap p-4 font-semibold">{new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")}</td><td className="p-4">{timeText(plan.plannedDate)}</td><td className="p-4"><b>{plan.farm.farmName}</b><p className="text-xs text-slate-400">{plan.farm.farmCode}</p></td><td className="p-4">{stageLabels[plan.stage]}</td><td className="p-4 font-semibold">{plan.otherActivity||activityLabels[plan.activityType]||plan.title}</td><td className="max-w-64 p-4 text-slate-600">{plan.notes||"—"}</td><td className="p-4"><span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${done?"bg-brand-100 text-brand-700":overdue?"bg-red-100 text-red-700":"bg-amber-100 text-amber-700"}`}>{done?"Đã thực hiện":overdue?"Quá hạn":"Chưa thực hiện"}</span></td><td className="p-4">{done?<Button asChild size="sm" variant="ghost"><Link href="/dashboard/farmer/logs"><Eye className="mr-1 h-4 w-4"/>Xem nhật ký</Link></Button>:<div className="flex items-center gap-1"><Button size="sm" variant="outline" className="h-10 w-10 rounded-full border-brand-200 p-0 text-brand-700 hover:bg-brand-50" title="Đánh dấu đã thực hiện" aria-label="Đánh dấu đã thực hiện" onClick={()=>void start(plan)}><ClipboardCheck className="h-5 w-5"/></Button><Button size="sm" variant="ghost" className="h-10 w-10 rounded-full p-0 text-brand-700 hover:bg-brand-50" title="Sửa công việc" aria-label="Sửa công việc" onClick={()=>edit(plan)}><Pencil className="h-4 w-4"/></Button><Button size="sm" variant="ghost" className="h-10 w-10 rounded-full p-0 text-red-600 hover:bg-red-50" title="Xóa công việc" aria-label="Xóa công việc" onClick={()=>void remove(plan)}><Trash2 className="h-4 w-4"/></Button></div>}</td></tr>}

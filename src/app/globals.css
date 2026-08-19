@@ -68,3 +68,13 @@ body {
 ::selection {
     background: rgba(22, 163, 74, 0.2);
 }
+
+@layer utilities {
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+}

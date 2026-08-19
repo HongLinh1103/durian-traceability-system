@@ -13,7 +13,7 @@ import { useToast } from "@/components/ui/toast";
 type Product = {
     id: string;
     name: string;
-    type: "FERTILIZER" | "PESTICIDE";
+    type: "FERTILIZER" | "PESTICIDE" | "EQUIPMENT";
     manufacturer?: string | null;
     origin?: string | null;
     usageInstructions?: string | null;
@@ -127,6 +127,7 @@ export function StoreProductsManager() {
             <select name="type" className="h-12 rounded-2xl border border-slate-200 bg-white px-3">
                 <option value="FERTILIZER">Phân bón</option>
                 <option value="PESTICIDE">Thuốc BVTV</option>
+                <option value="EQUIPMENT">Dụng cụ / Vật tư khác</option>
             </select>
             <Input name="name" required placeholder="Tên sản phẩm" />
             <Input name="manufacturer" required placeholder="Tên công ty" />
@@ -148,6 +149,8 @@ export function StoreProductsManager() {
             {items.map((product) => {
                 const displayPrice = Number(product.salePrice ?? product.price);
                 const statusLabel = product.stock === 0 ? (product.status === "DRAFT" ? "Chưa nhập kho" : "Hết hàng") : product.status === "APPROVED" ? "Đang bán" : product.status === "HIDDEN" ? "Tạm ẩn" : "Chưa mở bán";
+                const badgeStyle = product.type === "FERTILIZER" ? "bg-emerald-100 text-emerald-700" : product.type === "PESTICIDE" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700";
+                const typeLabel = product.type === "FERTILIZER" ? "Phân bón" : product.type === "PESTICIDE" ? "Thuốc BVTV" : "Dụng cụ / Khác";
                 return <article key={product.id} className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                     <div className="aspect-square overflow-hidden bg-slate-100">
                         {product.imageUrls?.[0]
@@ -156,8 +159,8 @@ export function StoreProductsManager() {
                     </div>
                     <div className="flex flex-1 flex-col p-3">
                         <div>
-                            <Badge className={product.type === "FERTILIZER" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}>
-                                {product.type === "FERTILIZER" ? "Phân bón" : "Thuốc BVTV"}
+                            <Badge className={badgeStyle}>
+                                {typeLabel}
                             </Badge>
                         </div>
                         <h3 className="mt-2 line-clamp-2 min-h-10 text-sm font-bold text-slate-900">{product.name}</h3>
@@ -187,7 +190,7 @@ export function StoreProductsManager() {
                 <Button type="button" variant="ghost" size="sm" className="absolute right-4 top-4 h-9 w-9 p-0" title="Đóng" aria-label="Đóng form chỉnh sửa" onClick={() => setEditing(null)}><X className="h-5 w-5" /></Button>
                 <label className="space-y-1.5 text-sm font-semibold text-slate-700">Loại sản phẩm
                     <select name="type" defaultValue={editing.type} className="block h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 font-normal text-slate-900">
-                        <option value="FERTILIZER">Phân bón</option><option value="PESTICIDE">Thuốc BVTV</option>
+                        <option value="FERTILIZER">Phân bón</option><option value="PESTICIDE">Thuốc BVTV</option><option value="EQUIPMENT">Dụng cụ / Vật tư khác</option>
                     </select>
                 </label>
                 <label className="space-y-1.5 text-sm font-semibold text-slate-700">Tên sản phẩm

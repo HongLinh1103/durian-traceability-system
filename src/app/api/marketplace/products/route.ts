@@ -27,7 +27,7 @@ export async function GET(request: Request) {
         where: {
             deletedAt: null,
             status: { in: ["APPROVED", "OUT_OF_STOCK"] },
-            ...(type === "FERTILIZER" || type === "PESTICIDE" ? { type } : {}),
+            ...(type === "FERTILIZER" || type === "PESTICIDE" || type === "EQUIPMENT" ? { type } : {}),
             store: { status: "APPROVED", deletedAt: null },
             ...(q
                 ? {

@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowDownToLine, ArrowUpFromLine, Download, FileText, History, Loader2, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { VietnameseDatePicker } from "@/components/ui/vietnamese-date-picker";
 import { useToast } from "@/components/ui/toast";
 
-type Product = { id: string; name: string; type: "FERTILIZER" | "PESTICIDE"; stock: number; unit: string; status: string; imageUrls: string[] };
+type Product = { id: string; name: string; type: "FERTILIZER" | "PESTICIDE" | "EQUIPMENT"; stock: number; unit: string; status: string; imageUrls: string[] };
 type Movement = { id: string; productId: string; quantity: number; stockBefore: number; stockAfter: number; product: { name: string; unit: string } };
 type Document = { id: string; code: string; type: "PN" | "PX" | "DC" | "HT"; businessType: string; supplierName?: string | null; actorName?: string | null; createdAt: string; order?: { id: string; orderCode: string } | null; movements: Movement[] };
 type FormItem = { productId: string; quantity: string; note: string };
@@ -19,8 +20,9 @@ const businessLabels: Record<string, string> = {
     CUSTOMER_RETURN: "Khách trả hàng", SUPPLIER_RETURN: "Trả nhà cung cấp", SALE_EXPORT: "Xuất bán hàng", OPENING_BALANCE: "Số dư đầu kỳ",
 };
 
-export function InventoryManager() {
+function InventoryManagerContent() {
     const { toast } = useToast();
+    const searchParams = useSearchParams();
     const [products, setProducts] = useState<Product[]>([]); const [documents, setDocuments] = useState<Document[]>([]); const [loading, setLoading] = useState(true); const [submitting, setSubmitting] = useState(false); const [selectedProduct, setSelectedProduct] = useState("ALL"); const [businessType, setBusinessType] = useState("SUPPLIER_IMPORT");
     const [createdDate, setCreatedDate] = useState(() => new Date().toLocaleDateString("en-CA"));
     const [items, setItems] = useState<FormItem[]>([{ productId: "", quantity: "", note: "" }]);
@@ -29,7 +31,16 @@ export function InventoryManager() {
     const [historyFrom, setHistoryFrom] = useState(""); const [historyTo, setHistoryTo] = useState(""); const [historyBusiness, setHistoryBusiness] = useState("ALL"); const [documentSearch, setDocumentSearch] = useState("");
     const load = useCallback(async () => { setLoading(true); try { const response = await fetch("/api/store/inventory", { cache: "no-store" }); const payload = await response.json(); if (!response.ok) throw new Error(payload.message); setProducts(payload.products || []); setDocuments(payload.documents || []); } catch (error) { toast({ title: "Không thể tải kho hàng", description: error instanceof Error ? error.message : "Vui lòng thử lại.", variant: "destructive" }); } finally { setLoading(false); } }, [toast]);
     useEffect(() => { void load(); }, [load]);
-    useEffect(() => { const params = new URLSearchParams(window.location.search); if (params.get("tab") === "create") setActiveTab("create"); const productId = params.get("productId"); if (productId) setItems([{ productId, quantity: "", note: "" }]); }, []);
+    useEffect(() => {
+        const tab = searchParams.get("tab");
+        if (tab === "create") setActiveTab("create");
+        else if (tab === "history") setActiveTab("history");
+        else if (tab === "stock") setActiveTab("stock");
+        const productId = searchParams.get("productId");
+        if (productId) setItems([{ productId, quantity: "", note: "" }]);
+        const type = searchParams.get("type") || searchParams.get("businessType");
+        if (type) setBusinessType(type);
+    }, [searchParams]);
     const visibleProducts = useMemo(() => products.filter((product) => product.name.toLocaleLowerCase("vi").includes(search.trim().toLocaleLowerCase("vi")) && (productType === "ALL" || product.type === productType) && (stockStatus === "ALL" || (stockStatus === "LOW" ? product.stock <= 5 : stockStatus === "OUT" ? product.stock === 0 : product.stock > 5))), [products, search, productType, stockStatus]);
     const visibleDocuments = useMemo(() => documents.filter((document) => (selectedProduct === "ALL" || document.movements.some((movement) => movement.productId === selectedProduct)) && (historyBusiness === "ALL" || document.businessType === historyBusiness) && (!documentSearch.trim() || document.code.toLocaleLowerCase("vi").includes(documentSearch.trim().toLocaleLowerCase("vi"))) && (!historyFrom || document.createdAt.slice(0, 10) >= historyFrom) && (!historyTo || document.createdAt.slice(0, 10) <= historyTo)), [documents, selectedProduct, historyBusiness, documentSearch, historyFrom, historyTo]);
     const totalStock = products.reduce((sum, product) => sum + product.stock, 0); const lowStock = products.filter((product) => product.stock <= 5).length;
@@ -48,7 +59,7 @@ export function InventoryManager() {
     }
 
     function exportInventory() {
-        const rows = [["STT", "Sản phẩm", "Loại", "Đơn vị", "Tồn hiện tại"], ...visibleProducts.map((product, index) => [String(index + 1), product.name, product.type === "FERTILIZER" ? "Phân bón" : "Thuốc BVTV", product.unit, String(product.stock)])];
+        const rows = [["STT", "Sản phẩm", "Loại", "Đơn vị", "Tồn hiện tại"], ...visibleProducts.map((product, index) => [String(index + 1), product.name, product.type === "FERTILIZER" ? "Phân bón" : product.type === "PESTICIDE" ? "Thuốc BVTV" : "Dụng cụ / Khác", product.unit, String(product.stock)])];
         const csv = rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",")).join("\r\n"); const url = URL.createObjectURL(new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" })); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `ton-kho-${today}.csv`; anchor.click(); URL.revokeObjectURL(url);
     }
 
@@ -62,8 +73,8 @@ export function InventoryManager() {
         <nav className="flex overflow-x-auto border-b border-slate-200" aria-label="Quản lý kho">{([['stock', 'Tồn kho hiện tại'], ['create', 'Tạo chứng từ'], ['history', 'Lịch sử kho']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setActiveTab(value)} className={`whitespace-nowrap border-b-2 px-5 py-3 text-sm font-bold transition-colors ${activeTab === value ? "border-emerald-600 text-emerald-700" : "border-transparent text-slate-500 hover:text-slate-900"}`}>{label}</button>)}</nav>
 
         {activeTab === "stock" && <section className="overflow-hidden rounded-3xl border bg-white shadow-sm">
-            <header className="space-y-4 border-b p-5"><h2 className="text-xl font-bold">Tồn kho hiện tại</h2><div className="flex flex-col gap-3 lg:flex-row"><div className="relative flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input value={search} onChange={(event) => setSearch(event.target.value)} className="h-10 pl-10" placeholder="Tìm theo tên sản phẩm..." /></div><select value={productType} onChange={(event) => setProductType(event.target.value)} className="h-10 rounded-xl border bg-white px-3 text-sm"><option value="ALL">Tất cả loại vật tư</option><option value="FERTILIZER">Phân bón</option><option value="PESTICIDE">Thuốc BVTV</option></select><select value={stockStatus} onChange={(event) => setStockStatus(event.target.value)} className="h-10 rounded-xl border bg-white px-3 text-sm"><option value="ALL">Tất cả trạng thái tồn</option><option value="AVAILABLE">Còn hàng</option><option value="LOW">Sắp hết (≤ 5)</option><option value="OUT">Hết hàng</option></select><Button size="sm" variant="outline" onClick={exportInventory}><Download className="mr-2 h-4 w-4" />Xuất Excel</Button></div></header>
-            {loading ? <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin" /></div> : <div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr><th className="w-20 p-4 text-center">STT</th><th className="p-4">Sản phẩm</th><th className="p-4">Loại</th><th className="p-4">Đơn vị</th><th className="p-4 text-right">Tồn hiện tại</th></tr></thead><tbody className="divide-y">{visibleProducts.map((product, index) => <tr key={product.id} className="hover:bg-slate-50"><td className="p-4 text-center">{index + 1}</td><td className="p-4 font-bold">{product.name}</td><td className="p-4">{product.type === "FERTILIZER" ? "Phân bón" : "Thuốc BVTV"}</td><td className="p-4">{product.unit}</td><td className={`p-4 text-right text-lg font-black ${product.stock === 0 ? "text-red-600" : product.stock <= 5 ? "text-amber-600" : "text-emerald-700"}`}>{product.stock}</td></tr>)}{!visibleProducts.length && <tr><td colSpan={5} className="p-12 text-center text-slate-500">Không tìm thấy sản phẩm phù hợp.</td></tr>}</tbody></table></div>}
+            <header className="space-y-4 border-b p-5"><h2 className="text-xl font-bold">Tồn kho hiện tại</h2><div className="flex flex-col gap-3 lg:flex-row"><div className="relative flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input value={search} onChange={(event) => setSearch(event.target.value)} className="h-10 pl-10" placeholder="Tìm theo tên sản phẩm..." /></div><select value={productType} onChange={(event) => setProductType(event.target.value)} className="h-10 rounded-xl border bg-white px-3 text-sm"><option value="ALL">Tất cả loại vật tư</option><option value="FERTILIZER">Phân bón</option><option value="PESTICIDE">Thuốc BVTV</option><option value="EQUIPMENT">Dụng cụ / Vật tư khác</option></select><select value={stockStatus} onChange={(event) => setStockStatus(event.target.value)} className="h-10 rounded-xl border bg-white px-3 text-sm"><option value="ALL">Tất cả trạng thái tồn</option><option value="AVAILABLE">Còn hàng</option><option value="LOW">Sắp hết (≤ 5)</option><option value="OUT">Hết hàng</option></select><Button size="sm" variant="outline" onClick={exportInventory}><Download className="mr-2 h-4 w-4" />Xuất Excel</Button></div></header>
+            {loading ? <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin" /></div> : <div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr><th className="w-20 p-4 text-center">STT</th><th className="p-4">Sản phẩm</th><th className="p-4">Loại</th><th className="p-4">Đơn vị</th><th className="p-4 text-right">Tồn hiện tại</th></tr></thead><tbody className="divide-y">{visibleProducts.map((product, index) => <tr key={product.id} className="hover:bg-slate-50"><td className="p-4 text-center">{index + 1}</td><td className="p-4 font-bold">{product.name}</td><td className="p-4">{product.type === "FERTILIZER" ? "Phân bón" : product.type === "PESTICIDE" ? "Thuốc BVTV" : "Dụng cụ / Khác"}</td><td className="p-4">{product.unit}</td><td className={`p-4 text-right text-lg font-black ${product.stock === 0 ? "text-red-600" : product.stock <= 5 ? "text-amber-600" : "text-emerald-700"}`}>{product.stock}</td></tr>)}{!visibleProducts.length && <tr><td colSpan={5} className="p-12 text-center text-slate-500">Không tìm thấy sản phẩm phù hợp.</td></tr>}</tbody></table></div>}
         </section>}
 
         {activeTab === "create" && <form onSubmit={submit} className="space-y-5 rounded-3xl border bg-white p-5 shadow-sm sm:p-6">
@@ -94,3 +105,11 @@ export function InventoryManager() {
 }
 
 function Stat({ label, value, warning }: { label: string; value: number; warning?: boolean }) { return <div className={`rounded-2xl border p-4 ${warning ? "border-red-200 bg-red-50" : "bg-white"}`}><p className="text-sm text-slate-500">{label}</p><p className={`mt-1 text-3xl font-black ${warning ? "text-red-700" : "text-slate-900"}`}>{value}</p></div>; }
+
+export function InventoryManager() {
+    return (
+        <Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-emerald-600" /></div>}>
+            <InventoryManagerContent />
+        </Suspense>
+    );
+}

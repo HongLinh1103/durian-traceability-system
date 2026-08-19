@@ -57,14 +57,14 @@ export default async function FarmerLogsPage({ searchParams = {} }: { searchPara
 
     return (
         <main className="w-full space-y-5">
-            <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-brand-100 bg-white p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between">
+            <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-brand-100 bg-white p-4 sm:p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between">
                 <form method="get" className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-end">
                     <input type="hidden" name="tab" value="cultivation" />
-                    <div className="sm:w-52"><select id="journal-year" name="year" aria-label="Chọn năm" defaultValue={String(selectedYear)} className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4">{Array.from({ length: 7 }, (_, index) => new Date().getFullYear() - 5 + index).map(year => <option key={year} value={year}>{year}</option>)}</select></div>
-                    <div className="sm:min-w-72 sm:flex-1"><select id="journal-farm" name="farmId" aria-label="Chọn vườn" defaultValue={selectedFarmId || ""} className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4"><option value="">Tất cả vườn</option>{farms.map(farm => <option key={farm.id} value={farm.id}>{farm.farmName} · {farm.farmCode}</option>)}</select></div>
-                    <Button type="submit" className="h-12 shrink-0 whitespace-nowrap bg-brand-600 px-5 text-white hover:bg-brand-700 shadow-soft font-bold">Áp dụng bộ lọc</Button>
+                    <div className="w-full sm:w-48"><select id="journal-year" name="year" aria-label="Chọn năm" defaultValue={String(selectedYear)} className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm">{Array.from({ length: 7 }, (_, index) => new Date().getFullYear() - 5 + index).map(year => <option key={year} value={year}>{year}</option>)}</select></div>
+                    <div className="w-full sm:min-w-64 sm:flex-1"><select id="journal-farm" name="farmId" aria-label="Chọn vườn" defaultValue={selectedFarmId || ""} className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm"><option value="">Tất cả vườn</option>{farms.map(farm => <option key={farm.id} value={farm.id}>{farm.farmName} · {farm.farmCode}</option>)}</select></div>
+                    <Button type="submit" className="h-12 w-full sm:w-auto shrink-0 whitespace-nowrap bg-brand-600 px-5 text-white hover:bg-brand-700 shadow-soft font-bold">Áp dụng bộ lọc</Button>
                 </form>
-                <Button asChild className="h-12 shrink-0 whitespace-nowrap bg-brand-600 px-6 text-white hover:bg-brand-700 shadow-soft font-bold">
+                <Button asChild className="h-12 w-full sm:w-auto shrink-0 whitespace-nowrap bg-brand-600 px-6 text-white hover:bg-brand-700 shadow-soft font-bold">
                     <Link href="/dashboard/farmer/logs/new">
                         <Plus className="mr-2 h-4 w-4" />
                         Ghi nhật ký mới
@@ -73,7 +73,64 @@ export default async function FarmerLogsPage({ searchParams = {} }: { searchPara
             </div>
 
             <Card className="overflow-hidden rounded-[28px] border-slate-200 shadow-sm">
-                <div className="overflow-x-auto">
+                {/* Mobile Card View */}
+                <div className="space-y-3 p-3.5 md:hidden">
+                    {logs.length === 0 ? (
+                        <div className="py-12 text-center text-slate-500">
+                            <Sprout className="mx-auto mb-3 h-9 w-9 text-slate-300" />
+                            <b className="text-slate-800">Chưa có nhật ký canh tác nào</b>
+                            <p className="mt-1 text-xs">Hãy ghi hoạt động đầu tiên cho vườn của bạn.</p>
+                        </div>
+                    ) : (
+                        logs.map(log => (
+                            <article key={log.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-400">{formatVietnameseDateTime(log.actionDate)}</p>
+                                        <h3 className="mt-0.5 text-base font-bold text-slate-900">{log.farm.farmName}</h3>
+                                        <p className="text-xs text-slate-400">{log.farm.farmCode}</p>
+                                    </div>
+                                    <Badge className="bg-brand-50 text-brand-700 font-semibold text-[11px]">
+                                        {stageLabels[log.stage] ?? log.stage}
+                                    </Badge>
+                                </div>
+                                <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 text-xs">
+                                    <div>
+                                        <dt className="text-slate-400">Hoạt động</dt>
+                                        <dd className="mt-0.5 font-bold text-slate-800">
+                                            {log.activityType === "OTHER" ? log.otherActivity || "Khác" : activityLabels[log.activityType] ?? log.activityType}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-slate-400">Cách ly (PHI)</dt>
+                                        <dd className="mt-0.5 font-semibold text-slate-700">
+                                            {log.phiDays != null ? `${log.phiDays} ngày` : "—"}
+                                        </dd>
+                                    </div>
+                                    {log.chemicalName && (
+                                        <div className="col-span-2">
+                                            <dt className="text-slate-400">Vật tư & Liều lượng</dt>
+                                            <dd className="mt-0.5 font-semibold text-slate-800">
+                                                {log.chemicalName} {log.dosage ? `· ${log.dosage}` : ""}
+                                            </dd>
+                                        </div>
+                                    )}
+                                    {log.notes && (
+                                        <div className="col-span-2">
+                                            <dt className="text-slate-400">Ghi chú</dt>
+                                            <dd className="mt-0.5 text-slate-600 leading-relaxed">
+                                                {log.notes}
+                                            </dd>
+                                        </div>
+                                    )}
+                                </dl>
+                            </article>
+                        ))
+                    )}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full min-w-[1080px] table-fixed text-left text-sm">
                         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                             <tr><th className="w-40 px-4 py-3">Ngày</th><th className="w-48 px-4 py-3">Vườn</th><th className="w-32 px-4 py-3">Giai đoạn</th><th className="w-32 px-4 py-3">Hoạt động</th><th className="w-36 px-4 py-3">Vật tư</th><th className="w-28 px-4 py-3">Liều lượng</th><th className="w-16 px-3 py-3">PHI</th><th className="w-64 px-4 py-3">Ghi chú</th></tr>
