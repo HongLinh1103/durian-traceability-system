@@ -4,11 +4,11 @@ import { getOwnedStore, inventoryDocumentCode, requireRole } from "@/lib/store-m
 import { prisma } from "@/lib/prisma";
 
 const transitions: Record<string, string[]> = {
-    PENDING: ["CONFIRMED", "PREPARING", "REJECTED"],
-    CONFIRMED: ["PREPARING", "READY_FOR_DELIVERY", "SHIPPING"],
-    PREPARING: ["READY_FOR_DELIVERY", "SHIPPING"],
-    READY_FOR_DELIVERY: ["SHIPPING"],
-    SHIPPING: ["DELIVERED", "COMPLETED"],
+    PENDING: ["CONFIRMED", "PREPARING", "SHIPPING", "REJECTED"],
+    CONFIRMED: ["PREPARING", "READY_FOR_DELIVERY", "SHIPPING", "COMPLETED", "REJECTED"],
+    PREPARING: ["READY_FOR_DELIVERY", "SHIPPING", "COMPLETED", "REJECTED"],
+    READY_FOR_DELIVERY: ["SHIPPING", "DELIVERED", "COMPLETED", "REJECTED"],
+    SHIPPING: ["DELIVERED", "COMPLETED", "REJECTED"],
     DELIVERED: ["COMPLETED"],
 };
 
@@ -25,7 +25,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     try {
         const data = await prisma.$transaction(async (tx) => {
-            const needsExportDoc = ["CONFIRMED", "PREPARING"].includes(parsed.data.status) && !order.inventoryDocuments.some(d => d.type === "PX");
+            const needsExportDoc = ["CONFIRMED", "PREPARING", "READY_FOR_DELIVERY", "SHIPPING", "DELIVERED", "COMPLETED"].includes(parsed.data.status) && !order.inventoryDocuments.some(d => d.type === "PX");
             if (needsExportDoc) {
                 const code = await inventoryDocumentCode(tx, "PX");
                 const actor = await tx.user.findUnique({ where: { id: session.user.id }, select: { fullName: true } });
