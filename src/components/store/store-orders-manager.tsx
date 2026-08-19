@@ -472,8 +472,6 @@ export function StoreOrdersManager() {
                         const isPending = statusObj.key === "PENDING";
                         const isPreparing = statusObj.key === "PREPARING";
                         const isShipping = statusObj.key === "SHIPPING";
-                        const isCompleted = statusObj.key === "COMPLETED";
-                        const isCancelled = statusObj.key === "CANCELLED" || statusObj.key === "REJECTED";
 
                         const totalPayment = Number(order.subtotal) + Number(order.shippingFee || 0);
 
