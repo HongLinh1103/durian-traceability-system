@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
     AlertCircle,
     CheckCircle2,
-    Clock,
     FileText,
     Loader2,
     MapPin,
@@ -38,12 +37,55 @@ type Order = {
     subtotal: string;
     shippingFee: string;
     createdAt: string;
+    updatedAt?: string | null;
+    cancelledAt?: string | null;
     note?: string | null;
     rejectionReason?: string | null;
     farmer: { fullName?: string | null; phone: string };
     items: OrderItem[];
+    histories?: { toStatus: string; createdAt: string }[];
     inventoryDocuments: { code: string; type: string }[];
 };
+
+function formatOrderHistoryText(order: Order, statusObj: { key: string }) {
+    const formatTimeDate = (dateStr?: string | null) => {
+        if (!dateStr) return "";
+        const d = new Date(dateStr);
+        const hours = String(d.getHours()).padStart(2, "0");
+        const minutes = String(d.getMinutes()).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const year = d.getFullYear();
+        return `${hours}:${minutes} ngày ${day}/${month}/${year}`;
+    };
+
+    if (statusObj.key === "COMPLETED") {
+        const historyItem = order.histories?.slice().reverse().find((h) => h.toStatus === "COMPLETED" || h.toStatus === "DELIVERED");
+        const timeStr = formatTimeDate(historyItem?.createdAt || order.updatedAt || order.createdAt);
+        return timeStr ? `Hoàn tất lúc ${timeStr}` : "Đơn hàng đã hoàn tất giao và thanh toán";
+    }
+
+    if (statusObj.key === "CANCELLED" || statusObj.key === "REJECTED") {
+        const historyItem = order.histories?.slice().reverse().find((h) => h.toStatus === "CANCELLED" || h.toStatus === "REJECTED");
+        const timeStr = formatTimeDate(order.cancelledAt || historyItem?.createdAt || order.updatedAt || order.createdAt);
+        const prefix = statusObj.key === "REJECTED" ? "Từ chối lúc" : "Đã hủy lúc";
+        return timeStr ? `${prefix} ${timeStr}` : "Đơn hàng đã kết thúc";
+    }
+
+    if (statusObj.key === "SHIPPING") {
+        const historyItem = order.histories?.slice().reverse().find((h) => h.toStatus === "SHIPPING");
+        const timeStr = formatTimeDate(historyItem?.createdAt || order.updatedAt);
+        return timeStr ? `Bắt đầu giao lúc ${timeStr}` : "Đơn đang được vận chuyển đến nông dân";
+    }
+
+    if (statusObj.key === "PREPARING") {
+        const historyItem = order.histories?.slice().reverse().find((h) => h.toStatus === "PREPARING" || h.toStatus === "CONFIRMED");
+        const timeStr = formatTimeDate(historyItem?.createdAt || order.updatedAt);
+        return timeStr ? `Xác nhận lúc ${timeStr}` : "Đang chuẩn bị hàng và xuất kho";
+    }
+
+    return "Cửa hàng cần xác nhận đơn để xuất kho chuẩn bị hàng";
+}
 
 // 4 Standard Display Statuses
 export function getDisplayStatus(status: string): {
@@ -257,7 +299,7 @@ export function StoreOrdersManager() {
     return (
         <div className="space-y-6">
             {/* 1. BỐN CARD THỐNG KÊ TRỌNG TÂM (4 CORE ORDER STATUS CARDS) */}
-            <section aria-label="Thống kê trạng thái đơn hàng" className="grid grid-cols-2 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+            <section aria-label="Thống kê trạng thái đơn hàng" className="grid grid-cols-2 gap-3 sm:gap-3.5 lg:grid-cols-4">
                 {/* 1. CHỜ XÁC NHẬN */}
                 <button
                     type="button"
@@ -268,21 +310,18 @@ export function StoreOrdersManager() {
                             : "border-slate-200 bg-white hover:border-amber-300"
                     }`}
                 >
-                    <div className="flex items-center justify-between">
+                    <div>
                         <span className="text-xs font-bold uppercase tracking-wider text-amber-900">
                             Chờ xác nhận
                         </span>
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
-                            <Clock className="h-5 w-5" />
-                        </span>
+                        <div className="mt-2">
+                            <span className="text-2xl font-black text-slate-900 sm:text-3xl">
+                                {counts.pending}
+                            </span>
+                            <span className="ml-1 text-xs text-slate-500 font-medium">đơn</span>
+                        </div>
                     </div>
-                    <div className="mt-3">
-                        <span className="text-2xl font-black text-slate-900 sm:text-3xl">
-                            {counts.pending}
-                        </span>
-                        <span className="ml-1 text-xs text-slate-500 font-medium">đơn</span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-amber-800 font-medium">Cần xác nhận & chuẩn bị</p>
+                    <p className="mt-2 text-[11px] text-amber-800 font-medium">Cần xác nhận & chuẩn bị</p>
                 </button>
 
                 {/* 2. ĐANG CHUẨN BỊ HÀNG */}
@@ -295,21 +334,18 @@ export function StoreOrdersManager() {
                             : "border-slate-200 bg-white hover:border-blue-300"
                     }`}
                 >
-                    <div className="flex items-center justify-between">
+                    <div>
                         <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
                             Đang chuẩn bị hàng
                         </span>
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
-                            <PackageCheck className="h-5 w-5" />
-                        </span>
+                        <div className="mt-2">
+                            <span className="text-2xl font-black text-slate-900 sm:text-3xl">
+                                {counts.preparing}
+                            </span>
+                            <span className="ml-1 text-xs text-slate-500 font-medium">đơn</span>
+                        </div>
                     </div>
-                    <div className="mt-3">
-                        <span className="text-2xl font-black text-slate-900 sm:text-3xl">
-                            {counts.preparing}
-                        </span>
-                        <span className="ml-1 text-xs text-slate-500 font-medium">đơn</span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-blue-800 font-medium">Đang đóng gói & xuất kho</p>
+                    <p className="mt-2 text-[11px] text-blue-800 font-medium">Đang đóng gói & xuất kho</p>
                 </button>
 
                 {/* 3. ĐANG GIAO */}
@@ -322,21 +358,18 @@ export function StoreOrdersManager() {
                             : "border-slate-200 bg-white hover:border-purple-300"
                     }`}
                 >
-                    <div className="flex items-center justify-between">
+                    <div>
                         <span className="text-xs font-bold uppercase tracking-wider text-purple-900">
                             Đang giao
                         </span>
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
-                            <Truck className="h-5 w-5" />
-                        </span>
+                        <div className="mt-2">
+                            <span className="text-2xl font-black text-slate-900 sm:text-3xl">
+                                {counts.shipping}
+                            </span>
+                            <span className="ml-1 text-xs text-slate-500 font-medium">đơn</span>
+                        </div>
                     </div>
-                    <div className="mt-3">
-                        <span className="text-2xl font-black text-slate-900 sm:text-3xl">
-                            {counts.shipping}
-                        </span>
-                        <span className="ml-1 text-xs text-slate-500 font-medium">đơn</span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-purple-800 font-medium">Đang trên đường vận chuyển</p>
+                    <p className="mt-2 text-[11px] text-purple-800 font-medium">Đang trên đường vận chuyển</p>
                 </button>
 
                 {/* 4. HOÀN TẤT */}
@@ -349,21 +382,18 @@ export function StoreOrdersManager() {
                             : "border-slate-200 bg-white hover:border-emerald-300"
                     }`}
                 >
-                    <div className="flex items-center justify-between">
+                    <div>
                         <span className="text-xs font-bold uppercase tracking-wider text-emerald-900">
                             Hoàn tất
                         </span>
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                            <CheckCircle2 className="h-5 w-5" />
-                        </span>
+                        <div className="mt-2">
+                            <span className="text-2xl font-black text-slate-900 sm:text-3xl">
+                                {counts.completed}
+                            </span>
+                            <span className="ml-1 text-xs text-slate-500 font-medium">đơn</span>
+                        </div>
                     </div>
-                    <div className="mt-3">
-                        <span className="text-2xl font-black text-slate-900 sm:text-3xl">
-                            {counts.completed}
-                        </span>
-                        <span className="ml-1 text-xs text-slate-500 font-medium">đơn</span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-emerald-800 font-medium">Giao hàng thành công</p>
+                    <p className="mt-2 text-[11px] text-emerald-800 font-medium">Giao hàng thành công</p>
                 </button>
             </section>
 
@@ -502,19 +532,24 @@ export function StoreOrdersManager() {
                                             Danh sách vật tư đặt mua ({order.items.length} món)
                                         </h4>
                                         <div className="mt-3 divide-y divide-slate-100">
-                                            {order.items.map((item) => (
-                                                <div key={item.id} className="flex justify-between gap-3 py-2 text-sm">
-                                                    <div>
-                                                        <span className="font-semibold text-slate-800">{item.productName}</span>
-                                                        <span className="ml-2 font-bold text-slate-500">
-                                                            × {item.quantity} {item.unit}
-                                                        </span>
+                                            {order.items.map((item) => {
+                                                const itemTotal = Number(item.unitPrice) * item.quantity;
+                                                return (
+                                                    <div key={item.id} className="py-2.5 space-y-1">
+                                                        <div className="font-semibold text-slate-900 leading-snug">
+                                                            {item.productName}
+                                                        </div>
+                                                        <div className="flex items-center justify-between text-sm">
+                                                            <span className="text-slate-500 font-medium">
+                                                                {item.quantity} {item.unit} × {Number(item.unitPrice).toLocaleString("vi-VN")} đ
+                                                            </span>
+                                                            <b className="font-bold text-slate-900">
+                                                                {itemTotal.toLocaleString("vi-VN")} đ
+                                                            </b>
+                                                        </div>
                                                     </div>
-                                                    <b className="text-slate-900">
-                                                        {(Number(item.unitPrice) * item.quantity).toLocaleString("vi-VN")} đ
-                                                    </b>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
 
                                         <div className="mt-4 space-y-1.5 border-t border-slate-100 pt-3 text-sm">
@@ -562,12 +597,8 @@ export function StoreOrdersManager() {
 
                                 {/* Order Action Footer */}
                                 <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/40 px-5 py-3.5">
-                                    <div className="text-xs text-slate-500">
-                                        {isPending && "👉 Cửa hàng cần xác nhận đơn để xuất kho chuẩn bị hàng."}
-                                        {isPreparing && "📦 Đơn đang được chuẩn bị. Bấm Bắt đầu giao hàng khi gửi cho shipper/nhà xe."}
-                                        {isShipping && "🚚 Đơn đang được giao đến nông dân."}
-                                        {isCompleted && "✅ Đơn hàng đã hoàn tất giao và thanh toán."}
-                                        {isCancelled && "❌ Đơn hàng đã kết thúc."}
+                                    <div className="text-xs font-medium text-slate-500">
+                                        {formatOrderHistoryText(order, statusObj)}
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-2">
