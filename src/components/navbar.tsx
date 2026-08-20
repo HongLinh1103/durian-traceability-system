@@ -88,7 +88,12 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
     const hasMobileBottomNav = Boolean(userRole && ["ADMIN", "AREA_MANAGER", "FARMER", "STORE_OWNER", "COLLECTOR", "PROCESSING_FACILITY"].includes(userRole));
     const isCollector = userRole === "COLLECTOR";
     const isStoreOwner = userRole === "STORE_OWNER";
-    const visiblePublicLinks = (isCollector || isStoreOwner) ? [] : isAuthed ? publicLinks.filter((l) => l.href !== "/") : publicLinks;
+    const isProcessingFacility = userRole === "PROCESSING_FACILITY";
+    const visiblePublicLinks = (isCollector || isStoreOwner || isProcessingFacility)
+        ? []
+        : isAuthed
+            ? publicLinks.filter((l) => l.href !== "/")
+            : publicLinks;
     useEffect(() => {
         if (!isAuthed) { setCurrentUserName(null); return; }
         void fetch("/api/auth/me", { cache: "no-store" })

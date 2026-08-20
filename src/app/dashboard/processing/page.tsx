@@ -41,10 +41,10 @@ export default async function Page() {
 
     return (
         <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
-            <header className="rounded-3xl bg-gradient-to-br from-cyan-700 to-teal-500 p-6 text-white shadow-lg">
-                <p className="text-sm font-bold text-cyan-100">{facility?.name ?? "Cơ sở chế biến"}</p>
+            <header className="rounded-3xl bg-gradient-to-br from-brand-700 to-brand-500 p-6 text-white shadow-lg">
+                <p className="text-sm font-bold text-brand-100">{facility?.name ?? "Cơ sở chế biến"}</p>
                 <h1 className="mt-2 text-3xl font-black">Tổng quan cơ sở chế biến</h1>
-                <p className="mt-2 text-cyan-50">Theo dõi tiếp nhận nguyên liệu, mẻ chế biến, thành phẩm và công việc ưu tiên trong ngày.</p>
+                <p className="mt-2 text-brand-50">Theo dõi tiếp nhận nguyên liệu, mẻ chế biến, thành phẩm và công việc ưu tiên trong ngày.</p>
             </header>
 
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -65,7 +65,7 @@ export default async function Page() {
                         <p className="mt-1 text-sm text-slate-500">Hiển thị trực tiếp các việc cần thao tác để không bỏ sót công đoạn.</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <Link href="/dashboard/processing/raw-materials" className="rounded-xl bg-cyan-600 px-3 py-2 text-sm font-semibold text-white">Xem nguyên liệu</Link>
+                        <Link href="/dashboard/processing/raw-materials" className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white">Xem nguyên liệu</Link>
                         <Link href="/dashboard/processing/finished-products" className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">Xem thành phẩm</Link>
                     </div>
                 </div>
@@ -85,7 +85,7 @@ export default async function Page() {
 function KpiCard({ icon: Icon, label, value }: { icon: typeof Boxes; label: string; value: string }) {
     return (
         <article className="rounded-3xl border bg-white p-5 shadow-sm">
-            <Icon className="h-6 w-6 text-cyan-700" />
+            <Icon className="h-6 w-6 text-brand-700" />
             <p className="mt-4 text-sm text-slate-500">{label}</p>
             <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
         </article>

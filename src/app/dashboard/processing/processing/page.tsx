@@ -15,7 +15,7 @@ export default async function Page() {
     return (
         <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
             <header className="rounded-3xl border bg-white p-5 shadow-sm">
-                <p className="text-sm font-bold uppercase tracking-wider text-cyan-700">Module chế biến</p>
+                <p className="text-sm font-bold uppercase tracking-wider text-brand-700">Module chế biến</p>
                 <h1 className="mt-1 text-3xl font-black text-slate-900">Lô chế biến</h1>
                 <p className="mt-2 text-sm text-slate-500">Tạo mẻ chế biến từ một hoặc nhiều lô nguyên liệu, luôn giữ lineage nguồn đầu vào.</p>
             </header>
@@ -32,7 +32,7 @@ export default async function Page() {
                     <article key={lot.id} className="rounded-3xl border bg-white p-5 shadow-sm">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
-                                <p className="text-xs font-bold uppercase tracking-wide text-cyan-700">{lot.code}</p>
+                                <p className="text-xs font-bold uppercase tracking-wide text-brand-700">{lot.code}</p>
                                 <h2 className="mt-1 text-lg font-black text-slate-900">{lot.method}</h2>
                                 <p className="mt-1 text-sm text-slate-500">Nguồn: {lot.rawMaterialLotCodes.join(", ")}</p>
                             </div>
@@ -47,7 +47,7 @@ export default async function Page() {
                             <Row label="Tỷ lệ hao hụt" value={`${lot.lossRate.toLocaleString("vi-VN")} %`} />
                             <Row label="Người phụ trách" value={lot.supervisor} />
                         </dl>
-                        <p className="mt-3 rounded-xl bg-cyan-50 px-3 py-2 text-xs text-cyan-900">{lot.note}</p>
+                        <p className="mt-3 rounded-xl bg-brand-50 px-3 py-2 text-xs text-brand-800">{lot.note}</p>
                     </article>
                 ))}
 
@@ -62,7 +62,7 @@ export default async function Page() {
 function Metric({ icon: Icon, label, value }: { icon: typeof Factory; label: string; value: number }) {
     return (
         <article className="rounded-3xl border bg-white p-4 shadow-sm">
-            <Icon className="h-5 w-5 text-cyan-700" />
+            <Icon className="h-5 w-5 text-brand-700" />
             <p className="mt-3 text-sm text-slate-500">{label}</p>
             <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
         </article>
