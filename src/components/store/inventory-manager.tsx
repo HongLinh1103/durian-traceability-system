@@ -442,14 +442,18 @@ function InventoryManagerContent() {
                                 onChange={(event) => setBusinessType(event.target.value)}
                                 className="mt-1 h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 font-semibold text-slate-900"
                             >
-                                <optgroup label="Nhập kho">
+                                <optgroup label="Phiếu nhập kho (PN)">
                                     <option value="SUPPLIER_IMPORT">Nhập từ nhà cung cấp</option>
                                     <option value="CUSTOMER_RETURN">Khách trả hàng</option>
                                 </optgroup>
-                                <optgroup label="Xuất kho">
+                                <optgroup label="Phiếu xuất kho (PX)">
                                     <option value="SALE_EXPORT">Xuất bán hàng</option>
                                     <option value="SUPPLIER_RETURN">Trả nhà cung cấp</option>
                                     <option value="DISPOSAL_EXPORT">Xuất hủy</option>
+                                </optgroup>
+                                <optgroup label="Phiếu điều chỉnh (DC)">
+                                    <option value="STOCKTAKE_INCREASE">Kiểm kê tăng (+)</option>
+                                    <option value="STOCKTAKE_DECREASE">Kiểm kê giảm (−)</option>
                                 </optgroup>
                             </select>
                         </label>

@@ -634,6 +634,8 @@ async function main() {
 
     let totalImportDocsCount = 0;
     let totalImportMovementsCount = 0;
+    const importDailySeqMap = new Map<string, number>();
+    const exportDailySeqMap = new Map<string, number>();
 
     for (let i = 0; i < DEMO_PRODUCTS.length; i++) {
         const p = DEMO_PRODUCTS[i];
@@ -697,7 +699,11 @@ async function main() {
             const stockBefore = runningStock;
             runningStock += batch.qty;
 
-            const docCode = `PN-MP-${p.code}-${b + 1}`;
+            const dayKey = `${batch.date.getFullYear()}${String(batch.date.getMonth() + 1).padStart(2, "0")}${String(batch.date.getDate()).padStart(2, "0")}`;
+            const seq = (importDailySeqMap.get(dayKey) || 0) + 1;
+            importDailySeqMap.set(dayKey, seq);
+            const docCode = `PN-${dayKey}-${String(seq).padStart(3, "0")}`;
+
             const doc = await prisma.inventoryDocument.create({
                 data: {
                     storeId: store.id,
@@ -920,12 +926,17 @@ async function main() {
             },
         });
 
-        // If completed or delivered, create export inventory document
-        if (["COMPLETED", "DELIVERED"].includes(ordConfig.status)) {
+        // If confirmed or beyond, create export inventory document
+        if (["CONFIRMED", "PREPARING", "READY_FOR_DELIVERY", "SHIPPING", "DELIVERED", "COMPLETED"].includes(ordConfig.status)) {
+            const dayKey = `${orderDate.getFullYear()}${String(orderDate.getMonth() + 1).padStart(2, "0")}${String(orderDate.getDate()).padStart(2, "0")}`;
+            const seq = (exportDailySeqMap.get(dayKey) || 0) + 1;
+            exportDailySeqMap.set(dayKey, seq);
+            const docCode = `PX-${dayKey}-${String(seq).padStart(3, "0")}`;
+
             const exportDoc = await prisma.inventoryDocument.create({
                 data: {
                     storeId: store.id,
-                    code: `PX-MP-${createdOrder.orderCode}`,
+                    code: docCode,
                     type: "PX",
                     businessType: "SALE_EXPORT",
                     orderId: createdOrder.id,

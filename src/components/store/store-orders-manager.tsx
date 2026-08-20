@@ -506,21 +506,30 @@ export function StoreOrdersManager() {
                                 </header>
 
                                 {/* Linked Warehouse Documents */}
-                                {order.inventoryDocuments?.length > 0 && (
-                                    <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/30 px-5 py-2.5 text-xs">
-                                        <span className="font-semibold text-slate-500">Chứng từ xuất kho:</span>
+                                {order.inventoryDocuments?.length > 0 ? (
+                                    <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-emerald-50/30 px-5 py-2.5 text-xs">
+                                        <span className="font-semibold text-slate-600">Chứng từ xuất kho:</span>
                                         {order.inventoryDocuments.map((doc) => (
                                             <Link
                                                 key={doc.code}
                                                 href={`/dashboard/store/inventory/${encodeURIComponent(doc.code)}`}
-                                                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 font-mono font-bold text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition"
+                                                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/80 px-3 py-1 font-mono font-bold text-emerald-800 border border-emerald-300/80 hover:bg-emerald-200/70 transition shadow-2xs"
                                             >
-                                                <FileText className="h-3 w-3" />
+                                                <FileText className="h-3.5 w-3.5" />
                                                 {doc.code}
                                             </Link>
                                         ))}
                                     </div>
-                                )}
+                                ) : order.status === "PENDING" ? (
+                                    <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 bg-amber-50/50 px-5 py-2 text-xs text-amber-800">
+                                        <span className="font-semibold">Chưa có chứng từ:</span>
+                                        <span className="text-amber-700">Phiếu xuất kho (PX) sẽ tự động được tạo và trừ tồn khi bấm &quot;Xác nhận đơn&quot;.</span>
+                                    </div>
+                                ) : order.status === "REJECTED" ? (
+                                    <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-5 py-2 text-xs text-slate-500">
+                                        <span>Không có chứng từ xuất kho (Đơn hàng đã bị từ chối).</span>
+                                    </div>
+                                ) : null}
 
                                 {/* Order Details Body */}
                                 <div className="grid gap-6 p-5 lg:grid-cols-[1fr_320px]">

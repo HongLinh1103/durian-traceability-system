@@ -7,6 +7,7 @@ const documentSchema = z.object({
     businessType: z.enum([
         "SUPPLIER_IMPORT", "CUSTOMER_RETURN", "SALE_EXPORT",
         "SUPPLIER_RETURN", "DISPOSAL_EXPORT",
+        "STOCKTAKE_INCREASE", "STOCKTAKE_DECREASE",
     ]),
     createdDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     items: z.array(z.object({
@@ -27,6 +28,8 @@ const businessConfig = {
     SALE_EXPORT: { type: "PX", movement: "ORDER_SALE", direction: -1 },
     DISPOSAL_EXPORT: { type: "PX", movement: "EXPORT", direction: -1 },
     SUPPLIER_RETURN: { type: "PX", movement: "EXPORT", direction: -1 },
+    STOCKTAKE_INCREASE: { type: "DC", movement: "IMPORT", direction: 1 },
+    STOCKTAKE_DECREASE: { type: "DC", movement: "EXPORT", direction: -1 },
 } as const;
 
 export async function GET(request: Request) {
