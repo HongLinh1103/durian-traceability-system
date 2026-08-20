@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcryptjs from "bcryptjs";
+import { seedStoreDemo } from "./seed-store-demo";
 
 const prisma = new PrismaClient();
 
@@ -27,7 +28,7 @@ const seedUsers = [
 ].filter((user) => user.role === "ADMIN");
 
 async function main() {
-    console.log("🌱 Seeding database with 4 test accounts...");
+    console.log("🌱 Seeding database with accounts...");
     console.log("============================================");
 
     for (const userData of seedUsers) {
@@ -231,21 +232,8 @@ async function main() {
         }
     }
 
-    const storeOwner = await prisma.user.upsert({
-        where: { phone: "0909000001" },
-        update: { role: "STORE_OWNER", isApproved: true, accountStatus: "APPROVED", isLocked: false },
-        create: { phone: "0909000001", email: "store.owner@triviet.vn", password: await bcryptjs.hash("123456", SALT_ROUNDS), fullName: "Chủ cửa hàng Vật tư Trị An", role: "STORE_OWNER", isApproved: true, accountStatus: "APPROVED", approvedAt: new Date() },
-    });
-    const store = await prisma.store.upsert({
-        where: { id: "seed-store-tri-an" },
-        update: { status: "APPROVED", deletedAt: null },
-        create: { id: "seed-store-tri-an", ownerId: storeOwner.id, representativeName: storeOwner.fullName || "Chủ cửa hàng", representativePhone: storeOwner.phone, representativeEmail: storeOwner.email, identityNumber: "079000000001", name: "Cửa hàng Vật tư Nông nghiệp Trị An", taxOrBusinessCode: "MST-TRIAN-001", address: "Trị An, Vĩnh Cửu, Đồng Nai", phone: "0909000001", openingHours: "07:00 - 18:00", description: "Cửa hàng vật tư mẫu phục vụ kiểm thử hệ thống.", status: "APPROVED", submittedAt: new Date(), approvedAt: new Date() },
-    });
-    await prisma.storeProduct.upsert({
-        where: { id: "seed-store-product-npk" },
-        update: { status: "APPROVED", deletedAt: null },
-        create: { id: "seed-store-product-npk", storeId: store.id, type: "FERTILIZER", name: "Đầu Trâu NPK 20-20-15", brand: "Đầu Trâu", manufacturer: "Bình Điền", origin: "Việt Nam", usagePurpose: "Bổ sung cân đối đạm, lân và kali cho cây trồng.", usageInstructions: "Dùng theo hướng dẫn trên bao bì và tư vấn kỹ thuật.", packaging: "Bao 25 kg", price: 520000, salePrice: 499000, stock: 30, unit: "bao", composition: "NPK 20-20-15", safetyWarnings: "Bảo quản khô ráo, tránh xa trẻ em.", status: "APPROVED" },
-    });
+    // ─── Seed Store Owner, Products, Inventory Documents & Orders ───
+    await seedStoreDemo();
 
     console.log("\n============================================");
     console.log("🌱 Seed completed successfully!");

@@ -511,7 +511,7 @@ function pseudoRandom(seed: number) {
     return x - Math.floor(x);
 }
 
-async function main() {
+export async function seedStoreDemo() {
     console.log("🌱 STARTING STORE FINANCE DEMO SEED");
     console.log("=================================================");
 
@@ -1147,11 +1147,13 @@ Owner:               ${owner.fullName} (${owner.phone} / ${owner.email})
 `);
 }
 
-main()
-    .catch((e) => {
-        console.error("❌ Seed error:", e);
-        process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
-    });
+if (require.main === module) {
+    seedStoreDemo()
+        .catch((e) => {
+            console.error("❌ Seed error:", e);
+            process.exit(1);
+        })
+        .finally(async () => {
+            await prisma.$disconnect();
+        });
+}

@@ -305,11 +305,10 @@ function InventoryManagerContent() {
                         key={value}
                         type="button"
                         onClick={() => setActiveTab(value)}
-                        className={`whitespace-nowrap border-b-2 px-5 py-3 text-sm font-bold transition-colors ${
-                            activeTab === value
+                        className={`whitespace-nowrap border-b-2 px-5 py-3 text-sm font-bold transition-colors ${activeTab === value
                                 ? "border-emerald-600 text-emerald-700"
                                 : "border-transparent text-slate-500 hover:text-slate-900"
-                        }`}
+                            }`}
                     >
                         {label}
                     </button>
@@ -382,18 +381,17 @@ function InventoryManagerContent() {
                                                 {product.type === "FERTILIZER"
                                                     ? "Phân bón"
                                                     : product.type === "PESTICIDE"
-                                                      ? "Thuốc BVTV"
-                                                      : "Dụng cụ / Khác"}
+                                                        ? "Thuốc BVTV"
+                                                        : "Dụng cụ / Khác"}
                                             </td>
                                             <td className="p-4">{product.unit}</td>
                                             <td
-                                                className={`p-4 text-right text-lg font-black ${
-                                                    product.stock === 0
+                                                className={`p-4 text-right text-lg font-black ${product.stock === 0
                                                         ? "text-red-600"
                                                         : product.stock <= 5
-                                                          ? "text-amber-600"
-                                                          : "text-emerald-700"
-                                                }`}
+                                                            ? "text-amber-600"
+                                                            : "text-emerald-700"
+                                                    }`}
                                             >
                                                 {product.stock}
                                             </td>
@@ -530,7 +528,7 @@ function InventoryManagerContent() {
                                                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-xs font-black text-white">
                                                     {index + 1}
                                                 </span>
-                                                <span className="text-xs font-bold text-slate-800">Dòng #{index + 1}</span>
+                                                <span className="text-xs font-bold text-slate-800">Sản phẩm{index + 1}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 {product && (
@@ -913,11 +911,10 @@ function InventoryManagerContent() {
                                                 </td>
                                                 <td className="whitespace-nowrap px-3.5 py-2.5">
                                                     <span
-                                                        className={`inline-flex whitespace-nowrap items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                                                            incoming
+                                                        className={`inline-flex whitespace-nowrap items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${incoming
                                                                 ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80"
                                                                 : "bg-amber-50 text-amber-800 border border-amber-200/80"
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {incoming ? (
                                                             <ArrowDownToLine className="mr-1 h-3 w-3 shrink-0" />
