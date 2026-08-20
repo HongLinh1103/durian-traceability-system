@@ -8,6 +8,7 @@ import {
     Bell,
     Boxes,
     BookOpenCheck,
+    CalendarDays,
     CircleDollarSign,
     Cog,
     ClipboardList,
@@ -57,6 +58,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
+            { label: "Kế hoạch", description: "Lập lịch và theo dõi công việc canh tác", href: "/dashboard/farmer/plans", icon: CalendarDays },
             { label: "Tài liệu", description: "Tra cứu tài liệu kỹ thuật canh tác", href: "/documents", icon: BookOpenCheck },
             { label: "Tin tức", description: "Theo dõi bản tin nông nghiệp mới", href: "/news", icon: Bell },
             { label: "Vật tư", description: "Mua vật tư và theo dõi đơn hàng", href: "/materials", icon: ShoppingBag },

@@ -67,10 +67,10 @@ async function seedHarvests(farms) {
   for (const [index, farm] of farms.slice(0, 2).entries()) {
     const facility = facilities.find((value) => value.type === (index ? "PROCESSING_FACILITY" : "COLLECTOR"));
     if (!facility) continue;
-    const code = `TH-DEMO-20260817-00${index + 1}`;
+    const code = `TH-20260817-00${index + 1}`;
     const harvest = { farmId: farm.id, farmerId: farm.farmerId, buyerType: facility.type, buyerFacilityId: facility.id, buyerUserId: facility.ownerId, status: index ? "CONFIRMED" : "WAITING_CONFIRMATION", expectedHarvestDate: atDay(7 + index), durianVariety: farm.durianVariety, expectedTreeCount: Math.round(farm.totalTrees * 0.8), expectedWeight: 3500 + index * 1000, weightUnit: "kg", expectedPricePerKg: 65000, deliveryMethod: "BUYER_PICKUP", transactionNote: "Phieu thu hoach mau lien ket voi doi tac." };
     const record = await prisma.harvestRecord.upsert({ where: { code }, update: harvest, create: { code, ...harvest } });
-    await prisma.harvestVarietyItem.upsert({ where: { harvestId_durianVariety: { harvestId: record.id, durianVariety: farm.durianVariety } }, update: { expectedWeight: harvest.expectedWeight }, create: { harvestId: record.id, durianVariety: farm.durianVariety, expectedWeight: harvest.expectedWeight } });
+    await prisma.harvestVarietyItem.upsert({ where: { harvestId_durianVariety: { harvestId: record.id, durianVariety: farm.durianVariety } }, update: { expectedWeight: harvest.expectedWeight, expectedPricePerKg: harvest.expectedPricePerKg }, create: { harvestId: record.id, durianVariety: farm.durianVariety, expectedWeight: harvest.expectedWeight, expectedPricePerKg: harvest.expectedPricePerKg } });
     await prisma.notification.upsert({ where: { id: `demo-harvest-notification-${index + 1}` }, update: { userId: facility.ownerId, title: "Phieu thu hoach moi", message: `${farm.farmName} gui phieu ${code}.`, type: "HARVEST_REQUEST", isRead: false }, create: { id: `demo-harvest-notification-${index + 1}`, userId: facility.ownerId, title: "Phieu thu hoach moi", message: `${farm.farmName} gui phieu ${code}.`, type: "HARVEST_REQUEST" } });
   }
 }

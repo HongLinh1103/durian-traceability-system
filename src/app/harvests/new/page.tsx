@@ -238,6 +238,15 @@ export default function NewHarvestPage() {
             return;
         }
 
+        if (requiresBuyer && varietyRows.some(row => !Number(row.expectedPricePerKg) || Number(row.expectedPricePerKg) <= 0)) {
+            toast({
+                title: "Chưa nhập giá đề xuất",
+                description: "Vui lòng nhập giá đề xuất cho tất cả giống khi gửi phiếu đến bên thu mua.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         const selectedVars = varietyRows.map(r => r.durianVariety);
         if (new Set(selectedVars).size !== selectedVars.length) {
             toast({
@@ -538,6 +547,7 @@ export default function NewHarvestPage() {
                                                         placeholder="Giá dự kiến"
                                                         value={row.expectedPricePerKg}
                                                         onChange={e => updateVarietyRow(index, "expectedPricePerKg", e.target.value)}
+                                                        required={requiresBuyer}
                                                         className="h-11 rounded-xl pr-11 text-xs sm:text-sm"
                                                     />
                                                     <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
@@ -705,4 +715,3 @@ export default function NewHarvestPage() {
         </main>
     );
 }
-

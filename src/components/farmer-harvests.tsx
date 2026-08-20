@@ -20,6 +20,7 @@ type Row = {
     weightUnit: string;
     expectedHarvestDate: string;
     actualWeight?: string | number | null;
+    expectedPricePerKg?: string | number | null;
     farm: { farmName: string };
     buyerFacility?: { name: string } | null;
 };
@@ -153,6 +154,11 @@ export function FarmerHarvests({ initial }: { initial: Row[] }) {
                                 <p className="font-semibold text-brand-700">
                                     Dự kiến: {item.expectedWeight} {item.weightUnit}
                                 </p>
+                                {item.expectedPricePerKg != null && Number(item.expectedPricePerKg) > 0 && (
+                                    <p className="font-semibold text-brand-700">
+                                        Giá đề xuất: {Number(item.expectedPricePerKg).toLocaleString("vi-VN")} đ/kg
+                                    </p>
+                                )}
                                 {item.actualWeight != null && (
                                     <p className="font-semibold text-blue-700">
                                         Thực tế: {item.actualWeight} {item.weightUnit}
@@ -337,4 +343,3 @@ export function FarmerHarvests({ initial }: { initial: Row[] }) {
         </>
     );
 }
-

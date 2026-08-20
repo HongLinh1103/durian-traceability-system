@@ -83,10 +83,23 @@ export async function POST(request: Request) {
         }
 
         const totalExpectedWeight = value.varietyItems.reduce((total, item) => total + item.expectedWeight, 0);
+        const totalExpectedValue = value.varietyItems.reduce(
+            (total, item) => total + item.expectedWeight * Number(item.expectedPricePerKg || 0),
+            0,
+        );
+        const weightedExpectedPrice = totalExpectedValue > 0 ? totalExpectedValue / totalExpectedWeight : null;
 
         const safeBuyerType = (value.buyerType && ["UNDETERMINED", "COLLECTOR", "PROCESSING_FACILITY", "SELF_CONSUMPTION"].includes(value.buyerType))
             ? (value.buyerType as "UNDETERMINED" | "COLLECTOR" | "PROCESSING_FACILITY" | "SELF_CONSUMPTION")
             : "UNDETERMINED";
+
+        if (["COLLECTOR", "PROCESSING_FACILITY"].includes(safeBuyerType)
+            && value.varietyItems.some(item => !item.expectedPricePerKg || item.expectedPricePerKg <= 0)) {
+            return NextResponse.json(
+                { success: false, message: "Vui lòng nhập giá đề xuất cho tất cả giống khi gửi phiếu đến bên thu mua." },
+                { status: 400 },
+            );
+        }
 
         let facility = null;
         if (["COLLECTOR", "PROCESSING_FACILITY"].includes(safeBuyerType) && value.buyerFacilityId) {
@@ -147,7 +160,7 @@ export async function POST(request: Request) {
                 expectedWeight: totalExpectedWeight,
                 weightUnit: "kg",
                 expectedSaleWeight: facility ? totalExpectedWeight : null,
-                expectedPricePerKg: value.expectedPricePerKg || null,
+                expectedPricePerKg: weightedExpectedPrice,
                 expectedBuyerArrivalDate: arrivalDate,
                 deliveryMethod: safeDeliveryMethod,
                 transactionNote: value.transactionNote?.trim() || null,
@@ -188,5 +201,4 @@ export async function POST(request: Request) {
         }, { status: 500 });
     }
 }
-
 
