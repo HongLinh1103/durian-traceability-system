@@ -42,7 +42,7 @@ async function main() {
     for (const account of users) {
         const user = await saveUser(account);
         savedUsers.set(account.phone, user);
-        console.log(`✓ ${account.role}: ${account.fullName} (${account.phone})`);
+        console.log(`[OK] ${account.role}: ${account.fullName} (${account.phone})`);
     }
     for (const farm of farms) {
         const farmer = savedUsers.get(farm.farmerPhone);
@@ -58,7 +58,7 @@ async function main() {
             create: { ...farm, farmerPhone: undefined, farmerId: farmer.id, areaUnit: "HECTARE", isActive: true, isInSeason: true },
         });
         await prisma.user.update({ where: { id: farmer.id }, data: { registeredAreaSize: farm.areaSize, registeredTotalTrees: farm.totalTrees, registeredDurianVariety: farm.durianVariety, province: farm.province, district: farm.district, ward: farm.ward, address: farm.address } });
-        console.log(`✓ FARM: ${farm.farmName} (${farm.farmCode})`);
+        console.log(`[OK] FARM: ${farm.farmName} (${farm.farmCode})`);
     }
     for (const account of partners) {
         const user = await saveUser({ ...account, approved: true });
@@ -67,7 +67,7 @@ async function main() {
             update: { ...account.facility, status: "APPROVED", reviewReason: null, approvedAt: new Date(), deletedAt: null },
             create: { ownerId: user.id, ...account.facility, status: "APPROVED", approvedAt: new Date() },
         });
-        console.log(`✓ ${account.role}: ${account.fullName} (${account.phone})`);
+        console.log(`[OK] ${account.role}: ${account.fullName} (${account.phone})`);
     }
 }
 

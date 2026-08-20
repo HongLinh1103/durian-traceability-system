@@ -1,9 +1,9 @@
-# Master Data & Account Approval Implementation ✅
+# Master Data & Account Approval Implementation
 
 ## Phase 1: Prisma Schema & Migration
 - [x] Add models: DurianVariety, Pesticide (with GaccChemicalStatus enum), Fertilizer
 - [x] Run: prisma format, generate, db push
-- [x] Update seed.ts ✅ seeded successfully
+- [x] Update seed.ts — seeded successfully
 
 ## Phase 2: Zod Validation Schemas
 - [x] Create src/lib/validations/master-data.ts

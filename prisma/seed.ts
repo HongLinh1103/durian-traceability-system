@@ -28,7 +28,7 @@ const seedUsers = [
 ].filter((user) => user.role === "ADMIN");
 
 async function main() {
-    console.log("🌱 Seeding database with accounts...");
+    console.log("[INFO] Seeding database with accounts...");
     console.log("============================================");
 
     for (const userData of seedUsers) {
@@ -41,7 +41,7 @@ async function main() {
         const hashedPassword = await bcryptjs.hash(userData.password, SALT_ROUNDS);
 
         if (existingUser) {
-            console.log(`\n📝 Updating account: ${userData.fullName} (${userData.role})`);
+            console.log(`\n[INFO] Updating account: ${userData.fullName} (${userData.role})`);
             await prisma.user.update({
                 where: { id: existingUser.id },
                 data: {
@@ -55,9 +55,9 @@ async function main() {
                     approvedAt: new Date(),
                 },
             });
-            console.log(`   ✅ Updated successfully!`);
+            console.log(`   [OK] Updated successfully!`);
         } else {
-            console.log(`\n📝 Creating account: ${userData.fullName} (${userData.role})`);
+            console.log(`\n[INFO] Creating account: ${userData.fullName} (${userData.role})`);
             await prisma.user.create({
                 data: {
                     ...userData,
@@ -65,7 +65,7 @@ async function main() {
                     approvedAt: new Date(),
                 },
             });
-            console.log(`   ✅ Created successfully!`);
+            console.log(`   [OK] Created successfully!`);
         }
     }
 
@@ -176,10 +176,10 @@ async function main() {
             managedRegions: [managedRegion],
         },
     });
-    console.log("   ✅ Seeded AREA_MANAGER 0909123456 and region MSVT-DN-TRIAN-001");
+    console.log("   [OK] Seeded AREA_MANAGER 0909123456 and region MSVT-DN-TRIAN-001");
 
     console.log("\n============================================");
-    console.log("📋 All seed accounts created/updated:");
+    console.log("[INFO] All seed accounts created/updated:");
     console.log("────────────────────────────────────────────");
     console.log("│ # │ Role          │ Phone      │ Password   │ Name");
     console.log("│───│───────────────│────────────│────────────│──────────────────────────────");
@@ -189,7 +189,7 @@ async function main() {
 
     // ─── Seed Master Data: Thuốc BVTV (Demo) ─────────────────
     // Lưu ý: Không seed dữ liệu GACC không có nguồn xác nhận. Đây chỉ là demo.
-    console.log("\n🌱 Seeding master data: Pesticides (demo)...");
+    console.log("\n[INFO] Seeding master data: Pesticides (demo)...");
 
     const demoPesticides = [
         {
@@ -226,9 +226,9 @@ async function main() {
         const existing = await prisma.pesticide.findUnique({ where: { code: pest.code } });
         if (!existing) {
             await prisma.pesticide.create({ data: { ...pest, isActive: true } });
-            console.log(`   ✅ Created pesticide: ${pest.code} - ${pest.tradeName}`);
+            console.log(`   [OK] Created pesticide: ${pest.code} - ${pest.tradeName}`);
         } else {
-            console.log(`   ⏭️  Skipped (exists): ${pest.code} - ${pest.tradeName}`);
+            console.log(`   [SKIP]  Skipped (exists): ${pest.code} - ${pest.tradeName}`);
         }
     }
 
@@ -236,12 +236,12 @@ async function main() {
     await seedStoreDemo();
 
     console.log("\n============================================");
-    console.log("🌱 Seed completed successfully!");
+    console.log("[INFO] Seed completed successfully!");
 }
 
 main()
     .catch((e) => {
-        console.error("❌ Seed failed:", e);
+        console.error("[ERROR] Seed failed:", e);
         process.exit(1);
     })
     .finally(async () => {

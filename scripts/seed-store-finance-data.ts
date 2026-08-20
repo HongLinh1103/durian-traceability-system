@@ -484,11 +484,11 @@ const PRODUCTS_CATALOG = [
 
 async function main() {
     console.log("================================================================================");
-    console.log("🚀 STARTING COMPREHENSIVE STORE FINANCE & SALES SEEDING");
+    console.log("[INFO] STARTING COMPREHENSIVE STORE FINANCE & SALES SEEDING");
     console.log("================================================================================");
 
     const now = new Date(); // Current local time: 2026-08-18
-    console.log(`🕒 System reference date: ${now.toISOString()} (${now.toString()})`);
+    console.log(`[INFO] System reference date: ${now.toISOString()} (${now.toString()})`);
 
     // 1. Verify and retrieve STORE_OWNER
     const owner = await prisma.user.findUnique({
@@ -497,7 +497,7 @@ async function main() {
     if (!owner) {
         throw new Error(`Store owner with phone ${OWNER_PHONE} not found in database!`);
     }
-    console.log(`✅ Store Owner: ${owner.fullName} (${owner.phone}) [ID: ${owner.id}]`);
+    console.log(`[OK] Store Owner: ${owner.fullName} (${owner.phone}) [ID: ${owner.id}]`);
 
     // 2. Ensure Primary Store exists and is APPROVED
     const store = await prisma.store.upsert({
@@ -535,12 +535,12 @@ async function main() {
             approvedAt: new Date(now.getTime() - 95 * 24 * 60 * 60 * 1000),
         },
     });
-    console.log(`✅ Store: ${store.name} [ID: ${store.id}]`);
+    console.log(`[OK] Store: ${store.name} [ID: ${store.id}]`);
 
     // Clean up duplicate demo store if present
     const demoStore = await prisma.store.findUnique({ where: { id: "demo-store-minh-phat" } });
     if (demoStore) {
-        console.log("🧹 Cleaning previous secondary demo store demo-store-minh-phat...");
+        console.log("[INFO] Cleaning previous secondary demo store demo-store-minh-phat...");
         await prisma.storeExpense.deleteMany({ where: { storeId: demoStore.id } });
         await prisma.orderStatusHistory.deleteMany({ where: { order: { storeId: demoStore.id } } });
         await prisma.orderItem.deleteMany({ where: { order: { storeId: demoStore.id } } });
@@ -561,10 +561,10 @@ async function main() {
     if (existingFarmers.length === 0) {
         throw new Error("No approved FARMER accounts found in DB!");
     }
-    console.log(`👨‍🌾 Found ${existingFarmers.length} approved FARMER accounts in DB.`);
+    console.log(`[INFO] Found ${existingFarmers.length} approved FARMER accounts in DB.`);
 
     // 4. Clean existing test data on seed-store-tri-an to ensure idempotence
-    console.log("🧹 Resetting existing orders, inventory movements & expenses for seed-store-tri-an...");
+    console.log("[INFO] Resetting existing orders, inventory movements & expenses for seed-store-tri-an...");
     await prisma.storeExpense.deleteMany({ where: { storeId: store.id } });
     await prisma.orderStatusHistory.deleteMany({ where: { order: { storeId: store.id } } });
     await prisma.orderItem.deleteMany({ where: { order: { storeId: store.id } } });
@@ -573,7 +573,7 @@ async function main() {
     await prisma.order.deleteMany({ where: { storeId: store.id } });
 
     // 5. Upsert 24 Products and Initial Import Documents (PN)
-    console.log(`📦 Upserting ${PRODUCTS_CATALOG.length} store products & import stock records...`);
+    console.log(`[INFO] Upserting ${PRODUCTS_CATALOG.length} store products & import stock records...`);
     const createdProducts: Array<{
         id: string;
         code: string;
@@ -729,7 +729,7 @@ async function main() {
     }
 
     // 6. Generate 65 Realistic Orders Spanning across Today, 7 Days, This Month, 30 Days & History
-    console.log("🛒 Generating realistic orders linked to FARMERs across multiple timeframes...");
+    console.log("[INFO] Generating realistic orders linked to FARMERs across multiple timeframes...");
 
     type OrderConfig = {
         dayOffset: number; // 0 = today, 1 = yesterday, etc.
@@ -1008,7 +1008,7 @@ async function main() {
     }
 
     // 8. Generate 30 Realistic Store Operational Expenses across 90 Days
-    console.log("💸 Generating realistic operational store expenses...");
+    console.log("[INFO] Generating realistic operational store expenses...");
 
     const expenseTemplates = [
         { cat: "SHIPPING" as StoreExpenseCategory, title: "Cước xe tải chở phân bón đợt hàng về kho Trị An", amt: 450000, recipient: "Công ty Vận tải Trọng Tấn" },
@@ -1054,7 +1054,7 @@ async function main() {
     }
 
     console.log("================================================================================");
-    console.log("🔍 RUNNING COMPREHENSIVE POST-CREATION VERIFICATION & INTEGRITY CHECKS");
+    console.log("[INFO] RUNNING COMPREHENSIVE POST-CREATION VERIFICATION & INTEGRITY CHECKS");
     console.log("================================================================================");
 
     // 1. Verify Orders in DB
@@ -1064,7 +1064,7 @@ async function main() {
         orderBy: { createdAt: "desc" },
     });
 
-    console.log(`✅ Total Orders created: ${dbOrders.length}`);
+    console.log(`[OK] Total Orders created: ${dbOrders.length}`);
     if (dbOrders.length < 20) {
         throw new Error(`Expected at least 20 orders, found ${dbOrders.length}`);
     }
@@ -1089,7 +1089,7 @@ async function main() {
             }
         }
     }
-    console.log("✅ All Orders have valid FARMER foreign keys, non-empty items, and recorded purchase prices.");
+    console.log("[OK] All Orders have valid FARMER foreign keys, non-empty items, and recorded purchase prices.");
 
     // 3. Check Inventory Stocks
     const dbProducts = await prisma.storeProduct.findMany({
@@ -1100,11 +1100,11 @@ async function main() {
             throw new Error(`Product ${p.name} has negative stock: ${p.stock}`);
         }
     }
-    console.log(`✅ All ${dbProducts.length} StoreProducts have non-negative stock (stock >= 0).`);
+    console.log(`[OK] All ${dbProducts.length} StoreProducts have non-negative stock (stock >= 0).`);
 
     // 4. Verify CANCELLED and REJECTED orders are NOT in revenue
     const cancelledOrRejected = dbOrders.filter((o) => ["CANCELLED", "REJECTED"].includes(o.status));
-    console.log(`✅ Found ${cancelledOrRejected.length} CANCELLED/REJECTED orders (verified separated from revenue).`);
+    console.log(`[OK] Found ${cancelledOrRejected.length} CANCELLED/REJECTED orders (verified separated from revenue).`);
 
     // 5. Simulate API Finance calculations for all filter ranges
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
@@ -1171,7 +1171,7 @@ async function main() {
 
     console.log(`
 ================================================================================
-📊 SIMULATION OF STORE FINANCE API METRICS:
+[INFO] SIMULATION OF STORE FINANCE API METRICS:
 ================================================================================
 Filter: [Hôm nay]
   - Doanh thu:          ${todayStats.rev.toLocaleString("vi-VN")} đ
@@ -1210,12 +1210,12 @@ Inventory & Warehouse:
 ================================================================================
 `);
 
-    console.log("🎉 ALL INTEGRITY CHECKS PASSED PERFECTLY!");
+    console.log("[OK] ALL INTEGRITY CHECKS PASSED PERFECTLY!");
 }
 
 main()
     .catch((e) => {
-        console.error("❌ Seed error:", e);
+        console.error("[ERROR] Seed error:", e);
         process.exit(1);
     })
     .finally(async () => {

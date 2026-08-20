@@ -512,7 +512,7 @@ function pseudoRandom(seed: number) {
 }
 
 export async function seedStoreDemo() {
-    console.log("🌱 STARTING STORE FINANCE DEMO SEED");
+    console.log("[INFO] STARTING STORE FINANCE DEMO SEED");
     console.log("=================================================");
 
     const hashedPassword = await bcryptjs.hash("123456", 10);
@@ -579,10 +579,10 @@ export async function seedStoreDemo() {
         },
     });
 
-    console.log(`✅ Store: ${store.name} (Owner: ${owner.fullName} - ${owner.phone})`);
+    console.log(`[OK] Store: ${store.name} (Owner: ${owner.fullName} - ${owner.phone})`);
 
     // 2. Clean previous DEMO data for this store to prevent duplicate growth
-    console.log("🧹 Cleaning previous demo data for store...");
+    console.log("[INFO] Cleaning previous demo data for store...");
     await prisma.storeExpense.deleteMany({ where: { storeId: store.id } });
     await prisma.orderStatusHistory.deleteMany({ where: { order: { storeId: store.id } } });
     await prisma.orderItem.deleteMany({ where: { order: { storeId: store.id } } });
@@ -592,7 +592,7 @@ export async function seedStoreDemo() {
     await prisma.storeProduct.deleteMany({ where: { storeId: store.id } });
 
     // 3. Create Farmers
-    console.log("👨‍🌾 Creating 20 Farmer accounts...");
+    console.log("[INFO] Creating 20 Farmer accounts...");
     const farmerUsers: Array<{ id: string; fullName: string; phone: string; email: string; address: string }> = [];
 
     for (const f of DEMO_FARMERS) {
@@ -619,7 +619,7 @@ export async function seedStoreDemo() {
     }
 
     // 4. Create Products & Import Batches over 90 days
-    console.log(`📦 Creating ${DEMO_PRODUCTS.length} Store Products and multi-batch import history...`);
+    console.log(`[INFO] Creating ${DEMO_PRODUCTS.length} Store Products and multi-batch import history...`);
     const now = new Date();
     const createdProducts: Array<{
         id: string;
@@ -751,7 +751,7 @@ export async function seedStoreDemo() {
     }
 
     // 5. Generate 100 Orders over 90 Days
-    console.log("🛒 Generating 100 realistic orders distributed across 90 days...");
+    console.log("[INFO] Generating 100 realistic orders distributed across 90 days...");
 
     const totalOrdersToCreate = 100;
     const orderDistribution: Array<{
@@ -989,7 +989,7 @@ export async function seedStoreDemo() {
     }
 
     // 7. Create 32 Store Operational Expenses across 90 days
-    console.log("💸 Creating 32 realistic operational expenses...");
+    console.log("[INFO] Creating 32 realistic operational expenses...");
     const expenseTemplates = [
         { cat: "SHIPPING" as const, title: "Cước xe tải giao phân bón đợt hàng về kho Trị An", amt: 450000, recipient: "Công ty Vận tải Trọng Tấn" },
         { cat: "SHIPPING" as const, title: "Phí vận chuyển giao hàng tận vườn cho nông dân", amt: 220000, recipient: "Nhà xe Ba Đạt" },
@@ -1033,7 +1033,7 @@ export async function seedStoreDemo() {
     }
 
     console.log("=================================================");
-    console.log("📊 COMPUTING LIVE SUMMARY METRICS FROM DATABASE...");
+    console.log("[INFO] COMPUTING LIVE SUMMARY METRICS FROM DATABASE...");
 
     // 8. Compute Live Metrics from Database for Validation & Output
     const allDbOrders = await prisma.order.findMany({
@@ -1111,34 +1111,34 @@ export async function seedStoreDemo() {
 
     console.log(`
 =================================================
-🎉 STORE DEMO DATA GENERATED SUCCESSFULLY!
+[OK] STORE DEMO DATA GENERATED SUCCESSFULLY!
 =================================================
 Store:               ${store.name}
 Owner:               ${owner.fullName} (${owner.phone} / ${owner.email})
 
-📦 Products:          ${allDbProducts.length} (Active/Approved: ${allDbProducts.filter((p) => p.status === "APPROVED").length})
-👨‍🌾 Farmers:           ${farmerUsers.length}
-🛒 Total Orders:      ${allDbOrders.length}
+[INFO] Products:          ${allDbProducts.length} (Active/Approved: ${allDbProducts.filter((p) => p.status === "APPROVED").length})
+[INFO] Farmers:           ${farmerUsers.length}
+[INFO] Total Orders:      ${allDbOrders.length}
    - Completed:      ${completedOrders}
    - Pending:        ${pendingOrders}
    - Cancelled:      ${allDbOrders.filter((o) => o.status === "CANCELLED").length}
 
-📋 Inventory Docs:    ${totalImportDocsCount + totalExportDocsCount} (Imports: ${totalImportDocsCount}, Exports: ${totalExportDocsCount})
-💸 Expenses:          ${allDbExpenses.length} khoản chi
+[INFO] Inventory Docs:    ${totalImportDocsCount + totalExportDocsCount} (Imports: ${totalImportDocsCount}, Exports: ${totalExportDocsCount})
+[INFO] Expenses:          ${allDbExpenses.length} khoản chi
 
-💵 REVENUE:
+[INFO] REVENUE:
    - Today:          ${revToday.toLocaleString("vi-VN")} đ
    - Last 7 days:    ${rev7Days.toLocaleString("vi-VN")} đ
    - Last 30 days:   ${rev30Days.toLocaleString("vi-VN")} đ
    - Total Revenue:  ${totalRevenue.toLocaleString("vi-VN")} đ
 
-📊 FINANCIAL PERFORMANCE:
+[INFO] FINANCIAL PERFORMANCE:
    - COGS (Giá vốn): ${totalCogs.toLocaleString("vi-VN")} đ
    - Gross Profit:   ${grossProfit.toLocaleString("vi-VN")} đ (${Math.round((grossProfit / totalRevenue) * 1000) / 10}%)
    - Operating Exp:  ${operatingExpenses.toLocaleString("vi-VN")} đ
    - Net Profit:     ${netProfit.toLocaleString("vi-VN")} đ (${Math.round((netProfit / totalRevenue) * 1000) / 10}%)
 
-💳 DEBTS & INVENTORY:
+[INFO] DEBTS & INVENTORY:
    - Phải thu (COD): ${totalReceivable.toLocaleString("vi-VN")} đ
    - Giá trị tồn:    ${totalInventoryValue.toLocaleString("vi-VN")} đ
    - Sắp hết hàng:   ${lowStockCount} sản phẩm (<= 10)
@@ -1150,7 +1150,7 @@ Owner:               ${owner.fullName} (${owner.phone} / ${owner.email})
 if (require.main === module) {
     seedStoreDemo()
         .catch((e) => {
-            console.error("❌ Seed error:", e);
+            console.error("[ERROR] Seed error:", e);
             process.exit(1);
         })
         .finally(async () => {

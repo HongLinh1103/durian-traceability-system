@@ -292,7 +292,7 @@ export default async function StoreDashboardPage() {
                                 {pendingCount} chờ xác nhận · {preparingCount} đang chuẩn bị hàng
                             </span>
                         ) : (
-                            <span className="text-emerald-700">Tất cả đơn đã được xử lý xong 🎉</span>
+                            <span className="inline-flex items-center gap-1.5 text-emerald-700"><CheckCircle2 className="h-4 w-4" />Tất cả đơn đã được xử lý xong</span>
                         )}
                     </div>
                 </Link>

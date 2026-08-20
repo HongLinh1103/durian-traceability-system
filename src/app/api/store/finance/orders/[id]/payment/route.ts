@@ -32,6 +32,13 @@ export async function PATCH(
             return NextResponse.json({ success: false, message: "Không tìm thấy đơn hàng." }, { status: 404 });
         }
 
+        if (["CANCELLED", "REJECTED"].includes(order.status)) {
+            return NextResponse.json(
+                { success: false, message: "Đơn hàng đã hủy hoặc bị từ chối, không thể ghi nhận thanh toán." },
+                { status: 409 },
+            );
+        }
+
         const totalAmount = Number(order.subtotal) + Number(order.shippingFee || 0);
         const newPaidAmount = paymentStatus === "PAID" ? totalAmount : (paidAmount ? Number(paidAmount) : 0);
 

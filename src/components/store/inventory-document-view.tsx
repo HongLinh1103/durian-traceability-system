@@ -78,6 +78,7 @@ export function InventoryDocumentView({ document }: { document: DocumentData }) 
     const totalQuantity = document.movements.reduce((sum, m) => sum + m.quantity, 0);
 
     const hasAnyCost = document.movements.some((m) => m.unitCost !== null && m.unitCost !== undefined && m.unitCost > 0);
+    const showPrintCost = document.type === "PN" && hasAnyCost;
     const totalValue = document.movements.reduce((sum, m) => {
         const itemTotal = m.totalCost ? Number(m.totalCost) : m.unitCost ? Number(m.unitCost) * m.quantity : 0;
         return sum + itemTotal;
@@ -348,92 +349,59 @@ export function InventoryDocumentView({ document }: { document: DocumentData }) 
             </div>
 
             {/* PRINT / PDF OFFICIAL DOCUMENT TEMPLATE (A4 Clean Minimalist Accounting Format) */}
-            <div className="printable-a4 hidden print:block bg-white text-black p-4 text-[13px] leading-relaxed font-serif">
+            <div className="printable-a4 hidden print:block bg-white text-black font-serif">
                 {/* Header: Store details */}
-                <div className="flex justify-between items-start border-b border-black pb-3">
-                    <div>
-                        <div className="text-xs uppercase tracking-wider font-bold">HỆ THỐNG TRUY XUẤT NÔNG NGHIỆP TRI VIỆT</div>
-                        <h2 className="text-base font-black uppercase mt-0.5">{document.store.name || "CỬA HÀNG VẬT TƯ NÔNG NGHIỆP"}</h2>
-                        <p className="text-xs text-slate-700 mt-0.5">Địa chỉ: {document.store.address || "Xã Trị An, Huyện Vĩnh Cửu, Tỉnh Đồng Nai"}</p>
-                        <p className="text-xs text-slate-700">SĐT: {document.store.phone || "0909000001"}</p>
+                <div className="grid grid-cols-[minmax(0,1.65fr)_minmax(190px,1fr)] gap-10 border-b border-black pb-4">
+                    <div className="min-w-0">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.08em]">HỆ THỐNG TRUY XUẤT NÔNG NGHIỆP TRI VIỆT</div>
+                        <h2 className="mt-1 text-[15px] font-bold uppercase leading-snug">{document.store.name || "CỬA HÀNG VẬT TƯ NÔNG NGHIỆP"}</h2>
+                        <p className="mt-1.5 text-[11px] leading-4 text-slate-700"><b>Địa chỉ:</b> {document.store.address || "Xã Trị An, Huyện Vĩnh Cửu, Tỉnh Đồng Nai"}</p>
+                        <p className="text-[11px] leading-4 text-slate-700"><b>SĐT:</b> {document.store.phone || "0909000001"}</p>
                     </div>
-                    <div className="text-right text-xs">
-                        <p className="font-bold">Mẫu số: 01-VT/TV</p>
-                        <p className="text-slate-600 mt-0.5">Mã tra cứu: <b>{document.code}</b></p>
+                    <div className="border-l border-slate-300 pl-6 text-right text-[11px] leading-5">
+                        <p><span className="text-slate-600">Mẫu số</span><br/><b className="text-[12px]">01-VT/TV</b></p>
+                        <p className="mt-2"><span className="text-slate-600">Mã phiếu / Mã tra cứu</span><br/><b className="font-mono text-[13px]">{document.code}</b></p>
                     </div>
                 </div>
 
                 {/* Title */}
-                <div className="text-center my-5">
+                <div className="mb-5 mt-7 text-center">
                     <h1 className="text-xl font-black tracking-wide uppercase">
                         {documentTypeTitles[document.type] || "PHIẾU CHỨNG TỪ KHO"}
                     </h1>
-                    <p className="text-xs italic text-slate-600 mt-1">
+                    <p className="mt-1 text-[10px] italic text-slate-600">
                         Ngày lập: {formattedCreatedDate} ({formattedCreatedTime})
                     </p>
                 </div>
 
                 {/* Info Block (2 Columns) */}
-                <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs mb-4">
-                    <div>
-                        <span>Mã chứng từ: </span>
-                        <b className="font-mono">{document.code}</b>
+                <div className="mb-5 grid grid-cols-2 gap-x-12 border-y border-slate-300 py-3 text-[11px] leading-5">
+                    <div className="space-y-1">
+                        <p><b>Mã chứng từ:</b> <span className="font-mono">{document.code}</span></p>
+                        {document.order && <p><b>Đơn hàng liên quan:</b> <span>{document.order.orderCode}</span></p>}
+                        {document.supplierName && <p><b>Nhà cung cấp:</b> <span>{document.supplierName}</span></p>}
+                        <p><b>Trạng thái:</b> <span>Đã ghi nhận</span></p>
                     </div>
-                    <div>
-                        <span>Loại nghiệp vụ: </span>
-                        <b>{businessLabels[document.businessType] || document.businessType}</b>
+                    <div className="space-y-1">
+                        <p><b>Loại nghiệp vụ:</b> <span>{businessLabels[document.businessType] || document.businessType}</span></p>
+                        <p><b>Người lập phiếu:</b> <span>{document.actorName || document.store.representativeName || "Nguyễn Văn Minh"}</span></p>
+                        {document.reason && <p><b>Lý do:</b> <span>{document.reason}</span></p>}
+                        {document.note && <p><b>Ghi chú:</b> <span className="italic">{document.note}</span></p>}
                     </div>
-
-                    {document.supplierName && (
-                        <div>
-                            <span>Nhà cung cấp: </span>
-                            <b>{document.supplierName}</b>
-                        </div>
-                    )}
-
-                    {document.order && (
-                        <div>
-                            <span>Đơn hàng liên quan: </span>
-                            <b>{document.order.orderCode}</b>
-                        </div>
-                    )}
-
-                    {document.reason && (
-                        <div className="col-span-2">
-                            <span>Lý do: </span>
-                            <b>{document.reason}</b>
-                        </div>
-                    )}
-
-                    <div>
-                        <span>Người lập phiếu: </span>
-                        <b>{document.actorName || document.store.representativeName || "Nguyễn Văn Minh"}</b>
-                    </div>
-                    <div>
-                        <span>Trạng thái: </span>
-                        <b>Đã ghi nhận</b>
-                    </div>
-
-                    {document.note && (
-                        <div className="col-span-2">
-                            <span>Ghi chú: </span>
-                            <span className="italic">{document.note}</span>
-                        </div>
-                    )}
                 </div>
 
                 {/* Products Table */}
-                <table className="w-full border-collapse border border-black text-xs my-3">
+                <table className="my-4 w-full table-fixed border-collapse border border-black text-[11px] leading-4">
                     <thead>
                         <tr className="bg-slate-100 text-center font-bold border-b border-black">
-                            <th className="border border-black p-1.5 w-10">STT</th>
-                            <th className="border border-black p-1.5 text-left">Tên sản phẩm</th>
-                            <th className="border border-black p-1.5 w-16">ĐVT</th>
-                            <th className="border border-black p-1.5 w-16">Tồn trước</th>
-                            <th className="border border-black p-1.5 w-16">SL</th>
-                            <th className="border border-black p-1.5 w-16">Tồn sau</th>
-                            {hasAnyCost && <th className="border border-black p-1.5 w-24 text-right">Đơn giá (đ)</th>}
-                            {hasAnyCost && <th className="border border-black p-1.5 w-28 text-right">Thành tiền (đ)</th>}
+                            <th className="w-[7%] border border-black px-2 py-2.5">STT</th>
+                            <th className={`${showPrintCost ? "w-[27%]" : "w-[45%]"} border border-black px-2 py-2.5 text-left`}>Tên sản phẩm</th>
+                            <th className={`${showPrintCost ? "w-[8%]" : "w-[10%]"} border border-black px-2 py-2.5`}>ĐVT</th>
+                            <th className={`${showPrintCost ? "w-[10%]" : "w-[13%]"} border border-black px-2 py-2.5`}>Tồn trước</th>
+                            <th className={`${showPrintCost ? "w-[8%]" : "w-[10%]"} border border-black px-2 py-2.5`}>SL</th>
+                            <th className={`${showPrintCost ? "w-[10%]" : "w-[15%]"} border border-black px-2 py-2.5`}>Tồn sau</th>
+                            {showPrintCost && <th className="w-[14%] border border-black px-2 py-2.5 text-right">Đơn giá (đ)</th>}
+                            {showPrintCost && <th className="w-[16%] border border-black px-2 py-2.5 text-right">Thành tiền (đ)</th>}
                         </tr>
                     </thead>
                     <tbody>
@@ -446,19 +414,19 @@ export function InventoryDocumentView({ document }: { document: DocumentData }) 
 
                             return (
                                 <tr key={movement.id} className="border-b border-black">
-                                    <td className="border border-black p-1.5 text-center">{idx + 1}</td>
-                                    <td className="border border-black p-1.5 font-medium">{movement.product.name}</td>
-                                    <td className="border border-black p-1.5 text-center">{movement.product.unit}</td>
-                                    <td className="border border-black p-1.5 text-right font-mono">{movement.stockBefore}</td>
-                                    <td className="border border-black p-1.5 text-right font-bold font-mono">{movement.quantity}</td>
-                                    <td className="border border-black p-1.5 text-right font-mono">{movement.stockAfter}</td>
-                                    {hasAnyCost && (
-                                        <td className="border border-black p-1.5 text-right font-mono">
+                                    <td className="border border-black px-2 py-2.5 text-center">{idx + 1}</td>
+                                    <td className="border border-black px-2 py-2.5 font-medium">{movement.product.name}</td>
+                                    <td className="border border-black px-2 py-2.5 text-center">{movement.product.unit}</td>
+                                    <td className="border border-black px-2 py-2.5 text-right font-mono">{movement.stockBefore}</td>
+                                    <td className="border border-black px-2 py-2.5 text-right font-mono font-bold">{movement.quantity}</td>
+                                    <td className="border border-black px-2 py-2.5 text-right font-mono">{movement.stockAfter}</td>
+                                    {showPrintCost && (
+                                        <td className="border border-black px-2 py-2.5 text-right font-mono">
                                             {movement.unitCost ? Number(movement.unitCost).toLocaleString("vi-VN") : "—"}
                                         </td>
                                     )}
-                                    {hasAnyCost && (
-                                        <td className="border border-black p-1.5 text-right font-mono font-bold">
+                                    {showPrintCost && (
+                                        <td className="border border-black px-2 py-2.5 text-right font-mono font-bold">
                                             {itemCost !== null ? itemCost.toLocaleString("vi-VN") : "—"}
                                         </td>
                                     )}
@@ -473,9 +441,9 @@ export function InventoryDocumentView({ document }: { document: DocumentData }) 
                     <div className="flex justify-between">
                         <span>Tổng số mặt hàng: <b>{totalItemsCount}</b></span>
                         <span>Tổng số lượng: <b>{totalQuantity}</b></span>
-                        {totalValue > 0 && <span>Tổng giá trị: <b>{totalValue.toLocaleString("vi-VN")} VNĐ</b></span>}
+                        {showPrintCost && totalValue > 0 && <span>Tổng giá trị: <b>{totalValue.toLocaleString("vi-VN")} VNĐ</b></span>}
                     </div>
-                    {wordsAmount && (
+                    {showPrintCost && wordsAmount && (
                         <p className="mt-1">
                             Bằng chữ: <span className="font-semibold italic">{wordsAmount}</span>
                         </p>
@@ -483,31 +451,32 @@ export function InventoryDocumentView({ document }: { document: DocumentData }) 
                 </div>
 
                 {/* Signatures (3 Columns) */}
-                <div className="grid grid-cols-3 text-center text-xs mt-6 mb-12">
+                <div className="mb-12 mt-10 grid grid-cols-3 gap-8 text-center text-xs">
                     <div>
                         <p className="font-bold uppercase">NGƯỜI LẬP PHIẾU</p>
                         <p className="text-[11px] italic text-slate-600">(Ký, ghi rõ họ tên)</p>
-                        <div className="h-16" />
+                        <div className="h-24" />
                         <p className="font-semibold">{document.actorName || "Nguyễn Văn Minh"}</p>
                     </div>
                     <div>
                         <p className="font-bold uppercase">NGƯỜI GIAO HÀNG</p>
                         <p className="text-[11px] italic text-slate-600">(Ký, ghi rõ họ tên)</p>
-                        <div className="h-16" />
+                        <div className="h-24" />
                         <p className="font-semibold">{document.supplierName || "—"}</p>
                     </div>
                     <div>
                         <p className="font-bold uppercase">NGƯỜI NHẬN HÀNG</p>
                         <p className="text-[11px] italic text-slate-600">(Ký, ghi rõ họ tên)</p>
-                        <div className="h-16" />
+                        <div className="h-24" />
                         <p className="font-semibold">{document.store.representativeName || "Chủ cửa hàng"}</p>
                     </div>
                 </div>
 
                 {/* Print Footer */}
-                <div className="flex justify-between items-center text-[10px] text-slate-500 border-t border-slate-300 pt-2 mt-4">
+                <div className="mt-6 grid grid-cols-3 items-center border-t border-slate-300 pt-2 text-[9px] text-slate-600">
                     <span>Mã tra cứu chứng từ: {document.code}</span>
-                    <span>Ngày xuất in: {nowFormatted}</span>
+                    <span className="text-center">Ngày xuất: {nowFormatted}</span>
+                    <span className="text-right">Trang 1/1</span>
                 </div>
             </div>
         </div>

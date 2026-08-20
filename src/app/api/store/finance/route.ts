@@ -110,7 +110,7 @@ export async function GET(request: Request) {
 
         const orderReports = orders.map((order) => {
             const isDeliveredOrCompleted = ["DELIVERED", "COMPLETED"].includes(order.status);
-            const orderRevenue = Number(order.subtotal);
+            const orderRevenue = isDeliveredOrCompleted ? Number(order.subtotal) : 0;
             
             // Calculate COGS for this order
             let orderCogs = 0;
@@ -118,7 +118,9 @@ export async function GET(request: Request) {
                 const prod = item.productId ? productMap.get(item.productId) : null;
                 const itemCostPrice = Number(item.costPrice || prod?.costPrice || (Number(item.unitPrice) * 0.7)); // fallback 70% if no cost price recorded
                 const itemQuantity = item.quantity;
-                orderCogs += itemCostPrice * itemQuantity;
+                if (isDeliveredOrCompleted) {
+                    orderCogs += itemCostPrice * itemQuantity;
+                }
 
                 if (isDeliveredOrCompleted) {
                     totalItemsSold += itemQuantity;
