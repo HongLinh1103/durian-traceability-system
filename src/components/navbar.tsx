@@ -87,7 +87,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
     const userRole = isAuthed ? (session?.user?.role ?? null) : null;
     const hasMobileBottomNav = Boolean(userRole && ["ADMIN", "AREA_MANAGER", "FARMER", "STORE_OWNER", "COLLECTOR", "PROCESSING_FACILITY"].includes(userRole));
     const isCollector = userRole === "COLLECTOR";
-    const visiblePublicLinks = isCollector ? [] : publicLinks;
+    const visiblePublicLinks = isCollector ? [] : isAuthed ? publicLinks.filter((l) => l.href !== "/") : publicLinks;
     useEffect(() => {
         if (!isAuthed) { setCurrentUserName(null); return; }
         void fetch("/api/auth/me", { cache: "no-store" })
@@ -261,36 +261,25 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
 
                 {/* Desktop Navigation */}
                 <div className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-visible px-1 py-2 xl:flex">
-                    {visiblePublicLinks.map((link) => {
-                        const href = link.href === "/" && userRole === "AREA_MANAGER"
-                            ? "/dashboard/area-manager"
-                            : link.href === "/" && userRole === "ADMIN"
-                                ? "/dashboard/admin"
-                                : link.href === "/" && userRole === "FARMER"
-                                    ? "/dashboard/farmer"
-                                    : link.href === "/" && userRole === "STORE_OWNER"
-                                        ? "/dashboard/store"
-                                        : link.href;
-                        return (
-                            <Link
-                                key={link.href}
-                                href={href}
-                                className={cn(
-                                    "relative whitespace-nowrap rounded-2xl px-2.5 py-2 text-sm font-semibold transition 2xl:px-3",
-                                    pathname === href
-                                        ? "bg-brand-50 text-brand-700"
-                                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
-                                )}
-                            >
-                                {link.label}
-                                {link.notificationKey && contentCounts[link.notificationKey] > 0 && (
-                                    <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-                                        {contentCounts[link.notificationKey] > 99 ? "99+" : contentCounts[link.notificationKey]}
-                                    </span>
-                                )}
-                            </Link>
-                        );
-                    })}
+                    {visiblePublicLinks.map((link) => (
+                        <Link
+                            key={link.href}
+                            href={link.href}
+                            className={cn(
+                                "relative whitespace-nowrap rounded-2xl px-2.5 py-2 text-sm font-semibold transition 2xl:px-3",
+                                pathname === link.href
+                                    ? "bg-brand-50 text-brand-700"
+                                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                            )}
+                        >
+                            {link.label}
+                            {link.notificationKey && contentCounts[link.notificationKey] > 0 && (
+                                <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                                    {contentCounts[link.notificationKey] > 99 ? "99+" : contentCounts[link.notificationKey]}
+                                </span>
+                            )}
+                        </Link>
+                    ))}
                     {isAuthed && materialLinks.length > 0 && (
                         <div className="relative">
                             <button type="button" onClick={() => setMaterialsOpen((open) => !open)} aria-expanded={materialsOpen} aria-haspopup="menu" className={cn("flex items-center gap-1 whitespace-nowrap rounded-2xl px-3 py-2 text-sm font-semibold transition", (pathname.startsWith("/materials") || pathname.startsWith("/orders")) ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900")}>
@@ -423,37 +412,26 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                             </Link>
                         )}
 
-                        {visiblePublicLinks.map((link) => {
-                            const href = link.href === "/" && userRole === "AREA_MANAGER"
-                                ? "/dashboard/area-manager"
-                                : link.href === "/" && userRole === "ADMIN"
-                                    ? "/dashboard/admin"
-                                    : link.href === "/" && userRole === "FARMER"
-                                        ? "/dashboard/farmer"
-                                        : link.href === "/" && userRole === "STORE_OWNER"
-                                            ? "/dashboard/store"
-                                            : link.href;
-                            return (
-                                <Link
-                                    key={link.href}
-                                    href={href}
-                                    onClick={() => setMobileOpen(false)}
-                                    className={cn(
-                                        "flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition",
-                                        pathname === href
-                                            ? "bg-brand-50 text-brand-700"
-                                            : "text-slate-600 hover:bg-slate-50",
-                                    )}
-                                >
-                                    <span>{link.label}</span>
-                                    {link.notificationKey && contentCounts[link.notificationKey] > 0 && (
-                                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-                                            {contentCounts[link.notificationKey] > 99 ? "99+" : contentCounts[link.notificationKey]}
-                                        </span>
-                                    )}
-                                </Link>
-                            );
-                        })}
+                        {visiblePublicLinks.map((link) => (
+                            <Link
+                                key={link.href}
+                                href={link.href}
+                                onClick={() => setMobileOpen(false)}
+                                className={cn(
+                                    "flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition",
+                                    pathname === link.href
+                                        ? "bg-brand-50 text-brand-700"
+                                        : "text-slate-600 hover:bg-slate-50",
+                                )}
+                            >
+                                <span>{link.label}</span>
+                                {link.notificationKey && contentCounts[link.notificationKey] > 0 && (
+                                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                                        {contentCounts[link.notificationKey] > 99 ? "99+" : contentCounts[link.notificationKey]}
+                                    </span>
+                                )}
+                            </Link>
+                        ))}
 
                         {isAuthed && materialLinks.length > 0 && (
                             <div className="rounded-2xl border border-slate-100 p-2">
