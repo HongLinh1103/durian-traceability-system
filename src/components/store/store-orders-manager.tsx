@@ -514,9 +514,9 @@ export function StoreOrdersManager() {
                                             <Link
                                                 key={doc.code}
                                                 href={`/dashboard/store/inventory/${encodeURIComponent(doc.id)}`}
-                                                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/80 px-3 py-1 font-mono font-bold text-emerald-800 border border-emerald-300/80 hover:bg-emerald-200/70 transition shadow-2xs"
+                                                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-emerald-300/80 bg-emerald-100/80 px-2 py-0.5 font-mono text-[10px] font-bold leading-5 text-emerald-800 shadow-2xs transition hover:bg-emerald-200/70 sm:text-[11px]"
                                             >
-                                                <FileText className="h-3.5 w-3.5" />
+                                                <FileText className="h-3 w-3 shrink-0" />
                                                 {doc.code}
                                             </Link>
                                         ))}

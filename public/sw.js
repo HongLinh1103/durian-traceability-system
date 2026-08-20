@@ -1,5 +1,5 @@
 // Increment this version whenever caching rules change.
-const CACHE_NAME = "triviet-pwa-v5";
+const CACHE_NAME = "triviet-pwa-v6";
 const PRECACHE_URLS = ["/", "/manifest.json", "/offline.html", "/icon-192.svg", "/icon-512.svg"];
 const IS_LOCAL_DEVELOPMENT =
     self.location.hostname === "localhost" ||
@@ -54,8 +54,7 @@ self.addEventListener("fetch", (event) => {
     const isNextAsset = requestUrl.pathname.startsWith("/_next/");
     const isPrivateRequest =
         requestUrl.pathname.startsWith("/dashboard/") ||
-        requestUrl.pathname.startsWith("/api/auth/") ||
-        requestUrl.pathname.startsWith("/api/admin/");
+        requestUrl.pathname.startsWith("/api/");
 
     // Next.js build assets must not outlive the server HTML that references them.
     // A stale client bundle paired with fresh HTML causes hydration mismatches.
@@ -64,7 +63,8 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
-    // Authenticated pages and APIs must never be served from a shared browser cache.
+    // API responses can contain session-scoped or frequently changing data. Always
+    // use the network so installed mobile PWAs cannot display stale store data.
     if (isPrivateRequest) {
         event.respondWith(fetch(event.request));
         return;
