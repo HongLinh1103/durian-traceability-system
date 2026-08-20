@@ -8,7 +8,7 @@ export async function GET(_request: Request, { params }: { params: { code: strin
     const store = await getOwnedStore(session.user.id);
     if (!store) return NextResponse.json({ success: false, message: "Không tìm thấy cửa hàng." }, { status: 404 });
     const document = await prisma.inventoryDocument.findFirst({
-        where: { code: decodeURIComponent(params.code), storeId: store.id },
+        where: { OR: [{ id: decodeURIComponent(params.code) }, { code: decodeURIComponent(params.code) }], storeId: store.id },
         include: {
             movements: { include: { product: { select: { name: true, unit: true, type: true } } }, orderBy: { createdAt: "asc" } },
             order: { select: { id: true, orderCode: true, recipientName: true, status: true } },

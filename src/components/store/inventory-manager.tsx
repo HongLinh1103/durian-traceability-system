@@ -911,7 +911,7 @@ function InventoryManagerContent() {
                                     </div>
                                     <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 text-sm">
                                         <div><dt className="text-xs text-slate-500">Tồn kho</dt><dd className="mt-0.5 font-semibold tabular-nums">{movement.stockBefore} → {movement.stockAfter} {movement.product.unit}</dd></div>
-                                        <div className="text-right"><dt className="text-xs text-slate-500">Chứng từ</dt><dd className="mt-0.5"><Link href={`/dashboard/store/inventory/${encodeURIComponent(document.code)}`} className="font-bold text-emerald-700">{document.code}</Link></dd></div>
+                                        <div className="text-right"><dt className="text-xs text-slate-500">Chứng từ</dt><dd className="mt-0.5"><Link href={`/dashboard/store/inventory/${encodeURIComponent(document.id)}`} className="font-bold text-emerald-700">{document.code}</Link></dd></div>
                                     </dl>
                                 </article>
                             );
@@ -975,7 +975,7 @@ function InventoryManagerContent() {
                                                 </td>
                                                 <td className="whitespace-nowrap px-3.5 py-2.5 font-medium">
                                                     <Link
-                                                        href={`/dashboard/store/inventory/${encodeURIComponent(document.code)}`}
+                                                        href={`/dashboard/store/inventory/${encodeURIComponent(document.id)}`}
                                                         className="font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
                                                     >
                                                         {document.code}

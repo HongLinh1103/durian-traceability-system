@@ -44,7 +44,7 @@ type Order = {
     farmer: { fullName?: string | null; phone: string };
     items: OrderItem[];
     histories?: { toStatus: string; createdAt: string }[];
-    inventoryDocuments: { code: string; type: string }[];
+    inventoryDocuments: { id: string; code: string; type: string }[];
 };
 
 function formatOrderHistoryText(order: Order, statusObj: { key: string }) {
@@ -513,7 +513,7 @@ export function StoreOrdersManager() {
                                         {order.inventoryDocuments.map((doc) => (
                                             <Link
                                                 key={doc.code}
-                                                href={`/dashboard/store/inventory/${encodeURIComponent(doc.code)}`}
+                                                href={`/dashboard/store/inventory/${encodeURIComponent(doc.id)}`}
                                                 className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/80 px-3 py-1 font-mono font-bold text-emerald-800 border border-emerald-300/80 hover:bg-emerald-200/70 transition shadow-2xs"
                                             >
                                                 <FileText className="h-3.5 w-3.5" />

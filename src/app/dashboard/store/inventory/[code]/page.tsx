@@ -23,7 +23,7 @@ export default async function InventoryDocumentPage({ params }: { params: { code
     const code = decodeURIComponent(params.code);
     const document = await prisma.inventoryDocument.findFirst({
         where: {
-            code,
+            OR: [{ id: code }, { code }],
             store: { ownerId: session.user.id, deletedAt: null },
         },
         include: {
