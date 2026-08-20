@@ -40,6 +40,10 @@ export async function PATCH(
         }
 
         const totalAmount = Number(order.subtotal) + Number(order.shippingFee || 0);
+        const previousPaidAmount = Number(order.paidAmount || 0);
+        const previousOutstandingAmount = order.paymentStatus === "PAID"
+            ? 0
+            : Math.max(totalAmount - previousPaidAmount, 0);
         const newPaidAmount = paymentStatus === "PAID" ? totalAmount : (paidAmount ? Number(paidAmount) : 0);
 
         const updated = await prisma.order.update({
@@ -54,7 +58,13 @@ export async function PATCH(
         return NextResponse.json({
             success: true,
             message: "Đã cập nhật trạng thái thanh toán đơn hàng.",
-            data: updated,
+            data: {
+                id: updated.id,
+                paymentStatus: updated.paymentStatus,
+                paidAmount: Number(updated.paidAmount || 0),
+                paidAt: updated.paidAt?.toISOString() || null,
+                receivableReduction: paymentStatus === "PAID" ? previousOutstandingAmount : 0,
+            },
         });
     } catch (error) {
         console.error("PATCH order payment error:", error);

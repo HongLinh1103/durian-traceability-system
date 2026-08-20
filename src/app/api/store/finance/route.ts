@@ -139,7 +139,8 @@ export async function GET(request: Request) {
             // Phải thu
             if (order.paymentStatus !== "PAID" && !["CANCELLED", "REJECTED"].includes(order.status)) {
                 const paid = Number(order.paidAmount || 0);
-                const due = (orderRevenue + Number(order.shippingFee || 0)) - paid;
+                const orderTotal = Number(order.subtotal) + Number(order.shippingFee || 0);
+                const due = orderTotal - paid;
                 if (due > 0) {
                     totalReceivable += due;
                 }

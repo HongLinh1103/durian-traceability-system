@@ -300,8 +300,21 @@ export function StoreFinanceDashboard() {
             if (!response.ok || !result.success) {
                 throw new Error(result.message || "Không thể cập nhật.");
             }
+            const receivableReduction = Number(result.data?.receivableReduction || 0);
+            setData((current) => current ? {
+                ...current,
+                summary: {
+                    ...current.summary,
+                    totalReceivable: Math.max(current.summary.totalReceivable - receivableReduction, 0),
+                },
+                orderReports: current.orderReports.map((order) => order.id === orderId ? {
+                    ...order,
+                    paymentStatus: "PAID",
+                    paidAmount: Number(result.data?.paidAmount || order.paidAmount),
+                } : order),
+            } : current);
             toast({ title: "Đã xác nhận thu tiền đơn hàng", variant: "success" });
-            void loadFinanceData();
+            await loadFinanceData();
         } catch (error) {
             toast({
                 title: "Không thể cập nhật",
