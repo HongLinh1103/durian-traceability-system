@@ -87,7 +87,8 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
     const userRole = isAuthed ? (session?.user?.role ?? null) : null;
     const hasMobileBottomNav = Boolean(userRole && ["ADMIN", "AREA_MANAGER", "FARMER", "STORE_OWNER", "COLLECTOR", "PROCESSING_FACILITY"].includes(userRole));
     const isCollector = userRole === "COLLECTOR";
-    const visiblePublicLinks = isCollector ? [] : isAuthed ? publicLinks.filter((l) => l.href !== "/") : publicLinks;
+    const isStoreOwner = userRole === "STORE_OWNER";
+    const visiblePublicLinks = (isCollector || isStoreOwner) ? [] : isAuthed ? publicLinks.filter((l) => l.href !== "/") : publicLinks;
     useEffect(() => {
         if (!isAuthed) { setCurrentUserName(null); return; }
         void fetch("/api/auth/me", { cache: "no-store" })

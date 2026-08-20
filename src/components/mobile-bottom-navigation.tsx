@@ -91,14 +91,12 @@ const navigationByRole: Record<string, RoleNavigation> = {
         items: [
             { label: "Tổng quan", href: "/dashboard/store", icon: Home },
             { label: "Sản phẩm", href: "/dashboard/store/products", icon: Store },
+            { label: "Kho hàng", href: "/dashboard/store/inventory", icon: Package },
             { label: "Đơn hàng", href: "/dashboard/store/orders", icon: ClipboardList },
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
             { label: "Tài chính", description: "Doanh thu, chi phí, lợi nhuận và công nợ", href: "/dashboard/store/finance", icon: CircleDollarSign },
-            { label: "Kho hàng", description: "Nhập kho và quản lý tồn kho", href: "/dashboard/store/inventory", icon: Package },
-            { label: "Tài liệu", description: "Tra cứu tài liệu vận hành cửa hàng", href: "/documents", icon: BookOpenCheck },
-            { label: "Tin tức", description: "Theo dõi cập nhật thị trường vật tư", href: "/news", icon: Bell },
         ],
     },
     COLLECTOR: {
