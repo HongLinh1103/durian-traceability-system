@@ -45,6 +45,7 @@ async function verify() {
         where: { storeId: store.id },
         include: {
             farmer: true,
+            inventoryDocuments: { select: { code: true, type: true } },
             items: {
                 include: { product: true },
             },
@@ -58,9 +59,13 @@ async function verify() {
     let invalidFarmerFk = 0;
     let invalidProductFk = 0;
     let totalItems = 0;
+    const completedWithoutExport: string[] = [];
 
     for (const o of orders) {
         statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
+        if (["DELIVERED", "COMPLETED"].includes(o.status) && !o.inventoryDocuments.some((document) => document.type === "PX")) {
+            completedWithoutExport.push(o.orderCode);
+        }
         if (!o.farmer || o.farmer.role !== "FARMER") invalidFarmerFk++;
         for (const item of o.items) {
             totalItems++;
@@ -84,6 +89,7 @@ async function verify() {
     } else {
         console.error(`❌ Có ${invalidProductFk} OrderItem lỗi FK product!`);
     }
+    console.log(`   ${completedWithoutExport.length === 0 ? "✅" : "❌"} Đơn hoàn tất/đã giao thiếu phiếu PX: ${completedWithoutExport.length}${completedWithoutExport.length ? ` (${completedWithoutExport.join(", ")})` : ""}`);
 
     // 5. Kiểm tra Chứng từ kho (InventoryDocument & Movements)
     const invDocs = await prisma.inventoryDocument.findMany({

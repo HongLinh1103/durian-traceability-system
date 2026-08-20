@@ -5,6 +5,10 @@ const prisma = new PrismaClient();
 const STORE_ID = "seed-store-tri-an";
 const OWNER_PHONE = "0909000001";
 
+function inventoryDocumentDateKey(date: Date) {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).format(date).replaceAll("-", "");
+}
+
 // 24 Detailed agricultural products with realistic prices and cost prices
 const PRODUCTS_CATALOG = [
     // --- PHÂN BÓN (FERTILIZER) ---
@@ -583,6 +587,13 @@ async function main() {
 
     let totalImportDocs = 0;
     let totalImportMovements = 0;
+    const documentSequences = new Map<string, number>();
+    const nextInventoryDocumentCode = (prefix: "PN" | "PX", date: Date) => {
+        const key = `${prefix}-${inventoryDocumentDateKey(date)}`;
+        const sequence = (documentSequences.get(key) ?? 0) + 1;
+        documentSequences.set(key, sequence);
+        return `${key}-${String(sequence).padStart(3, "0")}`;
+    };
 
     for (let i = 0; i < PRODUCTS_CATALOG.length; i++) {
         const prodDef = PRODUCTS_CATALOG[i];
@@ -642,7 +653,7 @@ async function main() {
         const doc1 = await prisma.inventoryDocument.create({
             data: {
                 storeId: store.id,
-                code: `PN-TA-${prodDef.code}-01`,
+                code: nextInventoryDocumentCode("PN", batch1Date),
                 type: "PN",
                 businessType: "SUPPLIER_IMPORT",
                 supplierName: prodDef.manufacturer || "Nhà phân phối Vật tư Nông nghiệp",
@@ -675,7 +686,7 @@ async function main() {
         const doc2 = await prisma.inventoryDocument.create({
             data: {
                 storeId: store.id,
-                code: `PN-TA-${prodDef.code}-02`,
+                code: nextInventoryDocumentCode("PN", batch2Date),
                 type: "PN",
                 businessType: "SUPPLIER_IMPORT",
                 supplierName: prodDef.manufacturer || "Nhà phân phối Vật tư Nông nghiệp",
@@ -941,7 +952,7 @@ async function main() {
             const exportDoc = await prisma.inventoryDocument.create({
                 data: {
                     storeId: store.id,
-                    code: `PX-TA-${order.orderCode}`,
+                    code: nextInventoryDocumentCode("PX", orderDate),
                     type: "PX",
                     businessType: "SALE_EXPORT",
                     orderId: order.id,

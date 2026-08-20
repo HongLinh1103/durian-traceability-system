@@ -398,14 +398,25 @@ export function StoreOrdersManager() {
             </section>
 
             {/* 2. BỘ LỌC VÀ TÌM KIẾM */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex gap-2 overflow-x-auto pb-1">
+            <section aria-label="Lọc và tìm kiếm đơn hàng" className="rounded-3xl border border-white/80 bg-white/65 p-3 shadow-sm backdrop-blur-sm sm:p-4">
+                <div className="grid gap-3 xl:grid-cols-[280px_minmax(0,1fr)] xl:items-center">
+                    <div className="relative w-full">
+                        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <Input
+                            type="text"
+                            placeholder="Tìm mã đơn, nông dân, SĐT..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="h-11 w-full rounded-2xl border-slate-200 bg-white pl-10 text-sm shadow-xs"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:flex xl:flex-nowrap xl:justify-end">
                     {filters.map((f) => (
                         <button
                             type="button"
                             key={f.key}
                             onClick={() => setFilter(f.key)}
-                            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition ${
+                            className={`inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-2xl px-2.5 py-2 text-center text-xs font-bold leading-tight transition sm:px-3 xl:min-h-10 xl:shrink xl:whitespace-nowrap xl:rounded-full xl:px-3 ${
                                 filter === f.key
                                     ? "bg-brand-600 text-white shadow-xs"
                                     : "border border-slate-200 bg-white text-slate-600 hover:border-brand-200 hover:bg-slate-50"
@@ -423,19 +434,9 @@ export function StoreOrdersManager() {
                             </span>
                         </button>
                     ))}
+                    </div>
                 </div>
-
-                <div className="relative min-w-[240px]">
-                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                        type="text"
-                        placeholder="Tìm mã đơn, nông dân, SĐT..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="h-10 rounded-2xl pl-9 text-xs"
-                    />
-                </div>
-            </div>
+            </section>
 
             {/* ERROR NOTIFICATION */}
             {error && (

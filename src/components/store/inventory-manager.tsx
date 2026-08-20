@@ -272,7 +272,7 @@ function InventoryManagerContent() {
     return (
         <div className="space-y-6">
             {/* Stat Cards */}
-            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                 <Stat label="Sản phẩm" value={products.length} />
                 <Stat label="Tổng đơn vị" value={totalStock} />
                 <Stat label="Sắp hết" value={lowStock} warning={lowStock > 0} />
@@ -306,8 +306,8 @@ function InventoryManagerContent() {
                         type="button"
                         onClick={() => setActiveTab(value)}
                         className={`whitespace-nowrap border-b-2 px-5 py-3 text-sm font-bold transition-colors ${activeTab === value
-                                ? "border-emerald-600 text-emerald-700"
-                                : "border-transparent text-slate-500 hover:text-slate-900"
+                            ? "border-emerald-600 text-emerald-700"
+                            : "border-transparent text-slate-500 hover:text-slate-900"
                             }`}
                     >
                         {label}
@@ -360,8 +360,23 @@ function InventoryManagerContent() {
                         <div className="flex justify-center py-16">
                             <Loader2 className="h-8 w-8 animate-spin" />
                         </div>
-                    ) : (
-                        <div className="overflow-x-auto">
+                    ) : (<>
+                        <div className="grid gap-3 p-4 sm:hidden">
+                            {visibleProducts.map((product) => (
+                                <article key={product.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <h3 className="font-bold leading-snug text-slate-900">{product.name}</h3>
+                                            <p className="mt-1 text-xs text-slate-500">{product.type === "FERTILIZER" ? "Phân bón" : product.type === "PESTICIDE" ? "Thuốc BVTV" : "Dụng cụ / Khác"}</p>
+                                        </div>
+                                        <span className={`shrink-0 rounded-xl px-3 py-2 text-lg font-black tabular-nums ${product.stock === 0 ? "bg-red-50 text-red-700" : product.stock <= 5 ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>{product.stock}</span>
+                                    </div>
+                                    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-sm"><span className="text-slate-500">Đơn vị tính</span><b>{product.unit}</b></div>
+                                </article>
+                            ))}
+                            {!visibleProducts.length && <p className="py-10 text-center text-sm text-slate-500">Không tìm thấy sản phẩm phù hợp.</p>}
+                        </div>
+                        <div className="hidden overflow-x-auto sm:block">
                             <table className="w-full min-w-[700px] text-left text-sm">
                                 <thead className="bg-slate-50 text-slate-500">
                                     <tr>
@@ -387,10 +402,10 @@ function InventoryManagerContent() {
                                             <td className="p-4">{product.unit}</td>
                                             <td
                                                 className={`p-4 text-right text-lg font-black ${product.stock === 0
-                                                        ? "text-red-600"
-                                                        : product.stock <= 5
-                                                            ? "text-amber-600"
-                                                            : "text-emerald-700"
+                                                    ? "text-red-600"
+                                                    : product.stock <= 5
+                                                        ? "text-amber-600"
+                                                        : "text-emerald-700"
                                                     }`}
                                             >
                                                 {product.stock}
@@ -407,7 +422,7 @@ function InventoryManagerContent() {
                                 </tbody>
                             </table>
                         </div>
-                    )}
+                    </>)}
                 </section>
             )}
 
@@ -528,7 +543,7 @@ function InventoryManagerContent() {
                                                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-xs font-black text-white">
                                                     {index + 1}
                                                 </span>
-                                                <span className="text-xs font-bold text-slate-800">Sản phẩm{index + 1}</span>
+                                                <span className="text-xs font-bold text-slate-800">Sản phẩm {index + 1}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 {product && (
@@ -844,13 +859,13 @@ function InventoryManagerContent() {
                             </p>
                         </div>
                     </header>
-                    <div className="grid gap-3 border-b p-4 sm:grid-cols-2 xl:grid-cols-5">
-                        <VietnameseDatePicker value={historyFrom} onChange={setHistoryFrom} aria-label="Từ ngày" />
-                        <VietnameseDatePicker value={historyTo} onChange={setHistoryTo} aria-label="Đến ngày" />
+                    <div className="grid min-w-0 gap-3 border-b p-4 sm:grid-cols-2 xl:grid-cols-5">
+                        <div className="min-w-0"><VietnameseDatePicker value={historyFrom} onChange={setHistoryFrom} aria-label="Từ ngày" className="w-full min-w-0" /></div>
+                        <div className="min-w-0"><VietnameseDatePicker value={historyTo} onChange={setHistoryTo} aria-label="Đến ngày" className="w-full min-w-0" /></div>
                         <select
                             value={historyBusiness}
                             onChange={(event) => setHistoryBusiness(event.target.value)}
-                            className="h-12 rounded-2xl border bg-white px-3 text-sm"
+                            className="h-12 min-w-0 w-full rounded-2xl border bg-white px-3 text-sm"
                         >
                             <option value="ALL">Tất cả nghiệp vụ</option>
                             {Object.entries(businessLabels).map(([value, label]) => (
@@ -862,7 +877,7 @@ function InventoryManagerContent() {
                         <select
                             value={selectedProduct}
                             onChange={(event) => setSelectedProduct(event.target.value)}
-                            className="h-12 rounded-2xl border bg-white px-3 text-sm"
+                            className="h-12 min-w-0 w-full rounded-2xl border bg-white px-3 text-sm"
                         >
                             <option value="ALL">Tất cả sản phẩm</option>
                             {products.map((product) => (
@@ -875,9 +890,35 @@ function InventoryManagerContent() {
                             value={documentSearch}
                             onChange={(event) => setDocumentSearch(event.target.value)}
                             placeholder="Tìm chứng từ..."
+                            className="min-w-0 w-full"
                         />
                     </div>
-                    <div className="overflow-x-auto">
+                    <div className="grid gap-3 p-4 sm:hidden">
+                        {visibleDocuments.flatMap((document) => document.movements.map((movement) => {
+                            const incoming = movement.stockAfter - movement.stockBefore >= 0;
+                            return (
+                                <article key={movement.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <h3 className="font-bold leading-snug text-slate-900">{movement.product.name}</h3>
+                                            <p className="mt-1 text-xs text-slate-500">{new Date(document.createdAt).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                                        </div>
+                                        <span className={`shrink-0 text-lg font-black tabular-nums ${incoming ? "text-emerald-700" : "text-amber-700"}`}>{incoming ? "+" : "−"}{movement.quantity}</span>
+                                    </div>
+                                    <div className={`mt-3 inline-flex max-w-full items-center rounded-full border px-2.5 py-1 text-xs font-bold ${incoming ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+                                        {incoming ? <ArrowDownToLine className="mr-1 h-3.5 w-3.5 shrink-0" /> : <ArrowUpFromLine className="mr-1 h-3.5 w-3.5 shrink-0" />}
+                                        <span className="truncate">{businessLabels[document.businessType] || document.businessType}</span>
+                                    </div>
+                                    <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 text-sm">
+                                        <div><dt className="text-xs text-slate-500">Tồn kho</dt><dd className="mt-0.5 font-semibold tabular-nums">{movement.stockBefore} → {movement.stockAfter} {movement.product.unit}</dd></div>
+                                        <div className="text-right"><dt className="text-xs text-slate-500">Chứng từ</dt><dd className="mt-0.5"><Link href={`/dashboard/store/inventory/${encodeURIComponent(document.code)}`} className="font-bold text-emerald-700">{document.code}</Link></dd></div>
+                                    </dl>
+                                </article>
+                            );
+                        }))}
+                        {!visibleDocuments.length && <p className="py-10 text-center text-sm text-slate-500">Chưa có giao dịch kho nào phù hợp với bộ lọc.</p>}
+                    </div>
+                    <div className="hidden overflow-x-auto sm:block">
                         <table className="w-full min-w-[760px] text-left text-xs sm:text-[13px]">
                             <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
                                 <tr>
@@ -912,8 +953,8 @@ function InventoryManagerContent() {
                                                 <td className="whitespace-nowrap px-3.5 py-2.5">
                                                     <span
                                                         className={`inline-flex whitespace-nowrap items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${incoming
-                                                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80"
-                                                                : "bg-amber-50 text-amber-800 border border-amber-200/80"
+                                                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80"
+                                                            : "bg-amber-50 text-amber-800 border border-amber-200/80"
                                                             }`}
                                                     >
                                                         {incoming ? (

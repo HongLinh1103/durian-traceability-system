@@ -201,8 +201,8 @@ export function MobileBottomNavigation() {
                         <BottomItem item={first} active={isActive(first)} badgeCount={badgeFor(first)} />
                         <BottomItem item={second} active={isActive(second)} badgeCount={badgeFor(second)} />
                         <button type="button" onClick={() => setActionsOpen(true)} className="group flex h-full items-center justify-center pb-2" aria-label={isExpansionMenu ? "Mở thêm chức năng" : "Mở tác vụ nhanh"}>
-                            <span className="grid h-13 w-13 sm:h-14 sm:w-14 -translate-y-2.5 place-items-center rounded-full border-[4px] border-white bg-brand-600 text-white shadow-xl transition group-active:scale-95">
-                                <Plus className="h-9 w-9" strokeWidth={3} />
+                            <span className="grid h-16 w-16 -translate-y-3 place-items-center rounded-full border-[5px] border-white bg-brand-600 text-white shadow-xl transition group-active:scale-95">
+                                <Plus className="h-10 w-10" strokeWidth={3.25} />
                             </span>
                         </button>
                         <BottomItem item={third} active={isActive(third)} badgeCount={badgeFor(third)} />
