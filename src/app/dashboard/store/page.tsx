@@ -3,10 +3,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import {
     AlertTriangle,
-    ArrowRight,
-    ArrowUpRight,
     CheckCircle2,
-    ChevronRight,
     ClipboardList,
     DollarSign,
     MapPin,
@@ -229,167 +226,128 @@ export default async function StoreDashboardPage() {
                 </div>
             </header>
 
-            {/* 2. BỐN CARD TRỌNG TÂM - TRẢ LỜI 4 CÂU HỎI CỐT LÕI (4-CARD EXECUTIVE OVERVIEW) */}
-            <section aria-label="Chỉ số hoạt động trọng tâm" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {/* CARD 1: HÔM NAY BÁN ĐƯỢC BAO NHIÊU? */}
+            {/* 2. BỐN CARD TRỌNG TÂM - 2 CARD/HÀNG (LƯỚI 2 CỘT GỌN GÀNG, KHÔNG XÔ LỆCH) */}
+            <section aria-label="Chỉ số hoạt động trọng tâm" className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                {/* CARD 1: DOANH THU HÔM NAY */}
                 <Link
                     href="/dashboard/store/finance"
-                    className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50/20 to-emerald-50/40 p-5 shadow-xs transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-md"
+                    className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50/20 to-emerald-50/40 p-4 sm:p-5 shadow-xs transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md min-h-[140px] sm:min-h-[150px]"
                 >
-                    <div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1 min-w-0 flex-1">
+                            <span className="text-xs sm:text-sm font-bold uppercase tracking-wide text-emerald-800">
                                 Doanh thu hôm nay
                             </span>
-                            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100/80 text-emerald-700 transition group-hover:scale-110">
-                                <DollarSign className="h-5 w-5" />
-                            </span>
+                            <div className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-slate-900 flex items-baseline gap-1">
+                                <span className="tabular-nums">{todayRevenue.toLocaleString("vi-VN")}</span>
+                                <span className="text-xs sm:text-sm font-bold text-slate-500">đ</span>
+                            </div>
                         </div>
-                        <div className="mt-3">
-                            <span className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl whitespace-nowrap">
-                                {todayRevenue.toLocaleString("vi-VN")}&nbsp;đ
-                            </span>
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
-                            <span className="font-semibold text-emerald-700">
-                                {todayCompletedCount} đơn hoàn tất
-                            </span>
-                            {revenueGrowthPercent !== null ? (
-                                <span
-                                    className={`inline-flex items-center font-bold ${revenueGrowthPercent >= 0 ? "text-emerald-700" : "text-amber-700"
-                                        }`}
-                                >
-                                    · {revenueGrowthPercent >= 0 ? `+${revenueGrowthPercent}%` : `${revenueGrowthPercent}%`} so hôm qua
-                                </span>
-                            ) : (
-                                <span className="text-slate-400">· Hôm qua: {yesterdayRevenue.toLocaleString("vi-VN")} đ</span>
-                            )}
-                        </div>
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-100/80 text-emerald-700 transition group-hover:scale-110 shadow-xs">
+                            <DollarSign className="h-5 w-5" />
+                        </span>
                     </div>
-                    <div className="mt-4 flex items-center justify-between border-t border-emerald-100/80 pt-3 text-xs font-bold text-emerald-700">
-                        <span>Báo cáo tài chính</span>
-                        <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    <div className="mt-3 pt-3 border-t border-emerald-100/60 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600">
+                        <span className="font-semibold text-emerald-700 whitespace-nowrap">{todayCompletedCount} đơn hoàn tất</span>
+                        {revenueGrowthPercent !== null ? (
+                            <span className={`inline-flex items-center font-bold whitespace-nowrap ${revenueGrowthPercent >= 0 ? "text-emerald-700" : "text-amber-700"}`}>
+                                · {revenueGrowthPercent >= 0 ? `+${revenueGrowthPercent}%` : `${revenueGrowthPercent}%`} so với hôm qua
+                            </span>
+                        ) : (
+                            <span className="text-slate-400 whitespace-nowrap">· Hôm qua: {yesterdayRevenue.toLocaleString("vi-VN")} đ</span>
+                        )}
                     </div>
                 </Link>
 
-                {/* CARD 2: CÓ ĐƠN NÀO CẦN XỬ LÝ? (CARD NỔI BẬT NHẤT - ACTION REQUIRED) */}
+                {/* CARD 2: ĐƠN HÀNG CẦN XỬ LÝ */}
                 <Link
                     href="/dashboard/store/orders"
-                    className={`group relative flex flex-col justify-between overflow-hidden rounded-3xl border p-5 shadow-xs transition hover:-translate-y-1 hover:shadow-md ${actionableOrdersCount > 0
-                            ? "border-amber-300 bg-gradient-to-br from-amber-50/80 via-orange-50/40 to-white ring-2 ring-amber-400/20 hover:border-amber-400"
-                            : "border-slate-200 bg-white hover:border-brand-300"
+                    className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-4 sm:p-5 shadow-xs transition hover:-translate-y-0.5 hover:shadow-md min-h-[140px] sm:min-h-[150px] ${actionableOrdersCount > 0
+                        ? "border-amber-300 bg-gradient-to-br from-amber-50/80 via-orange-50/30 to-white ring-1 ring-amber-400/20 hover:border-amber-400"
+                        : "border-slate-200 bg-white hover:border-brand-300"
                         }`}
                 >
-                    <div>
-                        <div className="flex items-center justify-between">
-                            <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-900">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1 min-w-0 flex-1">
+                            <span className="flex items-center gap-1.5 text-xs sm:text-sm font-bold uppercase tracking-wide text-amber-900">
                                 {actionableOrdersCount > 0 && (
-                                    <span className="relative flex h-2.5 w-2.5">
+                                    <span className="relative flex h-2.5 w-2.5 shrink-0">
                                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
                                         <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500"></span>
                                     </span>
                                 )}
-                                Đơn cần xử lý
+                                Đơn hàng cần xử lý
                             </span>
-                            <span className={`flex h-10 w-10 items-center justify-center rounded-2xl transition group-hover:scale-110 ${actionableOrdersCount > 0 ? "bg-amber-200/80 text-amber-800" : "bg-slate-100 text-slate-600"
-                                }`}>
-                                <ClipboardList className="h-5 w-5" />
-                            </span>
+                            <div className={`text-xl sm:text-2xl lg:text-3xl font-black tracking-tight ${actionableOrdersCount > 0 ? "text-amber-950" : "text-slate-900"}`}>
+                                {actionableOrdersCount} <span className="text-xs sm:text-sm font-semibold text-slate-500">đơn</span>
+                            </div>
                         </div>
-                        <div className="mt-3">
-                            <span className={`text-2xl font-black tracking-tight sm:text-3xl ${actionableOrdersCount > 0 ? "text-amber-950" : "text-slate-900"
-                                }`}>
-                                {actionableOrdersCount} đơn
-                            </span>
-                        </div>
-                        <div className="mt-2 text-xs font-semibold text-slate-600">
-                            {actionableOrdersCount > 0 ? (
-                                <span className="text-amber-800">
-                                    {pendingCount} chờ xác nhận · {preparingCount} đang chuẩn bị hàng
-                                </span>
-                            ) : (
-                                <span className="text-emerald-700">Tất cả đơn đã được xử lý xong 🎉</span>
-                            )}
-                        </div>
+                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition group-hover:scale-110 shadow-xs ${actionableOrdersCount > 0 ? "bg-amber-200/90 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
+                            <ClipboardList className="h-5 w-5" />
+                        </span>
                     </div>
-                    <div className="mt-4 flex items-center justify-between border-t border-amber-200/60 pt-3 text-xs font-bold text-amber-800">
-                        <span>{actionableOrdersCount > 0 ? "Xử lý đơn hàng ngay" : "Xem danh sách đơn"}</span>
-                        <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                    <div className="mt-3 pt-3 border-t border-amber-200/40 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-slate-600">
+                        {actionableOrdersCount > 0 ? (
+                            <span className="text-amber-900">
+                                {pendingCount} chờ xác nhận · {preparingCount} đang chuẩn bị hàng
+                            </span>
+                        ) : (
+                            <span className="text-emerald-700">Tất cả đơn đã được xử lý xong 🎉</span>
+                        )}
                     </div>
                 </Link>
 
-                {/* CARD 3: SẢN PHẨM ĐANG BÁN */}
+                {/* CARD 3: DANH MỤC SẢN PHẨM */}
                 <Link
                     href="/dashboard/store/products"
-                    className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-white via-blue-50/20 to-blue-50/40 p-5 shadow-xs transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
+                    className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-white via-blue-50/20 to-blue-50/40 p-4 sm:p-5 shadow-xs transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md min-h-[140px] sm:min-h-[150px]"
                 >
-                    <div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wider text-blue-800">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1 min-w-0 flex-1">
+                            <span className="text-xs sm:text-sm font-bold uppercase tracking-wide text-blue-800">
                                 Danh mục sản phẩm
                             </span>
-                            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100/80 text-blue-700 transition group-hover:scale-110">
-                                <PackageCheck className="h-5 w-5" />
-                            </span>
+                            <div className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-slate-900">
+                                {totalProductsCount} <span className="text-xs sm:text-sm font-semibold text-slate-500">sản phẩm</span>
+                            </div>
                         </div>
-                        <div className="mt-3">
-                            <span className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
-                                {totalProductsCount} sản phẩm
-                            </span>
-                        </div>
-                        <div className="mt-2 text-xs text-slate-600">
-                            <span className="font-semibold text-emerald-700">
-                                {approvedProductsCount} đang mở bán
-                            </span>
-                            {otherProductsCount > 0 && (
-                                <span className="text-slate-500"> · {otherProductsCount} nháp / tạm ẩn</span>
-                            )}
-                        </div>
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-100/80 text-blue-700 transition group-hover:scale-110 shadow-xs">
+                            <PackageCheck className="h-5 w-5" />
+                        </span>
                     </div>
-                    <div className="mt-4 flex items-center justify-between border-t border-blue-100/80 pt-3 text-xs font-bold text-blue-700">
-                        <span>Quản lý sản phẩm</span>
-                        <ChevronRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                    <div className="mt-3 pt-3 border-t border-blue-100/60 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600">
+                        <span className="font-semibold text-emerald-700">{approvedProductsCount} đang mở bán</span>
+                        {otherProductsCount > 0 && <span className="text-slate-500"> · {otherProductsCount} nháp / tạm ẩn</span>}
                     </div>
                 </Link>
 
-                {/* CARD 4: CẢNH BÁO TỒN KHO (HÀNG NÀO SẮP HẾT?) */}
+                {/* CARD 4: CẢNH BÁO TỒN KHO */}
                 <Link
                     href="/dashboard/store/inventory"
-                    className={`group relative flex flex-col justify-between overflow-hidden rounded-3xl border p-5 shadow-xs transition hover:-translate-y-1 hover:shadow-md ${lowStockCount > 0 || outOfStockCount > 0
-                            ? "border-rose-200 bg-gradient-to-br from-white via-rose-50/20 to-rose-50/40 hover:border-rose-300"
-                            : "border-slate-200 bg-white hover:border-brand-300"
+                    className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-4 sm:p-5 shadow-xs transition hover:-translate-y-0.5 hover:shadow-md min-h-[140px] sm:min-h-[150px] ${lowStockCount > 0 || outOfStockCount > 0
+                        ? "border-rose-200 bg-gradient-to-br from-white via-rose-50/20 to-rose-50/40 hover:border-rose-300"
+                        : "border-slate-200 bg-white hover:border-brand-300"
                         }`}
                 >
-                    <div>
-                        <div className="flex items-center justify-between">
-                            <span className={`text-xs font-bold uppercase tracking-wider ${lowStockCount > 0 || outOfStockCount > 0 ? "text-rose-800" : "text-slate-700"
-                                }`}>
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1 min-w-0 flex-1">
+                            <span className={`text-xs sm:text-sm font-bold uppercase tracking-wide ${lowStockCount > 0 || outOfStockCount > 0 ? "text-rose-800" : "text-slate-700"}`}>
                                 Cảnh báo tồn kho
                             </span>
-                            <span className={`flex h-10 w-10 items-center justify-center rounded-2xl transition group-hover:scale-110 ${lowStockCount > 0 || outOfStockCount > 0 ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"
-                                }`}>
-                                <AlertTriangle className="h-5 w-5" />
-                            </span>
-                        </div>
-                        <div className="mt-3">
-                            <span className={`text-2xl font-black tracking-tight sm:text-3xl ${lowStockCount > 0 || outOfStockCount > 0 ? "text-rose-900" : "text-slate-900"
-                                }`}>
+                            <div className={`text-xl sm:text-2xl lg:text-3xl font-black tracking-tight ${lowStockCount > 0 || outOfStockCount > 0 ? "text-rose-900" : "text-slate-900"}`}>
                                 {lowStockCount > 0 ? `${lowStockCount} hàng sắp hết` : "Tồn kho an toàn"}
-                            </span>
+                            </div>
                         </div>
-                        <div className="mt-2 text-xs text-slate-600">
-                            {outOfStockCount > 0 ? (
-                                <span className="font-bold text-rose-700">
-                                    {outOfStockCount} sản phẩm đã hết hàng!
-                                </span>
-                            ) : (
-                                <span>{totalProductsCount} mã hàng có tồn kho sẵn sàng</span>
-                            )}
-                        </div>
+                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition group-hover:scale-110 shadow-xs ${lowStockCount > 0 || outOfStockCount > 0 ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"}`}>
+                            <AlertTriangle className="h-5 w-5" />
+                        </span>
                     </div>
-                    <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-bold text-rose-700">
-                        <span>Kiểm tra kho hàng</span>
-                        <ChevronRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                    <div className="mt-3 pt-3 border-t border-rose-100/60 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600">
+                        {outOfStockCount > 0 ? (
+                            <span className="font-bold text-rose-700">{outOfStockCount} sản phẩm đã hết hàng!</span>
+                        ) : (
+                            <span>{totalProductsCount} mã hàng có tồn kho sẵn sàng</span>
+                        )}
                     </div>
                 </Link>
             </section>
@@ -422,16 +380,21 @@ export default async function StoreDashboardPage() {
                         ) : (
                             <div className="mt-4 divide-y divide-slate-100">
                                 {lowStockItems.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between py-3">
-                                        <div className="min-w-0 flex-1 pr-3">
+                                    <div key={item.id} className="flex items-center justify-between py-3 gap-2">
+                                        <div className="min-w-0 flex-1 pr-2">
                                             <div className="font-bold text-slate-900 text-sm truncate">{item.name}</div>
                                             <div className="text-xs text-slate-400">{item.brand || "Chính hãng"} · {item.unit}</div>
                                         </div>
-                                        <div className="shrink-0 text-right">
+                                        <div className="flex items-center gap-2 shrink-0 text-right">
                                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${item.stock === 0 ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-900"
                                                 }`}>
                                                 Còn {item.stock} {item.unit}
                                             </span>
+                                            <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border border-emerald-200/80 rounded-xl">
+                                                <Link href={`/dashboard/store/inventory?tab=create&action=restock&productId=${encodeURIComponent(item.id)}#warehouse-document-form`}>
+                                                    Nhập +
+                                                </Link>
+                                            </Button>
                                         </div>
                                     </div>
                                 ))}
@@ -441,7 +404,7 @@ export default async function StoreDashboardPage() {
 
                     <div className="mt-5 border-t border-slate-100 pt-4">
                         <Button asChild variant="outline" className="w-full rounded-2xl border-dashed border-slate-300 font-bold text-slate-700 hover:bg-slate-50">
-                            <Link href="/dashboard/store/inventory?tab=create">
+                            <Link href="/dashboard/store/inventory?tab=create&action=restock#warehouse-document-form">
                                 <Plus className="mr-2 h-4 w-4" />
                                 Tạo phiếu nhập kho bổ sung hàng
                             </Link>

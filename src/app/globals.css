@@ -78,3 +78,31 @@ body {
         scrollbar-width: none;
     }
 }
+
+@media print {
+    .no-print,
+    header,
+    footer,
+    nav,
+    aside {
+        display: none !important;
+    }
+
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+    }
+
+    .printable-a4 {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    @page {
+        size: A4;
+        margin: 12mm 15mm;
+    }
+}
+

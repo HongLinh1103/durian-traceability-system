@@ -12,6 +12,7 @@ const documentSchema = z.object({
     items: z.array(z.object({
         productId: z.string().min(1),
         quantity: z.coerce.number().int().min(1).max(1_000_000),
+        unitCost: z.coerce.number().min(0).max(1_000_000_000).optional().nullable(),
         note: z.string().trim().max(500).optional(),
     })).min(1).max(50),
     supplierName: z.string().trim().max(200).nullish(),
@@ -79,7 +80,20 @@ export async function POST(request: Request) {
                 const stockAfter = product.stock + config.direction * item.quantity;
                 if (stockAfter < 0) throw new Error("INSUFFICIENT_STOCK");
                 await tx.storeProduct.update({ where: { id: product.id }, data: { stock: stockAfter, ...(stockAfter === 0 && product.status === "APPROVED" ? { status: "OUT_OF_STOCK" as const } : stockAfter > 0 && product.status === "OUT_OF_STOCK" ? { status: "APPROVED" as const } : {}) } });
-                movements.push({ productId: product.id, actorId: session.user.id, type: config.movement, quantity: item.quantity, stockBefore: product.stock, stockAfter, reference: order?.orderCode || parsed.data.supplierName || null, note: item.note || null });
+                const unitCost = item.unitCost ? Number(item.unitCost) : null;
+                const totalCost = unitCost !== null ? unitCost * item.quantity : null;
+                movements.push({
+                    productId: product.id,
+                    actorId: session.user.id,
+                    type: config.movement,
+                    quantity: item.quantity,
+                    stockBefore: product.stock,
+                    stockAfter,
+                    unitCost,
+                    totalCost,
+                    reference: order?.orderCode || parsed.data.supplierName || null,
+                    note: item.note || null,
+                });
             }
             return tx.inventoryDocument.create({ data: {
                 storeId: store.id, code, type: config.type, businessType: parsed.data.businessType,
