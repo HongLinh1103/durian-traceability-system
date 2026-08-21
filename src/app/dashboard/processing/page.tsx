@@ -47,7 +47,7 @@ export default async function Page() {
                 <p className="mt-2 text-brand-50">Theo dõi tiếp nhận nguyên liệu, mẻ chế biến, thành phẩm và công việc ưu tiên trong ngày.</p>
             </header>
 
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
                 <KpiCard icon={Boxes} label="Lô chờ tiếp nhận / kiểm tra" value={String(waitingInspection)} />
                 <KpiCard icon={Factory} label="Lô đang chế biến" value={String(activeProcessing)} />
                 <KpiCard icon={PackageCheck} label="Lô thành phẩm" value={String(finishedLots.length)} />
@@ -84,10 +84,10 @@ export default async function Page() {
 
 function KpiCard({ icon: Icon, label, value }: { icon: typeof Boxes; label: string; value: string }) {
     return (
-        <article className="rounded-3xl border bg-white p-5 shadow-sm">
-            <Icon className="h-6 w-6 text-brand-700" />
-            <p className="mt-4 text-sm text-slate-500">{label}</p>
-            <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
+        <article className="min-w-0 overflow-hidden rounded-2xl border bg-white p-3 shadow-sm sm:rounded-3xl sm:p-5">
+            <Icon className="h-5 w-5 shrink-0 text-brand-700 sm:h-6 sm:w-6" />
+            <p className="mt-3 min-h-10 break-words text-xs leading-5 text-slate-500 sm:mt-4 sm:min-h-0 sm:text-sm">{label}</p>
+            <p className="mt-1 break-words text-xl font-black leading-tight text-slate-900 sm:text-2xl">{value}</p>
         </article>
     );
 }

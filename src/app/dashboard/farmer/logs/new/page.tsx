@@ -35,7 +35,7 @@ type SpeechRecognitionInstanceLike = {
 };
 
 type SpeechRecognitionConstructorLike = new () => SpeechRecognitionInstanceLike;
-type FarmOption = { id: string; farmCode: string; farmName: string };
+type FarmOption = { id: string; farmCode: string; farmName: string; cropSeasons?: { id: string; name: string; year: number }[] };
 type FarmingLogItem = {
     id: string;
     actionDate: string;
@@ -52,7 +52,13 @@ type FarmingLogItem = {
     farm: { farmCode: string; farmName: string };
 };
 
-function buildLogFormData(values: FarmingLogInput, images: File[], isGACCCompliant: boolean) {
+function buildLogFormData(
+    values: FarmingLogInput,
+    images: File[],
+    isGACCCompliant: boolean,
+    supplyId?: string,
+    supplyQuantity?: number,
+) {
     const formData = new FormData();
 
     formData.append("farmId", values.farmId);
@@ -66,6 +72,11 @@ function buildLogFormData(values: FarmingLogInput, images: File[], isGACCComplia
     formData.append("plannedHarvestDate", values.plannedHarvestDate ? toIsoDate(values.plannedHarvestDate) : "");
     formData.append("notes", values.notes ?? "");
     formData.append("isGACCCompliant", String(isGACCCompliant));
+
+    if (supplyId && supplyQuantity && supplyQuantity > 0) {
+        formData.append("supplyId", supplyId);
+        formData.append("supplyQuantity", String(supplyQuantity));
+    }
 
     for (const image of images) {
         formData.append("images", image, image.name);
@@ -154,6 +165,9 @@ export default function NewFarmingLogPage() {
     const [farmsLoading, setFarmsLoading] = useState(true);
     const [prohibitedEntries, setProhibitedEntries] = useState<ProhibitedChemicalEntry[]>([]);
     const [masterDataLoading, setMasterDataLoading] = useState(true);
+    const [inventorySupplies, setInventorySupplies] = useState<Array<{ id: string; name: string; type: string; unit: string; quantity: number; phiDays?: number | null }>>([]);
+    const [selectedSupplyId, setSelectedSupplyId] = useState<string>("");
+    const [supplyQuantity, setSupplyQuantity] = useState<number>(1);
     const now = useMemo(() => new Date(), []);
     const planId = searchParams.get("planId") ?? "";
 
@@ -210,10 +224,19 @@ export default function NewFarmingLogPage() {
         async function loadMasterData() {
             setMasterDataLoading(true);
             try {
-                const pesticideResponse = await fetch("/api/master-data/pesticides", { cache: "no-store" });
+                const [pesticideResponse, suppliesResponse] = await Promise.all([
+                    fetch("/api/master-data/pesticides", { cache: "no-store" }),
+                    fetch("/api/farmer/supplies", { cache: "no-store" }).catch(() => null),
+                ]);
                 const pesticidePayload = await pesticideResponse.json();
                 if (!cancelled) {
                     setProhibitedEntries(pesticideResponse.ok && pesticidePayload.success ? pesticidePayload.data : []);
+                }
+                if (suppliesResponse && !cancelled) {
+                    const suppliesPayload = await suppliesResponse.json();
+                    if (suppliesPayload.success) {
+                        setInventorySupplies(suppliesPayload.data || []);
+                    }
                 }
             } finally {
                 if (!cancelled) setMasterDataLoading(false);
@@ -328,13 +351,14 @@ export default function NewFarmingLogPage() {
                 data?: { farms: FarmOption[]; logs: FarmingLogItem[] };
             };
             if (response.ok && payload.ok && payload.data) {
-                setFarms(payload.data.farms);
+                const activeFarms = payload.data.farms.filter(farm => Boolean(farm.cropSeasons?.length));
+                setFarms(activeFarms);
                 const currentFarmId = form.getValues("farmId");
                 if (
-                    payload.data.farms[0] &&
-                    !payload.data.farms.some((farm) => farm.id === currentFarmId)
+                    activeFarms[0] &&
+                    !activeFarms.some((farm) => farm.id === currentFarmId)
                 ) {
-                    form.setValue("farmId", payload.data.farms[0].id, { shouldValidate: true });
+                    form.setValue("farmId", activeFarms[0].id, { shouldValidate: true });
                 }
             }
         } finally {
@@ -530,7 +554,13 @@ export default function NewFarmingLogPage() {
             const payloadIsCompliant = !isProhibited && isSafeForHarvest;
 
             if (typeof navigator !== "undefined" && navigator.onLine) {
-                const formData = buildLogFormData(values, attachedImages, payloadIsCompliant);
+                const formData = buildLogFormData(
+                    values,
+                    attachedImages,
+                    payloadIsCompliant,
+                    selectedSupplyId,
+                    supplyQuantity,
+                );
                 if (planId) formData.append("planId", planId);
                 const response = await fetch("/api/farming-logs", {
                     method: "POST",
@@ -683,7 +713,7 @@ export default function NewFarmingLogPage() {
                             <Label htmlFor="farmId">Mã MSVT</Label>
                             <select id="farmId" className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" {...form.register("farmId")}>
                                 {farmsLoading && <option value="">Đang tải danh sách vườn...</option>}
-                                {!farmsLoading && farms.length === 0 && <option value="">Chưa có vườn đã được duyệt</option>}
+                                {!farmsLoading && farms.length === 0 && <option value="">Hãy bắt đầu vụ mùa trước</option>}
                                 {farms.map((farm) => (
                                     <option key={farm.id} value={farm.id}>
                                         {farm.farmCode} · {farm.farmName}
@@ -761,28 +791,82 @@ export default function NewFarmingLogPage() {
                             </div>}
                         </div>
 
-                        {(isSpraying || isFertilizing) && <div className="grid gap-4 md:grid-cols-2">
-                            <div>
-                                <Label htmlFor="chemicalName">{isSpraying ? "Tên thuốc" : "Tên phân bón"}</Label>
-                                <Input id="chemicalName" placeholder={isSpraying ? "Nhập tên thuốc hoặc hoạt chất đã sử dụng" : "Nhập tên phân bón đã sử dụng"} {...form.register("chemicalName")} />
-                                {isSpraying && masterDataLoading && <p className="mt-1 text-xs text-slate-500">Đang tải danh mục cấm để kiểm tra...</p>}
-                                <p className="mt-1 text-xs text-red-600">{form.formState.errors.chemicalName?.message}</p>
-                                {isSpraying && chemicalName.trim() && !masterDataLoading && <p className={`mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${isProhibited ? "bg-red-50 text-red-700" : "bg-brand-50 text-brand-700"}`}>
-                                    {isProhibited ? <AlertTriangle className="h-3.5 w-3.5" /> : <Sprout className="h-3.5 w-3.5" />}
-                                    {prohibitedMatch.status === "exact" ? "Phát hiện khớp danh mục cấm" : prohibitedMatch.status === "suspected" ? "Nghi ngờ khớp danh mục cấm" : "Chưa phát hiện trong danh mục cấm"}
-                                </p>}
+                        {(isSpraying || isFertilizing) && (
+                            <div className="space-y-4 rounded-2xl border border-brand-100 bg-brand-50/30 p-4">
+                                {inventorySupplies.length > 0 && (
+                                    <div>
+                                        <Label htmlFor="inventorySupply" className="text-xs font-bold text-brand-800">
+                                            Chọn vật tư từ Kho (tự động trừ kho &amp; tính chi phí vụ)
+                                        </Label>
+                                        <select
+                                            id="inventorySupply"
+                                            value={selectedSupplyId}
+                                            onChange={(e) => {
+                                                const sId = e.target.value;
+                                                setSelectedSupplyId(sId);
+                                                const found = inventorySupplies.find((s) => s.id === sId);
+                                                if (found) {
+                                                    form.setValue("chemicalName", found.name, { shouldValidate: true, shouldDirty: true });
+                                                    if (found.phiDays != null) {
+                                                        form.setValue("phiDays", found.phiDays, { shouldValidate: true, shouldDirty: true });
+                                                    }
+                                                }
+                                            }}
+                                            className="mt-1 h-10 w-full rounded-2xl border border-brand-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none"
+                                        >
+                                            <option value="">-- Nhập thủ công (hoặc chọn từ kho vật tư bên dưới) --</option>
+                                            {inventorySupplies
+                                                .filter((s) => isSpraying ? s.type === "PESTICIDE" : s.type === "FERTILIZER")
+                                                .map((s) => (
+                                                    <option key={s.id} value={s.id}>
+                                                        {s.name} (Tồn: {s.quantity} {s.unit})
+                                                    </option>
+                                                ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <div>
+                                        <Label htmlFor="chemicalName">{isSpraying ? "Tên thuốc" : "Tên phân bón"}</Label>
+                                        <Input id="chemicalName" placeholder={isSpraying ? "Nhập tên thuốc hoặc hoạt chất đã sử dụng" : "Nhập tên phân bón đã sử dụng"} {...form.register("chemicalName")} />
+                                        {isSpraying && masterDataLoading && <p className="mt-1 text-xs text-slate-500">Đang tải danh mục cấm để kiểm tra...</p>}
+                                        <p className="mt-1 text-xs text-red-600">{form.formState.errors.chemicalName?.message}</p>
+                                        {isSpraying && chemicalName.trim() && !masterDataLoading && <p className={`mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${isProhibited ? "bg-red-50 text-red-700" : "bg-brand-50 text-brand-700"}`}>
+                                            {isProhibited ? <AlertTriangle className="h-3.5 w-3.5" /> : <Sprout className="h-3.5 w-3.5" />}
+                                            {prohibitedMatch.status === "exact" ? "Phát hiện khớp danh mục cấm" : prohibitedMatch.status === "suspected" ? "Nghi ngờ khớp danh mục cấm" : "Chưa phát hiện trong danh mục cấm"}
+                                        </p>}
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="dosage">Liều lượng sử dụng</Label>
+                                        <Input id="dosage" {...form.register("dosage")} placeholder="Ví dụ: 20ml/bình 16L, 2kg/gốc" />
+                                        <p className="mt-1 text-xs text-red-600">{form.formState.errors.dosage?.message}</p>
+                                    </div>
+
+                                    {selectedSupplyId && (
+                                        <div>
+                                            <Label htmlFor="supplyQuantity">Số lượng xuất kho ({inventorySupplies.find(s => s.id === selectedSupplyId)?.unit})</Label>
+                                            <Input
+                                                id="supplyQuantity"
+                                                type="number"
+                                                min="0.01"
+                                                step="any"
+                                                value={supplyQuantity}
+                                                onChange={(e) => setSupplyQuantity(Number(e.target.value))}
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {isSpraying && <div>
+                                        <Label htmlFor="phiDays">Số ngày cách ly PHI</Label>
+                                        <Input id="phiDays" type="number" min="0" {...form.register("phiDays")} />
+                                        <p className="mt-1 text-xs text-red-600">{form.formState.errors.phiDays?.message}</p>
+                                    </div>}
+                                </div>
                             </div>
-                            {(isSpraying || isFertilizing) && <div>
-                                <Label htmlFor="dosage">Liều lượng</Label>
-                                <Input id="dosage" {...form.register("dosage")} placeholder="Ví dụ: 20ml/bình 16L" />
-                                <p className="mt-1 text-xs text-red-600">{form.formState.errors.dosage?.message}</p>
-                            </div>}
-                            {isSpraying && <div>
-                                <Label htmlFor="phiDays">Số ngày cách ly PHI</Label>
-                                <Input id="phiDays" type="number" min="0" {...form.register("phiDays")} />
-                                <p className="mt-1 text-xs text-red-600">{form.formState.errors.phiDays?.message}</p>
-                            </div>}
-                        </div>}
+                        )}
 
                         <div>
                             <div className="mb-2 flex items-center justify-between gap-3">

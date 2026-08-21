@@ -19,8 +19,9 @@ function getDashboardPath(role: string): string {
         case "STORE_OWNER":
             return "/dashboard/store";
         case "COLLECTOR":
-        case "PROCESSING_FACILITY":
             return "/dashboard/partner";
+        case "PROCESSING_FACILITY":
+            return "/dashboard/processing";
         case "FARMER":
         default:
             return "/dashboard/farmer";

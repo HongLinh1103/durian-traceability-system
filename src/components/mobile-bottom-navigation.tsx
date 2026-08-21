@@ -58,6 +58,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
+            { label: "Thống kê", description: "Thống kê chi phí, thuốc BVTV và phân bón", href: "/dashboard/farmer/statistics", icon: CircleDollarSign },
             { label: "Kế hoạch", description: "Lập lịch và theo dõi công việc canh tác", href: "/dashboard/farmer/plans", icon: CalendarDays },
             { label: "Tài liệu", description: "Tra cứu tài liệu kỹ thuật canh tác", href: "/documents", icon: BookOpenCheck },
             { label: "Tin tức", description: "Theo dõi bản tin nông nghiệp mới", href: "/news", icon: Bell },
@@ -185,7 +186,25 @@ export function MobileBottomNavigation() {
 
     if (!configuration || isAuthPage) return null;
 
-    const isActive = (item: NavItem) => (item.matches ?? [item.href]).some(match => pathname === match || pathname.startsWith(`${match}/`));
+    const isRootItem = (href: string) => [
+        "/dashboard/farmer",
+        "/dashboard/admin",
+        "/dashboard/area-manager",
+        "/dashboard/store",
+        "/dashboard/partner",
+        "/dashboard/processing",
+        "/account",
+        "/",
+    ].includes(href);
+
+    const isActive = (item: NavItem) => {
+        if (isRootItem(item.href)) {
+            return pathname === item.href;
+        }
+        return (item.matches ?? [item.href]).some(
+            (match) => pathname === match || pathname.startsWith(`${match}/`),
+        );
+    };
     const [first, second, third, fourth] = configuration.items;
     const hasQuickActions = Boolean(configuration.actions?.length);
     const isAdmin = session?.user?.role === "ADMIN";

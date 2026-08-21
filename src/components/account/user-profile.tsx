@@ -308,60 +308,14 @@ export function UserProfile({ profile, farms = [], stores = [], partnerFacility,
 
             {/* Profile Form (Personal Info & System Info) */}
             <form onSubmit={saveProfile} className="space-y-6">
-                <ProfileCard title="Thông tin cá nhân & Ảnh đại diện" icon={UserRound}>
-                    {/* Avatar Selector Row */}
-                    <div className="mb-4 flex flex-wrap items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-                        <button
-                            type="button"
-                            onClick={() => fileInput.current?.click()}
-                            className="group relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-emerald-100 text-emerald-700 shadow-md"
-                        >
-                            {avatar ? (
-                                <Image src={avatar} alt="Ảnh đại diện" fill unoptimized className="object-cover" />
-                            ) : (
-                                <UserRound className="h-10 w-10" />
-                            )}
-                            <span className="absolute inset-x-0 bottom-0 flex items-center justify-center bg-slate-950/60 py-1 text-white">
-                                <Camera className="h-3.5 w-3.5" />
-                            </span>
-                        </button>
-                        <div className="flex-1 min-w-[200px]">
-                            <p className="text-sm font-bold text-slate-900">Ảnh đại diện</p>
-                            <p className="mt-0.5 text-xs text-slate-500">
-                                Định dạng JPG, PNG hoặc WEBP. Dung lượng tối đa 1.5 MB.
-                            </p>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-9 rounded-xl border-slate-200 font-semibold text-slate-700 hover:bg-white"
-                                    onClick={() => fileInput.current?.click()}
-                                >
-                                    <Camera className="mr-1.5 h-3.5 w-3.5 text-brand-600" />
-                                    Chọn ảnh mới
-                                </Button>
-                                {avatar && (
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-9 rounded-xl text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
-                                        onClick={() => setAvatar(null)}
-                                    >
-                                        Xóa ảnh
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-                        <input
-                            ref={fileInput}
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            className="hidden"
-                            onChange={event => selectAvatar(event.target.files?.[0])}
-                        />
-                    </div>
+                <input
+                    ref={fileInput}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={event => selectAvatar(event.target.files?.[0])}
+                />
+                <ProfileCard title="Thông tin cá nhân" icon={UserRound}>
 
                     {/* Inputs */}
                     <div className="grid gap-4 sm:grid-cols-2">

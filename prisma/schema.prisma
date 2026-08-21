@@ -212,6 +212,11 @@ enum PlanStatus {
   COMPLETED
 }
 
+enum CropSeasonStatus {
+  ACTIVE
+  CLOSED
+}
+
 /// Trạng thái tuân thủ GACC cho thuốc bảo vệ thực vật.
 enum GaccChemicalStatus {
   ALLOWED
@@ -386,6 +391,10 @@ model User {
   harvestActions         HarvestStatusHistory[]
   farmingPlans           FarmingPlan[]
   weatherObservations    WeatherObservation[]
+  farmerSupplies         FarmerSupply[]
+  farmerSupplyTransactions FarmerSupplyTransaction[]
+  farmerExpenses         FarmerExpense[]
+  pestMonitoringBooks    PestMonitoringBook[]
 
   @@index([role])
   @@index([role, accountStatus, deletedAt])
@@ -837,10 +846,42 @@ model Farm {
   harvests            HarvestRecord[]
   farmingPlans        FarmingPlan[]
   weatherObservations WeatherObservation[]
+  cropSeasons         CropSeason[]
+  farmerSupplyTransactions FarmerSupplyTransaction[]
+  farmerExpenses         FarmerExpense[]
+  pestMonitoringBooks    PestMonitoringBook[]
 
   @@index([farmerId])
   @@index([farmCode])
   @@index([growingRegionId])
+}
+
+model CropSeason {
+  id              String           @id @default(cuid())
+  farmId          String
+  name            String
+  year            Int
+  sequence        Int              @default(1)
+  status          CropSeasonStatus @default(ACTIVE)
+  startedAt       DateTime
+  startingStage   GrowthStage      @default(POST_HARVEST_RECOVERY)
+  notes           String?
+  expectedEndAt   DateTime?
+  closedAt        DateTime?
+  closingNote     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  farm            Farm             @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  farmingLogs     FarmingLog[]
+  harvests        HarvestRecord[]
+  farmerSupplyTransactions FarmerSupplyTransaction[]
+  farmerExpenses         FarmerExpense[]
+  pestMonitoringBooks    PestMonitoringBook[]
+
+  @@unique([farmId, year, sequence])
+  @@index([farmId, status])
+  @@map("crop_seasons")
 }
 
 model WeatherObservation {
@@ -882,6 +923,7 @@ model HarvestRecord {
   code                     String                 @unique
   farmId                   String
   farmerId                 String
+  cropSeasonId             String?
   buyerType                HarvestBuyerType       @default(UNDETERMINED)
   buyerFacilityId          String?
   buyerUserId              String?
@@ -923,10 +965,12 @@ model HarvestRecord {
   histories                HarvestStatusHistory[]
   varietyItems             HarvestVarietyItem[]
   farmingLog               FarmingLog?
+  cropSeason               CropSeason?             @relation(fields: [cropSeasonId], references: [id], onDelete: SetNull)
 
   @@index([farmerId, status, createdAt])
   @@index([buyerUserId, status, createdAt])
   @@index([farmId, expectedHarvestDate])
+  @@index([cropSeasonId])
   @@map("harvest_records")
 }
 
@@ -984,6 +1028,7 @@ model GrowingRegion {
 model FarmingLog {
   id              String       @id @default(cuid())
   farmId          String
+  cropSeasonId    String?
   stage           GrowthStage
   actionDate      DateTime
   activityType    ActivityType
@@ -1002,8 +1047,13 @@ model FarmingLog {
   farm          Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
   harvestRecord HarvestRecord? @relation(fields: [harvestRecordId], references: [id], onDelete: SetNull)
   plan          FarmingPlan?   @relation(fields: [planId], references: [id], onDelete: SetNull)
+  cropSeason    CropSeason?    @relation(fields: [cropSeasonId], references: [id], onDelete: SetNull)
+  materialsUsed FarmingLogMaterial[]
+  supplyTransactions FarmerSupplyTransaction[]
+  pestTreatments PestTreatment[]
 
   @@index([farmId, actionDate])
+  @@index([cropSeasonId, actionDate])
   @@index([stage])
   @@index([activityType])
 }
@@ -1059,3 +1109,248 @@ model Notification {
   @@index([type])
   @@index([createdAt])
 }
+
+enum SupplyType {
+  FERTILIZER
+  PESTICIDE
+  EQUIPMENT
+  OTHER
+}
+
+enum SupplyTransactionType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+enum FarmerExpenseCategory {
+  FERTILIZER
+  PESTICIDE
+  LABOR
+  ELECTRICITY_WATER
+  MACHINERY
+  TRANSPORT
+  HARVESTING
+  TESTING
+  OTHER
+}
+
+model FarmerSupply {
+  id                String       @id @default(cuid())
+  farmerId          String
+  name              String
+  type              SupplyType
+  brand             String?
+  unit              String
+  quantity          Float        @default(0)
+  unitPrice         Decimal      @default(0) @db.Decimal(14, 2)
+  phiDays           Int?
+  activeIngredients String?
+  orderItemId       String?
+  productId         String?
+  notes             String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  farmer            User         @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  transactions      FarmerSupplyTransaction[]
+  logMaterials      FarmingLogMaterial[]
+
+  @@index([farmerId, type])
+  @@map("farmer_supplies")
+}
+
+model FarmerSupplyTransaction {
+  id           String                @id @default(cuid())
+  supplyId     String
+  farmerId     String
+  farmId       String?
+  cropSeasonId String?
+  farmingLogId String?
+  type         SupplyTransactionType
+  quantity     Float
+  unitPrice    Decimal               @db.Decimal(14, 2)
+  totalAmount  Decimal               @db.Decimal(14, 2)
+  stage        GrowthStage?
+  activityType ActivityType?
+  purpose      String?
+  actionDate   DateTime              @default(now())
+  notes        String?
+  createdAt    DateTime              @default(now())
+
+  supply       FarmerSupply          @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+  farmer       User                  @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  farm         Farm?                 @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  cropSeason   CropSeason?           @relation(fields: [cropSeasonId], references: [id], onDelete: SetNull)
+  farmingLog   FarmingLog?           @relation(fields: [farmingLogId], references: [id], onDelete: SetNull)
+
+  @@index([farmerId, type, actionDate])
+  @@index([cropSeasonId, actionDate])
+  @@index([farmId, actionDate])
+  @@map("farmer_supply_transactions")
+}
+
+model FarmingLogMaterial {
+  id            String        @id @default(cuid())
+  farmingLogId  String
+  supplyId      String?
+  supplyName    String
+  supplyType    SupplyType
+  quantity      Float
+  unit          String
+  unitPrice     Decimal       @default(0) @db.Decimal(14, 2)
+  totalCost     Decimal       @default(0) @db.Decimal(14, 2)
+  transactionId String?
+  createdAt     DateTime      @default(now())
+
+  farmingLog    FarmingLog    @relation(fields: [farmingLogId], references: [id], onDelete: Cascade)
+  supply        FarmerSupply? @relation(fields: [supplyId], references: [id], onDelete: SetNull)
+
+  @@index([farmingLogId])
+  @@index([supplyId])
+  @@map("farming_log_materials")
+}
+
+model FarmerExpense {
+  id           String                @id @default(cuid())
+  farmerId     String
+  farmId       String
+  cropSeasonId String
+  category     FarmerExpenseCategory
+  title        String
+  amount       Decimal               @db.Decimal(14, 2)
+  expenseDate  DateTime
+  stage        GrowthStage?
+  notes        String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  farmer       User                  @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  farm         Farm                  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  cropSeason   CropSeason            @relation(fields: [cropSeasonId], references: [id], onDelete: Cascade)
+
+  @@index([farmerId, expenseDate])
+  @@index([cropSeasonId, category])
+  @@index([farmId, expenseDate])
+  @@map("farmer_expenses")
+}
+
+enum PestMonitoringStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum PestTrapStatus {
+  ACTIVE
+  INACTIVE
+  DAMAGED
+}
+
+model PestMonitoringBook {
+  id                 String               @id @default(cuid())
+  farmerId           String
+  farmId             String
+  cropSeasonId       String
+  pestName           String
+  scientificName     String?
+  trapType           String
+  attractant         String?
+  startDate          DateTime             @default(now())
+  checkFrequencyDays Int                  @default(7)
+  status             PestMonitoringStatus @default(ACTIVE)
+  notes              String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  farmer             User                 @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  farm               Farm                 @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  cropSeason         CropSeason           @relation(fields: [cropSeasonId], references: [id], onDelete: Cascade)
+  traps              PestTrap[]
+  inspections        PestInspection[]
+  treatments         PestTreatment[]
+
+  @@index([farmerId, status])
+  @@index([farmId, cropSeasonId])
+  @@map("pest_monitoring_books")
+}
+
+model PestTrap {
+  id               String               @id @default(cuid())
+  monitoringBookId String
+  trapCode         String
+  trapType         String
+  locationName     String
+  latitude         Float?
+  longitude        Float?
+  installedDate    DateTime             @default(now())
+  status           PestTrapStatus       @default(ACTIVE)
+  notes            String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  monitoringBook   PestMonitoringBook   @relation(fields: [monitoringBookId], references: [id], onDelete: Cascade)
+  inspectionItems  PestInspectionItem[]
+
+  @@index([monitoringBookId, status])
+  @@map("pest_traps")
+}
+
+model PestInspection {
+  id               String               @id @default(cuid())
+  monitoringBookId String
+  inspectionDate   DateTime             @default(now())
+  inspectorName    String
+  totalPestsCount  Int                  @default(0)
+  densityLevel     String?
+  weatherCondition String?
+  actionNeeded     Boolean              @default(false)
+  actionNote       String?
+  images           String[]             @default([])
+  notes            String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  monitoringBook   PestMonitoringBook   @relation(fields: [monitoringBookId], references: [id], onDelete: Cascade)
+  items            PestInspectionItem[]
+
+  @@index([monitoringBookId, inspectionDate])
+  @@map("pest_inspections")
+}
+
+model PestInspectionItem {
+  id           String         @id @default(cuid())
+  inspectionId String
+  trapId       String
+  pestsCount   Int            @default(0)
+  baitStatus   String?
+  notes        String?
+
+  inspection   PestInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  trap         PestTrap       @relation(fields: [trapId], references: [id], onDelete: Cascade)
+
+  @@index([inspectionId])
+  @@index([trapId])
+  @@map("pest_inspection_items")
+}
+
+model PestTreatment {
+  id               String             @id @default(cuid())
+  monitoringBookId String
+  treatmentDate    DateTime           @default(now())
+  treatmentType    String
+  productUsed      String?
+  dosage           String?
+  areaTreated      String?
+  resultNotes      String?
+  farmingLogId     String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  monitoringBook   PestMonitoringBook @relation(fields: [monitoringBookId], references: [id], onDelete: Cascade)
+  farmingLog       FarmingLog?        @relation(fields: [farmingLogId], references: [id], onDelete: SetNull)
+
+  @@index([monitoringBookId, treatmentDate])
+  @@map("pest_treatments")
+}
+
+

@@ -23,8 +23,9 @@ function getDashboardPath(role?: string): string {
         case "STORE_OWNER":
             return "/dashboard/store";
         case "COLLECTOR":
-        case "PROCESSING_FACILITY":
             return "/dashboard/partner";
+        case "PROCESSING_FACILITY":
+            return "/dashboard/processing";
         case "FARMER":
         default:
             return "/dashboard/farmer";
@@ -42,6 +43,9 @@ function LoginForm() {
     const [isLoading, setIsLoading] = useState(false);
 
     const resolveDestination = useCallback((role?: string) => {
+        if (role === "PROCESSING_FACILITY") {
+            return "/dashboard/processing";
+        }
         if (
             callbackUrl &&
             callbackUrl.startsWith("/") &&

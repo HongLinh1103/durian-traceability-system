@@ -32,6 +32,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/cart", label: "Giỏ hàng", roles: ["FARMER"] },
     { href: "/orders", label: "Đơn mua của tôi", roles: ["FARMER"] },
     { href: "/dashboard/farmer/journal", label: "Nhật ký", roles: ["FARMER"] },
+    { href: "/dashboard/farmer/statistics", label: "Thống kê", roles: ["FARMER"] },
     { href: "/dashboard/farmer/plans", label: "Kế hoạch", roles: ["FARMER"], planBadge: true },
     { href: "/dashboard/farmer/harvests", label: "Phiếu thu hoạch", roles: ["FARMER"] },
     { href: "/region-manager/gardens", label: "Quản lý vườn trồng", roles: ["AREA_MANAGER"] },
@@ -242,6 +243,24 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
         }
     };
 
+    const isRootDashboard = (href: string) => [
+        "/dashboard/farmer",
+        "/dashboard/admin",
+        "/dashboard/area-manager",
+        "/dashboard/store",
+        "/dashboard/partner",
+        "/dashboard/processing",
+        "/account",
+        "/",
+    ].includes(href);
+
+    const checkLinkActive = (href: string) => {
+        if (isRootDashboard(href)) {
+            return pathname === href;
+        }
+        return pathname === href || pathname.startsWith(`${href}/`);
+    };
+
     const isAuthPage = pathname === "/login" || pathname === "/register";
 
     return (
@@ -301,7 +320,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                 href={link.href}
                                 className={cn(
                                     "relative whitespace-nowrap rounded-2xl px-2.5 py-2 text-sm font-semibold transition 2xl:px-3",
-                                    (["/dashboard/partner", "/dashboard/store", "/dashboard/processing"].includes(link.href) ? pathname === link.href : pathname.startsWith(link.href))
+                                    checkLinkActive(link.href)
                                         ? "bg-brand-50 text-brand-700"
                                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
                                 )}
@@ -453,7 +472,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                     onClick={() => setMobileOpen(false)}
                                     className={cn(
                                         "flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition",
-                                        (["/dashboard/partner", "/dashboard/store", "/dashboard/processing"].includes(link.href) ? pathname === link.href : pathname.startsWith(link.href))
+                                        checkLinkActive(link.href)
                                             ? "bg-brand-50 text-brand-700"
                                             : "text-slate-600 hover:bg-slate-50",
                                     )}

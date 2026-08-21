@@ -107,11 +107,11 @@ const phenomenaList = [
 const dateKey = (date = new Date()) =>
     new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(date);
 
-export function WeatherJournal() {
+export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {}) {
     const { toast } = useToast();
     const [farms, setFarms] = useState<Farm[]>([]);
     const [rows, setRows] = useState<Observation[]>([]);
-    const [farmId, setFarmId] = useState("");
+    const [farmId, setFarmId] = useState(defaultFarmId || "");
     const [range, setRange] = useState<"today" | "week" | "month">("today");
     const [from, setFrom] = useState("");
     const [to, setTo] = useState("");
@@ -135,6 +135,12 @@ export function WeatherJournal() {
     const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
+        if (defaultFarmId) {
+            setFarmId(defaultFarmId);
+        }
+    }, [defaultFarmId]);
+
+    useEffect(() => {
         let isMounted = true;
         fetch("/api/farming-logs", { cache: "no-store" })
             .then(r => (r.ok ? r.json() : null))
@@ -142,7 +148,7 @@ export function WeatherJournal() {
                 if (!isMounted || !p) return;
                 const f = p.data?.farms || [];
                 setFarms(f);
-                if (f[0]) setFarmId(f[0].id);
+                if (!defaultFarmId && f[0]) setFarmId(f[0].id);
             })
             .catch(err => {
                 console.error("Error loading farms:", err);
@@ -303,22 +309,32 @@ export function WeatherJournal() {
 
     return (
         <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
+            {/* Standard Header đồng bộ với các tab */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
+                        <CloudSun className="h-6 w-6 text-brand-600" />
+                        NHẬT KÝ THỜI TIẾT
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                        Theo dõi nhiệt độ, độ ẩm, lượng mưa và các hiện tượng thời tiết tại vườn trồng
+                    </p>
+                </div>
+
+                <Button
+                    type="button"
+                    onClick={() => showForm()}
+                    className="rounded-2xl bg-brand-600 text-sm font-bold text-white shadow-soft hover:bg-brand-700 shrink-0"
+                >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Ghi nhận thời tiết
+                </Button>
+            </div>
+
             {/* Filter Section */}
-            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <section className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="grid gap-3 sm:grid-cols-2 lg:flex lg:flex-1 lg:items-center">
-                        <select
-                            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-800 lg:w-64"
-                            value={farmId}
-                            onChange={e => setFarmId(e.target.value)}
-                        >
-                            {farms.map(f => (
-                                <option key={f.id} value={f.id}>
-                                    {f.farmName} · {f.farmCode}
-                                </option>
-                            ))}
-                        </select>
-
                         <div className="flex gap-1.5 sm:gap-2">
                             {(
                                 [
@@ -335,7 +351,7 @@ export function WeatherJournal() {
                                         setFrom("");
                                         setTo("");
                                     }}
-                                    className={`flex-1 rounded-2xl px-3 py-2.5 text-xs font-bold transition sm:px-4 sm:text-sm ${
+                                    className={`flex-1 rounded-2xl px-3.5 py-2.5 text-xs font-bold transition sm:px-4 sm:text-sm ${
                                         range === v && !from && !to
                                             ? "bg-brand-600 text-white shadow-soft"
                                             : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -351,14 +367,6 @@ export function WeatherJournal() {
                             <VietnameseDatePicker value={to} onChange={setTo} placeholder="Đến ngày" />
                         </div>
                     </div>
-
-                    <Button
-                        className="h-12 shrink-0 whitespace-nowrap bg-brand-600 px-6 text-white hover:bg-brand-700 shadow-soft"
-                        onClick={() => showForm()}
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Ghi nhận thời tiết
-                    </Button>
                 </div>
             </section>
 

@@ -24,7 +24,10 @@ export async function GET() {
                 isActive: true,
             },
             orderBy: { createdAt: "asc" },
-            select: { id: true, farmCode: true, farmName: true, durianVariety: true },
+            select: {
+                id: true, farmCode: true, farmName: true, durianVariety: true,
+                cropSeasons: { where: { status: "ACTIVE" }, take: 1, select: { id: true, name: true, year: true } },
+            },
         }),
         prisma.farmingLog.findMany({
             where: { farm: { farmerId: session.user.id } },
@@ -43,6 +46,7 @@ export async function GET() {
                 images: true,
                 isGACCCompliant: true,
                 createdAt: true,
+                cropSeason: { select: { id: true, name: true, year: true, status: true } },
                 farm: { select: { farmCode: true, farmName: true } },
             },
         }),
@@ -99,12 +103,19 @@ export async function POST(request: Request) {
                 farmerId: session.user.id,
                 isActive: true,
             },
-            select: { id: true },
+            select: { id: true, cropSeasons: { where: { status: "ACTIVE" }, take: 1, select: { id: true } } },
         });
         if (!ownedFarm) {
             return NextResponse.json(
                 { ok: false, error: "Vườn không tồn tại, chưa được duyệt hoặc không thuộc tài khoản này." },
                 { status: 404 },
+            );
+        }
+        const activeSeason = ownedFarm.cropSeasons[0];
+        if (!activeSeason) {
+            return NextResponse.json(
+                { ok: false, error: "Vườn chưa có vụ mùa đang hoạt động. Hãy bắt đầu vụ mùa mới trước khi ghi nhật ký." },
+                { status: 409 },
             );
         }
 
@@ -124,10 +135,16 @@ export async function POST(request: Request) {
 
         const plan = planId ? await prisma.farmingPlan.findFirst({ where: { id: planId, farmerId: session.user.id, farmId, status: { not: "COMPLETED" } }, select: { id: true } }) : null;
         if (planId && !plan) return NextResponse.json({ ok: false, error: "Kế hoạch không hợp lệ hoặc đã hoàn thành." }, { status: 400 });
+
+        const supplyId = String(formData.get("supplyId") ?? "").trim();
+        const supplyQuantity = Number(formData.get("supplyQuantity") ?? 0);
+
         const created = await prisma.$transaction(async (tx) => {
+            const logStage = toPrismaGrowthStage(stage);
             const log = await tx.farmingLog.create({ data: {
                 farmId,
-                stage: toPrismaGrowthStage(stage),
+                cropSeasonId: activeSeason.id,
+                stage: logStage,
                 actionDate: parsedActionDate,
                 activityType: normalizedActivityType,
                 otherActivity: normalizedActivityType === "OTHER" ? otherActivity : null,
@@ -141,7 +158,57 @@ export async function POST(request: Request) {
                 images,
                 planId: plan?.id ?? null,
             } });
+
             if (plan) await tx.farmingPlan.update({ where: { id: plan.id }, data: { status: "COMPLETED", completedAt: new Date() } });
+
+            // Tự động trừ kho vật tư nếu có chọn vật tư
+            if (supplyId && supplyQuantity > 0) {
+                const supply = await tx.farmerSupply.findFirst({
+                    where: { id: supplyId, farmerId: session.user.id },
+                });
+                if (supply) {
+                    const newQty = Math.max(0, supply.quantity - supplyQuantity);
+                    await tx.farmerSupply.update({
+                        where: { id: supply.id },
+                        data: { quantity: newQty },
+                    });
+
+                    const totalAmount = Number(supply.unitPrice) * supplyQuantity;
+                    const txRecord = await tx.farmerSupplyTransaction.create({
+                        data: {
+                            supplyId: supply.id,
+                            farmerId: session.user.id,
+                            farmId,
+                            cropSeasonId: activeSeason.id,
+                            farmingLogId: log.id,
+                            type: "OUT",
+                            quantity: supplyQuantity,
+                            unitPrice: supply.unitPrice,
+                            totalAmount,
+                            stage: logStage,
+                            activityType: normalizedActivityType,
+                            purpose: `Sử dụng cho nhật ký: ${activityType}`,
+                            actionDate: parsedActionDate,
+                            notes: notes || null,
+                        },
+                    });
+
+                    await tx.farmingLogMaterial.create({
+                        data: {
+                            farmingLogId: log.id,
+                            supplyId: supply.id,
+                            supplyName: supply.name,
+                            supplyType: supply.type,
+                            quantity: supplyQuantity,
+                            unit: supply.unit,
+                            unitPrice: supply.unitPrice,
+                            totalCost: totalAmount,
+                            transactionId: txRecord.id,
+                        },
+                    });
+                }
+            }
+
             return log;
         });
 

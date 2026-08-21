@@ -72,9 +72,14 @@ export async function POST(request: Request) {
 
         const farm = await prisma.farm.findFirst({
             where: { id: value.farmId, farmerId: session.user.id, isActive: true },
+            include: { cropSeasons: { where: { status: "ACTIVE" }, take: 1 } },
         });
         if (!farm) {
             return NextResponse.json({ success: false, message: "Vườn thu hoạch không tồn tại hoặc không thuộc tài khoản của bạn." }, { status: 404 });
+        }
+        const activeSeason = farm.cropSeasons[0];
+        if (!activeSeason) {
+            return NextResponse.json({ success: false, message: "Vườn chưa có vụ mùa đang hoạt động. Hãy bắt đầu vụ mùa mới trước khi tạo phiếu thu hoạch." }, { status: 409 });
         }
 
         const selectedVarieties = value.varietyItems.map(item => item.durianVariety.trim());
@@ -149,6 +154,7 @@ export async function POST(request: Request) {
                 code,
                 farmId: farm.id,
                 farmerId: session.user.id,
+                cropSeasonId: activeSeason.id,
                 buyerType: safeBuyerType,
                 buyerFacilityId: facility?.id || null,
                 buyerUserId: facility?.ownerId || null,
@@ -201,4 +207,3 @@ export async function POST(request: Request) {
         }, { status: 500 });
     }
 }
-
