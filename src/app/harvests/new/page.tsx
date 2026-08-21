@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
     AlertCircle,
     ArrowLeft,
@@ -326,14 +327,13 @@ export default function NewHarvestPage() {
         <main className="mx-auto min-h-screen max-w-3xl space-y-5 px-3 py-5 sm:px-6 sm:py-7">
             {/* Back Button */}
             <div className="flex items-center gap-3">
-                <button
-                    type="button"
-                    onClick={() => router.back()}
+                <Link
+                    href="/dashboard/farmer/harvests"
                     className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"
                 >
                     <ArrowLeft className="h-4 w-4" />
-                    <span>Quay lại</span>
-                </button>
+                    <span>Quay lại danh sách thu hoạch</span>
+                </Link>
             </div>
 
             <Card className="overflow-hidden border-slate-200 bg-white shadow-soft">

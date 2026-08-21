@@ -238,20 +238,25 @@ export function FarmerJournalUnifiedView({
                 {/* Trạng thái Vụ mùa hiện tại */}
                 {currentSeason ? (
                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-xs sm:text-sm">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             {isSeasonActive ? (
                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
                                     <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                                     Đang canh tác
                                 </span>
                             ) : (
-                                <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200">
                                     Đã đóng
                                 </span>
                             )}
                             {currentSeason.startedAt && (
-                                <span className="text-slate-500">
+                                <span className="text-slate-500 text-xs">
                                     Bắt đầu: {new Date(currentSeason.startedAt).toLocaleDateString("vi-VN")}
+                                </span>
+                            )}
+                            {!isSeasonActive && (
+                                <span className="text-slate-400 text-xs italic">
+                                    (Vụ mùa lịch sử - Chế độ chỉ xem)
                                 </span>
                             )}
                         </div>
@@ -269,15 +274,17 @@ export function FarmerJournalUnifiedView({
                                     Đóng vụ
                                 </Button>
                             ) : (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    onClick={() => setShowCreateSeasonModal(true)}
-                                    className="h-8 rounded-xl bg-brand-600 text-xs font-bold text-white hover:bg-brand-700 shadow-soft"
-                                >
-                                    <CalendarPlus className="mr-1 h-3.5 w-3.5" />
-                                    Bắt đầu vụ mới
-                                </Button>
+                                !currentFarm?.cropSeasons.some((s) => s.status === "ACTIVE") && (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() => setShowCreateSeasonModal(true)}
+                                        className="h-8 rounded-xl bg-brand-600 text-xs font-bold text-white hover:bg-brand-700 shadow-soft"
+                                    >
+                                        <CalendarPlus className="mr-1 h-3.5 w-3.5" />
+                                        Bắt đầu vụ mới
+                                    </Button>
+                                )
                             )}
                         </div>
                     </div>

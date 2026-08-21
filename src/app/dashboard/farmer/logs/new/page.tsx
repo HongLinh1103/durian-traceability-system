@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -625,6 +626,7 @@ export default function NewFarmingLogPage() {
             });
             setAttachedImages([]);
             setImageStatus("Chưa có ảnh nào");
+            router.push(backUrl);
         } catch (error) {
             if (planId) {
                 toast({
@@ -668,17 +670,20 @@ export default function NewFarmingLogPage() {
         window.requestAnimationFrame(() => document.querySelector<HTMLElement>("[aria-invalid='true']")?.scrollIntoView({ behavior: "smooth", block: "center" }));
     });
 
+    const backFarmId = searchParams.get("farmId");
+    const backSeasonId = searchParams.get("seasonId");
+    const backUrl = `/dashboard/farmer/journal?tab=cultivation${backFarmId ? `&farmId=${backFarmId}` : ""}${backSeasonId ? `&seasonId=${backSeasonId}` : ""}`;
+
     return (
         <main className="mx-auto min-h-screen max-w-4xl overflow-x-clip px-3 py-4 sm:px-6 lg:px-8 space-y-4">
             <div className="flex items-center gap-3">
-                <button
-                    type="button"
-                    onClick={() => router.back()}
+                <Link
+                    href={backUrl}
                     className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"
                 >
                     <ArrowLeft className="h-4 w-4" />
-                    <span>Quay lại</span>
-                </button>
+                    <span>Quay lại nhật ký canh tác</span>
+                </Link>
             </div>
 
             <Card className="overflow-hidden border-white/70 shadow-soft">

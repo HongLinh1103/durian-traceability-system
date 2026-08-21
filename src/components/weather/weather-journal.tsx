@@ -332,40 +332,41 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
             </div>
 
             {/* Filter Section */}
-            <section className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="grid gap-3 sm:grid-cols-2 lg:flex lg:flex-1 lg:items-center">
-                        <div className="flex gap-1.5 sm:gap-2">
-                            {(
-                                [
-                                    ["today", "Hôm nay"],
-                                    ["week", "Tuần này"],
-                                    ["month", "Tháng này"],
-                                ] as const
-                            ).map(([v, l]) => (
-                                <button
-                                    key={v}
-                                    type="button"
-                                    onClick={() => {
-                                        setRange(v);
-                                        setFrom("");
-                                        setTo("");
-                                    }}
-                                    className={`flex-1 rounded-2xl px-3.5 py-2.5 text-xs font-bold transition sm:px-4 sm:text-sm ${
-                                        range === v && !from && !to
-                                            ? "bg-brand-600 text-white shadow-soft"
-                                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                                    }`}
-                                >
-                                    {l}
-                                </button>
-                            ))}
-                        </div>
+            <section className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-3.5 shadow-sm">
+                <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                    {/* Nút lọc nhanh */}
+                    <div className="inline-flex rounded-xl bg-slate-100 p-0.5">
+                        {(
+                            [
+                                ["today", "Hôm nay"],
+                                ["week", "Tuần này"],
+                                ["month", "Tháng này"],
+                            ] as const
+                        ).map(([v, l]) => (
+                            <button
+                                key={v}
+                                type="button"
+                                onClick={() => {
+                                    setRange(v);
+                                    setFrom("");
+                                    setTo("");
+                                }}
+                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition whitespace-nowrap ${
+                                    range === v && !from && !to
+                                        ? "bg-brand-600 text-white shadow-sm"
+                                        : "text-slate-600 hover:text-slate-900"
+                                }`}
+                            >
+                                {l}
+                            </button>
+                        ))}
+                    </div>
 
-                        <div className="grid grid-cols-2 gap-2 lg:w-72">
-                            <VietnameseDatePicker value={from} onChange={setFrom} placeholder="Từ ngày" />
-                            <VietnameseDatePicker value={to} onChange={setTo} placeholder="Đến ngày" />
-                        </div>
+                    {/* Bộ lọc khoảng ngày */}
+                    <div className="flex items-center gap-1.5 flex-1 min-w-[240px] sm:max-w-xs">
+                        <VietnameseDatePicker value={from} onChange={setFrom} placeholder="Từ ngày" />
+                        <span className="text-slate-400 text-xs font-medium">-</span>
+                        <VietnameseDatePicker value={to} onChange={setTo} placeholder="Đến ngày" />
                     </div>
                 </div>
             </section>
