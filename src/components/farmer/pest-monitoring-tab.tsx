@@ -1,29 +1,17 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
     Bug,
     Plus,
     Search,
-    ChevronRight,
     ArrowLeft,
-    Calendar,
-    MapPin,
-    AlertTriangle,
-    CheckCircle2,
-    Clock,
     Eye,
     Crosshair,
-    FileText,
     Activity,
     ShieldAlert,
     Loader2,
-    RefreshCw,
     X,
-    Radio,
-    FlaskConical,
-    SlidersHorizontal,
-    Layers,
     Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -127,8 +115,6 @@ interface BookDetailData extends PestBookSummary {
 export function PestMonitoringTab({
     farmId,
     cropSeasonId,
-    farmName,
-    seasonName,
 }: PestMonitoringTabProps) {
     const [books, setBooks] = useState<PestBookSummary[]>([]);
     const [loading, setLoading] = useState(true);
@@ -139,7 +125,6 @@ export function PestMonitoringTab({
     const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
     const [bookDetail, setBookDetail] = useState<BookDetailData | null>(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
-    const [detailSubTab, setDetailSubTab] = useState<"OVERVIEW" | "TRAPS" | "INSPECTIONS" | "TREATMENTS">("OVERVIEW");
 
     // Modals
     const [showCreateBookModal, setShowCreateBookModal] = useState(false);
@@ -255,7 +240,6 @@ export function PestMonitoringTab({
 
     const handleSelectBook = (id: string) => {
         setSelectedBookId(id);
-        setDetailSubTab("OVERVIEW");
         void loadBookDetail(id);
     };
 

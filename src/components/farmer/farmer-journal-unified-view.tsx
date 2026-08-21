@@ -1,21 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     CloudSun,
     Leaf,
     Bug,
-    Sprout,
     CalendarPlus,
     LockKeyhole,
-    CheckCircle2,
     AlertCircle,
     X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { WeatherJournal } from "@/components/weather/weather-journal";
 import { PestMonitoringTab } from "@/components/farmer/pest-monitoring-tab";
 
@@ -370,7 +366,7 @@ export function FarmerJournalUnifiedView({
                         <form onSubmit={handleCreateSeason} className="space-y-3.5">
                             <div>
                                 <label className="block text-xs font-bold text-slate-600 mb-1">Vườn</label>
-                                <Input value={currentFarm?.farmName} disabled className="bg-slate-50" />
+                                <input value={currentFarm?.farmName || ""} disabled className="h-10 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700" />
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
