@@ -7,19 +7,10 @@ import {
     Plus,
     Search,
     Sprout,
-    Calendar,
-    CheckCircle2,
-    Clock,
-    Eye,
-    Filter,
-    FlaskConical,
     Image as ImageIcon,
     Loader2,
-    ShieldCheck,
     X,
-    ChevronDown,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatVietnameseDateTime } from "@/lib/date-format";
@@ -382,46 +373,34 @@ export function CultivationLogsTab({
                                         key={log.id}
                                         className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs space-y-3"
                                     >
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div>
-                                                <p className="text-xs font-bold text-slate-500">
-                                                    {formatVietnameseDateTime(log.actionDate)}
-                                                </p>
-                                                <h3 className="mt-0.5 text-base font-bold text-slate-900">
-                                                    {log.farm?.farmName || farmName || "Vườn canh tác"}
-                                                </h3>
-                                                {log.farm?.farmCode && (
-                                                    <p className="text-xs text-slate-400">{log.farm.farmCode}</p>
-                                                )}
-                                            </div>
-                                            <Badge className="max-w-32 whitespace-normal break-words bg-brand-50 text-center text-[11px] font-semibold leading-4 text-brand-700 shrink-0">
+                                        <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                                            <span className="text-xs font-bold text-slate-500">
+                                                {formatVietnameseDateTime(log.actionDate)}
+                                            </span>
+                                            <span className="text-xs font-bold text-slate-800">
                                                 {stageLabels[log.stage] ?? log.stage}
-                                            </Badge>
+                                            </span>
                                         </div>
 
-                                        <dl className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 text-xs">
+                                        <dl className="grid grid-cols-2 gap-2 text-xs">
                                             <div>
                                                 <dt className="text-slate-400">Hoạt động</dt>
-                                                <dd className="mt-0.5 font-bold text-slate-800">
+                                                <dd className="mt-0.5 font-bold text-slate-900">
                                                     {activityText}
                                                 </dd>
                                             </div>
                                             <div>
                                                 <dt className="text-slate-400">Cách ly (PHI)</dt>
                                                 <dd className="mt-0.5 font-semibold text-slate-700">
-                                                    {log.phiDays != null ? `${log.phiDays} ngày` : "—"}
+                                                    {log.phiDays != null && log.phiDays > 0 ? `${log.phiDays} ngày` : "—"}
                                                 </dd>
                                             </div>
 
                                             {log.chemicalName && (
-                                                <div className="col-span-2 bg-amber-50/60 p-2.5 rounded-xl border border-amber-100">
-                                                    <dt className="text-amber-800 font-bold flex items-center gap-1">
-                                                        <FlaskConical className="h-3.5 w-3.5" />
-                                                        Vật tư & Liều lượng
-                                                    </dt>
-                                                    <dd className="mt-0.5 font-semibold text-amber-950">
-                                                        {log.chemicalName}{" "}
-                                                        {log.dosage ? `· ${log.dosage}` : ""}
+                                                <div className="col-span-2">
+                                                    <dt className="text-slate-400">Vật tư & Liều lượng</dt>
+                                                    <dd className="mt-0.5 font-semibold text-slate-900">
+                                                        {log.chemicalName}{log.dosage ? ` · ${log.dosage}` : ""}
                                                     </dd>
                                                 </div>
                                             )}
@@ -460,13 +439,6 @@ export function CultivationLogsTab({
                                                 </div>
                                             )}
                                         </dl>
-
-                                        {log.isGACCCompliant && (
-                                            <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 w-fit">
-                                                <ShieldCheck className="h-3.5 w-3.5" />
-                                                Đạt chuẩn GACC xuất khẩu
-                                            </div>
-                                        )}
                                     </article>
                                 );
                             })}
@@ -474,17 +446,16 @@ export function CultivationLogsTab({
 
                         {/* Desktop Table View */}
                         <div className="hidden md:block overflow-x-auto">
-                            <table className="w-full min-w-[1240px] table-fixed text-left text-sm">
+                            <table className="w-full min-w-[1060px] table-fixed text-left text-sm">
                                 <thead className="bg-slate-50 text-xs font-bold uppercase text-slate-600 border-b border-slate-200">
                                     <tr>
-                                        <th className="w-40 px-4 py-3.5">Ngày thực hiện</th>
-                                        <th className="w-48 px-4 py-3.5">Vườn</th>
-                                        <th className="w-44 px-4 py-3.5">Giai đoạn</th>
-                                        <th className="w-44 px-4 py-3.5">Hoạt động</th>
-                                        <th className="w-40 px-4 py-3.5">Vật tư sử dụng</th>
-                                        <th className="w-28 px-4 py-3.5">Liều lượng</th>
-                                        <th className="w-20 px-3 py-3.5">PHI</th>
-                                        <th className="w-64 px-4 py-3.5">Ghi chú & Ảnh</th>
+                                        <th className="w-44 px-4 py-3.5">Ngày thực hiện</th>
+                                        <th className="w-48 px-4 py-3.5">Giai đoạn</th>
+                                        <th className="w-48 px-4 py-3.5">Hoạt động</th>
+                                        <th className="w-52 px-4 py-3.5">Vật tư sử dụng</th>
+                                        <th className="w-32 px-4 py-3.5">Liều lượng</th>
+                                        <th className="w-24 px-3 py-3.5">PHI</th>
+                                        <th className="px-4 py-3.5">Ghi chú & Ảnh</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -501,42 +472,20 @@ export function CultivationLogsTab({
                                             >
                                                 <td className="whitespace-nowrap px-4 py-4 font-semibold text-slate-900 text-xs">
                                                     {formatVietnameseDateTime(log.actionDate)}
-                                                    {log.isGACCCompliant && (
-                                                        <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-emerald-700">
-                                                            <ShieldCheck className="h-3 w-3" />
-                                                            VietGAP / GACC
-                                                        </div>
-                                                    )}
                                                 </td>
-                                                <td className="px-4 py-4">
-                                                    <b className="text-slate-900 text-sm">
-                                                        {log.farm?.farmName || farmName || "Vườn canh tác"}
-                                                    </b>
-                                                    <p className="mt-0.5 text-xs text-slate-400">
-                                                        {log.farm?.farmCode || "MSVT"}
-                                                    </p>
+                                                <td className="break-words px-4 py-4 font-semibold text-slate-800 text-xs leading-5">
+                                                    {stageLabels[log.stage] ?? log.stage}
                                                 </td>
-                                                <td className="px-4 py-4">
-                                                    <Badge className="max-w-full whitespace-normal break-words bg-brand-50 text-center leading-5 text-brand-700 text-xs font-semibold">
-                                                        {stageLabels[log.stage] ?? log.stage}
-                                                    </Badge>
-                                                </td>
-                                                <td className="break-words px-4 py-4 font-bold text-slate-800 text-sm">
+                                                <td className="break-words px-4 py-4 font-bold text-slate-900 text-sm">
                                                     {activityText}
                                                 </td>
-                                                <td className="break-words px-4 py-4 text-xs font-semibold text-slate-800">
-                                                    {log.chemicalName ? (
-                                                        <span className="text-amber-900 font-medium bg-amber-50 px-2 py-1 rounded-lg border border-amber-100 inline-block">
-                                                            {log.chemicalName}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-slate-400">—</span>
-                                                    )}
+                                                <td className="break-words px-4 py-4 text-xs font-semibold text-slate-900">
+                                                    {log.chemicalName || "—"}
                                                 </td>
                                                 <td className="break-words px-4 py-4 text-xs font-medium text-slate-700">
                                                     {log.dosage || "—"}
                                                 </td>
-                                                <td className="px-3 py-4 text-xs font-bold text-slate-700">
+                                                <td className="px-3 py-4 text-xs font-semibold text-slate-700">
                                                     {log.phiDays != null && log.phiDays > 0 ? (
                                                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700">
                                                             {log.phiDays} ngày
