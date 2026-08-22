@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { FarmerJournalUnifiedView } from "@/components/farmer/farmer-journal-unified-view";
-import FarmerLogsPage from "@/app/dashboard/farmer/logs/page";
 
 export const dynamic = "force-dynamic";
 
@@ -110,7 +109,6 @@ export default async function FarmerJournalPage({
                 initialActiveTab={activeTab}
                 initialFarmId={searchParams.farmId}
                 initialSeasonId={searchParams.seasonId}
-                cultivationContent={<FarmerLogsPage searchParams={searchParams} />}
             />
         </main>
     );

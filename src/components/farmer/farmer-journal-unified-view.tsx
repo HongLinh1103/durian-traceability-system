@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { WeatherJournal } from "@/components/weather/weather-journal";
 import { PestMonitoringTab } from "@/components/farmer/pest-monitoring-tab";
+import { CultivationLogsTab } from "@/components/farmer/cultivation-logs-tab";
 
 const STAGES = [
     ["POST_HARVEST_RECOVERY", "Phục hồi sau thu hoạch"],
@@ -50,7 +51,7 @@ interface FarmerJournalUnifiedViewProps {
     initialActiveTab: "weather" | "cultivation" | "pests";
     initialFarmId?: string;
     initialSeasonId?: string;
-    cultivationContent: React.ReactNode;
+    cultivationContent?: React.ReactNode;
 }
 
 export function FarmerJournalUnifiedView({
@@ -346,15 +347,21 @@ export function FarmerJournalUnifiedView({
             )}
 
             {activeTab === "cultivation" && (
-                <div>
-                    {cultivationContent}
-                </div>
+                <CultivationLogsTab
+                    farmId={selectedFarmId}
+                    cropSeasonId={selectedSeasonId}
+                    isSeasonActive={isSeasonActive}
+                    farmName={currentFarm?.farmName}
+                    seasonName={currentSeason?.name}
+                    seasonYear={currentSeason?.year}
+                />
             )}
 
             {activeTab === "pests" && (
                 <PestMonitoringTab
                     farmId={selectedFarmId}
                     cropSeasonId={selectedSeasonId}
+                    isSeasonActive={isSeasonActive}
                     farmName={currentFarm?.farmName}
                     seasonName={currentSeason?.name}
                 />

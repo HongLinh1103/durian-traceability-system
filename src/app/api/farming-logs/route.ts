@@ -12,11 +12,44 @@ function toBoolean(value: FormDataEntryValue | null) {
     return String(value) === "true";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
         return NextResponse.json({ ok: false, error: "Chưa đăng nhập." }, { status: 401 });
     }
+
+    const { searchParams } = new URL(request.url);
+    const farmId = searchParams.get("farmId");
+    const cropSeasonId = searchParams.get("cropSeasonId");
+    const stage = searchParams.get("stage");
+    const activityType = searchParams.get("activityType");
+    const search = searchParams.get("search");
+
+    const whereClause: any = {
+        farm: { farmerId: session.user.id, isActive: true },
+    };
+
+    if (farmId) {
+        whereClause.farmId = farmId;
+    }
+    if (cropSeasonId) {
+        whereClause.cropSeasonId = cropSeasonId;
+    }
+    if (stage && stage !== "ALL") {
+        whereClause.stage = stage;
+    }
+    if (activityType && activityType !== "ALL") {
+        whereClause.activityType = activityType;
+    }
+    if (search && search.trim()) {
+        const query = search.trim();
+        whereClause.OR = [
+            { chemicalName: { contains: query, mode: "insensitive" } },
+            { notes: { contains: query, mode: "insensitive" } },
+            { otherActivity: { contains: query, mode: "insensitive" } },
+        ];
+    }
+
     const [farms, logs] = await Promise.all([
         prisma.farm.findMany({
             where: {
@@ -25,16 +58,24 @@ export async function GET() {
             },
             orderBy: { createdAt: "asc" },
             select: {
-                id: true, farmCode: true, farmName: true, durianVariety: true,
-                cropSeasons: { where: { status: "ACTIVE" }, take: 1, select: { id: true, name: true, year: true } },
+                id: true,
+                farmCode: true,
+                farmName: true,
+                durianVariety: true,
+                cropSeasons: {
+                    orderBy: [{ year: "desc" }, { sequence: "desc" }],
+                    select: { id: true, name: true, year: true, status: true },
+                },
             },
         }),
         prisma.farmingLog.findMany({
-            where: { farm: { farmerId: session.user.id } },
+            where: whereClause,
             orderBy: [{ actionDate: "desc" }, { createdAt: "desc" }],
-            take: 30,
+            take: cropSeasonId ? 500 : 100,
             select: {
                 id: true,
+                farmId: true,
+                cropSeasonId: true,
                 actionDate: true,
                 stage: true,
                 activityType: true,
@@ -47,7 +88,7 @@ export async function GET() {
                 isGACCCompliant: true,
                 createdAt: true,
                 cropSeason: { select: { id: true, name: true, year: true, status: true } },
-                farm: { select: { farmCode: true, farmName: true } },
+                farm: { select: { id: true, farmCode: true, farmName: true } },
             },
         }),
     ]);

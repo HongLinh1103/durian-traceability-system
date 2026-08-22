@@ -23,7 +23,7 @@ async function main() {
 
     console.log("=== DANH SÁCH NÔNG DÂN & VỤ MÙA ===");
     for (const f of farmers) {
-        console.log(`\nFarmer: ${f.fullName} (${f.phoneNumber || f.username}) [ID: ${f.id}]`);
+        console.log(`\nFarmer: ${f.fullName} (${f.phone || f.email || f.id}) [ID: ${f.id}]`);
         for (const farm of f.farms) {
             console.log(`  Farm: ${farm.farmName} [ID: ${farm.id}]`);
             for (const s of farm.cropSeasons) {

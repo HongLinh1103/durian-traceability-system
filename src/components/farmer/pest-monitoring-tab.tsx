@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 interface PestMonitoringTabProps {
     farmId?: string;
     cropSeasonId?: string;
+    isSeasonActive?: boolean;
     farmName?: string;
     seasonName?: string;
 }
@@ -115,10 +116,11 @@ interface BookDetailData extends PestBookSummary {
 export function PestMonitoringTab({
     farmId,
     cropSeasonId,
+    isSeasonActive = true,
 }: PestMonitoringTabProps) {
     const [books, setBooks] = useState<PestBookSummary[]>([]);
     const [loading, setLoading] = useState(true);
-    const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "CLOSED">("ACTIVE");
+    const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "CLOSED">("ALL");
     const [searchQuery, setSearchQuery] = useState("");
 
     // Selected Book Detail View
@@ -203,6 +205,14 @@ export function PestMonitoringTab({
             setLoading(false);
         }
     }, [farmId, cropSeasonId, statusFilter]);
+
+    // Reset khi thay đổi vườn hoặc mùa vụ
+    useEffect(() => {
+        setSelectedBookId(null);
+        setBookDetail(null);
+        setStatusFilter("ALL");
+        setSearchQuery("");
+    }, [farmId, cropSeasonId]);
 
     useEffect(() => {
         if (!selectedBookId) {
@@ -1191,14 +1201,20 @@ export function PestMonitoringTab({
                     </p>
                 </div>
 
-                <Button
-                    type="button"
-                    onClick={() => setShowCreateBookModal(true)}
-                    className="rounded-2xl bg-brand-600 text-sm font-bold text-white shadow-soft hover:bg-brand-700 shrink-0"
-                >
-                    <Plus className="mr-1.5 h-4 w-4" />
-                    Tạo sổ theo dõi
-                </Button>
+                {!isSeasonActive ? (
+                    <div className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-600 border border-slate-200 shrink-0">
+                        <span>🔒 Vụ mùa đã đóng (Chế độ chỉ xem)</span>
+                    </div>
+                ) : (
+                    <Button
+                        type="button"
+                        onClick={() => setShowCreateBookModal(true)}
+                        className="rounded-2xl bg-brand-600 text-sm font-bold text-white shadow-soft hover:bg-brand-700 shrink-0"
+                    >
+                        <Plus className="mr-1.5 h-4 w-4" />
+                        Tạo sổ theo dõi
+                    </Button>
+                )}
             </div>
 
             {/* Filter and Search */}
