@@ -16,7 +16,6 @@ export default async function RegionManagerGardensPage() {
     const farms = scope.codes.length
         ? await prisma.farm.findMany({
             where: {
-                isActive: true,
                 region: { code: { in: scope.codes } },
                 farmer: {
                     accountStatus: "APPROVED",
@@ -38,6 +37,7 @@ export default async function RegionManagerGardensPage() {
                 totalTrees: true,
                 durianVariety: true,
                 isActive: true,
+                status: true,
                 region: { select: { code: true, name: true } },
                 farmer: { select: { fullName: true, phone: true, approvedAt: true } },
                 farmingLogs: {
@@ -63,6 +63,7 @@ export default async function RegionManagerGardensPage() {
                 totalTrees: farm.totalTrees,
                 durianVariety: farm.durianVariety,
                 isActive: farm.isActive,
+                status: farm.status,
                 regionCode: farm.region?.code ?? "",
                 regionName: farm.region?.name ?? "",
                 latestLogDate: farm.farmingLogs[0]?.actionDate.toISOString() ?? null,

@@ -6,17 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HeroBanner } from "@/components/home/HeroBanner";
-
-type ManagedRegion = {
-    code?: string;
-    name?: string;
-    province?: string;
-    district?: string;
-    ward?: string;
-    areaSize?: number;
-    farmerCount?: number;
-    durianVarieties?: string[];
-};
+import { getManagedRegionScope } from "@/lib/region-manager-scope";
 
 export default async function AreaManagerDashboard() {
     const session = await getServerSession(authOptions);
@@ -30,15 +20,9 @@ export default async function AreaManagerDashboard() {
     if (!user) redirect("/login");
 
     const application = user.areaManagerApplication;
-    const assignments = Array.isArray(application?.managedRegions)
-        ? application.managedRegions as ManagedRegion[]
-        : [application?.managedRegions as ManagedRegion | null].filter(
-            (item): item is ManagedRegion => Boolean(item && typeof item === "object"),
-        );
-    const region = assignments[0] ?? {};
-    const managedRegionCodes = assignments
-        .map((item) => item.code?.trim())
-        .filter((code): code is string => Boolean(code));
+    const scope = await getManagedRegionScope(session.user.id, session.user.role);
+    const managedRegionCodes = scope?.codes ?? [];
+    const region = scope?.regions[0];
     const [managedFarms, pendingProfileCount] = managedRegionCodes.length
         ? await Promise.all([prisma.farm.findMany({
             where: {
@@ -126,10 +110,9 @@ export default async function AreaManagerDashboard() {
                 <Card>
                     <CardHeader><CardTitle className="flex items-center gap-2"><MapPinned className="h-5 w-5 text-emerald-600" />Vùng trồng phụ trách</CardTitle></CardHeader>
                     <CardContent className="space-y-2 text-sm">
-                        <p><b>Tên vùng:</b> {region.name || "—"}</p>
-                        <p><b>Địa bàn:</b> {[region.ward, region.district, region.province].filter(Boolean).join(", ") || "—"}</p>
-                        <p><b>Quy mô:</b> {region.areaSize ?? 0} ha</p>
-                        <p><b>Giống chủ lực:</b> {region.durianVarieties?.join(", ") || "—"}</p>
+                        <p><b>Tên vùng:</b> {region?.name || "—"}</p>
+                        <p><b>Mã vùng:</b> {region?.code || "—"}</p>
+                        <p><b>Số vùng được giao:</b> {scope?.regions.length ?? 0}</p>
                     </CardContent>
                 </Card>
             </div>

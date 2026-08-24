@@ -145,23 +145,15 @@ export async function POST(request: Request) {
                 },
             });
 
-            const selectedCodes = new Set(resolvedRegions.map((region) => region!.code));
-            const managerProfiles = await tx.areaManagerApplication.findMany({
-                where: { user: { accountStatus: "APPROVED", isLocked: false, deletedAt: null } },
-                select: { userId: true, managedRegions: true },
-            });
-            const managerIds = managerProfiles
-                .filter((profile) => {
-                    const assignments = Array.isArray(profile.managedRegions)
-                        ? profile.managedRegions
-                        : [profile.managedRegions];
-                    return assignments.some((assignment) => {
-                        if (!assignment || typeof assignment !== "object" || Array.isArray(assignment)) return false;
-                        const code = (assignment as { code?: unknown }).code;
-                        return typeof code === "string" && selectedCodes.has(code);
-                    });
-                })
-                .map((profile) => profile.userId);
+            const selectedRegionIds = resolvedRegions.map((region) => region!.id);
+            const managerIds = (await tx.areaManagerRegionAssignment.findMany({
+                where: {
+                    growingRegionId: { in: selectedRegionIds }, isActive: true, endedAt: null,
+                    areaManager: { accountStatus: "APPROVED", isLocked: false, deletedAt: null },
+                },
+                select: { areaManagerId: true },
+                distinct: ["areaManagerId"],
+            })).map((assignment) => assignment.areaManagerId);
 
             if (managerIds.length) {
                 await tx.notification.createMany({

@@ -17,6 +17,7 @@ import { formatVietnameseDate } from "@/lib/date-format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GardenActions } from "@/components/region-manager/garden-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,6 @@ export default async function GardenDetailPage({ params }: { params: { gardenId:
     const garden = await prisma.farm.findFirst({
         where: {
             id: params.gardenId,
-            isActive: true,
             region: { code: { in: scope.codes } },
             farmer: { accountStatus: "APPROVED", isApproved: true, deletedAt: null },
         },
@@ -50,6 +50,8 @@ export default async function GardenDetailPage({ params }: { params: { gardenId:
             notes: true,
             growingRegion: true,
             isActive: true,
+            status: true,
+            statusReason: true,
             isInSeason: true,
             createdAt: true,
             updatedAt: true,
@@ -85,6 +87,7 @@ export default async function GardenDetailPage({ params }: { params: { gardenId:
                 select: { actionDate: true },
             },
             _count: { select: { farmingLogs: true } },
+            statusHistories: { orderBy: { createdAt: "desc" }, take: 10, select: { id: true, fromStatus: true, toStatus: true, reason: true, createdAt: true, actor: { select: { fullName: true } } } },
         },
     });
     if (!garden) notFound();
@@ -117,6 +120,8 @@ export default async function GardenDetailPage({ params }: { params: { gardenId:
                     </Button>
                 </div>
             </section>
+
+            {!scope.isAdmin && <GardenActions gardenId={garden.id} status={garden.status} />}
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Summary icon={Sprout} label="Diện tích" value={`${garden.areaSize} ha`} />

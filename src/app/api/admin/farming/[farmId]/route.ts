@@ -5,13 +5,13 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-async function isAdmin() {
+async function adminSession() {
     const session = await getServerSession(authOptions);
-    return session?.user?.role === "ADMIN";
+    return session?.user?.role === "ADMIN" ? session : null;
 }
 
 export async function GET(_request: Request, { params }: { params: { farmId: string } }) {
-    if (!(await isAdmin())) {
+    if (!(await adminSession())) {
         return NextResponse.json({ success: false, message: "Không có quyền truy cập." }, { status: 403 });
     }
 
@@ -81,13 +81,21 @@ export async function GET(_request: Request, { params }: { params: { farmId: str
 }
 
 export async function PATCH(request: Request, { params }: { params: { farmId: string } }) {
-    if (!(await isAdmin())) {
+    const session = await adminSession();
+    if (!session) {
         return NextResponse.json({ success: false, message: "Không có quyền cập nhật." }, { status: 403 });
     }
-    const body = (await request.json()) as { isActive?: boolean };
-    if (typeof body.isActive !== "boolean") {
+    const body = (await request.json()) as { isActive?: boolean; reason?: string };
+    if (typeof body.isActive !== "boolean" || !body.reason?.trim()) {
         return NextResponse.json({ success: false, message: "Trạng thái không hợp lệ." }, { status: 400 });
     }
-    const farm = await prisma.farm.update({ where: { id: params.farmId }, data: { isActive: body.isActive } });
+    const current = await prisma.farm.findUnique({ where: { id: params.farmId }, select: { status: true } });
+    if (!current) return NextResponse.json({ success: false, message: "Không tìm thấy vườn." }, { status: 404 });
+    const nextStatus = body.isActive ? "ACTIVE" : "SUSPENDED";
+    const farm = await prisma.$transaction(async tx => {
+        const updated = await tx.farm.update({ where: { id: params.farmId }, data: { isActive: body.isActive, status: nextStatus, statusReason: body.reason!.trim(), statusChangedAt: new Date() } });
+        await tx.gardenStatusHistory.create({ data: { farmId: params.farmId, actorId: session.user.id, fromStatus: current.status, toStatus: nextStatus, reason: `ADMIN_OVERRIDE: ${body.reason!.trim()}` } });
+        return updated;
+    });
     return NextResponse.json({ success: true, data: farm });
 }

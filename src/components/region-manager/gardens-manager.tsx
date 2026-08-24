@@ -30,6 +30,7 @@ type Garden = {
     totalTrees: number;
     durianVariety: string;
     isActive: boolean;
+    status: string;
     regionCode: string;
     regionName: string;
     latestLogDate: string | null;
@@ -214,8 +215,14 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
 }
 
 function statusFor(garden: Garden) {
-    if (!garden.isActive) return { label: "Tạm ngừng", className: "bg-slate-100 text-slate-600" };
-    return { label: "Đang hoạt động", className: "bg-emerald-100 text-emerald-700" };
+    const statuses: Record<string, { label: string; className: string }> = {
+        ACTIVE: { label: "Đang hoạt động", className: "bg-emerald-100 text-emerald-700" },
+        PENDING: { label: "Chờ duyệt", className: "bg-amber-100 text-amber-700" },
+        NEEDS_INSPECTION: { label: "Cần kiểm tra", className: "bg-orange-100 text-orange-700" },
+        SUSPENDED: { label: "Tạm dừng", className: "bg-red-100 text-red-700" },
+        INACTIVE: { label: "Ngừng hoạt động", className: "bg-slate-100 text-slate-600" },
+    };
+    return statuses[garden.status] ?? statuses.INACTIVE;
 }
 
 function GardenRow({ garden }: { garden: Garden }) {

@@ -132,6 +132,10 @@ export async function GET(request: Request) {
                             managedRegions: true,
                         },
                     },
+                    regionAssignments: {
+                        where: { isActive: true, endedAt: null },
+                        select: { growingRegion: { select: { id: true, code: true, name: true } } },
+                    },
                 },
             }),
             prisma.user.count({ where }),
@@ -157,13 +161,17 @@ export async function GET(request: Request) {
                         managedRegions: true,
                     },
                 },
+                regionAssignments: {
+                    where: { isActive: true, endedAt: null },
+                    select: { growingRegion: { select: { id: true, code: true, name: true } } },
+                },
             },
         });
 
         const managerRegionCodes = new Set(
             data
                 .filter((account) => account.role === "AREA_MANAGER")
-                .flatMap((account) => getManagedRegionAssignments(account.areaManagerApplication?.managedRegions))
+                .flatMap((account) => account.regionAssignments.map((assignment) => assignment.growingRegion))
                 .map((region) => region.code?.trim())
                 .filter((code): code is string => Boolean(code)),
         );
@@ -205,8 +213,8 @@ export async function GET(request: Request) {
         const enrichedData = data.map((account) => {
             const farmRegionCodes = new Set(account.farms.map((farm) => farm.region?.code).filter((code): code is string => Boolean(code)));
             const assignedCodes = new Set(
-                getManagedRegionAssignments(account.areaManagerApplication?.managedRegions)
-                    .map((region) => region.code?.trim())
+                account.regionAssignments.map((assignment) => assignment.growingRegion)
+                    .map((region) => region.code.trim())
                     .filter((code): code is string => Boolean(code)),
             );
 
@@ -221,7 +229,7 @@ export async function GET(request: Request) {
                             email: manager.email,
                             organizationName: manager.areaManagerApplication?.organizationName ?? null,
                             position: manager.areaManagerApplication?.position ?? null,
-                            regions: getManagedRegionAssignments(manager.areaManagerApplication?.managedRegions)
+                            regions: manager.regionAssignments.map((assignment) => assignment.growingRegion)
                                 .filter((region) => Boolean(region.code && farmRegionCodes.has(region.code))),
                         }))
                         .filter((manager) => manager.regions.length > 0)
@@ -299,6 +307,7 @@ export async function PATCH(request: Request) {
                     select: { id: true, name: true, status: true },
                 },
                 partnerFacility: { select: { id: true, status: true } },
+                areaManagerApplication: { select: { managedRegions: true } },
             },
         });
 
@@ -325,6 +334,16 @@ export async function PATCH(request: Request) {
                 if (user.partnerFacility) await tx.partnerFacility.update({ where: { id: user.partnerFacility.id }, data: { status: isLocked ? "SUSPENDED" : "APPROVED" } });
             });
             return NextResponse.json({ success: true, message: isLocked ? "Đã khóa tài khoản." : "Đã mở khóa tài khoản." });
+        }
+
+        if (user.role === "FARMER" && ["approve", "supplement", "reject"].includes(action)) {
+            const overrideReason = String(body.reason || "").trim();
+            if (!body.override || !overrideReason) {
+                return NextResponse.json(
+                    { success: false, message: "Hồ sơ Farmer phải do Trưởng ban vùng trồng phụ trách xử lý. Admin chỉ được override khi có lý do ngoại lệ." },
+                    { status: 403 },
+                );
+            }
         }
 
         if (!["PENDING", "NEEDS_SUPPLEMENT"].includes(user.accountStatus)) {
@@ -405,6 +424,15 @@ export async function PATCH(request: Request) {
                     }));
                 }
                 if (user.partnerFacility) await tx.partnerFacility.update({ where: { id: user.partnerFacility.id }, data: { status: "APPROVED", reviewReason: null, approvedAt: new Date() } });
+                if (user.role === "AREA_MANAGER" && user.areaManagerApplication) {
+                    const requestedCodes = getManagedRegionAssignments(user.areaManagerApplication.managedRegions)
+                        .map((region) => region.code?.trim()).filter((code): code is string => Boolean(code));
+                    const requestedRegions = await tx.growingRegion.findMany({ where: { code: { in: requestedCodes }, status: "ACTIVE", isActive: true }, select: { id: true } });
+                    for (const region of requestedRegions) {
+                        await tx.areaManagerRegionAssignment.updateMany({ where: { growingRegionId: region.id, isActive: true }, data: { isActive: false, endedAt: new Date(), note: "Kết thúc khi phân công Trưởng ban mới" } });
+                        await tx.areaManagerRegionAssignment.create({ data: { areaManagerId: user.id, growingRegionId: region.id, assignedById: actor.user.id, note: "Phân công khi phê duyệt hồ sơ Trưởng ban" } });
+                    }
+                }
                 await Promise.all(
                     farmRegionAssignments.map(({ farm, region }, index) =>
                         tx.farm.update({

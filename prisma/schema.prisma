@@ -217,6 +217,23 @@ enum CropSeasonStatus {
   CLOSED
 }
 
+enum GrowingRegionStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+  REVOKED
+}
+
+enum GardenStatus {
+  PENDING
+  ACTIVE
+  NEEDS_INSPECTION
+  SUSPENDED
+  INACTIVE
+}
+
 /// Trạng thái tuân thủ GACC cho thuốc bảo vệ thực vật.
 enum GaccChemicalStatus {
   ALLOWED
@@ -391,6 +408,9 @@ model User {
   harvestActions         HarvestStatusHistory[]
   farmingPlans           FarmingPlan[]
   weatherObservations    WeatherObservation[]
+  regionAssignments     AreaManagerRegionAssignment[] @relation("AssignedAreaManager")
+  assignedRegions       AreaManagerRegionAssignment[] @relation("RegionAssignedBy")
+  gardenStatusActions   GardenStatusHistory[]          @relation("GardenStatusActor")
   farmerSupplies         FarmerSupply[]
   farmerSupplyTransactions FarmerSupplyTransaction[]
   farmerExpenses         FarmerExpense[]
@@ -835,6 +855,9 @@ model Farm {
   growingRegion   String?
   growingRegionId String?
   isActive        Boolean  @default(true)
+  status          GardenStatus @default(ACTIVE)
+  statusReason    String?
+  statusChangedAt DateTime?
   isInSeason      Boolean  @default(true)
   farmerId        String
   createdAt       DateTime @default(now())
@@ -850,10 +873,27 @@ model Farm {
   farmerSupplyTransactions FarmerSupplyTransaction[]
   farmerExpenses         FarmerExpense[]
   pestMonitoringBooks    PestMonitoringBook[]
+  statusHistories         GardenStatusHistory[]
 
   @@index([farmerId])
   @@index([farmCode])
   @@index([growingRegionId])
+}
+
+model GardenStatusHistory {
+  id         String       @id @default(cuid())
+  farmId     String
+  actorId    String
+  fromStatus GardenStatus?
+  toStatus   GardenStatus
+  reason     String
+  createdAt  DateTime     @default(now())
+
+  farm       Farm         @relation(fields: [farmId], references: [id], onDelete: Restrict)
+  actor      User         @relation("GardenStatusActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([farmId, createdAt])
+  @@map("garden_status_histories")
 }
 
 model CropSeason {
@@ -1013,6 +1053,17 @@ model GrowingRegion {
   district      String?
   ward          String?
   cropVarieties String[]  @default([])
+  status        GrowingRegionStatus @default(ACTIVE)
+  latitude      Float?
+  longitude     Float?
+  boundary      Json?
+  areaSize      Float?
+  cropType      String     @default("Sầu riêng")
+  approvalCode  String?
+  approvalIssuedAt DateTime?
+  exportMarkets String[]   @default([])
+  managingOrganization String?
+  certificateUrls String[] @default([])
   isActive      Boolean   @default(true)
   approvedAt    DateTime?
   validUntil    DateTime?
@@ -1020,9 +1071,29 @@ model GrowingRegion {
   updatedAt     DateTime  @updatedAt
 
   farms Farm[]
+  managerAssignments AreaManagerRegionAssignment[]
 
   @@index([province, district, ward, isActive])
   @@map("growing_regions")
+}
+
+model AreaManagerRegionAssignment {
+  id              String    @id @default(cuid())
+  areaManagerId   String
+  growingRegionId String
+  assignedAt      DateTime  @default(now())
+  assignedById    String
+  endedAt         DateTime?
+  isActive        Boolean   @default(true)
+  note            String?
+
+  areaManager     User      @relation("AssignedAreaManager", fields: [areaManagerId], references: [id], onDelete: Restrict)
+  growingRegion   GrowingRegion @relation(fields: [growingRegionId], references: [id], onDelete: Restrict)
+  assignedBy      User      @relation("RegionAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@index([areaManagerId, isActive])
+  @@index([growingRegionId, isActive])
+  @@map("area_manager_region_assignments")
 }
 
 model FarmingLog {
@@ -1352,5 +1423,4 @@ model PestTreatment {
   @@index([monitoringBookId, treatmentDate])
   @@map("pest_treatments")
 }
-
 
