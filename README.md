@@ -92,22 +92,6 @@ Vườn → Vụ mùa → Nhật ký → Thu hoạch → Đóng vụ → Vụ m�
 
 > `RawMaterialLot`, `ProcessingBatch` và `FinishedProductLot` hiện là mô hình nghiệp vụ trong mã ứng dụng, chưa phải bảng Prisma độc lập. QC, chế biến và phát hành QR chưa phải quy trình persistence hoàn chỉnh.
 
-## Ma trận vai trò và quyền hạn
-
-| Chức năng | Admin | Trưởng ban | Nông dân | Cửa hàng | Thu mua | Chế biến |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| Quản lý vùng trồng | CRUD | Vùng được giao | Xem liên quan | Không | Xem nguồn | Xem nguồn |
-| Phân công trưởng ban | CRUD | Không | Không | Không | Không | Không |
-| Duyệt nông dân | Ghi đè có lý do | Trong vùng | Không | Không | Không | Không |
-| Quản lý vườn | Giám sát | Trong vùng | Vườn sở hữu | Không | Xem nguồn | Xem nguồn |
-| Vụ mùa và nhật ký | Kiểm tra | Rà soát | CRUD | Không | Xem truy xuất | Xem truy xuất |
-| Sản phẩm cửa hàng | Kiểm tra | Không | Mua | CRUD | Không | Không |
-| Kho cửa hàng | Kiểm tra | Không | Không | CRUD | Không | Không |
-| Phiếu thu hoạch | Kiểm tra | Theo dõi | CRUD | Không | Xử lý được giao | Xử lý được giao |
-| Chế biến/thành phẩm | Kiểm tra | Không | Không | Không | Không | MVP |
-
-Quyền phải được kiểm tra tại Server Component, API hoặc service. Ẩn nút trên UI không phải là cơ chế phân quyền.
-
 ## Mô hình dữ liệu cốt lõi
 
 ```text
