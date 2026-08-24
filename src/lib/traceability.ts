@@ -9,6 +9,36 @@ export type TraceValidation = {
     warnings: string[];
 };
 
+export async function ensureCompletedHarvestCollectionLots(collectorUserId: string) {
+    const facility = await prisma.partnerFacility.findUnique({ where: { ownerId: collectorUserId }, select: { id: true } });
+    if (!facility) return;
+    const records = await prisma.harvestRecord.findMany({
+        where: { buyerUserId: collectorUserId, status: "COMPLETED", cropSeasonId: { not: null } },
+        include: { harvestLot: true, farm: { include: { farmer: { select: { fullName: true } }, region: true } }, cropSeason: true },
+    });
+    for (const record of records) {
+        const weight = Number(record.receivedWeight ?? record.deliveredWeight ?? record.actualWeight ?? record.expectedWeight);
+        if (!record.cropSeasonId || !record.cropSeason || weight <= 0) continue;
+        const harvestLot = record.harvestLot ?? await prisma.harvestLot.create({ data: {
+            lotCode: `HL-${record.code}`, harvestRecordId: record.id, farmId: record.farmId, cropSeasonId: record.cropSeasonId,
+            harvestedAt: record.actualHarvestedAt ?? record.completedAt ?? record.expectedHarvestDate, weight, remainingWeight: 0,
+            complianceStatus: "WARNING", complianceDetails: { generatedFromCompletedReceipt: true }, status: "USED", finalizedAt: record.completedAt ?? new Date(),
+        } });
+        await prisma.harvestTraceSnapshot.upsert({ where: { harvestLotId: harvestLot.id }, update: {}, create: {
+            harvestLotId: harvestLot.id, farmerSnapshot: { name: record.farm.farmer.fullName }, farmSnapshot: { code: record.farm.farmCode, name: record.farm.farmName },
+            regionSnapshot: { code: record.farm.region?.code, name: record.farm.region?.name }, seasonSnapshot: { name: record.cropSeason.name },
+            cultivationSummarySnapshot: { source: "farming_logs" }, pesticideSnapshot: { source: "farming_logs" }, complianceSnapshot: { status: "PENDING_RECHECK" },
+        } });
+        const collectionLot = await prisma.collectionLot.upsert({ where: { lotCode: `CL-${record.code}` }, update: {}, create: {
+            lotCode: `CL-${record.code}`, collectorFacilityId: facility.id, totalWeight: weight, currentWeight: weight,
+            storageLocation: "Kho vựa thu mua", status: "FINALIZED", finalizedAt: record.completedAt ?? new Date(),
+        } });
+        await prisma.collectionLotItem.upsert({ where: { collectionLotId_harvestLotId: { collectionLotId: collectionLot.id, harvestLotId: harvestLot.id } }, update: { sourceWeight: weight }, create: { collectionLotId: collectionLot.id, harvestLotId: harvestLot.id, sourceWeight: weight } });
+        const compliance = await checkHarvestCompliance(harvestLot.id);
+        await prisma.harvestLot.update({ where: { id: harvestLot.id }, data: { complianceStatus: compliance.status, complianceDetails: { issues: compliance.issues, warnings: compliance.warnings } } });
+    }
+}
+
 export async function checkHarvestCompliance(harvestLotId: string) {
     const lot = await prisma.harvestLot.findUnique({ where: { id: harvestLotId }, include: { farm: { include: { region: true } }, cropSeason: { include: { farmingLogs: { orderBy: { actionDate: "asc" } } } } } });
     if (!lot) return { status: "BLOCKED" as const, issues: ["Không tìm thấy lô thu hoạch"], warnings: [] };
