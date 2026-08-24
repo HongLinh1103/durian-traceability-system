@@ -370,6 +370,9 @@ Chỉ dùng cho phát triển/demo; không dùng các mật khẩu này trong pr
 | `/api/store/*` | Hồ sơ, sản phẩm, kho, đơn hàng, tài chính |
 | `/api/orders/*`, `/api/cart` | Luồng mua hàng nông dân |
 | `/api/partners` | Đơn vị thu mua/chế biến phù hợp |
+| `/api/trace/:publicToken` | Tra cứu công khai, không yêu cầu đăng nhập |
+| `/api/traceability/commercial-lots` | Quản lý lô thương mại theo phạm vi đơn vị |
+| `/api/traceability/codes` | Phát hành và quản trị vòng đời mã QR |
 | `/api/health` | Ứng dụng và kết nối database |
 
 API chi tiết sẽ được tách thành `docs/API.md` khi hợp đồng API ổn định.
@@ -390,3 +393,37 @@ Tài liệu chuyên sâu dự kiến: `ARCHITECTURE.md`, `DATABASE.md`, `BUSINES
 - Thay toàn bộ secret và mật khẩu demo ở môi trường thật.
 - Không dựa vào `.storage` để lưu hồ sơ lâu dài trên Vercel.
 - Kiểm tra `/api/health` sau mỗi lần triển khai.
+
+## QR traceability
+
+Chuỗi dữ liệu được lưu bằng quan hệ database, không ghép dữ liệu giả lúc hiển thị:
+
+```text
+Vùng trồng → Vườn → Vụ mùa → Nhật ký/vật tư → Lô thu hoạch
+→ Thu mua/QC → Lô thu mua → Tiếp nhận nguyên liệu/QC
+→ Mẻ chế biến → Lô thành phẩm → Lô thương mại → Giao hàng
+```
+
+Nông dân, vựa thu mua và cơ sở chế biến có thể phát hành QR khi họ là actor cuối cùng đang sở hữu `CommercialLot` trước khi hàng rời TriViet. Nông dân chỉ được dùng HarvestLot thuộc vườn của mình; vựa chỉ dùng CollectionLot của đơn vị; cơ sở chế biến chỉ dùng FinishedProductLot của cơ sở. Backend kiểm tra quyền sở hữu, khối lượng còn lại, snapshot thu hoạch, trạng thái tuân thủ, QC, điểm đến và trạng thái chế biến trước khi phát hành. Admin có thể tạm khóa, thu hồi hoặc kích hoạt lại; mọi thao tác đều tạo sự kiện và audit log kèm lý do.
+
+Khởi tạo dữ liệu demo sau khi migration đã được deploy:
+
+```bash
+npm run prisma:migrate:deploy
+npm run seed:traceability
+```
+
+Mật khẩu chung của nhóm tài khoản traceability demo là `TriViet@123`. Các token công khai ổn định để kiểm thử:
+
+- `/trace/TV-RETAIL-DEMO`: lô tươi bán lẻ.
+- `/trace/TV-PROCESS-DEMO`: lô thành phẩm chế biến.
+- `/trace/TV-EXPORT-DEMO`: lô xuất khẩu.
+- `/trace/TV-COLLECTOR-EXPORT-DEMO`: lô tươi xuất khẩu từ vựa.
+- `/trace/TV-SUSPENDED-DEMO`: mã đang tạm khóa.
+- `/trace/TV-REVOKED-DEMO`: mã đã thu hồi.
+- `/trace/TV-FARMER-DIRECT-DEMO`: nông dân bán trực tiếp ra chợ.
+- `/trace/TV-FARMER-PARTIAL-DEMO`: nông dân bán một phần lô thu hoạch.
+- `/trace/TV-COLLECTOR-RETAIL-DEMO`: vựa bán lẻ.
+- `/trace/TV-PROCESS-RETAIL-DEMO`: cơ sở chế biến bán lẻ.
+
+Trang công khai không trả về số điện thoại, email, định danh cá nhân hay giá giao dịch của nông dân. Timeline được sắp xếp từ mới đến cũ; mã tạm khóa/thu hồi vẫn giữ lịch sử để đối chiếu nhưng hiển thị cảnh báo rõ ràng.

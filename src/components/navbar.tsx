@@ -25,6 +25,7 @@ type DashboardLink = {
 };
 
 const dashboardLinks: DashboardLink[] = [
+    { href: "/dashboard/area-manager/traceability", label: "Truy xuất trong vùng", roles: ["AREA_MANAGER"] },
     { href: "/materials", label: "Tất cả vật tư", roles: ["FARMER"] },
     { href: "/materials/fertilizers", label: "Phân bón", roles: ["FARMER"] },
     { href: "/materials/pesticides", label: "Thuốc BVTV", roles: ["FARMER"] },
@@ -35,12 +36,14 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/farmer/statistics", label: "Thống kê", roles: ["FARMER"] },
     { href: "/dashboard/farmer/plans", label: "Kế hoạch", roles: ["FARMER"], planBadge: true },
     { href: "/dashboard/farmer/harvests", label: "Phiếu thu hoạch", roles: ["FARMER"] },
+    { href: "/dashboard/farmer/traceability", label: "Lô bán trực tiếp & QR", roles: ["FARMER"] },
     { href: "/region-manager/gardens", label: "Quản lý vườn trồng", roles: ["AREA_MANAGER"] },
     { href: "/region-manager/farmers", label: "Hồ sơ nông dân", roles: ["AREA_MANAGER"], badge: true },
     { href: "/dashboard/admin/farming", label: "Quản lý canh tác", roles: ["ADMIN"] },
     { href: "/dashboard/admin/accounts", label: "Quản lý tài khoản", roles: ["ADMIN"], badge: true },
     { href: "/dashboard/admin/regions", label: "Vùng trồng", roles: ["ADMIN"] },
     { href: "/dashboard/admin/catalog", label: "Danh mục", roles: ["ADMIN"] },
+    { href: "/dashboard/admin/traceability", label: "Truy xuất & QR", roles: ["ADMIN"] },
     { href: "/dashboard/store", label: "Tổng quan", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/products", label: "Sản phẩm", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/inventory", label: "Kho hàng", roles: ["STORE_OWNER"] },
@@ -50,11 +53,13 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/partner/harvests", label: "Phiếu thu hoạch", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/orders", label: "Đơn thu mua", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/lots", label: "Lô hàng", roles: ["COLLECTOR"] },
+    { href: "/dashboard/partner/traceability", label: "Lô thương mại & QR", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/finance", label: "Tài chính", roles: ["COLLECTOR"] },
     { href: "/dashboard/processing", label: "Tổng quan", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/raw-materials", label: "Nguyên liệu", roles: ["PROCESSING_FACILITY"], collectorBadge: true },
     { href: "/dashboard/processing/processing", label: "Chế biến", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/finished-products", label: "Thành phẩm", roles: ["PROCESSING_FACILITY"] },
+    { href: "/dashboard/processing/traceability", label: "Lô thành phẩm & QR", roles: ["PROCESSING_FACILITY"] },
 ];
 
 export function Navbar({ initialSession }: { initialSession: Session | null }) {

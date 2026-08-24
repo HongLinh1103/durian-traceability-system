@@ -3,16 +3,16 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { PackageCheck, QrCode, Truck } from "lucide-react";
 import { authOptions } from "@/lib/auth";
-import { buildFinishedProductLots, buildProcessingLots, buildRawMaterialLots, formatStatusLabel, getProcessingHarvestSources } from "@/lib/processing-facility";
+import { prisma } from "@/lib/prisma";
+import { formatStatusLabel } from "@/lib/processing-facility";
 
 export default async function Page() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") redirect("/login");
 
-    const sources = await getProcessingHarvestSources(session.user.id);
-    const rawLots = buildRawMaterialLots(sources);
-    const processingLots = buildProcessingLots(rawLots);
-    const finishedLots = buildFinishedProductLots(processingLots);
+    const facility = await prisma.partnerFacility.findUnique({ where: { ownerId: session.user.id } });
+    const rows = facility ? await prisma.finishedProductLot.findMany({ where: { facilityId: facility.id }, include: { processingBatch: { select: { batchCode: true } }, commercialLots: { include: { traceabilityCode: true, shipmentItems: { include: { shipment: true } } } } }, orderBy: { manufacturedAt: "desc" } }) : [];
+    const finishedLots = rows.map(row => { const traced = row.commercialLots.find(lot => lot.traceabilityCode); const shipment = traced?.shipmentItems[0]?.shipment; return { id: row.id, code: row.lotCode, productName: row.productName, productType: row.productType, sourceProcessingLotCode: row.processingBatch.batchCode, producedAt: row.manufacturedAt, expiresAt: row.expiryDate, packageSpec: row.packaging, quantity: Number(row.quantity), totalWeight: Number(row.netWeight), unit: "kg", storageCondition: row.storageCondition, qrIssued: Boolean(traced?.traceabilityCode), publicToken: traced?.traceabilityCode?.publicToken, dispatchStatus: shipment?.status ?? "PENDING" }; });
 
     return (
         <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
@@ -30,7 +30,7 @@ export default async function Page() {
 
             <section className="grid gap-4">
                 {finishedLots.map((lot) => {
-                    const traceUrl = `https://triviet-nong-nghiep.vercel.app/trace/${lot.code}`;
+                    const traceUrl = lot.publicToken ? `/trace/${lot.publicToken}` : "/dashboard/processing/traceability";
                     return (
                         <article key={lot.id} className="rounded-3xl border bg-white p-5 shadow-sm">
                             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -46,10 +46,10 @@ export default async function Page() {
                                 <Field label="Loại sản phẩm" value={lot.productType} />
                                 <Field label="Ngày sản xuất" value={lot.producedAt.toLocaleDateString("vi-VN")} />
                                 <Field label="Hạn sử dụng" value={lot.expiresAt ? lot.expiresAt.toLocaleDateString("vi-VN") : "Theo lô"} />
-                                <Field label="Quy cách" value={lot.packageSpec} />
+                                <Field label="Quy cách" value={lot.packageSpec ?? "Chưa cập nhật"} />
                                 <Field label="Số lượng" value={`${lot.quantity.toLocaleString("vi-VN")} hộp`} />
                                 <Field label="Khối lượng" value={`${lot.totalWeight.toLocaleString("vi-VN")} ${lot.unit}`} />
-                                <Field label="Điều kiện bảo quản" value={lot.storageCondition} />
+                                <Field label="Điều kiện bảo quản" value={lot.storageCondition ?? "Chưa cập nhật"} />
                                 <Field label="QR" value={lot.qrIssued ? "Đã phát hành" : "Chưa phát hành"} />
                             </dl>
 

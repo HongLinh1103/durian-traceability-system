@@ -7,5 +7,5 @@ UPDATE "area_manager_applications" AS application
 SET
   "status" = account."accountStatus",
   "reviewedAt" = account."approvedAt"
-FROM "users" AS account
+FROM "User" AS account
 WHERE account."id" = application."userId";

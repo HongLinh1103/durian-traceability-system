@@ -4,24 +4,25 @@ import { redirect } from "next/navigation";
 import { AlertTriangle, Boxes, Factory, PackageCheck, Truck, QrCode } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buildFinishedProductLots, buildProcessingLots, buildRawMaterialLots, getProcessingHarvestSources } from "@/lib/processing-facility";
 
 export default async function Page() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") redirect("/login");
 
-    const [facility, sources] = await Promise.all([
-        prisma.partnerFacility.findUnique({ where: { ownerId: session.user.id } }),
-        getProcessingHarvestSources(session.user.id),
-    ]);
+    const facility = await prisma.partnerFacility.findUnique({ where: { ownerId: session.user.id } });
+    const [rawRows, processingRows, finishedRows] = facility ? await Promise.all([
+        prisma.rawMaterialLot.findMany({ where: { facilityId: facility.id }, include: { rawMaterialReceipt: true } }),
+        prisma.processingBatch.findMany({ where: { facilityId: facility.id } }),
+        prisma.finishedProductLot.findMany({ where: { facilityId: facility.id }, include: { commercialLots: { include: { traceabilityCode: true, shipmentItems: { include: { shipment: true } } } } } }),
+    ]) : [[], [], []];
+    /* All dashboard metrics below are derived from persisted lots and receipts. */
+    const rawLots = rawRows.map(row => ({ status: row.status, receivedAt: row.rawMaterialReceipt.receivedAt, actualReceivedWeight: Number(row.rawMaterialReceipt.receivedWeight) }));
+    const processingLots = processingRows.map(row => ({ status: row.status }));
+    const finishedLots = finishedRows.map(row => { const commercial = row.commercialLots.find(lot => lot.traceabilityCode); return { totalWeight: Number(row.netWeight), qrIssued: Boolean(commercial?.traceabilityCode), dispatchStatus: commercial?.shipmentItems[0]?.shipment.status ?? "PENDING" }; });
 
-    const rawLots = buildRawMaterialLots(sources);
-    const processingLots = buildProcessingLots(rawLots);
-    const finishedLots = buildFinishedProductLots(processingLots);
-
-    const waitingInspection = rawLots.filter((lot) => lot.status === "WAITING_INSPECTION").length;
+    const waitingInspection = rawLots.filter((lot) => lot.status === "PENDING_QC").length;
     const activeProcessing = processingLots.filter((lot) => lot.status === "IN_PROGRESS").length;
-    const pausedProcessing = processingLots.filter((lot) => lot.status === "PAUSED").length;
+    const pausedProcessing = processingLots.filter((lot) => lot.status === "CANCELLED").length;
     const pendingDispatch = finishedLots.filter((lot) => lot.dispatchStatus === "PENDING" || lot.dispatchStatus === "IN_TRANSIT").length;
     const missingQr = finishedLots.filter((lot) => !lot.qrIssued).length;
 

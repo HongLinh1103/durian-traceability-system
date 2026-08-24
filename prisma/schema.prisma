@@ -213,8 +213,188 @@ enum PlanStatus {
 }
 
 enum CropSeasonStatus {
+  PLANNED
   ACTIVE
   CLOSED
+  CANCELLED
+}
+
+enum ProductBatchStatus {
+  ACTIVE
+  EXPIRED
+  RECALLED
+  QUARANTINED
+  DEPLETED
+}
+
+enum SupplySourceType {
+  STORE_PURCHASE
+  SELF_DECLARED
+  MANUAL_IMPORT
+  OTHER
+}
+
+enum TraceComplianceStatus {
+  PASS
+  WARNING
+  BLOCKED
+}
+
+enum HarvestLotStatus {
+  DRAFT
+  FINALIZED
+  DISPATCHED
+  PARTIALLY_USED
+  USED
+  CANCELLED
+}
+
+enum ProcurementOrderStatus {
+  DRAFT
+  CONFIRMED
+  IN_DELIVERY
+  RECEIVED
+  CANCELLED
+}
+
+enum GoodsReceiptStatus {
+  DRAFT
+  RECEIVED
+  QC_PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum QualityResult {
+  PASSED
+  FAILED
+  CONDITIONAL
+}
+
+enum CollectionLotStatus {
+  OPEN
+  FINALIZED
+  DISPATCHED
+  PARTIALLY_USED
+  USED
+  CANCELLED
+}
+
+enum RawMaterialSourceType {
+  HARVEST_LOT
+  COLLECTION_LOT
+}
+
+enum RawMaterialReceiptStatus {
+  DRAFT
+  DISPATCHED
+  RECEIVED
+  QC_PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum RawMaterialLotStatus {
+  PENDING_QC
+  AVAILABLE
+  QUARANTINED
+  REJECTED
+  PARTIALLY_USED
+  USED
+}
+
+enum ProcessingBatchStatus {
+  DRAFT
+  PREPARING
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum FinishedProductLotStatus {
+  DRAFT
+  AVAILABLE
+  QC_HOLD
+  READY_FOR_DISTRIBUTION
+  PARTIALLY_DISTRIBUTED
+  DISTRIBUTED
+  RECALLED
+}
+
+enum LotEntityType {
+  HARVEST_LOT
+  COLLECTION_LOT
+  RAW_MATERIAL_LOT
+  PROCESSING_BATCH
+  FINISHED_PRODUCT_LOT
+  COMMERCIAL_LOT
+}
+
+enum LotRelationType {
+  MERGED_INTO
+  SPLIT_INTO
+  SOLD_DIRECTLY_AS
+  PROCESSED_INTO
+  PACKAGED_INTO
+  TRANSFERRED_INTO
+}
+
+enum DistributionDestinationType {
+  RETAIL
+  MARKET
+  DISTRIBUTOR
+  EXPORT
+  OTHER
+}
+
+enum CommercialLotOwnerType {
+  FARMER
+  COLLECTOR
+  PROCESSING_FACILITY
+}
+
+enum CommercialLotSourceType {
+  HARVEST_LOT
+  COLLECTION_LOT
+  FINISHED_PRODUCT_LOT
+}
+
+enum CommercialLotStatus {
+  DRAFT
+  READY
+  QR_ISSUED
+  DISPATCHED
+  RECEIVED
+  CLOSED
+  CANCELLED
+  RECALLED
+}
+
+enum ShipmentSenderType {
+  FARMER
+  COLLECTOR
+  PROCESSING_FACILITY
+}
+
+enum ShipmentStatus {
+  DRAFT
+  READY
+  DISPATCHED
+  IN_TRANSIT
+  RECEIVED
+  CANCELLED
+}
+
+enum TraceabilityCodeStatus {
+  DRAFT
+  READY_TO_ISSUE
+  ACTIVE
+  SUSPENDED
+  REVOKED
+  EXPIRED
 }
 
 enum GrowingRegionStatus {
@@ -392,37 +572,49 @@ model User {
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
 
-  farms                  Farm[]
-  notifications          Notification[]
-  uploadedDocuments      Document[]
-  areaManagerApplication AreaManagerApplication?
-  approvalHistories      ApprovalHistory[]       @relation("ApprovalSubject")
-  approvalActions        ApprovalHistory[]       @relation("ApprovalActor")
-  stores                 Store[]                 @relation("StoreOwner")
-  storeReviewActions     StoreAuditLog[]         @relation("StoreAuditActor")
-  cartItems              CartItem[]
-  orders                 Order[]                 @relation("FarmerOrders")
-  partnerFacility        PartnerFacility?
-  createdHarvests        HarvestRecord[]         @relation("HarvestFarmer")
-  partnerHarvests        HarvestRecord[]         @relation("HarvestBuyer")
-  harvestActions         HarvestStatusHistory[]
-  farmingPlans           FarmingPlan[]
-  weatherObservations    WeatherObservation[]
-  regionAssignments     AreaManagerRegionAssignment[] @relation("AssignedAreaManager")
-  assignedRegions       AreaManagerRegionAssignment[] @relation("RegionAssignedBy")
-  gardenStatusActions   GardenStatusHistory[]          @relation("GardenStatusActor")
-  farmerSupplies         FarmerSupply[]
+  farms                    Farm[]
+  notifications            Notification[]
+  uploadedDocuments        Document[]
+  areaManagerApplication   AreaManagerApplication?
+  approvalHistories        ApprovalHistory[]             @relation("ApprovalSubject")
+  approvalActions          ApprovalHistory[]             @relation("ApprovalActor")
+  stores                   Store[]                       @relation("StoreOwner")
+  storeReviewActions       StoreAuditLog[]               @relation("StoreAuditActor")
+  cartItems                CartItem[]
+  orders                   Order[]                       @relation("FarmerOrders")
+  partnerFacility          PartnerFacility?
+  createdHarvests          HarvestRecord[]               @relation("HarvestFarmer")
+  partnerHarvests          HarvestRecord[]               @relation("HarvestBuyer")
+  harvestActions           HarvestStatusHistory[]
+  farmingPlans             FarmingPlan[]
+  weatherObservations      WeatherObservation[]
+  regionAssignments        AreaManagerRegionAssignment[] @relation("AssignedAreaManager")
+  assignedRegions          AreaManagerRegionAssignment[] @relation("RegionAssignedBy")
+  gardenStatusActions      GardenStatusHistory[]         @relation("GardenStatusActor")
+  farmerSupplies           FarmerSupply[]
   farmerSupplyTransactions FarmerSupplyTransaction[]
-  farmerExpenses         FarmerExpense[]
-  pestMonitoringBooks    PestMonitoringBook[]
+  farmerExpenses           FarmerExpense[]
+  pestMonitoringBooks      PestMonitoringBook[]
+  receivedGoodsReceipts    GoodsReceipt[]                @relation("GoodsReceiptReceiver")
+  rawMaterialReceipts      RawMaterialReceipt[]          @relation("RawMaterialReceiver")
+  qualityInspections       QualityInspection[]           @relation("QualityInspector")
+  supervisedBatches        ProcessingBatch[]             @relation("ProcessingSupervisor")
+  issuedTraceCodes         TraceabilityCode[]            @relation("TraceCodeIssuer")
+  suspendedTraceCodes      TraceabilityCode[]            @relation("TraceCodeSuspender")
+  revokedTraceCodes        TraceabilityCode[]            @relation("TraceCodeRevoker")
+  traceEvents              TraceEvent[]
+  traceAuditLogs           TraceAuditLog[]
+  farmerCommercialLots     CommercialLot[]               @relation("FarmerCommercialLotOwner")
+  farmerShipments          Shipment[]                    @relation("FarmerShipmentSender")
+  ProcurementOrder         ProcurementOrder[]
 
   @@index([role])
   @@index([role, accountStatus, deletedAt])
 }
 
 model PartnerFacility {
-  id                  String            @id @default(cuid())
-  ownerId             String            @unique
+  id                  String               @id @default(cuid())
+  ownerId             String               @unique
   type                PartnerType
   representativeName  String
   representativePhone String
@@ -443,22 +635,30 @@ model PartnerFacility {
   latitude            Float?
   longitude           Float?
   contactPerson       String?
-  purchasingAreas     String[]          @default([])
-  processingTypes     String[]          @default([])
-  expectedCapacity    Decimal?          @db.Decimal(14, 2)
+  purchasingAreas     String[]             @default([])
+  processingTypes     String[]             @default([])
+  expectedCapacity    Decimal?             @db.Decimal(14, 2)
   capacityUnit        String?
-  imageUrls           String[]          @default([])
+  imageUrls           String[]             @default([])
   description         String?
-  status              PartnerStatus     @default(PENDING)
+  status              PartnerStatus        @default(PENDING)
   reviewReason        String?
-  submittedAt         DateTime?         @default(now())
+  submittedAt         DateTime?            @default(now())
   approvedAt          DateTime?
   deletedAt           DateTime?
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  owner               User              @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  owner               User                 @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   documents           PartnerDocument[]
   harvests            HarvestRecord[]
+  procurementOrders   ProcurementOrder[]
+  collectionLots      CollectionLot[]
+  rawMaterialReceipts RawMaterialReceipt[]
+  rawMaterialLots     RawMaterialLot[]
+  processingBatches   ProcessingBatch[]
+  finishedProductLots FinishedProductLot[]
+  commercialLots      CommercialLot[]
+  shipments           Shipment[]
 
   @@index([type, status, deletedAt])
   @@index([province, status])
@@ -518,6 +718,7 @@ model Store {
   auditLogs          StoreAuditLog[]
   inventoryDocuments InventoryDocument[]
   expenses           StoreExpense[]
+  FarmerSupply       FarmerSupply[]
 
   @@index([ownerId, status, deletedAt])
   @@index([status, deletedAt])
@@ -574,6 +775,7 @@ model StoreProduct {
   cartItems          CartItem[]
   orderItems         OrderItem[]
   inventoryMovements InventoryMovement[]
+  batches            ProductBatch[]
 
   @@index([storeId, status, deletedAt])
   @@index([type, status, deletedAt])
@@ -670,6 +872,7 @@ model Order {
   items              OrderItem[]
   histories          OrderStatusHistory[]
   inventoryDocuments InventoryDocument[]
+  farmerSupplies     FarmerSupply[]
 
   @@index([farmerId, status, deletedAt])
   @@index([storeId, status, deletedAt])
@@ -677,18 +880,20 @@ model Order {
 }
 
 model OrderItem {
-  id           String        @id @default(cuid())
-  orderId      String
-  productId    String?
-  productName  String
-  productImage String?
-  unitPrice    Decimal       @db.Decimal(14, 2)
-  costPrice    Decimal?      @db.Decimal(14, 2)
-  quantity     Int
-  unit         String
-  storeName    String
-  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product      StoreProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  id             String           @id @default(cuid())
+  orderId        String
+  productId      String?
+  productName    String
+  productImage   String?
+  unitPrice      Decimal          @db.Decimal(14, 2)
+  costPrice      Decimal?         @db.Decimal(14, 2)
+  quantity       Int
+  unit           String
+  storeName      String
+  order          Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product        StoreProduct?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  batches        OrderItemBatch[]
+  farmerSupplies FarmerSupply[]
 
   @@index([orderId])
   @@map("order_items")
@@ -770,9 +975,9 @@ model ApprovalHistory {
 }
 
 model AreaManagerApplication {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  identityNumber        String   @unique
+  id                    String        @id @default(cuid())
+  userId                String        @unique
+  identityNumber        String        @unique
   identityIssuedDate    DateTime
   identityIssuedPlace   String
   identityFrontKey      String
@@ -789,8 +994,8 @@ model AreaManagerApplication {
   status                AccountStatus @default(PENDING)
   reviewedAt            DateTime?
   reviewReason          String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -841,8 +1046,8 @@ model NewsArticle {
 }
 
 model Farm {
-  id              String   @id @default(cuid())
-  farmCode        String   @unique
+  id              String       @id @default(cuid())
+  farmCode        String       @unique
   farmName        String
   areaSize        Float
   totalTrees      Int
@@ -851,32 +1056,33 @@ model Farm {
   province        String?
   district        String?
   ward            String?
-  areaUnit        String   @default("HECTARE")
+  areaUnit        String       @default("HECTARE")
   notes           String?
   latitude        Float?
   longitude       Float?
   growingRegion   String?
   growingRegionId String?
-  isActive        Boolean  @default(true)
+  isActive        Boolean      @default(true)
   status          GardenStatus @default(ACTIVE)
   statusReason    String?
   statusChangedAt DateTime?
-  isInSeason      Boolean  @default(true)
+  isInSeason      Boolean      @default(true)
   farmerId        String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
-  farmer              User                 @relation(fields: [farmerId], references: [id], onDelete: Cascade)
-  region              GrowingRegion?       @relation(fields: [growingRegionId], references: [id], onDelete: SetNull)
-  farmingLogs         FarmingLog[]
-  harvests            HarvestRecord[]
-  farmingPlans        FarmingPlan[]
-  weatherObservations WeatherObservation[]
-  cropSeasons         CropSeason[]
+  farmer                   User                      @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  region                   GrowingRegion?            @relation(fields: [growingRegionId], references: [id], onDelete: SetNull)
+  farmingLogs              FarmingLog[]
+  harvests                 HarvestRecord[]
+  farmingPlans             FarmingPlan[]
+  weatherObservations      WeatherObservation[]
+  cropSeasons              CropSeason[]
   farmerSupplyTransactions FarmerSupplyTransaction[]
-  farmerExpenses         FarmerExpense[]
-  pestMonitoringBooks    PestMonitoringBook[]
-  statusHistories         GardenStatusHistory[]
+  farmerExpenses           FarmerExpense[]
+  pestMonitoringBooks      PestMonitoringBook[]
+  statusHistories          GardenStatusHistory[]
+  harvestLots              HarvestLot[]
 
   @@index([farmerId])
   @@index([farmCode])
@@ -884,43 +1090,44 @@ model Farm {
 }
 
 model GardenStatusHistory {
-  id         String       @id @default(cuid())
+  id         String        @id @default(cuid())
   farmId     String
   actorId    String
   fromStatus GardenStatus?
   toStatus   GardenStatus
   reason     String
-  createdAt  DateTime     @default(now())
+  createdAt  DateTime      @default(now())
 
-  farm       Farm         @relation(fields: [farmId], references: [id], onDelete: Restrict)
-  actor      User         @relation("GardenStatusActor", fields: [actorId], references: [id], onDelete: Restrict)
+  farm  Farm @relation(fields: [farmId], references: [id], onDelete: Restrict)
+  actor User @relation("GardenStatusActor", fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([farmId, createdAt])
   @@map("garden_status_histories")
 }
 
 model CropSeason {
-  id              String           @id @default(cuid())
-  farmId          String
-  name            String
-  year            Int
-  sequence        Int              @default(1)
-  status          CropSeasonStatus @default(ACTIVE)
-  startedAt       DateTime
-  startingStage   GrowthStage      @default(POST_HARVEST_RECOVERY)
-  notes           String?
-  expectedEndAt   DateTime?
-  closedAt        DateTime?
-  closingNote     String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id            String           @id @default(cuid())
+  farmId        String
+  name          String
+  year          Int
+  sequence      Int              @default(1)
+  status        CropSeasonStatus @default(ACTIVE)
+  startedAt     DateTime
+  startingStage GrowthStage      @default(POST_HARVEST_RECOVERY)
+  notes         String?
+  expectedEndAt DateTime?
+  closedAt      DateTime?
+  closingNote   String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
-  farm            Farm             @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  farmingLogs     FarmingLog[]
-  harvests        HarvestRecord[]
+  farm                     Farm                      @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  farmingLogs              FarmingLog[]
+  harvests                 HarvestRecord[]
   farmerSupplyTransactions FarmerSupplyTransaction[]
-  farmerExpenses         FarmerExpense[]
-  pestMonitoringBooks    PestMonitoringBook[]
+  farmerExpenses           FarmerExpense[]
+  pestMonitoringBooks      PestMonitoringBook[]
+  harvestLots              HarvestLot[]
 
   @@unique([farmId, year, sequence])
   @@index([farmId, status])
@@ -1008,7 +1215,8 @@ model HarvestRecord {
   histories                HarvestStatusHistory[]
   varietyItems             HarvestVarietyItem[]
   farmingLog               FarmingLog?
-  cropSeason               CropSeason?             @relation(fields: [cropSeasonId], references: [id], onDelete: SetNull)
+  cropSeason               CropSeason?            @relation(fields: [cropSeasonId], references: [id], onDelete: SetNull)
+  harvestLot               HarvestLot?
 
   @@index([farmerId, status, createdAt])
   @@index([buyerUserId, status, createdAt])
@@ -1049,31 +1257,31 @@ model HarvestStatusHistory {
 }
 
 model GrowingRegion {
-  id            String    @id @default(cuid())
-  code          String    @unique
-  name          String
-  province      String
-  district      String?
-  ward          String?
-  cropVarieties String[]  @default([])
-  status        GrowingRegionStatus @default(ACTIVE)
-  latitude      Float?
-  longitude     Float?
-  boundary      Json?
-  areaSize      Float?
-  cropType      String     @default("Sầu riêng")
-  approvalCode  String?
-  approvalIssuedAt DateTime?
-  exportMarkets String[]   @default([])
+  id                   String              @id @default(cuid())
+  code                 String              @unique
+  name                 String
+  province             String
+  district             String?
+  ward                 String?
+  cropVarieties        String[]            @default([])
+  status               GrowingRegionStatus @default(ACTIVE)
+  latitude             Float?
+  longitude            Float?
+  boundary             Json?
+  areaSize             Float?
+  cropType             String              @default("Sầu riêng")
+  approvalCode         String?
+  approvalIssuedAt     DateTime?
+  exportMarkets        String[]            @default([])
   managingOrganization String?
-  certificateUrls String[] @default([])
-  isActive      Boolean   @default(true)
-  approvedAt    DateTime?
-  validUntil    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  certificateUrls      String[]            @default([])
+  isActive             Boolean             @default(true)
+  approvedAt           DateTime?
+  validUntil           DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
 
-  farms Farm[]
+  farms              Farm[]
   managerAssignments AreaManagerRegionAssignment[]
 
   @@index([province, district, ward, isActive])
@@ -1090,9 +1298,9 @@ model AreaManagerRegionAssignment {
   isActive        Boolean   @default(true)
   note            String?
 
-  areaManager     User      @relation("AssignedAreaManager", fields: [areaManagerId], references: [id], onDelete: Restrict)
-  growingRegion   GrowingRegion @relation(fields: [growingRegionId], references: [id], onDelete: Restrict)
-  assignedBy      User      @relation("RegionAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+  areaManager   User          @relation("AssignedAreaManager", fields: [areaManagerId], references: [id], onDelete: Restrict)
+  growingRegion GrowingRegion @relation(fields: [growingRegionId], references: [id], onDelete: Restrict)
+  assignedBy    User          @relation("RegionAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
 
   @@index([areaManagerId, isActive])
   @@index([growingRegionId, isActive])
@@ -1118,13 +1326,13 @@ model FarmingLog {
   harvestRecordId String?      @unique
   planId          String?      @unique
 
-  farm          Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  harvestRecord HarvestRecord? @relation(fields: [harvestRecordId], references: [id], onDelete: SetNull)
-  plan          FarmingPlan?   @relation(fields: [planId], references: [id], onDelete: SetNull)
-  cropSeason    CropSeason?    @relation(fields: [cropSeasonId], references: [id], onDelete: SetNull)
-  materialsUsed FarmingLogMaterial[]
+  farm               Farm                      @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  harvestRecord      HarvestRecord?            @relation(fields: [harvestRecordId], references: [id], onDelete: SetNull)
+  plan               FarmingPlan?              @relation(fields: [planId], references: [id], onDelete: SetNull)
+  cropSeason         CropSeason?               @relation(fields: [cropSeasonId], references: [id], onDelete: SetNull)
+  materialsUsed      FarmingLogMaterial[]
   supplyTransactions FarmerSupplyTransaction[]
-  pestTreatments PestTreatment[]
+  pestTreatments     PestTreatment[]
 
   @@index([farmId, actionDate])
   @@index([cropSeasonId, actionDate])
@@ -1210,27 +1418,37 @@ enum FarmerExpenseCategory {
 }
 
 model FarmerSupply {
-  id                String       @id @default(cuid())
+  id                String           @id @default(cuid())
   farmerId          String
   name              String
   type              SupplyType
   brand             String?
   unit              String
-  quantity          Float        @default(0)
-  unitPrice         Decimal      @default(0) @db.Decimal(14, 2)
+  quantity          Float            @default(0)
+  unitPrice         Decimal          @default(0) @db.Decimal(14, 2)
   phiDays           Int?
   activeIngredients String?
   orderItemId       String?
   productId         String?
+  sourceType        SupplySourceType @default(SELF_DECLARED)
+  storeId           String?
+  orderId           String?
+  productBatchId    String?
+  verified          Boolean          @default(false)
   notes             String?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
-  farmer            User         @relation(fields: [farmerId], references: [id], onDelete: Cascade)
-  transactions      FarmerSupplyTransaction[]
-  logMaterials      FarmingLogMaterial[]
+  farmer       User                      @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  transactions FarmerSupplyTransaction[]
+  logMaterials FarmingLogMaterial[]
+  productBatch ProductBatch?             @relation(fields: [productBatchId], references: [id], onDelete: SetNull)
+  store        Store?                    @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  order        Order?                    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderItem    OrderItem?                @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
 
   @@index([farmerId, type])
+  @@index([productBatchId])
   @@map("farmer_supplies")
 }
 
@@ -1252,11 +1470,11 @@ model FarmerSupplyTransaction {
   notes        String?
   createdAt    DateTime              @default(now())
 
-  supply       FarmerSupply          @relation(fields: [supplyId], references: [id], onDelete: Cascade)
-  farmer       User                  @relation(fields: [farmerId], references: [id], onDelete: Cascade)
-  farm         Farm?                 @relation(fields: [farmId], references: [id], onDelete: SetNull)
-  cropSeason   CropSeason?           @relation(fields: [cropSeasonId], references: [id], onDelete: SetNull)
-  farmingLog   FarmingLog?           @relation(fields: [farmingLogId], references: [id], onDelete: SetNull)
+  supply     FarmerSupply @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+  farmer     User         @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  farm       Farm?        @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  cropSeason CropSeason?  @relation(fields: [cropSeasonId], references: [id], onDelete: SetNull)
+  farmingLog FarmingLog?  @relation(fields: [farmingLogId], references: [id], onDelete: SetNull)
 
   @@index([farmerId, type, actionDate])
   @@index([cropSeasonId, actionDate])
@@ -1265,20 +1483,20 @@ model FarmerSupplyTransaction {
 }
 
 model FarmingLogMaterial {
-  id            String        @id @default(cuid())
+  id            String     @id @default(cuid())
   farmingLogId  String
   supplyId      String?
   supplyName    String
   supplyType    SupplyType
   quantity      Float
   unit          String
-  unitPrice     Decimal       @default(0) @db.Decimal(14, 2)
-  totalCost     Decimal       @default(0) @db.Decimal(14, 2)
+  unitPrice     Decimal    @default(0) @db.Decimal(14, 2)
+  totalCost     Decimal    @default(0) @db.Decimal(14, 2)
   transactionId String?
-  createdAt     DateTime      @default(now())
+  createdAt     DateTime   @default(now())
 
-  farmingLog    FarmingLog    @relation(fields: [farmingLogId], references: [id], onDelete: Cascade)
-  supply        FarmerSupply? @relation(fields: [supplyId], references: [id], onDelete: SetNull)
+  farmingLog FarmingLog    @relation(fields: [farmingLogId], references: [id], onDelete: Cascade)
+  supply     FarmerSupply? @relation(fields: [supplyId], references: [id], onDelete: SetNull)
 
   @@index([farmingLogId])
   @@index([supplyId])
@@ -1299,9 +1517,9 @@ model FarmerExpense {
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
 
-  farmer       User                  @relation(fields: [farmerId], references: [id], onDelete: Cascade)
-  farm         Farm                  @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  cropSeason   CropSeason            @relation(fields: [cropSeasonId], references: [id], onDelete: Cascade)
+  farmer     User       @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  farm       Farm       @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  cropSeason CropSeason @relation(fields: [cropSeasonId], references: [id], onDelete: Cascade)
 
   @@index([farmerId, expenseDate])
   @@index([cropSeasonId, category])
@@ -1336,12 +1554,12 @@ model PestMonitoringBook {
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
-  farmer             User                 @relation(fields: [farmerId], references: [id], onDelete: Cascade)
-  farm               Farm                 @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  cropSeason         CropSeason           @relation(fields: [cropSeasonId], references: [id], onDelete: Cascade)
-  traps              PestTrap[]
-  inspections        PestInspection[]
-  treatments         PestTreatment[]
+  farmer      User             @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  farm        Farm             @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  cropSeason  CropSeason       @relation(fields: [cropSeasonId], references: [id], onDelete: Cascade)
+  traps       PestTrap[]
+  inspections PestInspection[]
+  treatments  PestTreatment[]
 
   @@index([farmerId, status])
   @@index([farmId, cropSeasonId])
@@ -1349,58 +1567,58 @@ model PestMonitoringBook {
 }
 
 model PestTrap {
-  id               String               @id @default(cuid())
+  id               String         @id @default(cuid())
   monitoringBookId String
   trapCode         String
   trapType         String
   locationName     String
   latitude         Float?
   longitude        Float?
-  installedDate    DateTime             @default(now())
-  status           PestTrapStatus       @default(ACTIVE)
+  installedDate    DateTime       @default(now())
+  status           PestTrapStatus @default(ACTIVE)
   notes            String?
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
-  monitoringBook   PestMonitoringBook   @relation(fields: [monitoringBookId], references: [id], onDelete: Cascade)
-  inspectionItems  PestInspectionItem[]
+  monitoringBook  PestMonitoringBook   @relation(fields: [monitoringBookId], references: [id], onDelete: Cascade)
+  inspectionItems PestInspectionItem[]
 
   @@index([monitoringBookId, status])
   @@map("pest_traps")
 }
 
 model PestInspection {
-  id               String               @id @default(cuid())
+  id               String   @id @default(cuid())
   monitoringBookId String
-  inspectionDate   DateTime             @default(now())
+  inspectionDate   DateTime @default(now())
   inspectorName    String
-  totalPestsCount  Int                  @default(0)
+  totalPestsCount  Int      @default(0)
   densityLevel     String?
   weatherCondition String?
-  actionNeeded     Boolean              @default(false)
+  actionNeeded     Boolean  @default(false)
   actionNote       String?
-  images           String[]             @default([])
+  images           String[] @default([])
   notes            String?
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  monitoringBook   PestMonitoringBook   @relation(fields: [monitoringBookId], references: [id], onDelete: Cascade)
-  items            PestInspectionItem[]
+  monitoringBook PestMonitoringBook   @relation(fields: [monitoringBookId], references: [id], onDelete: Cascade)
+  items          PestInspectionItem[]
 
   @@index([monitoringBookId, inspectionDate])
   @@map("pest_inspections")
 }
 
 model PestInspectionItem {
-  id           String         @id @default(cuid())
+  id           String  @id @default(cuid())
   inspectionId String
   trapId       String
-  pestsCount   Int            @default(0)
+  pestsCount   Int     @default(0)
   baitStatus   String?
   notes        String?
 
-  inspection   PestInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
-  trap         PestTrap       @relation(fields: [trapId], references: [id], onDelete: Cascade)
+  inspection PestInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  trap       PestTrap       @relation(fields: [trapId], references: [id], onDelete: Cascade)
 
   @@index([inspectionId])
   @@index([trapId])
@@ -1408,21 +1626,541 @@ model PestInspectionItem {
 }
 
 model PestTreatment {
-  id               String             @id @default(cuid())
+  id               String   @id @default(cuid())
   monitoringBookId String
-  treatmentDate    DateTime           @default(now())
+  treatmentDate    DateTime @default(now())
   treatmentType    String
   productUsed      String?
   dosage           String?
   areaTreated      String?
   resultNotes      String?
   farmingLogId     String?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  monitoringBook   PestMonitoringBook @relation(fields: [monitoringBookId], references: [id], onDelete: Cascade)
-  farmingLog       FarmingLog?        @relation(fields: [farmingLogId], references: [id], onDelete: SetNull)
+  monitoringBook PestMonitoringBook @relation(fields: [monitoringBookId], references: [id], onDelete: Cascade)
+  farmingLog     FarmingLog?        @relation(fields: [farmingLogId], references: [id], onDelete: SetNull)
 
   @@index([monitoringBookId, treatmentDate])
   @@map("pest_treatments")
+}
+
+model ProductBatch {
+  id                String             @id @default(cuid())
+  batchCode         String             @unique
+  storeProductId    String
+  supplierName      String?
+  manufacturerName  String?
+  manufacturingDate DateTime?
+  expiryDate        DateTime?
+  receivedQuantity  Decimal            @db.Decimal(14, 2)
+  remainingQuantity Decimal            @db.Decimal(14, 2)
+  status            ProductBatchStatus @default(ACTIVE)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  storeProduct      StoreProduct       @relation(fields: [storeProductId], references: [id], onDelete: Restrict)
+  orderItemBatches  OrderItemBatch[]
+  farmerSupplies    FarmerSupply[]
+
+  @@index([storeProductId, status, expiryDate])
+  @@map("product_batches")
+}
+
+model OrderItemBatch {
+  id             String       @id @default(cuid())
+  orderItemId    String
+  productBatchId String
+  quantity       Decimal      @db.Decimal(14, 2)
+  createdAt      DateTime     @default(now())
+  orderItem      OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  productBatch   ProductBatch @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+
+  @@unique([orderItemId, productBatchId])
+  @@index([productBatchId])
+  @@map("order_item_batches")
+}
+
+model HarvestLot {
+  id                String                @id @default(cuid())
+  lotCode           String                @unique
+  harvestRecordId   String                @unique
+  farmId            String
+  cropSeasonId      String
+  harvestedAt       DateTime
+  weight            Decimal               @db.Decimal(14, 2)
+  remainingWeight   Decimal               @db.Decimal(14, 2)
+  complianceStatus  TraceComplianceStatus
+  complianceDetails Json?
+  status            HarvestLotStatus      @default(DRAFT)
+  finalizedAt       DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  harvestRecord     HarvestRecord         @relation(fields: [harvestRecordId], references: [id], onDelete: Restrict)
+  farm              Farm                  @relation(fields: [farmId], references: [id], onDelete: Restrict)
+  cropSeason        CropSeason            @relation(fields: [cropSeasonId], references: [id], onDelete: Restrict)
+  snapshot          HarvestTraceSnapshot?
+  procurementOrders ProcurementOrder[]
+  collectionItems   CollectionLotItem[]
+  rawReceipts       RawMaterialReceipt[]  @relation("RawReceiptHarvest")
+  commercialLots    CommercialLot[]       @relation("CommercialHarvestSource")
+
+  @@index([farmId, harvestedAt])
+  @@index([cropSeasonId, status])
+  @@map("harvest_lots")
+}
+
+model HarvestTraceSnapshot {
+  id                         String     @id @default(cuid())
+  harvestLotId               String     @unique
+  farmerSnapshot             Json
+  farmSnapshot               Json
+  regionSnapshot             Json
+  seasonSnapshot             Json
+  cultivationSummarySnapshot Json
+  pesticideSnapshot          Json
+  complianceSnapshot         Json
+  createdAt                  DateTime   @default(now())
+  harvestLot                 HarvestLot @relation(fields: [harvestLotId], references: [id], onDelete: Restrict)
+
+  @@map("harvest_trace_snapshots")
+}
+
+model ProcurementOrder {
+  id                  String                 @id @default(cuid())
+  orderCode           String                 @unique
+  sellerFarmerId      String
+  collectorFacilityId String
+  harvestLotId        String
+  expectedWeight      Decimal                @db.Decimal(14, 2)
+  agreedWeight        Decimal?               @db.Decimal(14, 2)
+  agreedPrice         Decimal?               @db.Decimal(14, 2)
+  pickupDate          DateTime?
+  deliveryMethod      String?
+  status              ProcurementOrderStatus @default(DRAFT)
+  note                String?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  sellerFarmer        User                   @relation(fields: [sellerFarmerId], references: [id], onDelete: Restrict)
+  collectorFacility   PartnerFacility        @relation(fields: [collectorFacilityId], references: [id], onDelete: Restrict)
+  harvestLot          HarvestLot             @relation(fields: [harvestLotId], references: [id], onDelete: Restrict)
+  goodsReceipt        GoodsReceipt?
+
+  @@index([collectorFacilityId, status])
+  @@index([sellerFarmerId, status])
+  @@map("procurement_orders")
+}
+
+model GoodsReceipt {
+  id                 String               @id @default(cuid())
+  receiptCode        String               @unique
+  procurementOrderId String               @unique
+  deliveredWeight    Decimal              @db.Decimal(14, 2)
+  receivedWeight     Decimal              @db.Decimal(14, 2)
+  acceptedWeight     Decimal              @db.Decimal(14, 2)
+  rejectedWeight     Decimal              @db.Decimal(14, 2)
+  receivedAt         DateTime
+  receivedById       String
+  status             GoodsReceiptStatus   @default(RECEIVED)
+  note               String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  procurementOrder   ProcurementOrder     @relation(fields: [procurementOrderId], references: [id], onDelete: Restrict)
+  receivedBy         User                 @relation("GoodsReceiptReceiver", fields: [receivedById], references: [id], onDelete: Restrict)
+  quality            GoodsReceiptQuality?
+
+  @@index([status, receivedAt])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptQuality {
+  id             String        @id @default(cuid())
+  goodsReceiptId String        @unique
+  appearance     String?
+  ripeness       String?
+  sizeGrade      String?
+  damageRate     Decimal?      @db.Decimal(5, 2)
+  foreignMatter  String?
+  grade          String?
+  result         QualityResult
+  note           String?
+  inspectedAt    DateTime
+  createdAt      DateTime      @default(now())
+  goodsReceipt   GoodsReceipt  @relation(fields: [goodsReceiptId], references: [id], onDelete: Restrict)
+
+  @@index([result, inspectedAt])
+  @@map("goods_receipt_qualities")
+}
+
+model CollectionLot {
+  id                  String               @id @default(cuid())
+  lotCode             String               @unique
+  collectorFacilityId String
+  totalWeight         Decimal              @db.Decimal(14, 2)
+  currentWeight       Decimal              @db.Decimal(14, 2)
+  storageLocation     String?
+  status              CollectionLotStatus  @default(OPEN)
+  finalizedAt         DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  collectorFacility   PartnerFacility      @relation(fields: [collectorFacilityId], references: [id], onDelete: Restrict)
+  items               CollectionLotItem[]
+  rawReceipts         RawMaterialReceipt[] @relation("RawReceiptCollection")
+  commercialLots      CommercialLot[]      @relation("CommercialCollectionSource")
+
+  @@index([collectorFacilityId, status])
+  @@map("collection_lots")
+}
+
+model CollectionLotItem {
+  id              String        @id @default(cuid())
+  collectionLotId String
+  harvestLotId    String
+  sourceWeight    Decimal       @db.Decimal(14, 2)
+  createdAt       DateTime      @default(now())
+  collectionLot   CollectionLot @relation(fields: [collectionLotId], references: [id], onDelete: Restrict)
+  harvestLot      HarvestLot    @relation(fields: [harvestLotId], references: [id], onDelete: Restrict)
+
+  @@unique([collectionLotId, harvestLotId])
+  @@index([harvestLotId])
+  @@map("collection_lot_items")
+}
+
+model RawMaterialReceipt {
+  id                    String                   @id @default(cuid())
+  receiptCode           String                   @unique
+  sourceType            RawMaterialSourceType
+  sourceHarvestLotId    String?
+  sourceCollectionLotId String?
+  facilityId            String
+  dispatchedWeight      Decimal                  @db.Decimal(14, 2)
+  receivedWeight        Decimal                  @db.Decimal(14, 2)
+  receivedAt            DateTime
+  receivedById          String
+  status                RawMaterialReceiptStatus @default(RECEIVED)
+  note                  String?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  sourceHarvestLot      HarvestLot?              @relation("RawReceiptHarvest", fields: [sourceHarvestLotId], references: [id], onDelete: Restrict)
+  sourceCollectionLot   CollectionLot?           @relation("RawReceiptCollection", fields: [sourceCollectionLotId], references: [id], onDelete: Restrict)
+  facility              PartnerFacility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  receivedBy            User                     @relation("RawMaterialReceiver", fields: [receivedById], references: [id], onDelete: Restrict)
+  rawMaterialLot        RawMaterialLot?
+
+  @@index([facilityId, status])
+  @@map("raw_material_receipts")
+}
+
+model RawMaterialLot {
+  id                   String                 @id @default(cuid())
+  lotCode              String                 @unique
+  facilityId           String
+  rawMaterialReceiptId String                 @unique
+  acceptedWeight       Decimal                @db.Decimal(14, 2)
+  currentWeight        Decimal                @db.Decimal(14, 2)
+  warehouseLocation    String?
+  status               RawMaterialLotStatus   @default(PENDING_QC)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  facility             PartnerFacility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  rawMaterialReceipt   RawMaterialReceipt     @relation(fields: [rawMaterialReceiptId], references: [id], onDelete: Restrict)
+  inspections          QualityInspection[]
+  batchInputs          ProcessingBatchInput[]
+
+  @@index([facilityId, status])
+  @@map("raw_material_lots")
+}
+
+model QualityInspection {
+  id               String         @id @default(cuid())
+  rawMaterialLotId String
+  inspectorId      String
+  inspectedAt      DateTime
+  appearance       String?
+  qualityGrade     String?
+  residueResult    String?
+  damageRate       Decimal?       @db.Decimal(5, 2)
+  result           QualityResult
+  note             String?
+  createdAt        DateTime       @default(now())
+  rawMaterialLot   RawMaterialLot @relation(fields: [rawMaterialLotId], references: [id], onDelete: Restrict)
+  inspector        User           @relation("QualityInspector", fields: [inspectorId], references: [id], onDelete: Restrict)
+
+  @@index([rawMaterialLotId, inspectedAt])
+  @@index([result])
+  @@map("quality_inspections")
+}
+
+model ProcessingBatch {
+  id                String                 @id @default(cuid())
+  batchCode         String                 @unique
+  facilityId        String
+  method            String
+  targetProduct     String
+  startedAt         DateTime
+  completedAt       DateTime?
+  supervisorId      String
+  totalInputWeight  Decimal                @db.Decimal(14, 2)
+  totalOutputWeight Decimal                @db.Decimal(14, 2)
+  lossWeight        Decimal                @db.Decimal(14, 2)
+  yieldPercent      Decimal                @db.Decimal(7, 2)
+  status            ProcessingBatchStatus  @default(DRAFT)
+  note              String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  facility          PartnerFacility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  supervisor        User                   @relation("ProcessingSupervisor", fields: [supervisorId], references: [id], onDelete: Restrict)
+  inputs            ProcessingBatchInput[]
+  finishedLots      FinishedProductLot[]
+
+  @@index([facilityId, status])
+  @@map("processing_batches")
+}
+
+model ProcessingBatchInput {
+  id                String          @id @default(cuid())
+  processingBatchId String
+  rawMaterialLotId  String
+  inputWeight       Decimal         @db.Decimal(14, 2)
+  createdAt         DateTime        @default(now())
+  processingBatch   ProcessingBatch @relation(fields: [processingBatchId], references: [id], onDelete: Restrict)
+  rawMaterialLot    RawMaterialLot  @relation(fields: [rawMaterialLotId], references: [id], onDelete: Restrict)
+
+  @@unique([processingBatchId, rawMaterialLotId])
+  @@index([rawMaterialLotId])
+  @@map("processing_batch_inputs")
+}
+
+model FinishedProductLot {
+  id                String                   @id @default(cuid())
+  lotCode           String                   @unique
+  processingBatchId String
+  facilityId        String
+  productName       String
+  productType       String
+  quantity          Decimal                  @db.Decimal(14, 2)
+  netWeight         Decimal                  @db.Decimal(14, 2)
+  remainingWeight   Decimal                  @db.Decimal(14, 2)
+  manufacturedAt    DateTime
+  expiryDate        DateTime?
+  packaging         String?
+  storageCondition  String?
+  warehouseLocation String?
+  status            FinishedProductLotStatus @default(DRAFT)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  processingBatch   ProcessingBatch          @relation(fields: [processingBatchId], references: [id], onDelete: Restrict)
+  facility          PartnerFacility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  commercialLots    CommercialLot[]          @relation("CommercialFinishedSource")
+
+  @@index([facilityId, status])
+  @@map("finished_product_lots")
+}
+
+model DistributionDestination {
+  id             String                      @id @default(cuid())
+  name           String
+  type           DistributionDestinationType
+  country        String?
+  province       String?
+  district       String?
+  address        String
+  contactName    String?
+  contactPhone   String?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+  commercialLots CommercialLot[]
+  shipments      Shipment[]
+
+  @@unique([name, address])
+  @@index([type, country])
+  @@map("distribution_destinations")
+}
+
+model CommercialLot {
+  id                         String                   @id @default(cuid())
+  lotCode                    String                   @unique
+  ownerType                  CommercialLotOwnerType
+  ownerId                    String?
+  farmerOwnerId              String?
+  sourceType                 CommercialLotSourceType
+  sourceId                   String
+  sourceHarvestLotId         String?
+  sourceCollectionLotId      String?
+  sourceFinishedProductLotId String?
+  destinationId              String?
+  productName                String
+  quantity                   Decimal                  @db.Decimal(14, 2)
+  remainingQuantity          Decimal                  @default(0) @db.Decimal(14, 2)
+  unit                       String                   @default("kg")
+  status                     CommercialLotStatus      @default(DRAFT)
+  note                       String?
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+  owner                      PartnerFacility?         @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  farmerOwner                User?                    @relation("FarmerCommercialLotOwner", fields: [farmerOwnerId], references: [id], onDelete: Restrict)
+  sourceHarvestLot           HarvestLot?              @relation("CommercialHarvestSource", fields: [sourceHarvestLotId], references: [id], onDelete: Restrict)
+  sourceCollectionLot        CollectionLot?           @relation("CommercialCollectionSource", fields: [sourceCollectionLotId], references: [id], onDelete: Restrict)
+  sourceFinishedProductLot   FinishedProductLot?      @relation("CommercialFinishedSource", fields: [sourceFinishedProductLotId], references: [id], onDelete: Restrict)
+  destination                DistributionDestination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+  traceabilityCode           TraceabilityCode?
+  shipmentItems              ShipmentItem[]
+  traceEvents                TraceEvent[]
+
+  @@index([ownerId, status])
+  @@index([farmerOwnerId, status])
+  @@index([sourceType, sourceId])
+  @@index([destinationId])
+  @@map("commercial_lots")
+}
+
+model LotRelation {
+  id           String          @id @default(cuid())
+  sourceType   LotEntityType
+  sourceId     String
+  targetType   LotEntityType
+  targetId     String
+  relationType LotRelationType
+  quantity     Decimal         @db.Decimal(14, 2)
+  unit         String          @default("kg")
+  createdAt    DateTime        @default(now())
+
+  @@unique([sourceType, sourceId, targetType, targetId, relationType])
+  @@index([sourceType, sourceId])
+  @@index([targetType, targetId])
+  @@map("lot_relations")
+}
+
+model Shipment {
+  id                String                  @id @default(cuid())
+  shipmentCode      String                  @unique
+  senderType        ShipmentSenderType
+  senderId          String?
+  farmerSenderId    String?
+  destinationId     String
+  dispatchAt        DateTime?
+  receivedAt        DateTime?
+  dispatchedWeight  Decimal                 @db.Decimal(14, 2)
+  receivedWeight    Decimal?                @db.Decimal(14, 2)
+  vehicleReference  String?
+  containerNumber   String?
+  sealNumber        String?
+  trackingReference String?
+  status            ShipmentStatus          @default(DRAFT)
+  note              String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  sender            PartnerFacility?        @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  farmerSender      User?                   @relation("FarmerShipmentSender", fields: [farmerSenderId], references: [id], onDelete: Restrict)
+  destination       DistributionDestination @relation(fields: [destinationId], references: [id], onDelete: Restrict)
+  items             ShipmentItem[]
+  exportInfo        ExportShipmentInfo?
+
+  @@index([senderId, status])
+  @@index([destinationId, status])
+  @@map("shipments")
+}
+
+model ShipmentItem {
+  id              String        @id @default(cuid())
+  shipmentId      String
+  commercialLotId String
+  quantity        Decimal       @db.Decimal(14, 2)
+  weight          Decimal       @db.Decimal(14, 2)
+  createdAt       DateTime      @default(now())
+  shipment        Shipment      @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+  commercialLot   CommercialLot @relation(fields: [commercialLotId], references: [id], onDelete: Restrict)
+
+  @@unique([shipmentId, commercialLotId])
+  @@index([commercialLotId])
+  @@map("shipment_items")
+}
+
+model ExportShipmentInfo {
+  id                             String    @id @default(cuid())
+  shipmentId                     String    @unique
+  destinationCountry             String
+  exporterName                   String?
+  buyerName                      String?
+  portOfLoading                  String?
+  portOfDestination              String?
+  customsDeclarationNumber       String?
+  phytosanitaryCertificateNumber String?
+  containerNumber                String?
+  sealNumber                     String?
+  exportDate                     DateTime?
+  createdAt                      DateTime  @default(now())
+  updatedAt                      DateTime  @updatedAt
+  shipment                       Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+
+  @@map("export_shipment_info")
+}
+
+model TraceabilityCode {
+  id              String                 @id @default(cuid())
+  code            String                 @unique
+  publicToken     String                 @unique
+  commercialLotId String                 @unique
+  status          TraceabilityCodeStatus @default(DRAFT)
+  issuedAt        DateTime
+  issuedById      String
+  issuedByRole    UserRole?
+  activatedAt     DateTime?
+  suspendedAt     DateTime?
+  suspendedById   String?
+  suspendReason   String?
+  revokedAt       DateTime?
+  revokedById     String?
+  revokeReason    String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  commercialLot   CommercialLot          @relation(fields: [commercialLotId], references: [id], onDelete: Restrict)
+  issuedBy        User                   @relation("TraceCodeIssuer", fields: [issuedById], references: [id], onDelete: Restrict)
+  suspendedBy     User?                  @relation("TraceCodeSuspender", fields: [suspendedById], references: [id], onDelete: Restrict)
+  revokedBy       User?                  @relation("TraceCodeRevoker", fields: [revokedById], references: [id], onDelete: Restrict)
+
+  @@index([status, issuedAt])
+  @@map("traceability_codes")
+}
+
+model TraceEvent {
+  id               String         @id @default(cuid())
+  commercialLotId  String?
+  entityType       String
+  entityId         String
+  eventType        String
+  eventTime        DateTime
+  actorId          String?
+  actorRole        UserRole?
+  organizationType String?
+  organizationId   String?
+  title            String
+  description      String?
+  locationText     String?
+  sourceEntityType String?
+  sourceEntityId   String?
+  metadata         Json?
+  isPublic         Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  commercialLot    CommercialLot? @relation(fields: [commercialLotId], references: [id], onDelete: Restrict)
+  actor            User?          @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([commercialLotId, isPublic, eventTime])
+  @@index([entityType, entityId, eventTime])
+  @@map("trace_events")
+}
+
+model TraceAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  reason     String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  actor      User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("trace_audit_logs")
 }

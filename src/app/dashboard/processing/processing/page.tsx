@@ -2,15 +2,16 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { Factory, PauseCircle, PlayCircle, Settings2 } from "lucide-react";
 import { authOptions } from "@/lib/auth";
-import { buildProcessingLots, buildRawMaterialLots, formatStatusLabel, getProcessingHarvestSources } from "@/lib/processing-facility";
+import { prisma } from "@/lib/prisma";
+import { formatStatusLabel } from "@/lib/processing-facility";
 
 export default async function Page() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") redirect("/login");
 
-    const sources = await getProcessingHarvestSources(session.user.id);
-    const rawLots = buildRawMaterialLots(sources);
-    const processingLots = buildProcessingLots(rawLots);
+    const facility = await prisma.partnerFacility.findUnique({ where: { ownerId: session.user.id } });
+    const rows = facility ? await prisma.processingBatch.findMany({ where: { facilityId: facility.id }, include: { inputs: { include: { rawMaterialLot: { select: { lotCode: true } } } }, supervisor: { select: { fullName: true } } }, orderBy: { startedAt: "desc" } }) : [];
+    const processingLots = rows.map(row => ({ id: row.id, code: row.batchCode, rawMaterialLotCodes: row.inputs.map(input => input.rawMaterialLot.lotCode), method: row.method, startedAt: row.startedAt, finishedAt: row.completedAt, inputWeight: Number(row.totalInputWeight), outputWeight: Number(row.totalOutputWeight), lossRate: Number(row.totalInputWeight) > 0 ? Number(((Number(row.lossWeight) / Number(row.totalInputWeight)) * 100).toFixed(2)) : 0, supervisor: row.supervisor.fullName, status: row.status, note: row.note ?? "" }));
 
     return (
         <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
@@ -45,7 +46,7 @@ export default async function Page() {
                             <Row label="Khối lượng đầu vào" value={`${lot.inputWeight.toLocaleString("vi-VN")} kg`} />
                             <Row label="Khối lượng đầu ra" value={`${lot.outputWeight.toLocaleString("vi-VN")} kg`} />
                             <Row label="Tỷ lệ hao hụt" value={`${lot.lossRate.toLocaleString("vi-VN")} %`} />
-                            <Row label="Người phụ trách" value={lot.supervisor} />
+                            <Row label="Người phụ trách" value={lot.supervisor ?? "Chưa cập nhật"} />
                         </dl>
                         <p className="mt-3 rounded-xl bg-brand-50 px-3 py-2 text-xs text-brand-800">{lot.note}</p>
                     </article>

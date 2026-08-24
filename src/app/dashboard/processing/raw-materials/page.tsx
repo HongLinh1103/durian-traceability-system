@@ -3,14 +3,16 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { Boxes, CheckCircle2, ShieldAlert } from "lucide-react";
 import { authOptions } from "@/lib/auth";
-import { buildRawMaterialLots, formatStatusLabel, getProcessingHarvestSources } from "@/lib/processing-facility";
+import { prisma } from "@/lib/prisma";
+import { formatStatusLabel } from "@/lib/processing-facility";
 
 export default async function Page() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") redirect("/login");
 
-    const sources = await getProcessingHarvestSources(session.user.id);
-    const lots = buildRawMaterialLots(sources);
+    const facility = await prisma.partnerFacility.findUnique({ where: { ownerId: session.user.id } });
+    const rows = facility ? await prisma.rawMaterialLot.findMany({ where: { facilityId: facility.id }, include: { inspections: { orderBy: { inspectedAt: "desc" }, take: 1, include: { inspector: { select: { fullName: true } } } }, rawMaterialReceipt: { include: { sourceHarvestLot: { include: { farm: true, harvestRecord: { include: { farmer: { select: { fullName: true, phone: true } } } } } }, sourceCollectionLot: true } } }, orderBy: { createdAt: "desc" } }) : [];
+    const lots = rows.map(row => { const source = row.rawMaterialReceipt.sourceHarvestLot; const inspection = row.inspections[0]; return { id: row.id, code: row.lotCode, sourceHarvestId: source?.id ?? row.rawMaterialReceipt.sourceCollectionLotId ?? "-", sourceCode: source?.lotCode ?? row.rawMaterialReceipt.sourceCollectionLot?.lotCode ?? "-", sourceType: row.rawMaterialReceipt.sourceType === "HARVEST_LOT" ? "FARMER" : "COLLECTOR", supplierName: source?.harvestRecord.farmer.fullName ?? "Vựa thu mua", supplierPhone: source?.harvestRecord.farmer.phone ?? "-", farmName: source?.farm.farmName ?? "Lô tổng hợp nhiều vườn", durianVariety: source?.farm.durianVariety ?? "Nhiều giống", receivedAt: row.rawMaterialReceipt.receivedAt, sentWeight: Number(row.rawMaterialReceipt.dispatchedWeight), actualReceivedWeight: Number(row.rawMaterialReceipt.receivedWeight), qualityResult: inspection?.result === "PASSED" ? "PASS" : inspection?.result === "FAILED" ? "FAIL" : "CONDITIONAL", status: row.status === "PENDING_QC" ? "WAITING_INSPECTION" : row.status === "AVAILABLE" ? "ACCEPTED" : row.status === "REJECTED" ? "REJECTED" : row.status === "USED" ? "CLOSED" : "STORED", storageLocation: row.warehouseLocation, inspectorName: inspection?.inspector.fullName ?? "Chưa phân công", note: inspection?.note ?? "" }; });
 
     return (
         <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
@@ -45,7 +47,7 @@ export default async function Page() {
                             <InfoLine label="Khối lượng gửi" value={`${lot.sentWeight.toLocaleString("vi-VN")} kg`} />
                             <InfoLine label="Khối lượng nhận" value={`${lot.actualReceivedWeight.toLocaleString("vi-VN")} kg`} />
                             <InfoLine label="Mã truy xuất nguồn" value={lot.sourceHarvestId} />
-                            <InfoLine label="Kho lưu" value={lot.storageLocation} />
+                            <InfoLine label="Kho lưu" value={lot.storageLocation ?? "Chưa cập nhật"} />
                             <InfoLine label="Kết quả kiểm tra" value={lot.qualityResult === "PASS" ? "Đạt" : lot.qualityResult === "CONDITIONAL" ? "Đạt có điều kiện" : "Không đạt"} />
                         </dl>
 

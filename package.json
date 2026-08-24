@@ -26,11 +26,14 @@
         "seed:regional-farms": "node scripts/seed-regional-farms-and-logs.cjs",
         "seed:role-accounts": "node scripts/seed-role-accounts.cjs",
         "seed:system-demo": "node scripts/seed-system-demo.cjs",
-        "seed:farming-history": "node scripts/seed-farming-history.cjs"
+        "seed:farming-history": "node scripts/seed-farming-history.cjs",
+        "seed:traceability": "tsx scripts/seed-traceability-demo.ts",
+        "test:traceability": "tsx scripts/test-traceability.ts"
     },
     "dependencies": {
         "@hookform/resolvers": "^3.10.0",
         "@prisma/client": "^5.22.0",
+        "@types/qrcode": "^1.5.6",
         "@zxing/browser": "^0.1.5",
         "@zxing/library": "^0.21.3",
         "bcryptjs": "^3.0.3",
@@ -41,6 +44,7 @@
         "lucide-react": "^0.446.0",
         "next": "14.2.17",
         "next-auth": "^4.24.11",
+        "qrcode": "^1.5.4",
         "react": "18.3.1",
         "react-dom": "18.3.1",
         "react-hook-form": "^7.53.2",
