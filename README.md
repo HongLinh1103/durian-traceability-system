@@ -356,28 +356,6 @@ Chỉ dùng cho phát triển/demo; không dùng các mật khẩu này trong pr
 - Hệ thống chưa dùng WebSocket; phần lớn màn hình cần reload/revalidation để nhận dữ liệu mới.
 - Cần tiếp tục đồng nhất middleware và kiểm tra quyền ở mọi route đối tác.
 
-## Roadmap
-
-### Giai đoạn 1 — Nền tảng
-
-- Chuẩn hóa approval theo role và audit phân công vùng.
-- Hoàn thiện master product và product batch.
-
-### Giai đoạn 2 — Thu hoạch và thu mua
-
-- Tách `HarvestLot`; bổ sung `ProcurementOrder`, `GoodsReceipt`, `CollectionLot`.
-- Hoàn thiện cân thực tế, sai lệch, giao nhận và công nợ thu mua.
-
-### Giai đoạn 3 — Chế biến
-
-- Persistence cho `RawMaterialLot`, `ProcessingBatch`, `FinishedProductLot`.
-- Workflow QC, bằng chứng, hao hụt, đóng gói, kho lạnh và xuất lô.
-
-### Giai đoạn 4 — Truy xuất và vận hành
-
-- QR đầy đủ từ thành phẩm về nhật ký/vật tư và snapshot lineage.
-- Audit log, cảnh báo tuân thủ, object storage và cập nhật gần thời gian thực.
-
 ## Tổng quan API
 
 | Nhóm | Phạm vi |
