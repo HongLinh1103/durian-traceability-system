@@ -29,6 +29,22 @@ export async function ensureCompletedHarvestCollectionLots(collectorUserId: stri
             regionSnapshot: { code: record.farm.region?.code, name: record.farm.region?.name }, seasonSnapshot: { name: record.cropSeason.name },
             cultivationSummarySnapshot: { source: "farming_logs" }, pesticideSnapshot: { source: "farming_logs" }, complianceSnapshot: { status: "PENDING_RECHECK" },
         } });
+        let procurement = await prisma.procurementOrder.findFirst({ where: { harvestLotId: harvestLot.id, collectorFacilityId: facility.id } });
+        if (!procurement) procurement = await prisma.procurementOrder.create({ data: {
+            orderCode: `PO-${record.code}`, sellerFarmerId: record.farmerId, collectorFacilityId: facility.id, harvestLotId: harvestLot.id,
+            expectedWeight: weight, agreedWeight: weight, pickupDate: record.farmerDeliveredAt ?? record.completedAt ?? new Date(), status: "RECEIVED",
+            note: "Đã QC tại vườn trước khi nhận thu mua",
+        } });
+        else procurement = await prisma.procurementOrder.update({ where: { id: procurement.id }, data: { agreedWeight: weight, status: "RECEIVED" } });
+        const receipt = await prisma.goodsReceipt.upsert({ where: { procurementOrderId: procurement.id }, update: { receivedWeight: weight, acceptedWeight: weight, rejectedWeight: 0, status: "ACCEPTED" }, create: {
+            receiptCode: `GR-${record.code}`, procurementOrderId: procurement.id, deliveredWeight: Number(record.deliveredWeight ?? weight), receivedWeight: weight,
+            acceptedWeight: weight, rejectedWeight: 0, receivedAt: record.buyerReceivedAt ?? record.completedAt ?? new Date(), receivedById: collectorUserId, status: "ACCEPTED",
+            note: "Hàng đã được kiểm tra tại vườn và chấp nhận thu mua",
+        } });
+        await prisma.goodsReceiptQuality.upsert({ where: { goodsReceiptId: receipt.id }, update: { result: "PASSED", note: "QC tại vườn đạt trước khi nhận thu mua" }, create: {
+            goodsReceiptId: receipt.id, appearance: "Đạt yêu cầu thu mua", ripeness: "Đạt", result: "PASSED",
+            note: "QC tại vườn đạt trước khi nhận thu mua", inspectedAt: record.buyerReceivedAt ?? record.completedAt ?? new Date(),
+        } });
         const collectionLot = await prisma.collectionLot.upsert({ where: { lotCode: `CL-${record.code}` }, update: {}, create: {
             lotCode: `CL-${record.code}`, collectorFacilityId: facility.id, totalWeight: weight, currentWeight: weight,
             storageLocation: "Kho vựa thu mua", status: "FINALIZED", finalizedAt: record.completedAt ?? new Date(),
