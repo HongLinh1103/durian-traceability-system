@@ -304,7 +304,7 @@ export function WeatherDashboard({ role }: { role: "FARMER" | "AREA_MANAGER" }) 
                                 <NotificationComposer selectedCount={selectedAffected.length} text={notificationText} confirmed={confirmSend} sending={sending} onText={updateNotificationText} onConfirm={setConfirmSend} onSend={() => void sendNotification()} />
                             </section>
                         )}
-                    <AiSection role={role} advice={advice} source={adviceSource} loading={aiLoading} error={aiError} onRetry={() => void loadAi()} />
+                        <AiSection role={role} advice={advice} source={adviceSource} loading={aiLoading} error={aiError} onRetry={() => void loadAi()} />
                     </>
                 ) : <StateBox icon={<MapPin className="h-8 w-8" />} title={role === "FARMER" && !farms.length ? "Bạn chưa có vườn. Có thể dùng vị trí hiện tại để xem thời tiết." : "Chưa có vườn hoặc tọa độ phù hợp."} />}
             </div>
@@ -334,15 +334,15 @@ function CurrentWeather({ weather }: { weather: Weather }) {
             <Card className="overflow-hidden rounded-2xl border-0 shadow-sm">
                 <CardContent className="p-0">
                     <div className="relative isolate min-h-[230px] overflow-hidden p-5 sm:p-8">
-                    <WeatherScene weatherCode={weather.current.weatherCode} isDay={currentHour?.isDay ?? true} />
-                    <div className="relative z-10 flex flex-wrap items-center gap-5">
+                        <WeatherScene weatherCode={weather.current.weatherCode} isDay={currentHour?.isDay ?? true} />
+                        <div className="relative z-10 flex flex-wrap items-center gap-5">
                             <div className="rounded-full bg-white/70 p-5 text-[#1677a7] shadow-sm"><WeatherIcon className="h-14 w-14" /></div>
                             <div>
                                 <div className="flex items-start"><span className="text-7xl font-light leading-none text-slate-900">{Math.round(weather.current.temperature)}</span><span className="mt-2 text-xl">°C</span></div>
                                 <p className="mt-2 text-lg font-semibold text-slate-800">{currentPresentation.label}</p>
                                 <p className="mt-1 text-sm text-slate-600">Cảm giác như <b>{weather.current.apparentTemperature}°C</b></p>
                             </div>
-                    </div>
+                        </div>
 
                     </div>
 
@@ -354,77 +354,77 @@ function CurrentWeather({ weather }: { weather: Weather }) {
                     </div>
 
                     <div className="p-5 sm:p-8">
-                    {selectedDay && (
-                        <div className="mt-7 rounded-2xl bg-slate-50 p-4">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <p className="font-bold capitalize text-slate-900">{selectedDay.date === weather.daily[0]?.date ? "Hôm nay" : new Date(`${selectedDay.date}T00:00:00`).toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit" })}</p>
-                                    <p className="mt-1 text-sm text-slate-600">{selectedDay.description}</p>
+                        {selectedDay && (
+                            <div className="mt-7 rounded-2xl bg-slate-50 p-4">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p className="font-bold capitalize text-slate-900">{selectedDay.date === weather.daily[0]?.date ? "Hôm nay" : new Date(`${selectedDay.date}T00:00:00`).toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit" })}</p>
+                                        <p className="mt-1 text-sm text-slate-600">{selectedDay.description}</p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-700">
+                                        <span><b>{Math.round(selectedDay.temperatureMax)}°</b> / {Math.round(selectedDay.temperatureMin)}°</span>
+                                        <span>Mưa <b>{selectedDay.precipitationProbability}%</b> · {selectedDay.precipitation} mm</span>
+                                        <span>Gió <b>{selectedDay.windSpeed} km/h</b></span>
+                                        <span>UV <b>{selectedDay.uvIndex}</b></span>
+                                    </div>
                                 </div>
-                                <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-700">
-                                    <span><b>{Math.round(selectedDay.temperatureMax)}°</b> / {Math.round(selectedDay.temperatureMin)}°</span>
-                                    <span>Mưa <b>{selectedDay.precipitationProbability}%</b> · {selectedDay.precipitation} mm</span>
-                                    <span>Gió <b>{selectedDay.windSpeed} km/h</b></span>
-                                    <span>UV <b>{selectedDay.uvIndex}</b></span>
+                            </div>
+                        )}
+
+                        <div className="mt-5">
+                            <h3 className="mb-3 text-sm font-bold text-slate-800">Dự báo theo giờ</h3>
+                            <div onPointerDown={beginHorizontalDrag} onPointerMove={moveHorizontalDrag} onPointerUp={endHorizontalDrag} onPointerCancel={endHorizontalDrag} className="flex cursor-grab select-none gap-2 overflow-x-auto pb-3 active:cursor-grabbing [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                {(selectedHours.length ? selectedHours : weather.hourly.slice(0, 24)).map((hour) => {
+                                    const presentation = getWeatherPresentation(hour.weatherCode, hour.isDay);
+                                    const HourIcon = presentation.icon;
+                                    const thunderstorm = [95, 96, 99].includes(hour.weatherCode);
+                                    return <div key={hour.time} className="flex min-w-[88px] flex-col items-center rounded-2xl border border-slate-100 bg-white px-3 py-3 text-center shadow-sm">
+                                        <time className="text-xs font-semibold text-slate-600" dateTime={hour.time}>{new Date(hour.time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</time>
+                                        <HourIcon className={`my-2 h-7 w-7 ${weatherIconColor(hour.weatherCode, hour.isDay)}`} aria-hidden="true" />
+                                        <span className="sr-only">{presentation.label}</span>
+                                        <b className="text-base text-slate-900">{Math.round(hour.temperature)}°</b>
+                                        <span className="mt-1 text-xs text-sky-700">{hour.precipitationProbability}% mưa</span>
+                                        {thunderstorm && <span className="mt-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Dông</span>}
+                                    </div>;
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="mt-5 flex gap-2 border-b border-slate-200">
+                            {tabs.map((tab) => <button type="button" key={tab.value} onClick={() => setMetric(tab.value)} className={`border-b-2 px-3 py-3 text-sm font-semibold transition ${metric === tab.value ? "border-amber-400 text-slate-900" : "border-transparent text-slate-500"}`}>{tab.label}</button>)}
+                        </div>
+                        <div onPointerDown={beginHorizontalDrag} onPointerMove={moveHorizontalDrag} onPointerUp={endHorizontalDrag} onPointerCancel={endHorizontalDrag} className="mt-5 cursor-grab select-none overflow-x-auto active:cursor-grabbing [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <div className="min-w-[700px]">
+                                <div className="relative h-44">
+                                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-36 w-full overflow-visible">
+                                        <defs><linearGradient id={`weather-chart-${metric}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={metric === "temperature" ? "#facc15" : metric === "rain" ? "#38bdf8" : "#94a3b8"} stopOpacity="0.35" /><stop offset="100%" stopColor="white" stopOpacity="0" /></linearGradient></defs>
+                                        <polygon points={`0,100 ${points} 100,100`} fill={`url(#weather-chart-${metric})`} />
+                                        <polyline points={points} fill="none" stroke={metric === "temperature" ? "#eab308" : metric === "rain" ? "#0284c7" : "#64748b"} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                                    </svg>
+                                    <div className="absolute inset-x-0 top-0 flex justify-between">
+                                        {chartHours.map((hour, index) => <div key={hour.time} className="flex w-16 flex-col items-center text-xs"><b className="text-slate-500">{values[index]}{unit}</b><span className="mt-28 text-slate-500">{new Date(hour.time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span></div>)}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    )}
 
-                    <div className="mt-5">
-                        <h3 className="mb-3 text-sm font-bold text-slate-800">Dự báo theo giờ</h3>
-                        <div onPointerDown={beginHorizontalDrag} onPointerMove={moveHorizontalDrag} onPointerUp={endHorizontalDrag} onPointerCancel={endHorizontalDrag} className="flex cursor-grab select-none gap-2 overflow-x-auto pb-3 active:cursor-grabbing [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                            {(selectedHours.length ? selectedHours : weather.hourly.slice(0, 24)).map((hour) => {
-                                const presentation = getWeatherPresentation(hour.weatherCode, hour.isDay);
-                                const HourIcon = presentation.icon;
-                                const thunderstorm = [95, 96, 99].includes(hour.weatherCode);
-                                return <div key={hour.time} className="flex min-w-[88px] flex-col items-center rounded-2xl border border-slate-100 bg-white px-3 py-3 text-center shadow-sm">
-                                    <time className="text-xs font-semibold text-slate-600" dateTime={hour.time}>{new Date(hour.time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</time>
-                                    <HourIcon className={`my-2 h-7 w-7 ${weatherIconColor(hour.weatherCode, hour.isDay)}`} aria-hidden="true" />
-                                    <span className="sr-only">{presentation.label}</span>
-                                    <b className="text-base text-slate-900">{Math.round(hour.temperature)}°</b>
-                                    <span className="mt-1 text-xs text-sky-700">{hour.precipitationProbability}% mưa</span>
-                                    {thunderstorm && <span className="mt-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Dông</span>}
-                                </div>;
+                        <div onPointerDown={beginHorizontalDrag} onPointerMove={moveHorizontalDrag} onPointerUp={endHorizontalDrag} onPointerCancel={endHorizontalDrag} className="mt-3 flex cursor-grab select-none gap-3 overflow-x-auto pb-2 active:cursor-grabbing [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            {weather.daily.map((day) => {
+                                const active = day.date === selectedDate;
+                                const presentation = getWeatherPresentation(day.weatherCode, true);
+                                const DayIcon = presentation.icon;
+                                return (
+                                    <button type="button" key={day.date} onClick={(event) => { if (event.currentTarget.parentElement?.dataset.dragging !== "true") setSelectedDate(day.date); }} aria-pressed={active} className={`min-w-32 rounded-2xl border p-4 text-center transition ${active ? "border-sky-300 bg-slate-100 shadow-sm ring-2 ring-sky-100" : "border-transparent bg-white hover:border-slate-200 hover:bg-slate-50"}`}>
+                                        <p className="font-bold capitalize">{new Date(`${day.date}T00:00:00`).toLocaleDateString("vi-VN", { weekday: "short" })}</p>
+                                        <DayIcon className={`mx-auto my-3 h-9 w-9 ${weatherIconColor(day.weatherCode, true)}`} aria-hidden="true" />
+                                        <span className="sr-only">{presentation.label}</span>
+                                        <p className="font-semibold">{Math.round(day.temperatureMax)}° <span className="text-slate-400">{Math.round(day.temperatureMin)}°</span></p>
+                                        <p className="mt-1 text-xs text-sky-700">Mưa {day.precipitationProbability}%</p>
+                                    </button>
+                                );
                             })}
                         </div>
-                    </div>
-
-                    <div className="mt-5 flex gap-2 border-b border-slate-200">
-                        {tabs.map((tab) => <button type="button" key={tab.value} onClick={() => setMetric(tab.value)} className={`border-b-2 px-3 py-3 text-sm font-semibold transition ${metric === tab.value ? "border-amber-400 text-slate-900" : "border-transparent text-slate-500"}`}>{tab.label}</button>)}
-                    </div>
-                    <div onPointerDown={beginHorizontalDrag} onPointerMove={moveHorizontalDrag} onPointerUp={endHorizontalDrag} onPointerCancel={endHorizontalDrag} className="mt-5 cursor-grab select-none overflow-x-auto active:cursor-grabbing [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                        <div className="min-w-[700px]">
-                            <div className="relative h-44">
-                                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-36 w-full overflow-visible">
-                                    <defs><linearGradient id={`weather-chart-${metric}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={metric === "temperature" ? "#facc15" : metric === "rain" ? "#38bdf8" : "#94a3b8"} stopOpacity="0.35" /><stop offset="100%" stopColor="white" stopOpacity="0" /></linearGradient></defs>
-                                    <polygon points={`0,100 ${points} 100,100`} fill={`url(#weather-chart-${metric})`} />
-                                    <polyline points={points} fill="none" stroke={metric === "temperature" ? "#eab308" : metric === "rain" ? "#0284c7" : "#64748b"} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-                                </svg>
-                                <div className="absolute inset-x-0 top-0 flex justify-between">
-                                    {chartHours.map((hour, index) => <div key={hour.time} className="flex w-16 flex-col items-center text-xs"><b className="text-slate-500">{values[index]}{unit}</b><span className="mt-28 text-slate-500">{new Date(hour.time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span></div>)}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div onPointerDown={beginHorizontalDrag} onPointerMove={moveHorizontalDrag} onPointerUp={endHorizontalDrag} onPointerCancel={endHorizontalDrag} className="mt-3 flex cursor-grab select-none gap-3 overflow-x-auto pb-2 active:cursor-grabbing [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                        {weather.daily.map((day) => {
-                            const active = day.date === selectedDate;
-                            const presentation = getWeatherPresentation(day.weatherCode, true);
-                            const DayIcon = presentation.icon;
-                            return (
-                                <button type="button" key={day.date} onClick={(event) => { if (event.currentTarget.parentElement?.dataset.dragging !== "true") setSelectedDate(day.date); }} aria-pressed={active} className={`min-w-32 rounded-2xl border p-4 text-center transition ${active ? "border-sky-300 bg-slate-100 shadow-sm ring-2 ring-sky-100" : "border-transparent bg-white hover:border-slate-200 hover:bg-slate-50"}`}>
-                                    <p className="font-bold capitalize">{new Date(`${day.date}T00:00:00`).toLocaleDateString("vi-VN", { weekday: "short" })}</p>
-                                    <DayIcon className={`mx-auto my-3 h-9 w-9 ${weatherIconColor(day.weatherCode, true)}`} aria-hidden="true" />
-                                    <span className="sr-only">{presentation.label}</span>
-                                    <p className="font-semibold">{Math.round(day.temperatureMax)}° <span className="text-slate-400">{Math.round(day.temperatureMin)}°</span></p>
-                                    <p className="mt-1 text-xs text-sky-700">Mưa {day.precipitationProbability}%</p>
-                                </button>
-                            );
-                        })}
-                    </div>
-                    <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-xs text-slate-500"><span>Nguồn: Open-Meteo · Dữ liệu theo tọa độ, tự làm mới mỗi 10 phút</span><span>Cập nhật lúc {new Date(weather.fetchedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span></div>
+                        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-xs text-slate-500"><span>Nguồn: Open-Meteo · Dữ liệu theo tọa độ, tự làm mới mỗi 10 phút</span><span>Cập nhật lúc {new Date(weather.fetchedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span></div>
                     </div>
                 </CardContent>
             </Card>
