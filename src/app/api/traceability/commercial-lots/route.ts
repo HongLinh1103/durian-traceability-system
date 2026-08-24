@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const inputSchema = z.object({
     lotCode: z.string().trim().min(3).max(60), sourceType: z.enum(["HARVEST_LOT", "COLLECTION_LOT", "FINISHED_PRODUCT_LOT"]), sourceId: z.string().min(1),
-    destinationId: z.string().min(1).optional(), destination: z.object({ type: z.enum(["RETAIL", "MARKET", "DISTRIBUTOR", "EXPORT", "OTHER"]), name: z.string().trim().min(2), address: z.string().trim().min(2), country: z.string().trim().optional(), province: z.string().trim().optional() }).optional(),
+    destinationId: z.string().min(1).optional(), destination: z.object({ type: z.enum(["RETAIL", "MARKET", "DISTRIBUTOR", "EXPORT", "OTHER"]), name: z.string().trim().min(2), address: z.string().trim().min(2), country: z.string().trim().optional(), province: z.string().trim().optional(), district: z.string().trim().optional(), contactName: z.string().trim().optional(), contactPhone: z.string().trim().optional() }).optional(),
     productName: z.string().trim().min(2).max(160), quantity: z.coerce.number().positive(), unit: z.string().trim().min(1).max(20).default("kg"), note: z.string().trim().max(500).optional(),
 }).refine(value => value.destinationId || value.destination, { message: "Cần chọn hoặc nhập điểm đến" });
 
