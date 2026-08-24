@@ -1,4 +1,4 @@
-# TriViet — Nhật ký nông nghiệp và truy xuất nguồn gốc sầu riêng
+# Nhật ký nông nghiệp và truy xuất nguồn gốc sầu riêng
 
 TriViet là ứng dụng web quản lý chuỗi sản xuất sầu riêng từ vùng trồng, vườn, vụ mùa và nhật ký canh tác đến cung ứng vật tư, thu hoạch, thu mua, chế biến và truy xuất nguồn gốc.
 
