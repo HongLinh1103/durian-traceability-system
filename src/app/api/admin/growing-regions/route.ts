@@ -10,7 +10,8 @@ async function check() { const session = await getServerSession(authOptions); re
 
 export async function GET() {
     if (!await check()) return NextResponse.json({ success: false, message: "Không có quyền." }, { status: 403 });
-    const data = await prisma.growingRegion.findMany({ orderBy: [{ status: "asc" }, { code: "asc" }], include: { _count: { select: { farms: true } }, managerAssignments: { where: { isActive: true, endedAt: null }, take: 1, select: { areaManager: { select: { id: true, fullName: true, phone: true } } } } } });
+    const regions = await prisma.growingRegion.findMany({ orderBy: [{ status: "asc" }, { code: "asc" }], include: { farms: { where: { isActive: true, farmer: { accountStatus: "APPROVED", isApproved: true, deletedAt: null } }, select: { farmerId: true } }, managerAssignments: { orderBy: { assignedAt: "desc" }, select: { id: true, assignedAt: true, endedAt: true, isActive: true, note: true, areaManager: { select: { id: true, fullName: true, phone: true } } } } } });
+    const data = regions.map((region) => ({ ...region, farmCount: region.farms.length, farmerCount: new Set(region.farms.map((farm) => farm.farmerId)).size }));
     return NextResponse.json({ success: true, data });
 }
 

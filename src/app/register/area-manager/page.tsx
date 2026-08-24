@@ -58,8 +58,7 @@ export default function AreaManagerRegistrationPage() {
             district: form.get("regionDistrict"),
             ward: form.get("regionWard"),
             areaSize: form.get("regionAreaSize"),
-            farmerCount: form.get("farmerCount"),
-            durianVarieties: [form.get("durianVariety")],
+            durianVarieties: String(form.get("durianVariety") || "").split(",").map((value) => value.trim()).filter(Boolean),
         }));
 
         setSubmitting(true);
@@ -147,9 +146,8 @@ export default function AreaManagerRegistrationPage() {
                                 <Field label="Quận / Huyện"><Input name="regionDistrict" required /></Field>
                                 <Field label="Xã / Phường"><Input name="regionWard" required /></Field>
                                 <Field label="Tổng diện tích (ha)"><Input name="regionAreaSize" required type="number" min="0.01" step="0.01" /></Field>
-                                <Field label="Số hộ nông dân / thửa đất thành viên"><Input name="farmerCount" required type="number" min="0" step="1" /></Field>
                                 <Field label="Giống sầu riêng chủ lực">
-                                    <Input name="durianVariety" required placeholder="Ví dụ: Ri6, Dona, Monthong..." />
+                                    <Input name="durianVariety" required placeholder="Ví dụ: Ri6, Dona, Monthong (phân cách bằng dấu phẩy)" />
                                 </Field>
                             </div>
                             <label className="flex cursor-pointer gap-3 rounded-2xl bg-blue-50 p-4 text-sm text-blue-950">

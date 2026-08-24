@@ -786,6 +786,9 @@ model AreaManagerApplication {
   officeDetailedAddress String
   authorityDocumentKey  String
   managedRegions        Json
+  status                AccountStatus @default(PENDING)
+  reviewedAt            DateTime?
+  reviewReason          String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -1423,4 +1426,3 @@ model PestTreatment {
   @@index([monitoringBookId, treatmentDate])
   @@map("pest_treatments")
 }
-

@@ -19,7 +19,6 @@ const regionSchema = z.object({
     district: z.string().trim().min(2),
     ward: z.string().trim().min(2),
     areaSize: z.coerce.number().positive(),
-    farmerCount: z.coerce.number().int().nonnegative(),
     durianVarieties: z.array(z.string().trim().min(1)).min(1),
 });
 

@@ -130,6 +130,9 @@ export async function GET(request: Request) {
                             officeWard: true,
                             officeDetailedAddress: true,
                             managedRegions: true,
+                            status: true,
+                            reviewedAt: true,
+                            reviewReason: true,
                         },
                     },
                     regionAssignments: {
@@ -210,6 +213,24 @@ export async function GET(request: Request) {
             })
             : [];
 
+        const declaredRegionCodes = data
+            .filter((account) => account.role === "AREA_MANAGER")
+            .flatMap((account) => getManagedRegionAssignments(account.areaManagerApplication?.managedRegions))
+            .map((region) => region.code?.trim())
+            .filter((code): code is string => Boolean(code));
+        const declaredRegionMatches = declaredRegionCodes.length
+            ? await prisma.growingRegion.findMany({
+                where: { code: { in: [...new Set(declaredRegionCodes)], mode: "insensitive" } },
+                select: {
+                    id: true, code: true, name: true, status: true, isActive: true,
+                    managerAssignments: {
+                        where: { isActive: true, endedAt: null }, take: 1,
+                        select: { areaManager: { select: { id: true, fullName: true, phone: true } } },
+                    },
+                },
+            })
+            : [];
+
         const enrichedData = data.map((account) => {
             const farmRegionCodes = new Set(account.farms.map((farm) => farm.region?.code).filter((code): code is string => Boolean(code)));
             const assignedCodes = new Set(
@@ -220,6 +241,10 @@ export async function GET(request: Request) {
 
             return {
                 ...account,
+                declaredRegionMatch: account.role === "AREA_MANAGER"
+                    ? declaredRegionMatches.find((region) => getManagedRegionAssignments(account.areaManagerApplication?.managedRegions)
+                        .some((declared) => declared.code?.trim().toLocaleLowerCase("vi") === region.code.trim().toLocaleLowerCase("vi"))) ?? null
+                    : null,
                 regionManagers: account.role === "FARMER"
                     ? areaManagers
                         .map((manager) => ({
@@ -307,7 +332,7 @@ export async function PATCH(request: Request) {
                     select: { id: true, name: true, status: true },
                 },
                 partnerFacility: { select: { id: true, status: true } },
-                areaManagerApplication: { select: { managedRegions: true } },
+                areaManagerApplication: { select: { managedRegions: true, status: true } },
             },
         });
 
@@ -357,6 +382,25 @@ export async function PATCH(request: Request) {
         if (!actor?.user?.id) return NextResponse.json({ success: false, message: "Phiên đăng nhập không hợp lệ." }, { status: 401 });
 
         if (action === "approve") {
+            const declaredRegion = user.role === "AREA_MANAGER" && user.areaManagerApplication
+                ? getManagedRegionAssignments(user.areaManagerApplication.managedRegions)[0]
+                : null;
+            const matchedManagerRegion = declaredRegion?.code
+                ? await prisma.growingRegion.findFirst({
+                    where: { code: { equals: declaredRegion.code.trim(), mode: "insensitive" }, status: "ACTIVE", isActive: true },
+                    select: {
+                        id: true, code: true, name: true,
+                        managerAssignments: { where: { isActive: true, endedAt: null }, take: 1, select: { areaManagerId: true } },
+                    },
+                })
+                : null;
+            if (user.role === "AREA_MANAGER" && !matchedManagerRegion) {
+                return NextResponse.json({ success: false, message: "Không thể duyệt: không tìm thấy vùng trồng đang hoạt động có MSVT trùng khớp với hồ sơ khai báo." }, { status: 400 });
+            }
+            if (matchedManagerRegion?.managerAssignments.some((assignment) => assignment.areaManagerId !== user.id)) {
+                return NextResponse.json({ success: false, message: "Vùng trồng này đang có Trưởng ban phụ trách. Hãy dùng chức năng Thay đổi Trưởng ban và nhập lý do." }, { status: 409 });
+            }
+
             const farmRegionAssignments = await Promise.all(
                 user.farms.map(async (farm) => {
                     const assignedRegion = farm.growingRegionId
@@ -425,13 +469,10 @@ export async function PATCH(request: Request) {
                 }
                 if (user.partnerFacility) await tx.partnerFacility.update({ where: { id: user.partnerFacility.id }, data: { status: "APPROVED", reviewReason: null, approvedAt: new Date() } });
                 if (user.role === "AREA_MANAGER" && user.areaManagerApplication) {
-                    const requestedCodes = getManagedRegionAssignments(user.areaManagerApplication.managedRegions)
-                        .map((region) => region.code?.trim()).filter((code): code is string => Boolean(code));
-                    const requestedRegions = await tx.growingRegion.findMany({ where: { code: { in: requestedCodes }, status: "ACTIVE", isActive: true }, select: { id: true } });
-                    for (const region of requestedRegions) {
-                        await tx.areaManagerRegionAssignment.updateMany({ where: { growingRegionId: region.id, isActive: true }, data: { isActive: false, endedAt: new Date(), note: "Kết thúc khi phân công Trưởng ban mới" } });
-                        await tx.areaManagerRegionAssignment.create({ data: { areaManagerId: user.id, growingRegionId: region.id, assignedById: actor.user.id, note: "Phân công khi phê duyệt hồ sơ Trưởng ban" } });
-                    }
+                    if (!matchedManagerRegion) throw new Error("AREA_MANAGER_REGION_MATCH_REQUIRED");
+                    await tx.areaManagerApplication.update({ where: { userId: user.id }, data: { status: "APPROVED", reviewedAt: new Date(), reviewReason: null } });
+                    const existingAssignment = await tx.areaManagerRegionAssignment.findFirst({ where: { areaManagerId: user.id, growingRegionId: matchedManagerRegion.id, isActive: true, endedAt: null } });
+                    if (!existingAssignment) await tx.areaManagerRegionAssignment.create({ data: { areaManagerId: user.id, growingRegionId: matchedManagerRegion.id, assignedById: actor.user.id, note: "Tự động phân công khi Admin duyệt hồ sơ Trưởng ban" } });
                 }
                 await Promise.all(
                     farmRegionAssignments.map(({ farm, region }, index) =>
@@ -479,6 +520,7 @@ export async function PATCH(request: Request) {
                     }));
                 }
                 if (user.partnerFacility) await tx.partnerFacility.update({ where: { id: user.partnerFacility.id }, data: { status: "REJECTED", reviewReason: reason, approvedAt: null } });
+                if (user.role === "AREA_MANAGER" && user.areaManagerApplication) await tx.areaManagerApplication.update({ where: { userId }, data: { status: "REJECTED", reviewedAt: new Date(), reviewReason: reason } });
                 await tx.notification.create({
                     data: { userId, title: "Tài khoản bị từ chối", message: `Tài khoản của bạn đã bị từ chối phê duyệt. Lý do: ${reason}`, type: "ACCOUNT_REJECTED" },
                 });
@@ -503,6 +545,7 @@ export async function PATCH(request: Request) {
                     }));
                 }
                 if (user.partnerFacility) await tx.partnerFacility.update({ where: { id: user.partnerFacility.id }, data: { status: "NEED_SUPPLEMENT", reviewReason: reason, approvedAt: null } });
+                if (user.role === "AREA_MANAGER" && user.areaManagerApplication) await tx.areaManagerApplication.update({ where: { userId }, data: { status: "NEEDS_SUPPLEMENT", reviewedAt: new Date(), reviewReason: reason } });
                 await tx.notification.create({
                     data: { userId, title: "Hồ sơ cần bổ sung", message: `Hồ sơ đăng ký của bạn cần bổ sung thông tin: ${reason}`, type: "ACCOUNT_SUPPLEMENT_REQUIRED" },
                 });

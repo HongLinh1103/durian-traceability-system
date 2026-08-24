@@ -81,6 +81,17 @@ type AccountUser = {
         officeWard: string;
         officeDetailedAddress: string;
         managedRegions: unknown;
+        status: string;
+        reviewedAt: string | null;
+        reviewReason: string | null;
+    } | null;
+    declaredRegionMatch: {
+        id: string;
+        code: string;
+        name: string;
+        status: string;
+        isActive: boolean;
+        managerAssignments: Array<{ areaManager: { id: string; fullName: string | null; phone: string } }>;
     } | null;
 };
 
@@ -553,7 +564,7 @@ function AccountDetailModal({
 
                 {account.role === "AREA_MANAGER" && account.areaManagerApplication && (
                     <section className="mt-4 rounded-2xl border border-slate-200 p-5 text-sm">
-                        <h3 className="font-bold text-slate-900">Thông tin Trưởng ban và vùng phụ trách</h3>
+                        <h3 className="font-bold text-slate-900">Thông tin Trưởng ban</h3>
                         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             <p><span className="text-slate-500">Tổ chức/HTX:</span> {account.areaManagerApplication.organizationName}</p>
                             <p><span className="text-slate-500">Chức vụ:</span> {account.areaManagerApplication.position}</p>
@@ -561,11 +572,35 @@ function AccountDetailModal({
                             <p><span className="text-slate-500">CCCD/CMND:</span> {account.areaManagerApplication.identityNumber}</p>
                             <p><span className="text-slate-500">Ngày cấp:</span> {new Date(account.areaManagerApplication.identityIssuedDate).toLocaleDateString("vi-VN")}</p>
                             <p><span className="text-slate-500">Nơi cấp:</span> {account.areaManagerApplication.identityIssuedPlace}</p>
-                            <p className="sm:col-span-2"><span className="text-slate-500">Vùng phụ trách:</span> {managedRegions.map((region) => [region.code, region.name].filter(Boolean).join(" - ")).join(", ") || "—"}</p>
-                            <p><span className="text-slate-500">Quy mô:</span> {primaryRegion?.areaSize != null ? `${primaryRegion.areaSize} ha` : "—"}</p>
-                            <p className="sm:col-span-2"><span className="text-slate-500">Giống chủ lực:</span> {primaryRegion?.durianVarieties?.join(", ") || "—"}</p>
                         </div>
                     </section>
+                )}
+
+                {account.role === "AREA_MANAGER" && account.areaManagerApplication && (
+                    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                        <section className="rounded-2xl border border-slate-200 p-5 text-sm">
+                            <h3 className="font-bold uppercase tracking-wide text-slate-900">Vùng trồng khai báo</h3>
+                            <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <div><dt className="text-slate-500">Mã số vùng trồng</dt><dd className="font-bold">{primaryRegion?.code || "—"}</dd></div>
+                                <div><dt className="text-slate-500">Tên vùng</dt><dd className="font-semibold">{primaryRegion?.name || "—"}</dd></div>
+                                <div className="sm:col-span-2"><dt className="text-slate-500">Địa phương</dt><dd>{[primaryRegion?.ward, primaryRegion?.district, primaryRegion?.province].filter(Boolean).join(", ") || "—"}</dd></div>
+                                <div><dt className="text-slate-500">Tổng diện tích</dt><dd>{primaryRegion?.areaSize != null ? `${primaryRegion.areaSize} ha` : "—"}</dd></div>
+                                <div><dt className="text-slate-500">Giống chủ lực</dt><dd>{primaryRegion?.durianVarieties?.join(", ") || "—"}</dd></div>
+                            </dl>
+                        </section>
+                        <section className={`rounded-2xl border p-5 text-sm ${account.declaredRegionMatch ? "border-emerald-200 bg-emerald-50/50" : "border-amber-200 bg-amber-50/60"}`}>
+                            <h3 className="font-bold uppercase tracking-wide text-slate-900">Đối chiếu hệ thống</h3>
+                            {account.declaredRegionMatch ? <div className="mt-4 space-y-2">
+                                <p className="font-bold text-emerald-700">Đã tìm thấy vùng trồng tương ứng</p>
+                                <p><b>{account.declaredRegionMatch.code}</b></p>
+                                <p>{account.declaredRegionMatch.name}</p>
+                                <p className="pt-2 text-slate-600">Trưởng ban hiện tại: <b className="text-slate-900">{account.declaredRegionMatch.managerAssignments[0]?.areaManager.fullName || "Chưa có"}</b></p>
+                            </div> : <div className="mt-4 space-y-2 text-amber-900">
+                                <p className="font-bold">Không tìm thấy vùng trồng tương ứng</p>
+                                <p>MSVT khai báo chưa khớp vùng đang hoạt động. Không thể duyệt cho đến khi dữ liệu được đối chiếu chính xác.</p>
+                            </div>}
+                        </section>
+                    </div>
                 )}
 
                 {account.role === "FARMER" && (

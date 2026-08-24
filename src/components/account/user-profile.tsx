@@ -101,7 +101,6 @@ export type ManagedRegion = {
     district?: string;
     ward?: string;
     areaSize?: number;
-    farmerCount?: number;
     durianVarieties?: string[];
 };
 
@@ -434,7 +433,7 @@ export function UserProfile({ profile, farms = [], stores = [], partnerFacility,
                                     <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs sm:text-sm space-y-1">
                                         <p className="font-bold text-brand-800">{region.code} - {region.name}</p>
                                         <p className="text-slate-600">Địa bàn: {[region.ward, region.district, region.province].filter(Boolean).join(", ")}</p>
-                                        <p className="text-slate-600">Quy mô: {region.areaSize != null ? `${region.areaSize} ha` : "—"} · {region.farmerCount != null ? `${region.farmerCount} hộ thành viên` : "—"}</p>
+                                        <p className="text-slate-600">Quy mô khai báo: {region.areaSize != null ? `${region.areaSize} ha` : "—"}</p>
                                         {region.durianVarieties && region.durianVarieties.length > 0 && (
                                             <p className="text-slate-600">Giống chủ lực: {region.durianVarieties.join(", ")}</p>
                                         )}
