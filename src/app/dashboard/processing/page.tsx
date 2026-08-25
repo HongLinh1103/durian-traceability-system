@@ -9,35 +9,89 @@ export default async function Page() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") redirect("/login");
 
-    const facility = await prisma.partnerFacility.findUnique({ where: { ownerId: session.user.id } });
-    const [rawRows, processingRows, finishedRows, incomingActionCount] = facility ? await Promise.all([
-        prisma.rawMaterialLot.findMany({ where: { facilityId: facility.id }, include: { rawMaterialReceipt: true } }),
-        prisma.processingBatch.findMany({ where: { facilityId: facility.id } }),
-        prisma.finishedProductLot.findMany({ where: { facilityId: facility.id }, include: { commercialLots: { include: { traceabilityCode: true, shipmentItems: { include: { shipment: true } } } } } }),
-        prisma.harvestRecord.count({ where: { buyerUserId: session.user.id, buyerType: "PROCESSING_FACILITY", status: { in: ["WAITING_CONFIRMATION", "DELIVERY_CONFIRMED"] } } }),
-    ]) : [[], [], [], 0];
-    /* All dashboard metrics below are derived from persisted lots and receipts. */
-    const rawLots = rawRows.map(row => ({ status: row.status, receivedAt: row.rawMaterialReceipt.receivedAt, actualReceivedWeight: Number(row.rawMaterialReceipt.receivedWeight) }));
-    const processingLots = processingRows.map(row => ({ status: row.status }));
-    const finishedLots = finishedRows.map(row => { const commercial = row.commercialLots.find(lot => lot.traceabilityCode); return { totalWeight: Number(row.netWeight), qrIssued: Boolean(commercial?.traceabilityCode), dispatchStatus: commercial?.shipmentItems[0]?.shipment.status ?? "PENDING" }; });
+    const facility = await prisma.partnerFacility.findFirst({
+        where: { ownerId: session.user.id, type: "PROCESSING_FACILITY", deletedAt: null },
+    });
+
+    const [rawRows, processingRows, finishedRows, incomingActionCount] = facility
+        ? await Promise.all([
+              prisma.rawMaterialLot.findMany({
+                  where: { facilityId: facility.id },
+                  include: { rawMaterialReceipt: true },
+              }),
+              prisma.processingBatch.findMany({
+                  where: { facilityId: facility.id },
+              }),
+              prisma.finishedProductLot.findMany({
+                  where: { facilityId: facility.id },
+                  include: {
+                      commercialLots: {
+                          include: {
+                              traceabilityCode: true,
+                              shipmentItems: { include: { shipment: true } },
+                          },
+                      },
+                  },
+              }),
+              prisma.harvestRecord.count({
+                  where: {
+                      buyerUserId: session.user.id,
+                      buyerType: "PROCESSING_FACILITY",
+                      status: { in: ["WAITING_CONFIRMATION", "DELIVERY_CONFIRMED"] },
+                  },
+              }),
+          ])
+        : [[], [], [], 0];
+
+    const rawLots = rawRows.map((row) => ({
+        status: row.status,
+        receivedAt: row.rawMaterialReceipt?.receivedAt ?? row.createdAt,
+        actualReceivedWeight: Number(row.rawMaterialReceipt?.receivedWeight ?? row.acceptedWeight ?? 0),
+    }));
+
+    const processingLots = processingRows.map((row) => ({ status: row.status }));
+
+    const finishedLots = finishedRows.map((row) => {
+        const commercial = row.commercialLots.find((lot) => lot.traceabilityCode);
+        return {
+            totalWeight: Number(row.netWeight || 0),
+            qrIssued: Boolean(commercial?.traceabilityCode),
+            dispatchStatus: commercial?.shipmentItems?.[0]?.shipment?.status ?? "PENDING",
+        };
+    });
 
     const waitingInspection = rawLots.filter((lot) => lot.status === "PENDING_QC").length;
     const rawMaterialActionCount = incomingActionCount + waitingInspection;
     const activeProcessing = processingLots.filter((lot) => lot.status === "IN_PROGRESS").length;
-    const pausedProcessing = processingLots.filter((lot) => lot.status === "CANCELLED").length;
+    const pausedProcessing = processingLots.filter((lot) => lot.status === "CANCELLED" || lot.status === "PAUSED").length;
     const pendingDispatch = finishedLots.filter((lot) => lot.dispatchStatus === "PENDING" || lot.dispatchStatus === "IN_TRANSIT").length;
     const missingQr = finishedLots.filter((lot) => !lot.qrIssued).length;
 
     const today = new Date();
-    const todayKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(today);
+    let todayKey = "";
+    try {
+        todayKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(today);
+    } catch {
+        todayKey = today.toISOString().slice(0, 10);
+    }
+
     const receivedTodayWeight = rawLots
-        .filter((lot) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(lot.receivedAt) === todayKey)
-        .reduce((sum, lot) => sum + lot.actualReceivedWeight, 0);
+        .filter((lot) => {
+            if (!lot.receivedAt) return false;
+            try {
+                const d = new Date(lot.receivedAt);
+                return !isNaN(d.getTime()) && new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(d) === todayKey;
+            } catch {
+                return false;
+            }
+        })
+        .reduce((sum, lot) => sum + (lot.actualReceivedWeight || 0), 0);
+
     const totalFinishedWeight = finishedLots.reduce((sum, lot) => sum + lot.totalWeight, 0);
 
     const tasks = [
         { label: "Lô nguyên liệu chờ kiểm tra", value: waitingInspection, tone: waitingInspection > 0 ? "amber" : "emerald" },
-        { label: "Lô chế biến quá thời gian dự kiến", value: pausedProcessing, tone: pausedProcessing > 0 ? "rose" : "emerald" },
+        { label: "Lô chế biến tạm dừng / hủy", value: pausedProcessing, tone: pausedProcessing > 0 ? "rose" : "emerald" },
         { label: "Lô thành phẩm chưa phát hành QR", value: missingQr, tone: missingQr > 0 ? "amber" : "emerald" },
         { label: "Giao nhận chờ xác nhận", value: pendingDispatch, tone: pendingDispatch > 0 ? "sky" : "emerald" },
     ];
