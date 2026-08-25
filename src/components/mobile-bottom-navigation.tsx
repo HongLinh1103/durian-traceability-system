@@ -106,14 +106,14 @@ const navigationByRole: Record<string, RoleNavigation> = {
     COLLECTOR: {
         items: [
             { label: "Tổng quan", href: "/dashboard/partner", icon: Home },
-            { label: "Phiếu thu hoạch", href: "/dashboard/partner/harvests", icon: Wheat, badgeKey: "collectorHarvests" },
-            { label: "Đơn thu mua", href: "/dashboard/partner/orders", icon: ClipboardList, badgeKey: "collectorOrders" },
-            { label: "Lô hàng", href: "/dashboard/partner/lots", icon: Package, badgeKey: "collectorLots" },
+            { label: "Phiếu thu hoạch", href: "/dashboard/partner/harvests", icon: Wheat, badgeKey: "collectorHarvests", matches: ["/dashboard/partner/harvests"] },
+            { label: "Đơn thu mua", href: "/dashboard/partner/orders", icon: ClipboardList, badgeKey: "collectorOrders", matches: ["/dashboard/partner/orders"] },
+            { label: "Cá nhân", href: "/account", icon: UserRound, matches: ["/account"] },
         ],
         actions: [
             { label: "Tạo QR", description: "Tạo mã QR truy xuất nguồn gốc cho lô hàng", href: "/dashboard/partner/traceability", icon: QrCode },
-            { label: "Cá nhân", description: "Quản lý thông tin tài khoản và cơ sở", href: "/account", icon: UserRound },
             { label: "Tài chính", description: "Báo cáo doanh thu và chi phí thu mua", href: "/dashboard/partner/finance", icon: CircleDollarSign },
+            { label: "Lô hàng", description: "Xem và quản lý các lô hàng đã tiếp nhận", href: "/dashboard/partner/lots", icon: Package },
         ],
     },
     PROCESSING_FACILITY: {
@@ -133,7 +133,23 @@ export function MobileBottomNavigation() {
     const [actionsOpen, setActionsOpen] = useState(false);
     const [badges, setBadges] = useState<Record<string, number>>({});
     const isAuthPage = pathname === "/login" || pathname.startsWith("/register");
-    const configuration = session?.user?.role ? navigationByRole[session.user.role] : undefined;
+
+    const roleFromPathname = pathname.startsWith("/dashboard/partner")
+        ? "COLLECTOR"
+        : pathname.startsWith("/dashboard/processing")
+        ? "PROCESSING_FACILITY"
+        : pathname.startsWith("/dashboard/store")
+        ? "STORE_OWNER"
+        : pathname.startsWith("/dashboard/area-manager") || pathname.startsWith("/region-manager")
+        ? "AREA_MANAGER"
+        : pathname.startsWith("/dashboard/admin")
+        ? "ADMIN"
+        : pathname.startsWith("/dashboard/farmer")
+        ? "FARMER"
+        : undefined;
+
+    const effectiveRole = session?.user?.role || roleFromPathname;
+    const configuration = effectiveRole ? navigationByRole[effectiveRole] : undefined;
 
     useEffect(() => setActionsOpen(false), [pathname]);
     useEffect(() => {
@@ -144,7 +160,7 @@ export function MobileBottomNavigation() {
     }, [actionsOpen]);
 
     useEffect(() => {
-        const role = session?.user?.role;
+        const role = effectiveRole;
         if (!role) {
             setBadges({});
             return;
@@ -186,7 +202,7 @@ export function MobileBottomNavigation() {
             cancelled = true;
             window.clearInterval(interval);
         };
-    }, [session?.user?.role]);
+    }, [effectiveRole]);
 
     if (!configuration || isAuthPage) return null;
 
@@ -211,8 +227,8 @@ export function MobileBottomNavigation() {
     };
     const [first, second, third, fourth] = configuration.items;
     const hasQuickActions = Boolean(configuration.actions?.length);
-    const isAdmin = session?.user?.role === "ADMIN";
-    const isExpansionMenu = isAdmin || session?.user?.role === "AREA_MANAGER";
+    const isAdmin = effectiveRole === "ADMIN";
+    const isExpansionMenu = isAdmin || effectiveRole === "AREA_MANAGER";
     const badgeFor = (item: NavItem) => {
         if (!item.badgeKey) return 0;
         return badges[item.badgeKey] ?? 0;
@@ -225,9 +241,14 @@ export function MobileBottomNavigation() {
                     <div className="grid h-[76px] grid-cols-5 items-end px-1">
                         <BottomItem item={first} active={isActive(first)} badgeCount={badgeFor(first)} />
                         <BottomItem item={second} active={isActive(second)} badgeCount={badgeFor(second)} />
-                        <button type="button" onClick={() => setActionsOpen(true)} className="group flex h-full items-center justify-center pb-2" aria-label={isExpansionMenu ? "Mở thêm chức năng" : "Mở tác vụ nhanh"}>
-                            <span className="grid h-16 w-16 -translate-y-3 place-items-center rounded-full border-[5px] border-white bg-brand-600 text-white shadow-xl transition group-active:scale-95">
-                                <Plus className="h-10 w-10" strokeWidth={3.25} />
+                        <button
+                            type="button"
+                            onClick={() => setActionsOpen(true)}
+                            className="group flex h-full items-center justify-center pb-2 focus:outline-none"
+                            aria-label={isExpansionMenu ? "Mở thêm chức năng" : "Mở tác vụ nhanh"}
+                        >
+                            <span className="grid h-14 w-14 sm:h-16 sm:w-16 -translate-y-2.5 sm:-translate-y-3 place-items-center rounded-full border-[4px] sm:border-[5px] border-white bg-brand-600 text-white shadow-xl transition group-active:scale-95 group-hover:bg-brand-700">
+                                <Plus className="h-8 w-8 sm:h-10 sm:w-10" strokeWidth={3.25} />
                             </span>
                         </button>
                         <BottomItem item={third} active={isActive(third)} badgeCount={badgeFor(third)} />
@@ -245,13 +266,35 @@ export function MobileBottomNavigation() {
                     <section className="w-full rounded-t-[28px] bg-white px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl">
                         <div className="mx-auto h-1.5 w-12 rounded-full bg-slate-200" />
                         <div className="mb-4 mt-3 flex items-center justify-between">
-                            <div><p className="text-xs font-bold uppercase tracking-wider text-brand-600">{isExpansionMenu ? "Chức năng mở rộng" : "Tác vụ nhanh"}</p><h2 className="mt-1 text-xl font-black text-slate-900">Bạn muốn làm gì?</h2></div>
-                            <button type="button" onClick={() => setActionsOpen(false)} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-600" aria-label="Đóng tác vụ nhanh"><X className="h-5 w-5" /></button>
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-wider text-brand-600">
+                                    {isExpansionMenu ? "Chức năng mở rộng" : "Tác vụ nhanh"}
+                                </p>
+                                <h2 className="mt-1 text-xl font-black text-slate-900">Bạn muốn làm gì?</h2>
+                            </div>
+                            <button type="button" onClick={() => setActionsOpen(false)} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-600" aria-label="Đóng tác vụ nhanh">
+                                <X className="h-5 w-5" />
+                            </button>
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">
                             {configuration.actions?.map(action => {
                                 const Icon = action.icon;
-                                return <Link key={action.label} href={action.href} onClick={() => setActionsOpen(false)} className="flex min-h-16 items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3 transition active:bg-brand-50"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon className="h-5 w-5" /></span><span className="min-w-0"><b className="block text-sm text-slate-900">{action.label}</b><span className="mt-0.5 block text-xs leading-snug text-slate-500">{action.description}</span></span></Link>;
+                                return (
+                                    <Link
+                                        key={action.label}
+                                        href={action.href}
+                                        onClick={() => setActionsOpen(false)}
+                                        className="flex min-h-16 items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3 transition active:bg-brand-50"
+                                    >
+                                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-100 text-brand-700">
+                                            <Icon className="h-5 w-5" />
+                                        </span>
+                                        <span className="min-w-0">
+                                            <b className="block text-sm text-slate-900">{action.label}</b>
+                                            <span className="mt-0.5 block text-xs leading-snug text-slate-500">{action.description}</span>
+                                        </span>
+                                    </Link>
+                                );
                             })}
                         </div>
                     </section>
