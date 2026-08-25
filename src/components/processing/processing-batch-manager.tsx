@@ -694,56 +694,80 @@ function StepExecutionModal({
 
     // STEP 1: CLEANING STATE
     const [cleaningInput, setCleaningInput] = useState(String(defaultInputWeight));
-    const [cleaningOutput, setCleaningOutput] = useState(String(Number(stepState?.outputWeight) || Math.round(defaultInputWeight * 0.98)));
-    const [cleaningStartedAt, setCleaningStartedAt] = useState(() => new Date().toISOString().slice(0, 16));
-    const [cleaningCompletedAt, setCleaningCompletedAt] = useState(() => new Date().toISOString().slice(0, 16));
-    const [cleaningPerformer, setCleaningPerformer] = useState(stepState?.performedBy || currentUserName || "Người thực hiện");
+    const [cleaningOutput, setCleaningOutput] = useState(stepState?.outputWeight ? String(stepState.outputWeight) : "");
+    const [cleaningStartedAt, setCleaningStartedAt] = useState(() =>
+        stepState?.startedAt ? new Date(stepState.startedAt).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)
+    );
+    const [cleaningCompletedAt, setCleaningCompletedAt] = useState(() =>
+        stepState?.completedAt ? new Date(stepState.completedAt).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)
+    );
+    const [cleaningPerformer, setCleaningPerformer] = useState(stepState?.performedBy || currentUserName || "");
     const [cleaningNote, setCleaningNote] = useState(stepState?.note || "");
 
     // STEP 2: PEELING STATE
     const [peelingInput, setPeelingInput] = useState(String(defaultInputWeight));
-    const [peelingPulpWeight, setPeelingPulpWeight] = useState(String(Number(stepState?.outputWeight) || Math.round(defaultInputWeight * 0.32)));
-    const [peelingStartedAt, setPeelingStartedAt] = useState(() => new Date().toISOString().slice(0, 16));
-    const [peelingCompletedAt, setPeelingCompletedAt] = useState(() => new Date().toISOString().slice(0, 16));
-    const [peelingPerformer, setPeelingPerformer] = useState(stepState?.performedBy || currentUserName || "Người thực hiện");
+    const [peelingPulpWeight, setPeelingPulpWeight] = useState(stepState?.outputWeight ? String(stepState.outputWeight) : "");
+    const [peelingStartedAt, setPeelingStartedAt] = useState(() =>
+        stepState?.startedAt ? new Date(stepState.startedAt).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)
+    );
+    const [peelingCompletedAt, setPeelingCompletedAt] = useState(() =>
+        stepState?.completedAt ? new Date(stepState.completedAt).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)
+    );
+    const [peelingPerformer, setPeelingPerformer] = useState(stepState?.performedBy || currentUserName || "");
     const [peelingNote, setPeelingNote] = useState(stepState?.note || "");
 
     // STEP 3: REJECT REMOVAL STATE
     const [rejectInput, setRejectInput] = useState(String(defaultInputWeight));
-    const [rejectLossWeight, setRejectLossWeight] = useState(String(Number(stepState?.lossWeight) || 0));
-    const [rejectReason, setRejectReason] = useState<string>(REJECT_REMOVAL_REASONS[0]);
-    const [rejectStartedAt, setRejectStartedAt] = useState(() => new Date().toISOString().slice(0, 16));
-    const [rejectCompletedAt, setRejectCompletedAt] = useState(() => new Date().toISOString().slice(0, 16));
-    const [rejectPerformer, setRejectPerformer] = useState(stepState?.performedBy || currentUserName || "Người thực hiện");
+    const [rejectLossWeight, setRejectLossWeight] = useState(
+        stepState?.lossWeight !== null && stepState?.lossWeight !== undefined ? String(stepState.lossWeight) : ""
+    );
+    const [rejectReason, setRejectReason] = useState<string>(
+        (stepState?.metadata?.rejectionReason as string) || REJECT_REMOVAL_REASONS[0]
+    );
+    const [rejectStartedAt, setRejectStartedAt] = useState(() =>
+        stepState?.startedAt ? new Date(stepState.startedAt).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)
+    );
+    const [rejectCompletedAt, setRejectCompletedAt] = useState(() =>
+        stepState?.completedAt ? new Date(stepState.completedAt).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)
+    );
+    const [rejectPerformer, setRejectPerformer] = useState(stepState?.performedBy || currentUserName || "");
     const [rejectNote, setRejectNote] = useState(stepState?.note || "");
 
     // STEP 4: FINAL WEIGHING STATE
     const [weighingInput, setWeighingInput] = useState(String(defaultInputWeight));
-    const [weighingActualOutput, setWeighingActualOutput] = useState(String(Number(stepState?.outputWeight) || defaultInputWeight));
-    const [weighingDate, setWeighingDate] = useState(() => new Date().toISOString().slice(0, 16));
-    const [weighingPerformer, setWeighingPerformer] = useState(stepState?.performedBy || currentUserName || "Người cân");
+    const [weighingActualOutput, setWeighingActualOutput] = useState(
+        stepState?.outputWeight ? String(stepState.outputWeight) : ""
+    );
+    const [weighingDate, setWeighingDate] = useState(() =>
+        stepState?.completedAt ? new Date(stepState.completedAt).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)
+    );
+    const [weighingPerformer, setWeighingPerformer] = useState(stepState?.performedBy || currentUserName || "");
     const [weighingNote, setWeighingNote] = useState(stepState?.note || "");
 
     // STEP 5: PACKAGING STATE
     const [packInput, setPackInput] = useState(String(defaultInputWeight));
-    const [packagingSpec, setPackagingSpec] = useState<string>(PACKAGING_OPTIONS[1]); // 500g/túi
-    const [packageCount, setPackageCount] = useState(() => {
-        const specWeight = packagingSpec.includes("250g") ? 0.25 : packagingSpec.includes("500g") ? 0.5 : 1;
-        return String(Math.round(defaultInputWeight / specWeight));
-    });
-    const [packagingActualWeight, setPackagingActualWeight] = useState(String(Number(stepState?.outputWeight) || defaultInputWeight));
-    const [packagingType, setPackagingType] = useState("Túi hút chân không");
-    const [packCompletedAt, setPackCompletedAt] = useState(() => new Date().toISOString().slice(0, 16));
-    const [packPerformer, setPackPerformer] = useState(stepState?.performedBy || currentUserName || "Người phụ trách");
+    const [packagingSpec, setPackagingSpec] = useState<string>(
+        (stepState?.metadata?.packagingSpec as string) || PACKAGING_OPTIONS[1]
+    );
+    const [packageCount, setPackageCount] = useState(
+        stepState?.metadata?.packageCount ? String(stepState.metadata.packageCount) : ""
+    );
+    const [packagingActualWeight, setPackagingActualWeight] = useState(
+        stepState?.outputWeight ? String(stepState.outputWeight) : ""
+    );
+    const [packagingType, setPackagingType] = useState(
+        (stepState?.metadata?.packagingType as string) || "Túi hút chân không"
+    );
+    const [packCompletedAt, setPackCompletedAt] = useState(() =>
+        stepState?.completedAt ? new Date(stepState.completedAt).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)
+    );
+    const [packPerformer, setPackPerformer] = useState(stepState?.performedBy || currentUserName || "");
     const [packNote, setPackNote] = useState(stepState?.note || "");
 
     const [formError, setFormError] = useState("");
 
     const handlePackagingSpecChange = (val: string) => {
         setPackagingSpec(val);
-        const specKg = val.includes("250g") ? 0.25 : val.includes("500g") ? 0.5 : val.includes("1kg") ? 1 : val.includes("5kg") ? 5 : 0.5;
-        const inputNum = Number(packInput) || defaultInputWeight;
-        setPackageCount(String(Math.max(1, Math.round(inputNum / specKg))));
     };
 
     const handleSubmit = (e: FormEvent) => {
@@ -754,7 +778,7 @@ function StepExecutionModal({
             case "CLEANING": {
                 const inKg = Number(cleaningInput) || defaultInputWeight;
                 const outKg = Number(cleaningOutput) || 0;
-                if (outKg <= 0 || outKg > inKg) {
+                if (!cleaningOutput || outKg <= 0 || outKg > inKg) {
                     setFormError("Khối lượng sau làm sạch phải > 0 và không vượt quá khối lượng đầu vào.");
                     return;
                 }
@@ -773,7 +797,7 @@ function StepExecutionModal({
             case "PEELING_PULP_SEPARATION": {
                 const inKg = Number(peelingInput) || defaultInputWeight;
                 const pulpKg = Number(peelingPulpWeight) || 0;
-                if (pulpKg <= 0 || pulpKg > inKg) {
+                if (!peelingPulpWeight || pulpKg <= 0 || pulpKg > inKg) {
                     setFormError("Khối lượng múi thu được phải > 0 và không vượt quá khối lượng đầu vào.");
                     return;
                 }
@@ -792,8 +816,8 @@ function StepExecutionModal({
             case "REJECT_REMOVAL": {
                 const inKg = Number(rejectInput) || defaultInputWeight;
                 const rejectKg = Number(rejectLossWeight) || 0;
-                if (rejectKg < 0 || rejectKg > inKg) {
-                    setFormError("Khối lượng loại bỏ không hợp lệ.");
+                if (rejectLossWeight === "" || rejectKg < 0 || rejectKg > inKg) {
+                    setFormError("Vui lòng nhập khối lượng loại bỏ hợp lệ (từ 0 đến khối lượng đầu vào).");
                     return;
                 }
                 const passedKg = Math.max(0, inKg - rejectKg);
@@ -811,8 +835,8 @@ function StepExecutionModal({
             case "FINAL_WEIGHING": {
                 const inKg = Number(weighingInput) || defaultInputWeight;
                 const actualKg = Number(weighingActualOutput) || 0;
-                if (actualKg <= 0) {
-                    setFormError("Khối lượng thành phẩm thực tế phải > 0.");
+                if (!weighingActualOutput || actualKg <= 0) {
+                    setFormError("Vui lòng nhập khối lượng thành phẩm thực tế (> 0 kg).");
                     return;
                 }
                 const diffKg = Math.max(0, inKg - actualKg);
@@ -829,10 +853,14 @@ function StepExecutionModal({
             }
             case "PACKAGING": {
                 const inKg = Number(packInput) || defaultInputWeight;
-                const actualPackKg = Number(packagingActualWeight) || inKg;
-                const count = Number(packageCount) || 1;
-                if (actualPackKg <= 0) {
-                    setFormError("Khối lượng đóng gói thực tế phải > 0.");
+                const actualPackKg = Number(packagingActualWeight) || 0;
+                const count = Number(packageCount) || 0;
+                if (!packageCount || count <= 0) {
+                    setFormError("Vui lòng nhập số lượng gói thực tế (> 0).");
+                    return;
+                }
+                if (!packagingActualWeight || actualPackKg <= 0) {
+                    setFormError("Vui lòng nhập khối lượng đóng gói thực tế (> 0 kg).");
                     return;
                 }
                 const lossKg = Math.max(0, inKg - actualPackKg);
@@ -878,7 +906,9 @@ function StepExecutionModal({
                             <div className="flex justify-between">
                                 <span className="text-slate-500 font-medium">Hao hụt tự động:</span>
                                 <b className="text-amber-700 font-bold">
-                                    {Math.max(0, Number(cleaningInput) - Number(cleaningOutput)).toLocaleString("vi-VN")} kg
+                                    {cleaningOutput !== "" && !isNaN(Number(cleaningOutput))
+                                        ? `${Math.max(0, Number(cleaningInput) - Number(cleaningOutput)).toLocaleString("vi-VN")} kg`
+                                        : "—"}
                                 </b>
                             </div>
                         </div>
@@ -891,6 +921,7 @@ function StepExecutionModal({
                                 type="number"
                                 step="any"
                                 required
+                                placeholder="Nhập khối lượng sau làm sạch..."
                                 value={cleaningOutput}
                                 onChange={(e) => setCleaningOutput(e.target.value)}
                                 className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-sm font-bold text-slate-900 focus:border-brand-500 focus:outline-none"
@@ -925,6 +956,7 @@ function StepExecutionModal({
                             <input
                                 type="text"
                                 required
+                                placeholder="Tên người thực hiện..."
                                 value={cleaningPerformer}
                                 onChange={(e) => setCleaningPerformer(e.target.value)}
                                 className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-xs font-semibold"
@@ -955,7 +987,9 @@ function StepExecutionModal({
                             <div className="flex justify-between">
                                 <span className="text-slate-500 font-medium">Khối lượng vỏ / hạt / phần bỏ:</span>
                                 <b className="text-amber-700 font-bold">
-                                    {Math.max(0, Number(peelingInput) - Number(peelingPulpWeight)).toLocaleString("vi-VN")} kg
+                                    {peelingPulpWeight !== "" && !isNaN(Number(peelingPulpWeight))
+                                        ? `${Math.max(0, Number(peelingInput) - Number(peelingPulpWeight)).toLocaleString("vi-VN")} kg`
+                                        : "—"}
                                 </b>
                             </div>
                         </div>
@@ -968,6 +1002,7 @@ function StepExecutionModal({
                                 type="number"
                                 step="any"
                                 required
+                                placeholder="Nhập khối lượng múi thu được..."
                                 value={peelingPulpWeight}
                                 onChange={(e) => setPeelingPulpWeight(e.target.value)}
                                 className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-sm font-bold text-slate-900 focus:border-brand-500 focus:outline-none"
@@ -1002,6 +1037,7 @@ function StepExecutionModal({
                             <input
                                 type="text"
                                 required
+                                placeholder="Tên người thực hiện..."
                                 value={peelingPerformer}
                                 onChange={(e) => setPeelingPerformer(e.target.value)}
                                 className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-xs font-semibold"
@@ -1032,7 +1068,9 @@ function StepExecutionModal({
                             <div className="flex justify-between">
                                 <span className="text-slate-500 font-medium">Khối lượng đạt chuẩn:</span>
                                 <b className="text-emerald-700 font-black">
-                                    {Math.max(0, Number(rejectInput) - Number(rejectLossWeight)).toLocaleString("vi-VN")} kg
+                                    {rejectLossWeight !== "" && !isNaN(Number(rejectLossWeight))
+                                        ? `${Math.max(0, Number(rejectInput) - Number(rejectLossWeight)).toLocaleString("vi-VN")} kg`
+                                        : "—"}
                                 </b>
                             </div>
                         </div>
@@ -1045,6 +1083,7 @@ function StepExecutionModal({
                                 type="number"
                                 step="any"
                                 required
+                                placeholder="Nhập khối lượng loại bỏ (0 nếu không có)..."
                                 value={rejectLossWeight}
                                 onChange={(e) => setRejectLossWeight(e.target.value)}
                                 className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-sm font-bold text-slate-900 focus:border-brand-500 focus:outline-none"
@@ -1090,6 +1129,18 @@ function StepExecutionModal({
                         </div>
 
                         <div>
+                            <label className="text-xs font-bold text-slate-700">Người thực hiện *</label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="Tên người thực hiện..."
+                                value={rejectPerformer}
+                                onChange={(e) => setRejectPerformer(e.target.value)}
+                                className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-xs font-semibold"
+                            />
+                        </div>
+
+                        <div>
                             <label className="text-xs font-bold text-slate-700">Ghi chú</label>
                             <textarea
                                 rows={2}
@@ -1113,7 +1164,9 @@ function StepExecutionModal({
                             <div className="flex justify-between">
                                 <span className="text-slate-500 font-medium">Chênh lệch:</span>
                                 <b className="text-amber-700 font-bold">
-                                    {Math.max(0, Number(weighingInput) - Number(weighingActualOutput)).toLocaleString("vi-VN")} kg
+                                    {weighingActualOutput !== "" && !isNaN(Number(weighingActualOutput))
+                                        ? `${Math.max(0, Number(weighingInput) - Number(weighingActualOutput)).toLocaleString("vi-VN")} kg`
+                                        : "—"}
                                 </b>
                             </div>
                         </div>
@@ -1126,6 +1179,7 @@ function StepExecutionModal({
                                 type="number"
                                 step="any"
                                 required
+                                placeholder="Nhập khối lượng thành phẩm thực tế..."
                                 value={weighingActualOutput}
                                 onChange={(e) => setWeighingActualOutput(e.target.value)}
                                 className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-sm font-bold text-slate-900 focus:border-brand-500 focus:outline-none"
@@ -1148,6 +1202,7 @@ function StepExecutionModal({
                                 <input
                                     type="text"
                                     required
+                                    placeholder="Tên người cân..."
                                     value={weighingPerformer}
                                     onChange={(e) => setWeighingPerformer(e.target.value)}
                                     className="mt-1 w-full rounded-2xl border border-slate-200 p-2 text-xs font-semibold"
@@ -1177,9 +1232,9 @@ function StepExecutionModal({
                                 <b className="text-slate-900 font-bold">{Number(packInput).toLocaleString("vi-VN")} kg</b>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-slate-500 font-medium">Số lượng gói dự kiến:</span>
+                                <span className="text-slate-500 font-medium">Ước tính theo quy cách:</span>
                                 <b className="text-emerald-700 font-bold">
-                                    {Math.max(1, Math.round(Number(packInput) / (packagingSpec.includes("250g") ? 0.25 : packagingSpec.includes("500g") ? 0.5 : 1)))} gói/túi
+                                    ~{Math.max(1, Math.round(Number(packInput) / (packagingSpec.includes("250g") ? 0.25 : packagingSpec.includes("500g") ? 0.5 : packagingSpec.includes("1kg") ? 1 : 0.5)))} gói/túi
                                 </b>
                             </div>
                         </div>
@@ -1208,6 +1263,7 @@ function StepExecutionModal({
                                     type="number"
                                     min="1"
                                     required
+                                    placeholder="Nhập số lượng gói..."
                                     value={packageCount}
                                     onChange={(e) => setPackageCount(e.target.value)}
                                     className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-sm font-bold text-slate-900 focus:border-brand-500 focus:outline-none"
@@ -1224,6 +1280,7 @@ function StepExecutionModal({
                                     type="number"
                                     step="any"
                                     required
+                                    placeholder="Nhập khối lượng đóng gói thực tế..."
                                     value={packagingActualWeight}
                                     onChange={(e) => setPackagingActualWeight(e.target.value)}
                                     className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-sm font-bold text-slate-900 focus:border-brand-500 focus:outline-none"
@@ -1264,6 +1321,7 @@ function StepExecutionModal({
                                 <input
                                     type="text"
                                     required
+                                    placeholder="Tên người phụ trách..."
                                     value={packPerformer}
                                     onChange={(e) => setPackPerformer(e.target.value)}
                                     className="mt-1 w-full rounded-2xl border border-slate-200 p-2 text-xs font-semibold"
