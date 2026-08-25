@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { CalendarDays, MapPin, Scale, Sprout, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, AlertTriangle, XCircle, MapPin, Scale, Sprout, X, ShieldCheck, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -26,16 +27,32 @@ type RawLot = {
     status: string;
     sourceCode: string;
     farmName: string;
+    variety?: string;
     supplierName: string;
     receivedAt: string;
     sentWeight: number;
     actualReceivedWeight: number;
+    acceptedWeight?: number;
+    currentWeight?: number;
+    rejectedWeight?: number;
     qualityResult?: string | null;
     warehouseLocation?: string | null;
+    inspection?: {
+        id: string;
+        result: string;
+        inspectedAt: string;
+        qualityGrade?: string | null;
+        appearance?: string | null;
+        residueResult?: string | null;
+        damageRate?: number;
+        note?: string | null;
+        inspectorName?: string | null;
+    } | null;
+    batches?: Array<{ id: string; code: string; targetProduct: string; status: string }>;
 };
 
 const statusLabels: Record<string, string> = {
-    WAITING_CONFIRMATION: "Chờ xác nhận",
+    WAITING_CONFIRMATION: "Mới / Chờ xác nhận",
     CONFIRMED: "Đã xác nhận / Sắp thu hoạch",
     REJECTED: "Đã từ chối",
     HARVESTING: "Đang thu hoạch",
@@ -43,9 +60,11 @@ const statusLabels: Record<string, string> = {
     DELIVERY_CONFIRMED: "Đang vận chuyển",
     COMPLETED: "Đã nhận / Chờ QC",
     CANCELLED: "Đã hủy",
-    PENDING_QC: "Đã nhận / Chờ QC",
-    AVAILABLE: "Đã tiếp nhận",
-    QUARANTINED: "QC có điều kiện",
+    PENDING_QC: "Chờ QC",
+    AVAILABLE: "Sẵn sàng chế biến",
+    QUARANTINED: "Cách ly",
+    PARTIALLY_USED: "Đang sử dụng",
+    USED: "Đã sử dụng hết",
 };
 
 const processingTabs = [
@@ -53,9 +72,10 @@ const processingTabs = [
     ["new", "Mới / Chờ xác nhận"],
     ["upcoming", "Sắp giao"],
     ["transit", "Đang vận chuyển"],
-    ["qc", "Đã nhận / Chờ QC"],
-    ["accepted", "Đã tiếp nhận"],
-    ["rejected", "Từ chối"],
+    ["qc", "Chờ QC"],
+    ["ready", "Sẵn sàng chế biến"],
+    ["quarantined", "Cách ly"],
+    ["rejected", "Không đạt"],
 ];
 
 const collectorTabs = [
@@ -85,6 +105,7 @@ export function PartnerHarvests({
     const [busy, setBusy] = useState<string | null>(null);
     const [receiveRow, setReceiveRow] = useState<HarvestRow | null>(null);
     const [qcLot, setQcLot] = useState<RawLot | null>(null);
+    const [viewLot, setViewLot] = useState<RawLot | null>(null);
     const [error, setError] = useState("");
 
     const filteredRows = useMemo(() => rows.filter((row) => {
@@ -101,9 +122,10 @@ export function PartnerHarvests({
     const filteredLots = useMemo(() => lots.filter((lot) => {
         if (tab === "all") return true;
         if (tab === "action-required") return lot.status === "PENDING_QC";
-        if (tab === "qc") return ["PENDING_QC", "QUARANTINED"].includes(lot.status);
-        if (tab === "accepted") return lot.status === "AVAILABLE";
-        if (tab === "rejected") return lot.status === "REJECTED";
+        if (tab === "qc") return lot.status === "PENDING_QC";
+        if (tab === "ready") return ["AVAILABLE", "PARTIALLY_USED"].includes(lot.status) && (lot.currentWeight ?? lot.actualReceivedWeight) > 0;
+        if (tab === "quarantined") return lot.status === "QUARANTINED" || lot.qualityResult === "CONDITIONAL";
+        if (tab === "rejected") return lot.status === "REJECTED" || lot.qualityResult === "FAILED";
         return false;
     }), [lots, tab]);
 
@@ -286,35 +308,179 @@ export function PartnerHarvests({
                     </Card>
                 ))}
 
-                {mode === "PROCESSING_FACILITY" && filteredLots.map((lot) => (
-                    <Card key={lot.id} className="overflow-hidden">
-                        <CardHeader className="border-b bg-slate-50">
-                            <div className="flex items-start justify-between gap-3">
-                                <div>
-                                    <p className="text-xs font-bold uppercase text-brand-600">{lot.code}</p>
-                                    <CardTitle className="mt-1">{lot.farmName}</CardTitle>
-                                    <p className="mt-1 text-sm text-slate-500">Nguồn: {lot.sourceCode} · {lot.supplierName}</p>
+                {mode === "PROCESSING_FACILITY" && filteredLots.map((lot) => {
+                    const isPassed = lot.qualityResult === "PASSED" || ["AVAILABLE", "PARTIALLY_USED", "USED"].includes(lot.status);
+                    const isConditional = lot.qualityResult === "CONDITIONAL" || lot.status === "QUARANTINED";
+                    const isFailed = lot.qualityResult === "FAILED" || lot.status === "REJECTED";
+                    const isPendingQc = lot.status === "PENDING_QC";
+
+                    const availableKg = lot.currentWeight ?? lot.acceptedWeight ?? lot.actualReceivedWeight;
+                    const acceptedKg = lot.acceptedWeight ?? (isFailed ? 0 : lot.actualReceivedWeight);
+                    const rejectedKg = lot.rejectedWeight ?? (isFailed ? lot.actualReceivedWeight : Math.max(0, lot.actualReceivedWeight - acceptedKg));
+
+                    return (
+                        <Card key={lot.id} className="overflow-hidden border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                            <CardHeader className="border-b bg-slate-50/70 p-4 sm:p-5">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs font-bold font-mono tracking-wide text-brand-700">{lot.code}</p>
+                                        <CardTitle className="mt-1 text-lg font-black text-slate-900">{lot.farmName}</CardTitle>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            Nguồn: <span className="font-semibold text-slate-700">{lot.sourceCode}</span> · <span className="font-semibold text-emerald-700">{lot.variety || "Sầu riêng"}</span>
+                                        </p>
+                                    </div>
+                                    {isPendingQc ? (
+                                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-700">
+                                            <AlertTriangle className="h-3.5 w-3.5" /> Chờ QC
+                                        </span>
+                                    ) : isPassed ? (
+                                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-700">
+                                            <CheckCircle2 className="h-3.5 w-3.5" /> QC đạt
+                                        </span>
+                                    ) : isConditional ? (
+                                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-700">
+                                            <AlertTriangle className="h-3.5 w-3.5" /> QC đạt có điều kiện
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 border border-rose-200 px-3 py-1 text-xs font-bold text-rose-700">
+                                            <XCircle className="h-3.5 w-3.5" /> QC không đạt
+                                        </span>
+                                    )}
                                 </div>
-                                <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700 shadow-sm">
-                                    {statusLabels[lot.status] ?? lot.status}
-                                </span>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4 pt-5">
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                <p><span className="text-slate-400">Nông dân giao</span><br/><b>{lot.sentWeight.toLocaleString("vi-VN")} kg</b></p>
-                                <p><span className="text-slate-400">Thực nhận</span><br/><b>{lot.actualReceivedWeight.toLocaleString("vi-VN")} kg</b></p>
-                                <p><span className="text-slate-400">Ngày nhận</span><br/><b>{new Date(lot.receivedAt).toLocaleString("vi-VN")}</b></p>
-                                <p><span className="text-slate-400">Kho lưu</span><br/><b>{lot.warehouseLocation || "Chưa cập nhật"}</b></p>
-                            </div>
-                            {["PENDING_QC", "QUARANTINED"].includes(lot.status) && (
-                                <Button className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold" onClick={() => { setError(""); setQcLot(lot); }}>
-                                    Kiểm tra chất lượng (QC)
-                                </Button>
-                            )}
-                        </CardContent>
-                    </Card>
-                ))}
+                            </CardHeader>
+                            <CardContent className="space-y-4 p-4 sm:p-5">
+                                {isPendingQc ? (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-3 text-sm">
+                                            <p><span className="text-xs text-slate-400">Nông dân giao</span><br/><b className="text-slate-800">{lot.sentWeight.toLocaleString("vi-VN")} kg</b></p>
+                                            <p><span className="text-xs text-slate-400">Thực nhận</span><br/><b className="text-slate-800">{lot.actualReceivedWeight.toLocaleString("vi-VN")} kg</b></p>
+                                            <p><span className="text-xs text-slate-400">Ngày nhận</span><br/><b className="text-slate-800">{new Date(lot.receivedAt).toLocaleString("vi-VN")}</b></p>
+                                            <p><span className="text-xs text-slate-400">Khu vực lưu tạm</span><br/><b className="text-slate-800">{lot.warehouseLocation || "Khu chờ QC"}</b></p>
+                                        </div>
+                                        <Button className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold" onClick={() => { setError(""); setQcLot(lot); }}>
+                                            Kiểm tra chất lượng (QC)
+                                        </Button>
+                                    </>
+                                ) : isPassed ? (
+                                    <>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                                            <div>
+                                                <span className="text-xs text-slate-400">Thực nhận</span>
+                                                <p className="font-bold text-slate-800">{lot.actualReceivedWeight.toLocaleString("vi-VN")} kg</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-slate-400">Chấp nhận</span>
+                                                <p className="font-bold text-emerald-700">{acceptedKg.toLocaleString("vi-VN")} kg</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-slate-400">Còn khả dụng</span>
+                                                <p className="font-black text-brand-700">{availableKg.toLocaleString("vi-VN")} kg</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-slate-400">Grade / Phân hạng</span>
+                                                <p className="font-bold text-slate-800">{lot.inspection?.qualityGrade || "Loại A"}</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-slate-400">Dư lượng</span>
+                                                <p className="font-bold text-emerald-700">{lot.inspection?.residueResult || "Đạt"}</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-slate-400">Kho lưu</span>
+                                                <p className="font-bold text-slate-800">{lot.warehouseLocation || "KHO-NL-01"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs rounded-xl bg-slate-50 px-3 py-2 border border-slate-100">
+                                            <span className="text-slate-500 font-semibold">Trạng thái nguyên liệu:</span>
+                                            <span className="font-bold text-slate-800">
+                                                {lot.status === "USED" ? "Đã sử dụng hết" : availableKg < acceptedKg ? `Đang sử dụng (còn ${availableKg.toLocaleString("vi-VN")} kg)` : "Sẵn sàng chế biến"}
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button variant="outline" className="flex-1 text-slate-700 font-bold" onClick={() => setViewLot(lot)}>
+                                                Xem chi tiết
+                                            </Button>
+                                            {availableKg > 0 && (
+                                                <Link
+                                                    href={`/dashboard/processing/processing?source=${lot.id}`}
+                                                    className="flex-1 inline-flex items-center justify-center rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-3 py-2 text-sm font-bold shadow-sm transition"
+                                                >
+                                                    Đưa vào chế biến <ArrowRight className="ml-1.5 h-4 w-4" />
+                                                </Link>
+                                            )}
+                                        </div>
+                                    </>
+                                ) : isConditional ? (
+                                    <>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                                            <div>
+                                                <span className="text-xs text-slate-400">Thực nhận</span>
+                                                <p className="font-bold text-slate-800">{lot.actualReceivedWeight.toLocaleString("vi-VN")} kg</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-slate-400">Chấp nhận</span>
+                                                <p className="font-bold text-emerald-700">{acceptedKg.toLocaleString("vi-VN")} kg</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-slate-400">Còn khả dụng</span>
+                                                <p className="font-black text-amber-700">{availableKg.toLocaleString("vi-VN")} kg</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-slate-400">Từ chối</span>
+                                                <p className="font-bold text-rose-700">{rejectedKg.toLocaleString("vi-VN")} kg</p>
+                                            </div>
+                                            <div className="col-span-2">
+                                                <span className="text-xs text-slate-400">Kho / Vị trí</span>
+                                                <p className="font-bold text-slate-800">{lot.warehouseLocation || "Khu cách ly/xử lý"}</p>
+                                            </div>
+                                        </div>
+                                        {lot.inspection?.note && (
+                                            <p className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-900 font-medium">
+                                                <b>Điều kiện:</b> {lot.inspection.note}
+                                            </p>
+                                        )}
+                                        <div className="flex gap-2">
+                                            <Button variant="outline" className="flex-1 text-slate-700 font-bold" onClick={() => setViewLot(lot)}>
+                                                Xem chi tiết
+                                            </Button>
+                                            {availableKg > 0 && (
+                                                <Link
+                                                    href={`/dashboard/processing/processing?source=${lot.id}`}
+                                                    className="flex-1 inline-flex items-center justify-center rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 text-sm font-bold shadow-sm transition"
+                                                >
+                                                    Đưa vào chế biến <ArrowRight className="ml-1.5 h-4 w-4" />
+                                                </Link>
+                                            )}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-3 text-sm">
+                                            <div>
+                                                <span className="text-xs text-slate-400">Thực nhận</span>
+                                                <p className="font-bold text-slate-800">{lot.actualReceivedWeight.toLocaleString("vi-VN")} kg</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-slate-400">Chấp nhận</span>
+                                                <p className="font-bold text-rose-700">0 kg (Loại bỏ)</p>
+                                            </div>
+                                            <div className="col-span-2">
+                                                <span className="text-xs text-slate-400">Lý do từ chối</span>
+                                                <p className="font-bold text-rose-700">{lot.inspection?.note || "Không đạt tiêu chuẩn kiểm nghiệm dư lượng"}</p>
+                                            </div>
+                                            <div className="col-span-2">
+                                                <span className="text-xs text-slate-400">Trạng thái</span>
+                                                <p className="font-bold text-slate-700">Cách ly / Từ chối tiếp nhận sản xuất</p>
+                                            </div>
+                                        </div>
+                                        <Button variant="outline" className="w-full text-rose-700 border-rose-200 hover:bg-rose-50 font-bold" onClick={() => setViewLot(lot)}>
+                                            Xem QC & Biên bản từ chối
+                                        </Button>
+                                    </>
+                                )}
+                            </CardContent>
+                        </Card>
+                    );
+                })}
 
                 {!filteredRows.length && !filteredLots.length && (
                     <p className="rounded-3xl border border-dashed bg-white p-10 text-center text-slate-500 lg:col-span-2">
@@ -322,6 +488,92 @@ export function PartnerHarvests({
                     </p>
                 )}
             </div>
+
+            {/* Modal Xem chi tiết QC & Lô nguyên liệu */}
+            {viewLot && (
+                <Modal title={`Chi tiết Lô nguyên liệu ${viewLot.code}`} onClose={() => setViewLot(null)}>
+                    <div className="space-y-4">
+                        <div className="rounded-2xl border bg-slate-50 p-4 text-sm space-y-2">
+                            <div className="flex justify-between items-center border-b pb-2">
+                                <span className="text-slate-500">Mã lô nguyên liệu</span>
+                                <b className="font-mono text-brand-700">{viewLot.code}</b>
+                            </div>
+                            <div className="flex justify-between items-center border-b pb-2">
+                                <span className="text-slate-500">Nguồn gốc vườn trồng</span>
+                                <b className="text-slate-800">{viewLot.farmName}</b>
+                            </div>
+                            <div className="flex justify-between items-center border-b pb-2">
+                                <span className="text-slate-500">Mã thu hoạch / Giống</span>
+                                <b className="text-slate-800">{viewLot.sourceCode} · {viewLot.variety || "Sầu riêng"}</b>
+                            </div>
+                            <div className="flex justify-between items-center border-b pb-2">
+                                <span className="text-slate-500">Nông dân / Đối tác</span>
+                                <b className="text-slate-800">{viewLot.supplierName}</b>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-500">Ngày tiếp nhận</span>
+                                <b className="text-slate-800">{new Date(viewLot.receivedAt).toLocaleString("vi-VN")}</b>
+                            </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3">
+                            <h3 className="font-black text-xs uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                                <ShieldCheck className="h-4 w-4" /> Kết quả kiểm tra chất lượng (QC)
+                            </h3>
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                                <div><span className="text-slate-500">Kết quả tổng thể:</span> <b className="block text-sm">{viewLot.qualityResult === "PASSED" ? "ĐẠT" : viewLot.qualityResult === "CONDITIONAL" ? "ĐẠT CÓ ĐIỀU KIỆN" : "KHÔNG ĐẠT"}</b></div>
+                                <div><span className="text-slate-500">Phân hạng (Grade):</span> <b className="block text-sm">{viewLot.inspection?.qualityGrade || "Loại A"}</b></div>
+                                <div><span className="text-slate-500">Ngoại quan:</span> <b className="block text-sm">{viewLot.inspection?.appearance || "Tốt"}</b></div>
+                                <div><span className="text-slate-500">Dư lượng thuốc BVTV:</span> <b className="block text-sm">{viewLot.inspection?.residueResult || "Đạt"}</b></div>
+                                <div><span className="text-slate-500">Khối lượng chấp nhận:</span> <b className="block text-sm text-emerald-700">{(viewLot.acceptedWeight ?? viewLot.actualReceivedWeight).toLocaleString("vi-VN")} kg</b></div>
+                                <div><span className="text-slate-500">Khối lượng từ chối:</span> <b className="block text-sm text-rose-700">{(viewLot.rejectedWeight ?? 0).toLocaleString("vi-VN")} kg</b></div>
+                                <div><span className="text-slate-500">Khối lượng còn khả dụng:</span> <b className="block text-sm text-brand-700 font-black">{(viewLot.currentWeight ?? viewLot.acceptedWeight ?? 0).toLocaleString("vi-VN")} kg</b></div>
+                                <div><span className="text-slate-500">Vị trí lưu kho:</span> <b className="block text-sm text-slate-800">{viewLot.warehouseLocation || "KHO-NL-01"}</b></div>
+                            </div>
+                            {viewLot.inspection?.note && (
+                                <div className="rounded-xl bg-white p-3 border text-xs text-slate-700">
+                                    <span className="font-bold text-slate-500 block mb-1">Ghi chú & Chi tiết đánh giá:</span>
+                                    {viewLot.inspection.note}
+                                </div>
+                            )}
+                            {viewLot.inspection?.inspectorName && (
+                                <p className="text-xs text-slate-500 text-right">
+                                    Người kiểm tra: <b>{viewLot.inspection.inspectorName}</b>
+                                </p>
+                            )}
+                        </div>
+
+                        {viewLot.batches && viewLot.batches.length > 0 && (
+                            <div className="rounded-2xl border bg-slate-50 p-4 space-y-2">
+                                <h3 className="font-black text-xs uppercase tracking-wider text-slate-700">Các mẻ chế biến đã sử dụng</h3>
+                                <ul className="space-y-1.5 text-xs">
+                                    {viewLot.batches.map((batch) => (
+                                        <li key={batch.id} className="flex justify-between items-center rounded-lg bg-white p-2 border">
+                                            <span className="font-mono font-bold text-brand-700">{batch.code}</span>
+                                            <span className="text-slate-600">{batch.targetProduct}</span>
+                                            <span className="font-semibold text-slate-500">{statusLabels[batch.status] ?? batch.status}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        <div className="flex gap-2 pt-2">
+                            <Button variant="outline" className="flex-1" onClick={() => setViewLot(null)}>
+                                Đóng
+                            </Button>
+                            {(viewLot.currentWeight ?? viewLot.acceptedWeight ?? 0) > 0 && viewLot.status !== "REJECTED" && (
+                                <Link
+                                    href={`/dashboard/processing/processing?source=${viewLot.id}`}
+                                    className="flex-1 inline-flex items-center justify-center rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-3 py-2 text-sm font-bold shadow-sm transition"
+                                >
+                                    Đưa vào chế biến <ArrowRight className="ml-1.5 h-4 w-4" />
+                                </Link>
+                            )}
+                        </div>
+                    </div>
+                </Modal>
+            )}
 
             {/* Modal Xác nhận tiếp nhận nguyên liệu */}
             {receiveRow && (

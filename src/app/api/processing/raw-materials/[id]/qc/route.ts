@@ -35,13 +35,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (!lot || lot.facility.ownerId !== session.user.id) {
         return NextResponse.json({ success: false, message: "Không tìm thấy lô nguyên liệu." }, { status: 404 });
     }
-    if (lot.status !== "PENDING_QC" && lot.status !== "QUARANTINED") {
-        return NextResponse.json({ success: false, message: "Lô nguyên liệu không ở trạng thái chờ QC." }, { status: 400 });
+    if (!["PENDING_QC", "QUARANTINED", "AVAILABLE", "REJECTED"].includes(lot.status)) {
+        return NextResponse.json({ success: false, message: "Lô nguyên liệu không thể cập nhật QC." }, { status: 400 });
     }
     const value = parsed.data;
     const inspectedAt = value.inspectedAt ? new Date(value.inspectedAt) : new Date();
-    const nextLotStatus = value.result === "PASSED" ? "AVAILABLE" : value.result === "FAILED" ? "REJECTED" : "QUARANTINED";
-    const nextReceiptStatus = value.result === "PASSED" ? "ACCEPTED" : value.result === "FAILED" ? "REJECTED" : "QC_PENDING";
+    const nextLotStatus = value.result === "FAILED" ? "REJECTED" : "AVAILABLE";
+    const nextReceiptStatus = value.result === "FAILED" ? "REJECTED" : "ACCEPTED";
 
     const acceptedWeight = value.acceptedWeight !== undefined
         ? value.acceptedWeight
@@ -81,6 +81,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         prisma.rawMaterialReceipt.update({
             where: { id: lot.rawMaterialReceiptId },
             data: { status: nextReceiptStatus }
+        }),
+        prisma.traceEvent.create({
+            data: {
+                entityType: "RAW_MATERIAL_LOT",
+                entityId: lot.id,
+                eventType: value.result === "PASSED" ? "RAW_MATERIAL_QC_PASSED" : value.result === "FAILED" ? "RAW_MATERIAL_QC_FAILED" : "RAW_MATERIAL_QC_CONDITIONAL",
+                eventTime: inspectedAt,
+                actorId: session.user.id,
+                actorRole: "PROCESSING_FACILITY",
+                organizationType: "PROCESSING_FACILITY",
+                organizationId: lot.facilityId,
+                title: value.result === "PASSED" ? "Kiểm tra chất lượng (QC) đạt" : value.result === "FAILED" ? "Kiểm tra chất lượng (QC) không đạt" : "Kiểm tra chất lượng (QC) đạt có điều kiện",
+                description: `Kết quả: ${value.result} | Grade: ${value.qualityGrade || "N/A"} | Dư lượng: ${value.residueResult || "N/A"} | Chấp nhận: ${acceptedWeight} kg | Từ chối: ${value.rejectedWeight || 0} kg`,
+                isPublic: true,
+            }
         }),
     ]);
 

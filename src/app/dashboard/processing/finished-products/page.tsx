@@ -1,44 +1,107 @@
-import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { CheckCircle2, PackageCheck, QrCode, Truck } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatStatusLabel } from "@/lib/processing-facility";
+import { FinishedProductManager } from "@/components/processing/finished-product-manager";
 
 export default async function Page() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") redirect("/login");
 
-    const facility = await prisma.partnerFacility.findUnique({ where: { ownerId: session.user.id } });
-    const rows = facility ? await prisma.finishedProductLot.findMany({
-        where: { facilityId: facility.id },
-        include: {
-            processingBatch: { select: { batchCode: true } },
-            commercialLots: { include: { traceabilityCode: true, shipmentItems: { include: { shipment: true } } } }
-        },
-        orderBy: { manufacturedAt: "desc" }
-    }) : [];
+    const facility = await prisma.partnerFacility.findFirst({
+        where: { ownerId: session.user.id, type: "PROCESSING_FACILITY", deletedAt: null },
+    });
 
-    const finishedLots = rows.map(row => {
-        const traced = row.commercialLots.find(lot => lot.traceabilityCode);
-        const shipment = traced?.shipmentItems[0]?.shipment;
+    const rows = facility
+        ? await prisma.finishedProductLot.findMany({
+              where: { facilityId: facility.id },
+              include: {
+                  processingBatch: {
+                      include: {
+                          inputs: {
+                              include: {
+                                  rawMaterialLot: {
+                                      include: {
+                                          rawMaterialReceipt: {
+                                              include: {
+                                                  sourceHarvestLot: { include: { farm: true } },
+                                                  sourceCollectionLot: { include: { collectorFacility: true } },
+                                              },
+                                          },
+                                          inspections: { orderBy: { inspectedAt: "desc" }, take: 1 },
+                                      },
+                                  },
+                              },
+                          },
+                      },
+                  },
+                  commercialLots: {
+                      include: {
+                          traceabilityCode: true,
+                          destination: true,
+                      },
+                  },
+              },
+              orderBy: { manufacturedAt: "desc" },
+          })
+        : [];
+
+    const finishedLots = rows.map((row) => {
+        const batch = row.processingBatch;
+        const netWeight = Number(row.netWeight);
+        const remainingWeight = Number(row.remainingWeight);
+        const allocatedWeight = Math.max(0, netWeight - remainingWeight);
+
         return {
             id: row.id,
-            code: row.lotCode,
+            lotCode: row.lotCode,
             productName: row.productName,
             productType: row.productType,
-            sourceProcessingLotCode: row.processingBatch.batchCode,
-            producedAt: row.manufacturedAt,
-            expiresAt: row.expiryDate,
-            packageSpec: row.packaging,
-            quantity: Number(row.quantity),
-            totalWeight: Number(row.netWeight),
-            unit: "kg",
+            processingBatchId: row.processingBatchId,
+            sourceProcessingBatchCode: batch.batchCode,
+            manufacturedAt: row.manufacturedAt,
+            expiryDate: row.expiryDate,
+            packaging: row.packaging,
             storageCondition: row.storageCondition,
-            qrIssued: Boolean(traced?.traceabilityCode),
-            publicToken: traced?.traceabilityCode?.publicToken,
-            dispatchStatus: shipment?.status ?? "PENDING"
+            warehouseLocation: row.warehouseLocation,
+            quantity: Number(row.quantity),
+            netWeight,
+            remainingWeight,
+            allocatedWeight,
+            status: row.status,
+            commercialLots: row.commercialLots.map((cm) => ({
+                id: cm.id,
+                lotCode: cm.lotCode,
+                productName: cm.productName,
+                quantity: Number(cm.quantity),
+                unit: cm.unit,
+                status: cm.status,
+                destinationName: cm.destination?.name || "Chưa xác định",
+                traceabilityCode: cm.traceabilityCode
+                    ? {
+                          id: cm.traceabilityCode.id,
+                          publicToken: cm.traceabilityCode.publicToken,
+                          status: cm.traceabilityCode.status,
+                      }
+                    : null,
+            })),
+            batchDetails: {
+                method: batch.method,
+                totalInputWeight: Number(batch.totalInputWeight),
+                totalOutputWeight: Number(batch.totalOutputWeight),
+                yieldPercent: Number(batch.yieldPercent),
+                rawLots: batch.inputs.map((inp) => {
+                    const raw = inp.rawMaterialLot;
+                    const farm = raw.rawMaterialReceipt.sourceHarvestLot?.farm;
+                    const inspection = raw.inspections[0];
+                    return {
+                        code: raw.lotCode,
+                        farmName: farm?.farmName || "Vườn nguồn",
+                        variety: farm?.durianVariety || "Sầu riêng",
+                        qcResult: inspection?.result || "PASSED",
+                    };
+                }),
+            },
         };
     });
 
@@ -47,90 +110,13 @@ export default async function Page() {
             <header className="rounded-3xl border bg-white p-5 shadow-sm">
                 <p className="text-sm font-bold uppercase tracking-wider text-brand-700">Module thành phẩm</p>
                 <h1 className="mt-1 text-3xl font-black text-slate-900">Lô thành phẩm</h1>
-                <p className="mt-2 text-sm text-slate-500">Phát hành QR truy xuất cho lô thành phẩm có nguồn hợp lệ, theo chuỗi lô chế biến và lô nguyên liệu.</p>
+                <p className="mt-2 text-sm text-slate-500">
+                    Quản lý thành phẩm sau chế biến, theo dõi lượng tồn khả dụng và chuyển giao sang module Tạo QR xuất bán.
+                </p>
             </header>
 
-            <section className="grid grid-cols-2 gap-3 sm:gap-4">
-                <Info icon={PackageCheck} label="Tổng lô thành phẩm" value={finishedLots.length} />
-                <Info icon={CheckCircle2} label="Đã phát hành QR" value={finishedLots.filter((lot) => lot.qrIssued).length} />
-                <Info icon={QrCode} label="Chưa phát hành QR" value={finishedLots.filter((lot) => !lot.qrIssued).length} />
-                <Info icon={Truck} label="Chờ xuất / giao" value={finishedLots.filter((lot) => ["PENDING", "IN_TRANSIT"].includes(lot.dispatchStatus)).length} />
-            </section>
-
-            <section className="grid gap-4">
-                {finishedLots.map((lot) => {
-                    const traceUrl = lot.publicToken ? `/trace/${lot.publicToken}` : "/dashboard/processing/traceability";
-                    return (
-                        <article key={lot.id} className="rounded-3xl border bg-white p-5 shadow-sm">
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div>
-                                    <p className="text-xs font-bold uppercase tracking-wide text-brand-700">{lot.code}</p>
-                                    <h2 className="mt-1 text-lg font-black text-slate-900">{lot.productName}</h2>
-                                    <p className="mt-1 text-sm text-slate-500">Nguồn chế biến: {lot.sourceProcessingLotCode}</p>
-                                </div>
-                                <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-                                    {formatStatusLabel(lot.dispatchStatus)}
-                                </span>
-                            </div>
-
-                            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                                <Field label="Loại sản phẩm" value={lot.productType} />
-                                <Field label="Ngày sản xuất" value={lot.producedAt.toLocaleDateString("vi-VN")} />
-                                <Field label="Hạn sử dụng" value={lot.expiresAt ? lot.expiresAt.toLocaleDateString("vi-VN") : "Theo lô"} />
-                                <Field label="Quy cách" value={lot.packageSpec ?? "Chưa cập nhật"} />
-                                <Field label="Số lượng" value={`${lot.quantity.toLocaleString("vi-VN")} hộp`} />
-                                <Field label="Khối lượng" value={`${lot.totalWeight.toLocaleString("vi-VN")} ${lot.unit}`} />
-                                <Field label="Điều kiện bảo quản" value={lot.storageCondition ?? "Chưa cập nhật"} />
-                                <Field label="QR" value={lot.qrIssued ? "Đã phát hành" : "Chưa phát hành"} />
-                            </dl>
-
-                            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-                                <button type="button" className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white">Phát hành QR</button>
-                                <button type="button" className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">Xem QR</button>
-                                <button type="button" className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">In tem</button>
-                                <Link href={traceUrl} className="rounded-xl border border-slate-200 px-3 py-2 text-center text-sm font-semibold text-slate-700">Xem trang truy xuất</Link>
-                                <button type="button" className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white">Xuất / Giao lô</button>
-                            </div>
-                        </article>
-                    );
-                })}
-
-                {!finishedLots.length && (
-                    <p className="rounded-3xl border border-dashed bg-white p-10 text-center text-slate-500">Chưa có lô thành phẩm hoàn tất để phát hành QR.</p>
-                )}
-            </section>
-
-            <section className="rounded-3xl border bg-brand-50 p-4 text-sm text-brand-800">
-                <p className="font-semibold">Quy tắc phát hành QR (MVP)</p>
-                <ul className="mt-2 list-disc space-y-1 pl-5">
-                    <li>Chỉ phát hành khi lô chế biến đã hoàn tất.</li>
-                    <li>Lô thành phẩm phải có nguồn nguyên liệu hợp lệ.</li>
-                    <li>QR chỉ chứa URL/trace code thay vì toàn bộ dữ liệu.</li>
-                </ul>
-            </section>
+            <FinishedProductManager initialLots={JSON.parse(JSON.stringify(finishedLots))} />
         </main>
     );
 }
 
-function Info({ icon: Icon, label, value }: { icon: typeof PackageCheck; label: string; value: number }) {
-    return (
-        <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:rounded-3xl sm:p-5">
-            <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-xs font-semibold text-slate-500 sm:text-sm">{label}</span>
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 sm:h-9 sm:w-9">
-                    <Icon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                </span>
-            </div>
-            <p className="mt-2 truncate text-xl font-black text-slate-900 sm:text-2xl">{value.toLocaleString("vi-VN")}</p>
-        </article>
-    );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-    return (
-        <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</dt>
-            <dd className="mt-1 font-semibold text-slate-700">{value}</dd>
-        </div>
-    );
-}
