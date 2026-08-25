@@ -250,31 +250,8 @@ export async function POST(request: Request) {
                 },
             });
 
-            // Initialize all 9 processing steps
+            // Initialize all 5 processing steps (Step 1 CLEANING is IN_PROGRESS)
             const stepCreates = PROCESSING_STEPS_CONFIG.map((cfg) => {
-                if (cfg.type === "RAW_MATERIAL_ISSUE") {
-                    return tx.processingStep.create({
-                        data: {
-                            processingBatchId: createdBatch.id,
-                            stepType: cfg.type,
-                            stepOrder: cfg.order,
-                            status: "COMPLETED",
-                            startedAt,
-                            completedAt: startedAt,
-                            inputWeight: value.inputWeight,
-                            outputWeight: value.inputWeight,
-                            lossWeight: 0,
-                            performedById: session.user.id,
-                            note: `Xuất kho nguyên liệu ${rawLot.lotCode} (${rawLot.warehouseLocation || "Kho NVL"})`,
-                            metadata: {
-                                rawMaterialLotCode: rawLot.lotCode,
-                                warehouseLocation: rawLot.warehouseLocation || "KHO-NVL-01",
-                                beforeWeight: currentAvailableWeight,
-                                issuedWeight: value.inputWeight,
-                            },
-                        },
-                    });
-                }
                 if (cfg.type === "CLEANING") {
                     return tx.processingStep.create({
                         data: {

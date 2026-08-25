@@ -5,74 +5,42 @@
 export const PROCESSING_STEPS_CONFIG = [
     {
         order: 1,
-        type: "RAW_MATERIAL_ISSUE",
-        name: "Xuất kho NVL",
-        shortName: "1. Xuất kho",
-        description: "Xuất kho nguyên liệu đã QC đạt đưa vào dây chuyền",
-        required: true,
-    },
-    {
-        order: 2,
         type: "CLEANING",
         name: "Làm sạch",
-        shortName: "2. Làm sạch",
+        shortName: "1. Làm sạch",
         description: "Rửa sạch bụi bẩn, tạp chất và khử trùng vỏ ngoài",
         required: true,
     },
     {
-        order: 3,
+        order: 2,
         type: "PEELING_PULP_SEPARATION",
         name: "Tách vỏ - Tách múi",
-        shortName: "3. Tách múi",
+        shortName: "2. Tách múi",
         description: "Tách múi sầu riêng ra khỏi vỏ và loại bỏ hạt/xơ",
         required: true,
     },
     {
-        order: 4,
+        order: 3,
         type: "REJECT_REMOVAL",
         name: "Loại bỏ phần không đạt",
-        shortName: "4. Lọc bỏ",
+        shortName: "3. Lọc bỏ",
         description: "Lọc bỏ phần dập, quá chín, sượng hoặc khuyết tật",
         required: true,
     },
     {
-        order: 5,
+        order: 4,
         type: "FINAL_WEIGHING",
         name: "Cân thành phẩm",
-        shortName: "5. Cân SP",
+        shortName: "4. Cân SP",
         description: "Cân định lượng múi sầu riêng đạt chuẩn chất lượng",
         required: true,
     },
     {
-        order: 6,
+        order: 5,
         type: "PACKAGING",
         name: "Đóng gói",
-        shortName: "6. Đóng gói",
+        shortName: "5. Đóng gói",
         description: "Đóng khay/túi hút chân không theo quy cách",
-        required: true,
-    },
-    {
-        order: 7,
-        type: "FREEZING",
-        name: "Cấp đông",
-        shortName: "7. Cấp đông",
-        description: "Cấp đông nhanh IQF hoặc kho đông đạt nhiệt độ âm sâu",
-        required: true,
-    },
-    {
-        order: 8,
-        type: "FINISHED_PRODUCT_QC",
-        name: "QC thành phẩm",
-        shortName: "8. QC TP",
-        description: "Kiểm tra cảm quan, vi sinh, nhiệt độ và bao bì thành phẩm",
-        required: true,
-    },
-    {
-        order: 9,
-        type: "FINISHED_PRODUCT_WAREHOUSE_IN",
-        name: "Nhập kho thành phẩm",
-        shortName: "9. Nhập kho TP",
-        description: "Lưu kho lạnh thành phẩm và sẵn sàng phân phối / tạo QR",
         required: true,
     },
 ] as const;
@@ -138,9 +106,11 @@ export const PACKAGING_OPTIONS = [
 ] as const;
 
 export const FREEZING_METHODS = [
+    "Tách múi & Cấp đông nhanh (IQF)",
     "IQF (Cấp đông nhanh cá thể)",
     "Cấp đông gió",
     "Kho đông",
+    "Đóng khay tươi bảo quản lạnh",
     "Khác",
 ] as const;
 
@@ -175,8 +145,13 @@ export function formatStatusLabel(status: string): string {
         PREPARING: "Chuẩn bị chế biến",
         IN_PROGRESS: "Đang chế biến",
         PAUSED: "Tạm dừng",
-        COMPLETED: "Đã hoàn tất",
+        WAITING_FINISHED_QC: "Đã đóng gói / Chờ QC TP",
+        PACKAGING_COMPLETED: "Đã đóng gói / Chờ QC TP",
+        COMPLETED: "Hoàn tất chế biến",
         CANCELLED: "Đã hủy",
+        WAITING_WAREHOUSE_IN: "QC đạt / Chờ nhập kho",
+        QC_PASSED: "QC đạt / Chờ nhập kho",
+        QC_FAILED: "QC Không đạt",
         READY_FOR_DISTRIBUTION: "Sẵn sàng phân phối",
         PARTIALLY_DISTRIBUTED: "Đã phân bổ một phần",
         DISTRIBUTED: "Đã phân phối hết",
@@ -194,12 +169,16 @@ export function getStatusBadgeVariant(status: string): { label: string; bg: stri
         case "ACCEPTED":
         case "COMPLETED":
         case "READY_FOR_DISTRIBUTION":
+        case "QC_PASSED":
             return { label: formatStatusLabel(status), bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" };
         case "IN_PROGRESS":
         case "PARTIALLY_USED":
         case "PARTIALLY_DISTRIBUTED":
+        case "WAITING_WAREHOUSE_IN":
             return { label: formatStatusLabel(status), bg: "bg-sky-50", text: "text-sky-700", border: "border-sky-200" };
         case "PENDING_QC":
+        case "WAITING_FINISHED_QC":
+        case "PACKAGING_COMPLETED":
         case "WAITING_INSPECTION":
         case "WAITING_CONFIRMATION":
         case "CONFIRMED":
@@ -212,15 +191,20 @@ export function getStatusBadgeVariant(status: string): { label: string; bg: stri
         case "CANCELLED":
         case "RECALLED":
         case "QC_HOLD":
+        case "QC_FAILED":
             return { label: formatStatusLabel(status), bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" };
         default:
             return { label: formatStatusLabel(status), bg: "bg-slate-100", text: "text-slate-700", border: "border-slate-200" };
     }
 }
 
-export function calculateYield(inputWeight: number, outputWeight: number) {
-    if (inputWeight <= 0) return { lossWeight: 0, yieldPercent: 0 };
-    const loss = Math.max(0, Number((inputWeight - outputWeight).toFixed(2)));
-    const yieldPct = Number(((outputWeight / inputWeight) * 100).toFixed(2));
-    return { lossWeight: loss, yieldPercent: yieldPct };
+export function calculateYield(
+    totalInputWeight: number,
+    totalOutputWeight: number
+): { lossWeight: number; yieldPercent: number } {
+    const input = Math.max(0, Number(totalInputWeight) || 0);
+    const output = Math.max(0, Number(totalOutputWeight) || 0);
+    const lossWeight = Math.max(0, input - output);
+    const yieldPercent = input > 0 ? Number(((output / input) * 100).toFixed(2)) : 0;
+    return { lossWeight, yieldPercent };
 }

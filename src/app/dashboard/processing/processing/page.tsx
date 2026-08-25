@@ -138,17 +138,8 @@ export default async function Page() {
 
     return (
         <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
-            <header className="rounded-3xl border bg-white p-5 shadow-sm">
-                <p className="text-sm font-bold uppercase tracking-wider text-brand-700">MODULE CHẾ BIẾN</p>
-                <h1 className="mt-1 text-3xl font-black text-slate-900">Lô chế biến</h1>
-                <p className="mt-2 text-sm text-slate-500">
-                    Quản lý các lô nguyên liệu được đưa vào dây chuyền, theo dõi từng công đoạn chế biến và kết quả đầu ra.
-                </p>
-            </header>
-
             <ProcessingBatchManager
                 initialBatches={JSON.parse(JSON.stringify(processingBatches))}
-                availableRawLots={JSON.parse(JSON.stringify(availableRawLots))}
                 currentUserName={session.user.fullName || "Người phụ trách"}
             />
         </main>

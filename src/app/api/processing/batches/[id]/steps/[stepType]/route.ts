@@ -61,7 +61,7 @@ export async function PATCH(
         return NextResponse.json({ success: false, message: "Công đoạn không tồn tại trong mẻ chế biến." }, { status: 404 });
     }
 
-    // Business Rule XLIV: Không cho ProcessingStep sau chạy trước bước bắt buộc trước đó
+    // Không cho ProcessingStep sau chạy trước bước bắt buộc trước đó
     const previousSteps = batch.steps.filter((s) => s.stepOrder < targetStep.stepOrder);
     const incompletePrevious = previousSteps.find((s) => s.status !== "COMPLETED" && s.status !== "SKIPPED");
     if (incompletePrevious) {
@@ -150,22 +150,6 @@ export async function PATCH(
                     traceTitle = `Hoàn tất đóng gói - Mẻ ${batch.batchCode}`;
                     traceDescription = `Quy cách: ${(value.metadata?.packagingSpec as string) || "Gói"} | Số lượng: ${(value.metadata?.packageCount as number) || 0} | Tổng KL: ${outputWeight} kg`;
                     break;
-                case "FREEZING":
-                    traceEventType = "FREEZING_COMPLETED";
-                    traceTitle = `Hoàn tất cấp đông - Mẻ ${batch.batchCode}`;
-                    traceDescription = `Phương pháp: ${(value.metadata?.freezingMethod as string) || "IQF"} | Nhiệt độ: ${(value.metadata?.actualTemperature as string) || "-18°C"} | Kết quả: ${(value.metadata?.freezingResult as string) || "Đạt"}`;
-                    break;
-                case "FINISHED_PRODUCT_QC":
-                    const qcResult = (value.metadata?.result as string) || "PASSED";
-                    traceEventType = qcResult === "FAILED" ? "FINISHED_PRODUCT_QC_FAILED" : "FINISHED_PRODUCT_QC_PASSED";
-                    traceTitle = qcResult === "FAILED" ? `QC thành phẩm KHÔNG ĐẠT - Mẻ ${batch.batchCode}` : `QC thành phẩm ĐẠT - Mẻ ${batch.batchCode}`;
-                    traceDescription = `Kết quả: ${qcResult} | Cảm quan: ${(value.metadata?.appearance as string) || "Đạt"} | Vi sinh/dư lượng: ${(value.metadata?.microbiologyResult as string) || "Đạt"}`;
-                    break;
-                case "FINISHED_PRODUCT_WAREHOUSE_IN":
-                    traceEventType = "FINISHED_PRODUCT_WAREHOUSED";
-                    traceTitle = `Nhập kho thành phẩm - Mẻ ${batch.batchCode}`;
-                    traceDescription = `Kho: ${(value.metadata?.warehouseLocation as string) || "Kho TP"} | Khối lượng: ${outputWeight} kg`;
-                    break;
             }
 
             if (traceEventType && nextStatus === "COMPLETED") {
@@ -186,18 +170,18 @@ export async function PATCH(
                 });
             }
 
-            // Step 9 Completion: atomically complete ProcessingBatch & generate FinishedProductLot
+            // Step 5 (PACKAGING) Completion: atomically update ProcessingBatch to WAITING_FINISHED_QC & generate FinishedProductLot (PENDING_QC)
             let createdFinishedLot = null;
-            if (stepType === "FINISHED_PRODUCT_WAREHOUSE_IN" && nextStatus === "COMPLETED") {
+            if (stepType === "PACKAGING" && nextStatus === "COMPLETED") {
                 const totalInputWeight = Number(batch.totalInputWeight);
                 const finalOutputWeight = outputWeight;
                 const { lossWeight: totalLoss, yieldPercent } = calculateYield(totalInputWeight, finalOutputWeight);
 
-                // Update Batch to COMPLETED
+                // Update Batch to WAITING_FINISHED_QC
                 await tx.processingBatch.update({
                     where: { id: batch.id },
                     data: {
-                        status: "COMPLETED",
+                        status: "WAITING_FINISHED_QC",
                         completedAt,
                         totalOutputWeight: finalOutputWeight,
                         lossWeight: totalLoss,
@@ -217,11 +201,8 @@ export async function PATCH(
 
                 const meta = (value.metadata as any) || {};
                 const productName = meta.productName || batch.targetProduct;
-                const packaging = meta.packaging || "500g/túi";
-                const storageCondition = meta.storageCondition || "-18°C";
-                const warehouseLocation = meta.warehouseLocation || "KHO-TP-01";
+                const packaging = meta.packagingSpec || "500g/túi";
                 const quantity = meta.packageCount ? Number(meta.packageCount) : Math.max(1, Math.round(finalOutputWeight / 0.5));
-                const expiryDate = meta.expiryDate ? new Date(meta.expiryDate) : new Date(completedAt.getTime() + 365 * 24 * 60 * 60 * 1000);
 
                 createdFinishedLot = await tx.finishedProductLot.create({
                     data: {
@@ -234,11 +215,8 @@ export async function PATCH(
                         netWeight: finalOutputWeight,
                         remainingWeight: finalOutputWeight,
                         manufacturedAt: completedAt,
-                        expiryDate,
                         packaging,
-                        storageCondition,
-                        warehouseLocation,
-                        status: "READY_FOR_DISTRIBUTION",
+                        status: "PENDING_QC",
                     },
                 });
 
@@ -265,27 +243,8 @@ export async function PATCH(
                         actorRole: "PROCESSING_FACILITY",
                         organizationType: "PROCESSING_FACILITY",
                         organizationId: facility.id,
-                        title: `Hoàn tất mẻ chế biến ${batch.batchCode}`,
-                        description: `Sản phẩm: ${productName} | Đầu ra: ${finalOutputWeight} kg | Hao hụt: ${totalLoss} kg | Hiệu suất thu hồi: ${yieldPercent}%`,
-                        isPublic: true,
-                    },
-                });
-
-                // Log FINISHED_PRODUCT_CREATED
-                await tx.traceEvent.create({
-                    data: {
-                        entityType: "FINISHED_PRODUCT_LOT",
-                        entityId: createdFinishedLot.id,
-                        eventType: "FINISHED_PRODUCT_CREATED",
-                        eventTime: completedAt,
-                        actorId: session.user.id,
-                        actorRole: "PROCESSING_FACILITY",
-                        organizationType: "PROCESSING_FACILITY",
-                        organizationId: facility.id,
-                        title: `Tạo lô thành phẩm ${createdFinishedLot.lotCode}`,
-                        description: `${productName} (${finalOutputWeight} kg) đã nhập kho ${warehouseLocation} và sẵn sàng phân phối.`,
-                        sourceEntityType: "PROCESSING_BATCH",
-                        sourceEntityId: batch.id,
+                        title: `Hoàn tất đóng gói mẻ ${batch.batchCode}`,
+                        description: `Sản phẩm: ${productName} | Đầu ra: ${finalOutputWeight} kg | Hao hụt: ${totalLoss} kg | Hiệu suất thu hồi: ${yieldPercent}% | Chuyển sang Chờ QC thành phẩm`,
                         isPublic: true,
                     },
                 });

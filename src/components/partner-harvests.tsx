@@ -17,6 +17,7 @@ import {
     Truck,
     Warehouse,
     FileCheck,
+    Factory,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,8 @@ import {
     QC_GRADE_OPTIONS,
     QC_RESIDUE_OPTIONS,
     QC_REJECT_REASONS,
+    PRODUCTION_LINES,
+    FREEZING_METHODS,
     formatStatusLabel,
 } from "@/lib/processing-facility";
 
@@ -121,6 +124,8 @@ export function PartnerHarvests({
     const [qcLot, setQcLot] = useState<RawLot | null>(null);
     const [viewLot, setViewLot] = useState<RawLot | null>(null);
     const [viewHarvestRow, setViewHarvestRow] = useState<HarvestRow | null>(null);
+    const [issueLot, setIssueLot] = useState<RawLot | null>(null);
+    const [issuedBatchInfo, setIssuedBatchInfo] = useState<{ batchCode: string; lotCode: string } | null>(null);
     const [error, setError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
 
@@ -162,7 +167,7 @@ export function PartnerHarvests({
             const response = await fetch(`/api/harvests/${id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action, reason, ...extra }),
+                body: JSON.stringify({ action, rejectReason: reason, ...extra }),
             });
             const result = await response.json();
             if (!result.success) {
@@ -296,11 +301,11 @@ export function PartnerHarvests({
                                   result: String(data.result),
                                   inspectedAt: String(data.inspectedAt || new Date().toISOString()),
                                   qualityGrade: String(data.qualityGrade || "Loại A"),
-                                  appearance: String(data.appearance || "Đạt yêu cầu"),
-                                  residueResult: String(data.residueResult || "Đạt yêu cầu"),
-                                  damageRate: Number(data.damageRate) || 0,
+                                  appearance: String(data.appearance || "Đạt"),
+                                  residueResult: String(data.residueResult || "Đạt"),
+                                  damageRate: Number(data.damageRate || 0),
                                   note: String(data.note || ""),
-                                  inspectorName: currentInspectorName,
+                                  inspectorName: String(data.inspectorName || "Người kiểm tra"),
                               },
                           }
                         : item
@@ -318,6 +323,60 @@ export function PartnerHarvests({
             setTimeout(() => setSuccessMessage(""), 6000);
         } catch {
             setError("Lỗi kết nối máy chủ khi lưu kết quả QC.");
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    // Submit Xuất kho nguyên liệu & Tạo ProcessingBatch
+    const submitIssue = async (data: {
+        rawMaterialLotId: string;
+        inputWeight: number;
+        lineName: string;
+        targetProduct: string;
+        method: string;
+        startedAt: string;
+        supervisorName: string;
+        note: string;
+    }) => {
+        if (!issueLot) return;
+        setBusy(issueLot.id);
+        setError("");
+        setSuccessMessage("");
+        try {
+            const response = await fetch("/api/processing/batches", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+            const result = await response.json();
+            if (!result.success) {
+                setError(result.message || "Xuất kho nguyên liệu thất bại.");
+                setBusy(null);
+                return;
+            }
+
+            const createdBatch = result.data;
+            const availableKg = issueLot.currentWeight ?? issueLot.actualReceivedWeight;
+            const remainingKg = Math.max(0, availableKg - data.inputWeight);
+
+            setLots((prev) =>
+                prev.map((item) =>
+                    item.id === issueLot.id
+                        ? {
+                              ...item,
+                              currentWeight: remainingKg,
+                              status: remainingKg === 0 ? "USED" : "PARTIALLY_USED",
+                          }
+                        : item
+                )
+            );
+
+            setIssuedBatchInfo({ batchCode: createdBatch.batchCode, lotCode: issueLot.code });
+            setIssueLot(null);
+            setSuccessMessage(`Đã xuất kho nguyên liệu và tạo lô chế biến ${createdBatch.batchCode}!`);
+        } catch {
+            setError("Lỗi kết nối máy chủ khi xuất kho.");
         } finally {
             setBusy(null);
         }
@@ -587,13 +646,21 @@ export function PartnerHarvests({
                                             </Button>
                                         )}
 
-                                        {isPassed && availableKg > 0 && (
-                                            <Link
-                                                href={`/dashboard/processing/processing?source=${lot.id}`}
-                                                className="flex-1 inline-flex items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs sm:text-sm font-bold shadow-sm transition"
+                                        {isPassed && availableKg > 0 ? (
+                                            <Button
+                                                size="sm"
+                                                className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
+                                                onClick={() => {
+                                                    setError("");
+                                                    setIssueLot(lot);
+                                                }}
                                             >
-                                                Đưa vào chế biến <ArrowRight className="ml-1.5 h-4 w-4" />
-                                            </Link>
+                                                Xuất kho chế biến <ArrowRight className="ml-1.5 h-4 w-4" />
+                                            </Button>
+                                        ) : isPassed && (
+                                            <span className="flex-1 text-center py-1.5 text-xs font-bold text-slate-400 bg-slate-100 rounded-xl">
+                                                Đã sử dụng hết
+                                            </span>
                                         )}
                                     </div>
                                 </CardContent>
@@ -630,6 +697,47 @@ export function PartnerHarvests({
                     onClose={() => setQcLot(null)}
                     onSubmit={submitQc}
                 />
+            )}
+
+            {/* MODAL: XUẤT KHO NGUYÊN LIỆU (Section 3) */}
+            {issueLot && (
+                <IssueRawMaterialModal
+                    lot={issueLot}
+                    inspectorName={currentInspectorName}
+                    busy={busy === issueLot.id}
+                    error={error}
+                    onClose={() => setIssueLot(null)}
+                    onSubmit={submitIssue}
+                />
+            )}
+
+            {/* MODAL: THÔNG BÁO XUẤT KHO THÀNH CÔNG */}
+            {issuedBatchInfo && (
+                <Modal title="Xuất kho nguyên liệu thành công" onClose={() => setIssuedBatchInfo(null)}>
+                    <div className="space-y-4 text-center py-2">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                            <CheckCircle2 className="h-10 w-10" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-black text-slate-900">Đã tạo lô chế biến thành công!</h3>
+                            <p className="mt-1 text-sm text-slate-600">
+                                Mã lô chế biến: <span className="font-mono font-bold text-emerald-700">{issuedBatchInfo.batchCode}</span>
+                            </p>
+                            <p className="text-xs text-slate-500 mt-0.5">Nguồn: {issuedBatchInfo.lotCode}</p>
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                            <Button variant="outline" className="flex-1 rounded-xl font-bold" onClick={() => setIssuedBatchInfo(null)}>
+                                Ở lại trang này
+                            </Button>
+                            <Link
+                                href="/dashboard/processing/processing"
+                                className="flex-1 inline-flex items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 text-sm shadow-sm transition"
+                            >
+                                Đi đến lô chế biến <ArrowRight className="ml-1.5 h-4 w-4" />
+                            </Link>
+                        </div>
+                    </div>
+                </Modal>
             )}
 
             {/* MODAL: XEM CHI TIẾT LÔ NGUYÊN LIỆU (Biên bản QC & Lô chế biến) */}
@@ -1485,5 +1593,202 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
                 {children}
             </div>
         </div>
+    );
+}
+
+function IssueRawMaterialModal({
+    lot,
+    inspectorName,
+    busy,
+    error,
+    onClose,
+    onSubmit,
+}: {
+    lot: RawLot;
+    inspectorName: string;
+    busy: boolean;
+    error: string;
+    onClose: () => void;
+    onSubmit: (data: {
+        rawMaterialLotId: string;
+        inputWeight: number;
+        lineName: string;
+        targetProduct: string;
+        method: string;
+        startedAt: string;
+        supervisorName: string;
+        note: string;
+    }) => void;
+}) {
+    const availableKg = lot.currentWeight ?? lot.acceptedWeight ?? lot.actualReceivedWeight;
+    const [inputWeight, setInputWeight] = useState(String(availableKg));
+    const [lineName, setLineName] = useState<string>(PRODUCTION_LINES[0]);
+    const [targetProduct, setTargetProduct] = useState(
+        lot.variety ? `${lot.variety} tách múi cấp đông` : "Sầu riêng Dona tách múi cấp đông"
+    );
+    const [method, setMethod] = useState<string>("Tách múi & Cấp đông nhanh (IQF)");
+    const [startedAt, setStartedAt] = useState(() => new Date().toISOString().slice(0, 16));
+    const [supervisorName, setSupervisorName] = useState(inspectorName);
+    const [note, setNote] = useState("");
+    const [localError, setLocalError] = useState("");
+
+    const handleSubmit = (e: FormEvent) => {
+        e.preventDefault();
+        const weightNum = Number(inputWeight);
+        if (!weightNum || weightNum <= 0) {
+            setLocalError("Khối lượng xuất phải lớn hơn 0 kg.");
+            return;
+        }
+        if (weightNum > availableKg) {
+            setLocalError(`Khối lượng xuất không được vượt quá ${availableKg.toLocaleString("vi-VN")} kg.`);
+            return;
+        }
+        setLocalError("");
+        onSubmit({
+            rawMaterialLotId: lot.id,
+            inputWeight: weightNum,
+            lineName,
+            targetProduct,
+            method,
+            startedAt: new Date(startedAt).toISOString(),
+            supervisorName,
+            note,
+        });
+    };
+
+    return (
+        <Modal title="XUẤT KHO NGUYÊN LIỆU" onClose={onClose}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                {(error || localError) && (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+                        {error || localError}
+                    </div>
+                )}
+
+                {/* Readonly Info Summary */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 space-y-2 text-xs">
+                    <div className="flex justify-between">
+                        <span className="text-slate-500 font-medium">Lô nguyên liệu:</span>
+                        <span className="font-mono font-bold text-brand-700">{lot.code}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-slate-500 font-medium">Kho hiện tại:</span>
+                        <span className="font-semibold text-slate-800">{lot.warehouseLocation || "KHO-NVL-01"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-slate-500 font-medium">Khối lượng khả dụng:</span>
+                        <span className="font-black text-emerald-700">{availableKg.toLocaleString("vi-VN")} kg</span>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2">
+                        <label className="text-xs font-bold text-slate-700">
+                            Khối lượng xuất (kg) <span className="text-rose-600">*</span>
+                        </label>
+                        <input
+                            type="number"
+                            step="any"
+                            min="0.1"
+                            max={availableKg}
+                            required
+                            value={inputWeight}
+                            onChange={(e) => setInputWeight(e.target.value)}
+                            className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-sm font-bold text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                        />
+                        <p className="mt-1 text-[11px] text-slate-400">Tối đa khả dụng: {availableKg.toLocaleString("vi-VN")} kg</p>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-slate-700">
+                            Dây chuyền <span className="text-rose-600">*</span>
+                        </label>
+                        <select
+                            value={lineName}
+                            onChange={(e) => setLineName(e.target.value)}
+                            className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-xs sm:text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none"
+                        >
+                            {PRODUCTION_LINES.map((line) => (
+                                <option key={line} value={line}>{line}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-slate-700">
+                            Sản phẩm dự kiến <span className="text-rose-600">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            required
+                            value={targetProduct}
+                            onChange={(e) => setTargetProduct(e.target.value)}
+                            className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-xs sm:text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                        <label className="text-xs font-bold text-slate-700">
+                            Phương pháp chế biến <span className="text-rose-600">*</span>
+                        </label>
+                        <select
+                            value={method}
+                            onChange={(e) => setMethod(e.target.value)}
+                            className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-xs sm:text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none"
+                        >
+                            {FREEZING_METHODS.map((m) => (
+                                <option key={m} value={m}>{m}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-slate-700">
+                            Ngày giờ xuất <span className="text-rose-600">*</span>
+                        </label>
+                        <input
+                            type="datetime-local"
+                            required
+                            value={startedAt}
+                            onChange={(e) => setStartedAt(e.target.value)}
+                            className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-xs sm:text-sm text-slate-800 focus:border-brand-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-slate-700">
+                            Người phụ trách <span className="text-rose-600">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            required
+                            value={supervisorName}
+                            onChange={(e) => setSupervisorName(e.target.value)}
+                            className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-xs sm:text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                        <label className="text-xs font-bold text-slate-700">Ghi chú xuất kho</label>
+                        <textarea
+                            rows={2}
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            placeholder="Ghi chú thêm về lô xuất kho hoặc yêu cầu kỹ thuật..."
+                            className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:border-brand-500 focus:outline-none"
+                        />
+                    </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                    <Button type="button" variant="outline" className="flex-1 rounded-2xl font-bold" onClick={onClose} disabled={busy}>
+                        Hủy
+                    </Button>
+                    <Button type="submit" className="flex-1 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold" disabled={busy}>
+                        {busy ? "Đang xuất kho..." : "Xuất kho & tạo lô chế biến"}
+                    </Button>
+                </div>
+            </form>
+        </Modal>
     );
 }
