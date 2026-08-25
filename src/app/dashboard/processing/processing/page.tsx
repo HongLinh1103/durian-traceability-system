@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PROCESSING_STEPS_CONFIG } from "@/lib/processing-facility";
 import { ProcessingBatchManager } from "@/components/processing/processing-batch-manager";
 
 export default async function Page() {
@@ -111,20 +112,39 @@ export default async function Page() {
             inputWeight: Number(input.inputWeight),
             farmName: input.rawMaterialLot.rawMaterialReceipt.sourceHarvestLot?.farm.farmName ?? "Vườn sầu riêng",
         })),
-        steps: row.steps.map((step) => ({
-            id: step.id,
-            stepType: step.stepType,
-            stepOrder: step.stepOrder,
-            status: step.status,
-            startedAt: step.startedAt,
-            completedAt: step.completedAt,
-            inputWeight: step.inputWeight ? Number(step.inputWeight) : null,
-            outputWeight: step.outputWeight ? Number(step.outputWeight) : null,
-            lossWeight: step.lossWeight ? Number(step.lossWeight) : null,
-            performedBy: step.performedBy?.fullName || null,
-            note: step.note,
-            metadata: step.metadata,
-        })),
+        steps: PROCESSING_STEPS_CONFIG.map((cfg) => {
+            const step = row.steps.find((s) => s.stepType === cfg.type);
+            if (step) {
+                return {
+                    id: step.id,
+                    stepType: step.stepType,
+                    stepOrder: cfg.order,
+                    status: step.status,
+                    startedAt: step.startedAt,
+                    completedAt: step.completedAt,
+                    inputWeight: step.inputWeight ? Number(step.inputWeight) : null,
+                    outputWeight: step.outputWeight ? Number(step.outputWeight) : null,
+                    lossWeight: step.lossWeight ? Number(step.lossWeight) : null,
+                    performedBy: step.performedBy?.fullName || null,
+                    note: step.note,
+                    metadata: step.metadata,
+                };
+            }
+            return {
+                id: `pending-${row.id}-${cfg.type}`,
+                stepType: cfg.type,
+                stepOrder: cfg.order,
+                status: cfg.type === "CLEANING" && row.steps.length === 0 ? "IN_PROGRESS" : "PENDING",
+                startedAt: cfg.type === "CLEANING" && row.steps.length === 0 ? row.startedAt : null,
+                completedAt: null,
+                inputWeight: cfg.type === "CLEANING" && row.steps.length === 0 ? Number(row.totalInputWeight) : null,
+                outputWeight: null,
+                lossWeight: null,
+                performedBy: null,
+                note: null,
+                metadata: null,
+            };
+        }),
         finishedLots: row.finishedLots.map((f) => ({
             id: f.id,
             lotCode: f.lotCode,

@@ -56,23 +56,61 @@ export async function PATCH(
         return NextResponse.json({ success: false, message: "Không tìm thấy mẻ chế biến." }, { status: 404 });
     }
 
-    const targetStep = batch.steps.find((s) => s.stepType === stepType);
-    if (!targetStep) {
-        return NextResponse.json({ success: false, message: "Công đoạn không tồn tại trong mẻ chế biến." }, { status: 404 });
+    const targetConfig = PROCESSING_STEPS_CONFIG.find((c) => c.type === stepType);
+    if (!targetConfig) {
+        return NextResponse.json({ success: false, message: `Công đoạn ${stepType} không hợp lệ trong quy trình 5 bước.` }, { status: 400 });
     }
 
-    // Không cho ProcessingStep sau chạy trước bước bắt buộc trước đó
-    const previousSteps = batch.steps.filter((s) => s.stepOrder < targetStep.stepOrder);
-    const incompletePrevious = previousSteps.find((s) => s.status !== "COMPLETED" && s.status !== "SKIPPED");
-    if (incompletePrevious) {
-        const prevConfig = PROCESSING_STEPS_CONFIG.find((c) => c.type === incompletePrevious.stepType);
-        return NextResponse.json(
-            {
-                success: false,
-                message: `Chưa thể thực hiện bước này vì bước trước đó (${prevConfig?.name || incompletePrevious.stepType}) chưa hoàn tất.`,
-            },
-            { status: 400 }
+    // Auto-create or synchronize missing 5 steps for existing batch
+    let batchSteps = batch.steps;
+    const existingTypes = new Set(batchSteps.map((s) => s.stepType));
+    const missingConfigs = PROCESSING_STEPS_CONFIG.filter((cfg) => !existingTypes.has(cfg.type));
+
+    if (missingConfigs.length > 0) {
+        await prisma.$transaction(
+            missingConfigs.map((cfg) =>
+                prisma.processingStep.create({
+                    data: {
+                        processingBatchId: batch.id,
+                        stepType: cfg.type,
+                        stepOrder: cfg.order,
+                        status: cfg.type === "CLEANING" && batchSteps.length === 0 ? "IN_PROGRESS" : "PENDING",
+                        startedAt: cfg.type === "CLEANING" && batchSteps.length === 0 ? batch.startedAt : null,
+                        inputWeight: cfg.type === "CLEANING" && batchSteps.length === 0 ? Number(batch.totalInputWeight) : null,
+                        performedById: session.user.id,
+                    },
+                })
+            )
         );
+
+        batchSteps = await prisma.processingStep.findMany({
+            where: { processingBatchId: batch.id },
+            orderBy: { stepOrder: "asc" },
+        });
+    }
+
+    const targetStep = batchSteps.find((s) => s.stepType === stepType);
+    if (!targetStep) {
+        return NextResponse.json({ success: false, message: "Không thể khởi tạo công đoạn cho mẻ chế biến." }, { status: 404 });
+    }
+
+    // Check prerequisite steps (only for steps > 1)
+    if (targetConfig.order > 1) {
+        const prevConfigs = PROCESSING_STEPS_CONFIG.filter((c) => c.order < targetConfig.order);
+        const incompletePrevious = prevConfigs.find((pc) => {
+            const stepRecord = batchSteps.find((s) => s.stepType === pc.type);
+            return !stepRecord || (stepRecord.status !== "COMPLETED" && stepRecord.status !== "SKIPPED");
+        });
+
+        if (incompletePrevious) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: `Chưa thể thực hiện bước này vì bước trước đó (${incompletePrevious.name}) chưa hoàn tất.`,
+                },
+                { status: 400 }
+            );
+        }
     }
 
     const completedAt = value.completedAt ? new Date(value.completedAt) : new Date();
@@ -93,6 +131,7 @@ export async function PATCH(
                 where: { id: targetStep.id },
                 data: {
                     status: nextStatus,
+                    stepOrder: targetConfig.order,
                     startedAt: value.action === "START" ? startedAt : targetStep.startedAt || startedAt,
                     completedAt: nextStatus === "COMPLETED" || nextStatus === "SKIPPED" ? completedAt : null,
                     inputWeight,
@@ -106,16 +145,20 @@ export async function PATCH(
 
             // If this step is completed, activate next step
             if (nextStatus === "COMPLETED") {
-                const nextStep = batch.steps.find((s) => s.stepOrder === targetStep.stepOrder + 1);
-                if (nextStep && nextStep.status === "PENDING") {
-                    await tx.processingStep.update({
-                        where: { id: nextStep.id },
-                        data: {
-                            status: "IN_PROGRESS",
-                            startedAt: completedAt,
-                            inputWeight: outputWeight,
-                        },
-                    });
+                const nextStepConfig = PROCESSING_STEPS_CONFIG.find((c) => c.order === targetConfig.order + 1);
+                if (nextStepConfig) {
+                    const nextStep = batchSteps.find((s) => s.stepType === nextStepConfig.type);
+                    if (nextStep && nextStep.status === "PENDING") {
+                        await tx.processingStep.update({
+                            where: { id: nextStep.id },
+                            data: {
+                                status: "IN_PROGRESS",
+                                stepOrder: nextStepConfig.order,
+                                startedAt: completedAt,
+                                inputWeight: outputWeight,
+                            },
+                        });
+                    }
                 }
             }
 
