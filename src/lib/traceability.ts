@@ -81,7 +81,8 @@ export async function checkHarvestCompliance(harvestLotId: string) {
 
 const harvestInclude = {
     farm: { include: { region: true, farmer: { select: { fullName: true } } } },
-    cropSeason: true,
+    cropSeason: { include: { farmingLogs: { orderBy: { actionDate: "desc" as const }, take: 30, select: { id: true, stage: true, activityType: true, actionDate: true, notes: true } } } },
+    harvestRecord: { select: { code: true, actualStartedAt: true, actualHarvestedAt: true, farmerDeliveredAt: true, buyerReceivedAt: true, completedAt: true, actualWeight: true, deliveredWeight: true, receivedWeight: true, actualFruitCount: true } },
     snapshot: true,
     procurementOrders: { include: { goodsReceipt: { include: { quality: true } } } },
 } as const;
@@ -240,6 +241,7 @@ export async function getPublicTrace(publicToken: string) {
                     farmerOwner: { select: { fullName: true } },
                     destination: true,
                     shipmentItems: { include: { shipment: { include: { exportInfo: true } } }, orderBy: { createdAt: "desc" } },
+                    sourceCollectionLot: { select: { lotCode: true, totalWeight: true, status: true, finalizedAt: true } },
                     sourceFinishedProductLot: { select: { manufacturedAt: true, productName: true } },
                 },
             },
@@ -247,8 +249,50 @@ export async function getPublicTrace(publicToken: string) {
     });
     if (!trace) return null;
     const sources = await collectPublicHarvestSources(trace.commercialLotId);
-    const timeline = await prisma.traceEvent.findMany({ where: { commercialLotId: trace.commercialLotId, isPublic: true }, orderBy: [{ eventTime: "desc" }, { createdAt: "desc" }] });
+    const storedTimeline = await prisma.traceEvent.findMany({ where: { commercialLotId: trace.commercialLotId, isPublic: true }, orderBy: [{ eventTime: "desc" }, { createdAt: "desc" }] });
     const shipment = trace.commercialLot.shipmentItems[0]?.shipment ?? null;
+    type PublicEvent = { eventType: string; eventTime: Date; title: string; description?: string | null; locationText?: string | null; metadata?: unknown };
+    const derivedTimeline: PublicEvent[] = [];
+    const weights = sources.map(source => Number(source.harvestRecord.receivedWeight ?? source.harvestRecord.actualWeight ?? source.weight));
+    const totalSourceWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    const farmNames = sources.map(source => source.farm.farmName);
+    const sourceLabel = farmNames.length === 1 ? farmNames[0] : `${farmNames.length} vườn nguồn`;
+    const latestDate = (dates: Array<Date | null | undefined>) => dates.filter((date): date is Date => Boolean(date)).sort((a, b) => b.getTime() - a.getTime())[0];
+    const earliestDate = (dates: Array<Date | null | undefined>) => dates.filter((date): date is Date => Boolean(date)).sort((a, b) => a.getTime() - b.getTime())[0];
+
+    const seasonStartedAt = earliestDate(sources.map(source => source.cropSeason.startedAt));
+    if (seasonStartedAt) derivedTimeline.push({ eventType: "CROP_SEASON_STARTED", eventTime: seasonStartedAt, title: "Bắt đầu vụ mùa", description: `${[...new Set(sources.map(source => source.cropSeason.name))].join(", ")} · ${sourceLabel}`, locationText: sources[0]?.farm.region ? `${sources[0].farm.region.code} · ${sources[0].farm.region.name}` : sources[0]?.farm.address });
+    const preHarvestLogs = sources.flatMap(source => source.cropSeason.farmingLogs.filter(log => log.stage === "PRE_HARVEST"));
+    const preHarvestAt = latestDate(preHarvestLogs.map(log => log.actionDate));
+    if (preHarvestAt) derivedTimeline.push({ eventType: "PRE_HARVEST_CHECKED", eventTime: preHarvestAt, title: "Kiểm tra trước thu hoạch", description: "Đủ điều kiện thu hoạch theo nhật ký canh tác và kiểm tra tuân thủ", metadata: { compliant: true } });
+    const harvestStartedAt = earliestDate(sources.map(source => source.harvestRecord.actualStartedAt));
+    if (harvestStartedAt) derivedTimeline.push({ eventType: "HARVEST_STARTED", eventTime: harvestStartedAt, title: "Bắt đầu thu hoạch", description: sourceLabel, locationText: sources[0]?.farm.address });
+    const harvestedAt = latestDate(sources.map(source => source.harvestRecord.actualHarvestedAt ?? source.harvestedAt));
+    if (harvestedAt) derivedTimeline.push({ eventType: "HARVEST_COMPLETED", eventTime: harvestedAt, title: "Hoàn tất thu hoạch", description: `${sourceLabel} · Khối lượng thực tế: ${totalSourceWeight.toLocaleString("vi-VN")} kg`, metadata: { harvestLots: sources.map(source => source.lotCode), weight: totalSourceWeight } });
+    const deliveredAt = latestDate(sources.map(source => source.harvestRecord.farmerDeliveredAt));
+    if (deliveredAt) derivedTimeline.push({ eventType: "FARMER_DELIVERED", eventTime: deliveredAt, title: "Hàng được giao khỏi vườn", description: `Từ ${sourceLabel} đến ${trace.commercialLot.owner?.name ?? "đơn vị thu mua"}`, metadata: { harvestLots: sources.map(source => source.lotCode) } });
+    const receipts = sources.flatMap(source => source.procurementOrders.map(order => order.goodsReceipt).filter((receipt): receipt is NonNullable<typeof receipt> => Boolean(receipt)));
+    const receivedAt = latestDate(receipts.map(receipt => receipt.receivedAt));
+    if (receivedAt) derivedTimeline.push({ eventType: "GOODS_RECEIVED", eventTime: receivedAt, title: "Vựa đã nhận hàng", description: `Thực nhận: ${receipts.reduce((sum, receipt) => sum + Number(receipt.receivedWeight), 0).toLocaleString("vi-VN")} kg · ${trace.commercialLot.owner?.name ?? "Vựa thu mua"}`, metadata: { receiptCodes: receipts.map(receipt => receipt.receiptCode) } });
+    const qualities = receipts.map(receipt => receipt.quality).filter((quality): quality is NonNullable<typeof quality> => Boolean(quality));
+    const inspectedAt = latestDate(qualities.map(quality => quality.inspectedAt));
+    if (inspectedAt) derivedTimeline.push({ eventType: "COLLECTOR_QC_PASSED", eventTime: inspectedAt, title: "Kiểm tra chất lượng", description: `Kết quả: ${qualities.every(quality => quality.result === "PASSED") ? "Đạt" : "Có điều kiện"}${qualities[0]?.grade ? ` · Phân loại: ${qualities[0].grade}` : ""}`, metadata: { results: qualities.map(quality => quality.result) } });
+    const collection = trace.commercialLot.sourceCollectionLot;
+    if (collection?.finalizedAt) derivedTimeline.push({ eventType: "COLLECTION_LOT_FINALIZED", eventTime: collection.finalizedAt, title: "Lô thu mua được hoàn tất", description: `${collection.lotCode} · Tổng khối lượng: ${Number(collection.totalWeight).toLocaleString("vi-VN")} kg`, metadata: { lotCode: collection.lotCode } });
+
+    const publicStoredTimeline: PublicEvent[] = storedTimeline.map(event => {
+        if (event.eventType === "QR_ISSUED") return { ...event, description: `Mã truy xuất: ${trace.code} · Đơn vị phát hành: ${trace.commercialLot.owner?.name ?? trace.commercialLot.farmerOwner?.fullName ?? "Hộ sản xuất"}` };
+        if (event.eventType === "COMMERCIAL_LOT_CREATED") return { ...event, title: "Lô xuất bán được tạo", description: `${trace.commercialLot.lotCode} · ${trace.commercialLot.productName} · ${Number(trace.commercialLot.quantity).toLocaleString("vi-VN")} ${trace.commercialLot.unit} · Điểm đến: ${trace.commercialLot.destination?.name ?? "Chưa xác định"}` };
+        if (["SHIPMENT_DISPATCHED", "DIRECT_RETAIL_DISPATCHED", "EXPORT_DISPATCHED"].includes(event.eventType) && shipment) return { ...event, description: `${trace.commercialLot.destination?.name ?? "Điểm phân phối"} · Khối lượng: ${Number(shipment.dispatchedWeight).toLocaleString("vi-VN")} kg · Xuất bởi: ${trace.commercialLot.owner?.name ?? trace.commercialLot.farmerOwner?.fullName ?? "Đơn vị phát hành"}` };
+        return event;
+    });
+    const uniqueEvents = new Map<string, PublicEvent>();
+    for (const event of [...publicStoredTimeline, ...derivedTimeline]) {
+        const key = `${event.eventType}:${event.eventTime.toISOString()}:${event.title}`;
+        if (!uniqueEvents.has(key)) uniqueEvents.set(key, event);
+    }
+    const eventPriority: Record<string, number> = { COLLECTION_LOT_FINALIZED: 30, COLLECTOR_QC_PASSED: 20, GOODS_RECEIVED: 10 };
+    const timeline = [...uniqueEvents.values()].sort((a, b) => b.eventTime.getTime() - a.eventTime.getTime() || (eventPriority[b.eventType] ?? 0) - (eventPriority[a.eventType] ?? 0));
     return {
         qrStatus: trace.status,
         code: trace.code,
@@ -260,7 +304,7 @@ export async function getPublicTrace(publicToken: string) {
         currentStatus: shipment?.status === "RECEIVED" ? "Đã giao thành công" : shipment && ['DISPATCHED', 'IN_TRANSIT'].includes(shipment.status) ? trace.commercialLot.ownerType === "FARMER" ? "Đã xuất bán trực tiếp" : "Đã xuất hàng đến điểm bán" : "Sẵn sàng phân phối",
         processingSummary: trace.commercialLot.sourceFinishedProductLot ? { manufacturedAt: trace.commercialLot.sourceFinishedProductLot.manufacturedAt, productName: trace.commercialLot.sourceFinishedProductLot.productName } : null,
         shipment: shipment ? { code: shipment.shipmentCode, status: shipment.status, dispatchAt: shipment.dispatchAt, receivedAt: shipment.receivedAt, exportInfo: shipment.exportInfo } : null,
-        farms: sources.map((source) => ({ lotCode: source.lotCode, farmName: source.farm.farmName, farmCode: source.farm.farmCode, region: source.farm.region ? { code: source.farm.region.code, name: source.farm.region.name } : null, variety: source.farm.durianVariety, harvestedAt: source.harvestedAt, contributedWeight: Number(source.weight), unit: "kg", complianceStatus: source.complianceStatus, season: source.cropSeason.name, cultivationSummary: source.snapshot?.cultivationSummarySnapshot ?? null })),
+        farms: sources.map((source) => ({ lotCode: source.lotCode, farmName: source.farm.farmName, farmCode: source.farm.farmCode, region: source.farm.region ? { code: source.farm.region.code, name: source.farm.region.name } : null, variety: source.farm.durianVariety, harvestedAt: source.harvestedAt, contributedWeight: Number(source.weight), unit: "kg", complianceStatus: source.complianceStatus, season: source.cropSeason.name, cultivationSummary: source.snapshot?.cultivationSummarySnapshot ?? null, cultivationLogs: source.cropSeason.farmingLogs.map(log => ({ stage: log.stage, activityType: log.activityType, actionDate: log.actionDate, notes: log.notes })) })),
         timeline: timeline.map((event) => ({ eventType: event.eventType, eventTime: event.eventTime, title: event.title, description: event.description, locationText: event.locationText, metadata: event.metadata })),
     };
 }
