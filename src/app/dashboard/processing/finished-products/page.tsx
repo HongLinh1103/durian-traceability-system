@@ -108,10 +108,10 @@ export default async function Page() {
     return (
         <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
             <header className="rounded-3xl border bg-white p-5 shadow-sm">
-                <p className="text-sm font-bold uppercase tracking-wider text-brand-700">Module thành phẩm</p>
+                <p className="text-sm font-bold uppercase tracking-wider text-brand-700">MODULE THÀNH PHẨM</p>
                 <h1 className="mt-1 text-3xl font-black text-slate-900">Lô thành phẩm</h1>
                 <p className="mt-2 text-sm text-slate-500">
-                    Quản lý thành phẩm sau chế biến, theo dõi lượng tồn khả dụng và chuyển giao sang module Tạo QR xuất bán.
+                    Quản lý thành phẩm sau chế biến, tồn kho, khối lượng khả dụng và trạng thái sẵn sàng phân phối.
                 </p>
             </header>
 

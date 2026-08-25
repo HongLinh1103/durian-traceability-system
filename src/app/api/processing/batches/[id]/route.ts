@@ -56,6 +56,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
                     },
                 },
             },
+            steps: {
+                orderBy: { stepOrder: "asc" },
+                include: { performedBy: { select: { id: true, fullName: true } } },
+            },
         },
     });
 

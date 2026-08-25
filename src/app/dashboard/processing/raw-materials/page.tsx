@@ -91,7 +91,9 @@ export default async function Page({ searchParams }: { searchParams?: { filter?:
         <header className="rounded-3xl border bg-white p-5 shadow-sm">
             <p className="text-sm font-bold uppercase tracking-wide text-brand-700">Nguồn hàng được gửi đến</p>
             <h1 className="mt-1 text-3xl font-black text-slate-900">Nguyên liệu</h1>
-            <p className="mt-2 text-sm text-slate-500">Tiếp nhận nguồn từ nông dân, theo dõi giao hàng, ghi nhận thực nhận và QC trước khi đưa vào chế biến.</p>
+            <p className="mt-2 text-sm text-slate-500">
+                Tiếp nhận nguồn từ nông dân hoặc vựa thu mua, theo dõi giao nhận, kiểm tra chất lượng và quản lý nguyên liệu trước khi đưa vào chế biến.
+            </p>
         </header>
         <section className="rounded-3xl border bg-white p-5 shadow-sm">
             <PartnerHarvests initial={JSON.parse(JSON.stringify(incomingHarvests))} rawLots={JSON.parse(JSON.stringify(rawLots))} mode="PROCESSING_FACILITY" initialTab={searchParams?.filter === "action-required" ? "action-required" : "all"} />

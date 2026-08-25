@@ -3,21 +3,18 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
-    ArrowRight,
+    Boxes,
     CheckCircle2,
-    ExternalLink,
-    Factory,
     PackageCheck,
     QrCode,
-    Scale,
-    ShieldCheck,
     Truck,
     X,
+    ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getStatusBadgeVariant } from "@/lib/processing-facility";
 
-export type FinishedLotItem = {
+export type FinishedProductLotItem = {
     id: string;
     lotCode: string;
     productName: string;
@@ -42,13 +39,13 @@ export type FinishedLotItem = {
         unit: string;
         status: string;
         destinationName: string;
-        traceabilityCode: {
+        traceabilityCode?: {
             id: string;
             publicToken: string;
             status: string;
         } | null;
     }>;
-    batchDetails?: {
+    batchDetails: {
         method: string;
         totalInputWeight: number;
         totalOutputWeight: number;
@@ -59,65 +56,63 @@ export type FinishedLotItem = {
             variety: string;
             qcResult: string;
         }>;
-    } | null;
+    };
 };
 
 export function FinishedProductManager({
     initialLots,
 }: {
-    initialLots: FinishedLotItem[];
+    initialLots: FinishedProductLotItem[];
 }) {
-    const [lots] = useState<FinishedLotItem[]>(initialLots);
+    const [lots] = useState<FinishedProductLotItem[]>(initialLots);
     const [tab, setTab] = useState("all");
-    const [viewLot, setViewLot] = useState<FinishedLotItem | null>(null);
+    const [viewLot, setViewLot] = useState<FinishedProductLotItem | null>(null);
 
     const filteredLots = useMemo(() => {
         if (tab === "all") return lots;
-        if (tab === "ready") return lots.filter((l) => l.status === "READY_FOR_DISTRIBUTION");
+        if (tab === "ready") return lots.filter((l) => ["READY_FOR_DISTRIBUTION", "AVAILABLE"].includes(l.status) && l.remainingWeight > 0);
         if (tab === "partial") return lots.filter((l) => l.status === "PARTIALLY_DISTRIBUTED");
-        if (tab === "distributed") return lots.filter((l) => l.status === "DISTRIBUTED");
-        if (tab === "has_qr") return lots.filter((l) => l.commercialLots.some((c) => c.traceabilityCode));
+        if (tab === "distributed") return lots.filter((l) => l.status === "DISTRIBUTED" || l.remainingWeight <= 0);
         return lots;
     }, [lots, tab]);
 
-    const totalWeight = useMemo(() => lots.reduce((acc, l) => acc + l.netWeight, 0), [lots]);
-    const remainingWeight = useMemo(() => lots.reduce((acc, l) => acc + l.remainingWeight, 0), [lots]);
+    // 4 KPI Stats according to Section XXXV
+    const stats = useMemo(() => {
+        const total = lots.length;
+        const ready = lots.filter(
+            (l) => ["READY_FOR_DISTRIBUTION", "AVAILABLE"].includes(l.status) && l.remainingWeight > 0
+        ).length;
+        const partial = lots.filter((l) => l.status === "PARTIALLY_DISTRIBUTED").length;
+        const distributed = lots.filter((l) => l.status === "DISTRIBUTED" || l.remainingWeight <= 0).length;
+        return { total, ready, partial, distributed };
+    }, [lots]);
 
     return (
         <div className="space-y-6">
-            {/* KPI STATS */}
+            {/* SECTION 1: 4 KPIS (Section XXXV) */}
             <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                <MetricCard icon={Boxes} label="Tổng lô thành phẩm" value={stats.total} variant="slate" />
                 <MetricCard
                     icon={PackageCheck}
-                    label="Tổng lô thành phẩm"
-                    value={lots.length}
-                    subValue={`${totalWeight.toLocaleString("vi-VN")} kg`}
-                    variant="slate"
-                />
-                <MetricCard
-                    icon={CheckCircle2}
                     label="Sẵn sàng phân phối"
-                    value={lots.filter((l) => l.status === "READY_FOR_DISTRIBUTION").length}
-                    subValue="Chưa xuất lô nào"
+                    value={stats.ready}
                     variant="emerald"
                 />
                 <MetricCard
-                    icon={Scale}
-                    label="Đang phân phối một phần"
-                    value={lots.filter((l) => l.status === "PARTIALLY_DISTRIBUTED").length}
-                    subValue={`Còn ${remainingWeight.toLocaleString("vi-VN")} kg`}
+                    icon={Truck}
+                    label="Đã phân bổ một phần"
+                    value={stats.partial}
                     variant="sky"
                 />
                 <MetricCard
-                    icon={Truck}
-                    label="Đã phân phối hết"
-                    value={lots.filter((l) => l.status === "DISTRIBUTED").length}
-                    subValue="Xuất đủ 100%"
-                    variant="amber"
+                    icon={CheckCircle2}
+                    label="Đã phân phối"
+                    value={stats.distributed}
+                    variant="slate"
                 />
             </section>
 
-            {/* TABS & LIST */}
+            {/* SECTION 2: TABS LỌC TRẠNG THÁI */}
             <section className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
                     <div className="flex flex-wrap gap-2">
@@ -125,8 +120,7 @@ export function FinishedProductManager({
                             ["all", "Tất cả"],
                             ["ready", "Sẵn sàng phân phối"],
                             ["partial", "Đã phân bổ một phần"],
-                            ["distributed", "Đã phân phối hết"],
-                            ["has_qr", "Đã có mã QR"],
+                            ["distributed", "Đã phân phối"],
                         ].map(([key, label]) => (
                             <button
                                 key={key}
@@ -143,139 +137,148 @@ export function FinishedProductManager({
                     </div>
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-2">
+                {/* GRID THẺ THÀNH PHẨM (Section XXXVI, XXXVII, XXXVIII) */}
+                <div className="grid gap-4 md:grid-cols-2">
                     {filteredLots.map((lot) => {
                         const badge = getStatusBadgeVariant(lot.status);
-                        const isAvailable = lot.remainingWeight > 0;
+                        const hasRemaining = lot.remainingWeight > 0;
 
                         return (
                             <article
                                 key={lot.id}
-                                className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition space-y-4 flex flex-col justify-between"
+                                className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition space-y-4"
                             >
-                                <div className="space-y-3">
-                                    <div className="flex items-start justify-between gap-2 border-b pb-3">
-                                        <div>
+                                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3.5">
+                                    <div>
+                                        <div className="flex items-center gap-2">
                                             <p className="text-xs font-mono font-bold tracking-wide text-brand-700">
                                                 {lot.lotCode}
                                             </p>
-                                            <h3 className="mt-1 text-lg font-black text-slate-900">
-                                                {lot.productName}
-                                            </h3>
-                                            <p className="mt-0.5 text-xs text-slate-500">
-                                                Nguồn chế biến:{" "}
-                                                <b className="font-mono text-slate-700">
-                                                    {lot.sourceProcessingBatchCode}
-                                                </b>{" "}
-                                                · Loại: <span className="font-semibold">{lot.productType}</span>
-                                            </p>
+                                            <span
+                                                className={`inline-flex shrink-0 items-center rounded-full border px-3 py-0.5 text-xs font-bold ${badge.bg} ${badge.text} ${badge.border}`}
+                                            >
+                                                {badge.label}
+                                            </span>
                                         </div>
-                                        <span
-                                            className={`inline-flex shrink-0 items-center rounded-full border px-3 py-0.5 text-xs font-bold ${badge.bg} ${badge.text} ${badge.border}`}
-                                        >
-                                            {badge.label}
-                                        </span>
+                                        <h3 className="mt-1.5 text-lg font-black uppercase text-slate-900">
+                                            {lot.productName}
+                                        </h3>
+                                        <p className="mt-0.5 text-xs text-slate-500">
+                                            Nguồn chế biến:{" "}
+                                            <b className="font-mono text-brand-700">{lot.sourceProcessingBatchCode}</b>
+                                            {" · "}
+                                            Phương pháp: <span className="font-medium text-slate-700">{lot.productType}</span>
+                                        </p>
                                     </div>
-
-                                    <dl className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-                                        <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
-                                            <dt className="text-slate-400 font-semibold uppercase">Khối lượng ban đầu</dt>
-                                            <dd className="mt-0.5 font-bold text-slate-800">
-                                                {lot.netWeight.toLocaleString("vi-VN")} kg
-                                            </dd>
-                                        </div>
-                                        <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
-                                            <dt className="text-slate-400 font-semibold uppercase">Đã phân bổ</dt>
-                                            <dd className="mt-0.5 font-bold text-slate-700">
-                                                {lot.allocatedWeight.toLocaleString("vi-VN")} kg
-                                            </dd>
-                                        </div>
-                                        <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100 col-span-2 sm:col-span-1">
-                                            <dt className="text-slate-400 font-semibold uppercase">Còn khả dụng</dt>
-                                            <dd className="mt-0.5 font-black text-brand-700 text-sm">
-                                                {lot.remainingWeight.toLocaleString("vi-VN")} kg
-                                            </dd>
-                                        </div>
-                                        <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
-                                            <dt className="text-slate-400 font-semibold uppercase">Ngày sản xuất</dt>
-                                            <dd className="mt-0.5 font-semibold text-slate-800">
-                                                {new Date(lot.manufacturedAt).toLocaleDateString("vi-VN")}
-                                            </dd>
-                                        </div>
-                                        <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
-                                            <dt className="text-slate-400 font-semibold uppercase">Quy cách</dt>
-                                            <dd className="mt-0.5 font-semibold text-slate-800 truncate" title={lot.packaging || "Chưa cập nhật"}>
-                                                {lot.packaging || "Chưa cập nhật"}
-                                            </dd>
-                                        </div>
-                                        <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
-                                            <dt className="text-slate-400 font-semibold uppercase">Vị trí kho</dt>
-                                            <dd className="mt-0.5 font-semibold text-slate-800 truncate" title={lot.warehouseLocation || "Kho TP"}>
-                                                {lot.warehouseLocation || "Kho TP-01"}
-                                            </dd>
-                                        </div>
-                                    </dl>
-
-                                    {/* DANH SÁCH LÔ THƯƠNG MẠI / QR ĐÃ XUẤT */}
-                                    {lot.commercialLots.length > 0 && (
-                                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3.5 space-y-2 text-xs">
-                                            <div className="flex items-center justify-between">
-                                                <span className="font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                                                    <QrCode className="h-3.5 w-3.5" /> Các lô xuất / Mã QR ({lot.commercialLots.length})
-                                                </span>
-                                                <Link
-                                                    href="/dashboard/processing/traceability"
-                                                    className="font-bold text-emerald-700 hover:underline inline-flex items-center gap-0.5"
-                                                >
-                                                    Quản lý QR <ArrowRight className="h-3 w-3" />
-                                                </Link>
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                {lot.commercialLots.map((cm) => (
-                                                    <div
-                                                        key={cm.id}
-                                                        className="flex items-center justify-between rounded-xl bg-white p-2.5 border border-emerald-100"
-                                                    >
-                                                        <div>
-                                                            <b className="font-mono text-emerald-900 block">{cm.lotCode}</b>
-                                                            <span className="text-slate-500">
-                                                                {cm.quantity.toLocaleString("vi-VN")} {cm.unit} · {cm.destinationName}
-                                                            </span>
-                                                        </div>
-                                                        {cm.traceabilityCode ? (
-                                                            <Link
-                                                                target="_blank"
-                                                                href={`/trace/${cm.traceabilityCode.publicToken}`}
-                                                                className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1 font-mono text-xs font-bold text-emerald-800 transition"
-                                                            >
-                                                                {cm.traceabilityCode.publicToken} <ExternalLink className="h-3 w-3" />
-                                                            </Link>
-                                                        ) : (
-                                                            <span className="text-amber-700 font-semibold text-xs">
-                                                                Chờ tạo QR
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
 
-                                <div className="flex gap-2 pt-2 border-t">
+                                <dl className="grid grid-cols-2 gap-3 text-xs">
+                                    <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
+                                        <dt className="text-slate-400 font-semibold uppercase">Khối lượng ban đầu</dt>
+                                        <dd className="mt-1 text-sm font-bold text-slate-800">
+                                            {lot.netWeight.toLocaleString("vi-VN")} kg
+                                        </dd>
+                                    </div>
+                                    <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
+                                        <dt className="text-slate-400 font-semibold uppercase">Đã phân bổ xuất</dt>
+                                        <dd className="mt-1 text-sm font-bold text-slate-600">
+                                            {lot.allocatedWeight.toLocaleString("vi-VN")} kg
+                                        </dd>
+                                    </div>
+                                    <div className="rounded-xl bg-emerald-50/80 p-2.5 border border-emerald-200 col-span-2 sm:col-span-1">
+                                        <dt className="text-emerald-700 font-bold uppercase">Còn khả dụng</dt>
+                                        <dd className="mt-1 text-base font-black text-emerald-800">
+                                            {lot.remainingWeight.toLocaleString("vi-VN")} kg
+                                        </dd>
+                                    </div>
+                                    <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100 col-span-2 sm:col-span-1">
+                                        <dt className="text-slate-400 font-semibold uppercase">Quy cách đóng gói</dt>
+                                        <dd className="mt-1 text-xs font-bold text-slate-800">
+                                            {lot.packaging || "Chưa cập nhật"}
+                                        </dd>
+                                    </div>
+                                </dl>
+
+                                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-1">
+                                    <div>
+                                        <span className="text-slate-400 block">Kho lưu trữ:</span>
+                                        <b className="text-slate-800">{lot.warehouseLocation || "KHO-TP-01"}</b>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400 block">Điều kiện bảo quản:</span>
+                                        <b className="text-slate-800">{lot.storageCondition || "Âm sâu -18°C"}</b>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400 block">Ngày sản xuất:</span>
+                                        <span className="font-medium text-slate-800">
+                                            {new Date(lot.manufacturedAt).toLocaleDateString("vi-VN")}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400 block">Hạn sử dụng:</span>
+                                        <span className="font-medium text-slate-800">
+                                            {lot.expiryDate
+                                                ? new Date(lot.expiryDate).toLocaleDateString("vi-VN")
+                                                : "12 tháng"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* PARTIAL COMMERCIAL LOTS & ISSUED QR LIST */}
+                                {lot.commercialLots.length > 0 && (
+                                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2 text-xs">
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-bold text-slate-700 uppercase">
+                                                Lô thương mại đã chia ({lot.commercialLots.length}):
+                                            </span>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            {lot.commercialLots.map((cm) => (
+                                                <div
+                                                    key={cm.id}
+                                                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white p-2.5 border border-slate-200"
+                                                >
+                                                    <div>
+                                                        <b className="font-mono text-brand-700">{cm.lotCode}</b>
+                                                        <span className="text-slate-500 ml-1.5">
+                                                            ({cm.quantity.toLocaleString("vi-VN")} {cm.unit}) →{" "}
+                                                            <b className="text-slate-800">{cm.destinationName}</b>
+                                                        </span>
+                                                    </div>
+                                                    {cm.traceabilityCode ? (
+                                                        <Link
+                                                            href={`/trace/${cm.traceabilityCode.publicToken}`}
+                                                            target="_blank"
+                                                            className="inline-flex items-center gap-1 font-bold text-brand-600 hover:underline"
+                                                        >
+                                                            <QrCode className="h-3.5 w-3.5" /> Quét QR <ExternalLink className="h-3 w-3" />
+                                                        </Link>
+                                                    ) : (
+                                                        <span className="text-amber-700">Chưa cấp QR</span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ACTIONS */}
+                                <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
                                     <Button
                                         variant="outline"
-                                        className="flex-1 font-bold text-slate-700"
+                                        size="sm"
+                                        className="rounded-xl font-bold"
                                         onClick={() => setViewLot(lot)}
                                     >
-                                        Xem chi tiết
+                                        Xem chi tiết & Phả hệ
                                     </Button>
-                                    {isAvailable && (
+
+                                    {hasRemaining && (
                                         <Link
                                             href={`/dashboard/processing/traceability?source=${lot.id}`}
-                                            className="flex-1 inline-flex items-center justify-center rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-3 py-2 text-sm font-bold shadow-sm transition"
+                                            className="flex-1 inline-flex items-center justify-center rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-sm transition"
                                         >
-                                            <QrCode className="mr-1.5 h-4 w-4" /> Tạo QR
+                                            <QrCode className="mr-1.5 h-4 w-4" /> Tạo QR xuất bán
                                         </Link>
                                     )}
                                 </div>
@@ -284,127 +287,142 @@ export function FinishedProductManager({
                     })}
 
                     {!filteredLots.length && (
-                        <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center text-slate-500 lg:col-span-2">
-                            Chưa có lô thành phẩm nào trong nhóm này.
+                        <div className="col-span-full rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center text-slate-500">
+                            Chưa có lô thành phẩm nào trong nhóm trạng thái này.
                         </div>
                     )}
                 </div>
             </section>
 
-            {/* MODAL: CHI TIẾT LÔ THÀNH PHẨM & TRACE LINEAGE */}
-            {viewLot && (
-                <Modal title={`Chi tiết Lô thành phẩm ${viewLot.lotCode}`} onClose={() => setViewLot(null)}>
-                    <div className="space-y-4 text-xs">
-                        <div className="rounded-2xl border bg-slate-50 p-4 space-y-2">
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">Mã lô thành phẩm:</span>
-                                <b className="font-mono text-brand-700 text-sm">{viewLot.lotCode}</b>
+            {/* MODAL: XEM CHI TIẾT & CÂY PHẢ HỆ TRUY XUẤT NGUỒN GỐC */}
+            {viewLot && <FinishedLotDetailModal lot={viewLot} onClose={() => setViewLot(null)} />}
+        </div>
+    );
+}
+
+// ---------------------- SUB-MODAL COMPONENTS ----------------------
+
+function FinishedLotDetailModal({
+    lot,
+    onClose,
+}: {
+    lot: FinishedProductLotItem;
+    onClose: () => void;
+}) {
+    const badge = getStatusBadgeVariant(lot.status);
+    const hasRemaining = lot.remainingWeight > 0;
+
+    return (
+        <Modal title={`Phả hệ Lô thành phẩm ${lot.lotCode}`} onClose={onClose}>
+            <div className="space-y-4 text-sm">
+                <div className="flex items-center justify-between border-b pb-2">
+                    <div>
+                        <span className="font-mono font-bold text-brand-700">{lot.lotCode}</span>
+                        <h3 className="font-black text-slate-900 uppercase text-base">{lot.productName}</h3>
+                    </div>
+                    <span className={`rounded-full px-3 py-0.5 text-xs font-bold ${badge.bg} ${badge.text}`}>
+                        {badge.label}
+                    </span>
+                </div>
+
+                {/* BASIC INFO */}
+                <div className="rounded-2xl border bg-slate-50 p-4 space-y-2 text-xs">
+                    <div className="flex justify-between">
+                        <span className="text-slate-500">Khối lượng ban đầu:</span>
+                        <b className="text-slate-800">{lot.netWeight.toLocaleString("vi-VN")} kg</b>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-slate-500">Đã phân bổ xuất:</span>
+                        <b className="text-slate-600">{lot.allocatedWeight.toLocaleString("vi-VN")} kg</b>
+                    </div>
+                    <div className="flex justify-between text-sm pt-1 border-t border-slate-200">
+                        <span className="font-bold text-emerald-800">Khối lượng khả dụng còn lại:</span>
+                        <b className="font-black text-emerald-700">{lot.remainingWeight.toLocaleString("vi-VN")} kg</b>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-slate-500">Quy cách & Bao bì:</span>
+                        <b className="text-slate-800">{lot.packaging || "Chưa cập nhật"}</b>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-slate-500">Kho & Điều kiện:</span>
+                        <b className="text-slate-800">
+                            {lot.warehouseLocation || "Kho TP"} · {lot.storageCondition || "-18°C"}
+                        </b>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-slate-500">Ngày sản xuất:</span>
+                        <b className="text-slate-800">{new Date(lot.manufacturedAt).toLocaleString("vi-VN")}</b>
+                    </div>
+                </div>
+
+                {/* LINEAGE TRACING TREE (Farm -> Harvest -> Batch -> Finished) */}
+                <div className="space-y-3">
+                    <h4 className="font-black text-xs uppercase tracking-wider text-slate-700">
+                        Cây phả hệ truy xuất nguồn gốc
+                    </h4>
+
+                    <div className="relative pl-4 space-y-3 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-brand-200">
+                        {/* 1. NGUỒN NÔNG HỘ / VƯỜN */}
+                        {lot.batchDetails.rawLots.map((raw, idx) => (
+                            <div key={idx} className="relative rounded-2xl border bg-white p-3 text-xs space-y-1 shadow-sm">
+                                <div className="flex items-center gap-1.5 font-bold text-emerald-800">
+                                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[10px] text-white">
+                                        1
+                                    </span>
+                                    <span>Vườn trồng & Thu hoạch: {raw.farmName}</span>
+                                </div>
+                                <p className="text-slate-600">
+                                    Giống sầu riêng: <b>{raw.variety}</b> · Lô nguyên liệu nguồn:{" "}
+                                    <b className="font-mono text-brand-700">{raw.code}</b>
+                                </p>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">Tên sản phẩm:</span>
-                                <b className="text-slate-800 text-sm">{viewLot.productName}</b>
+                        ))}
+
+                        {/* 2. MẺ CHẾ BIẾN */}
+                        <div className="relative rounded-2xl border bg-white p-3 text-xs space-y-1 shadow-sm">
+                            <div className="flex items-center gap-1.5 font-bold text-brand-800">
+                                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-[10px] text-white">
+                                    2
+                                </span>
+                                <span>Mẻ chế biến: {lot.sourceProcessingBatchCode}</span>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">Loại sản phẩm / Chế biến:</span>
-                                <b className="text-slate-800">{viewLot.productType}</b>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">Khối lượng ban đầu:</span>
-                                <b className="text-slate-900">{viewLot.netWeight.toLocaleString("vi-VN")} kg</b>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">Đã phân bổ xuất:</span>
-                                <b className="text-slate-700">{viewLot.allocatedWeight.toLocaleString("vi-VN")} kg</b>
-                            </div>
-                            <div className="flex justify-between border-t pt-1">
-                                <span className="font-bold text-slate-700">Khối lượng còn khả dụng:</span>
-                                <b className="font-black text-emerald-700 text-sm">
-                                    {viewLot.remainingWeight.toLocaleString("vi-VN")} kg
-                                </b>
-                            </div>
+                            <p className="text-slate-600">
+                                Phương pháp: <b>{lot.batchDetails.method}</b> · Đầu vào:{" "}
+                                <b>{lot.batchDetails.totalInputWeight.toLocaleString("vi-VN")} kg</b> · Tỷ lệ thu hồi:{" "}
+                                <b className="text-emerald-700">{lot.batchDetails.yieldPercent}%</b>
+                            </p>
                         </div>
 
-                        {/* NGUỒN GỐC CHẾ BIẾN & NGUYÊN LIỆU */}
-                        <div className="rounded-2xl border border-slate-200 p-4 space-y-2.5">
-                            <h4 className="font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                                <Factory className="h-4 w-4 text-brand-600" /> Nguồn gốc chế biến & Nguyên liệu
-                            </h4>
-                            <div className="flex justify-between items-center rounded-xl bg-slate-50 p-2.5 border">
-                                <div>
-                                    <span className="text-slate-400 block">Mã mẻ chế biến:</span>
-                                    <b className="font-mono text-brand-700">{viewLot.sourceProcessingBatchCode}</b>
-                                </div>
-                                {viewLot.batchDetails && (
-                                    <div className="text-right">
-                                        <span className="text-slate-400 block">Hiệu suất thu hồi:</span>
-                                        <b className="text-emerald-700 font-bold">{viewLot.batchDetails.yieldPercent}%</b>
-                                    </div>
-                                )}
+                        {/* 3. LÔ THÀNH PHẨM */}
+                        <div className="relative rounded-2xl border border-emerald-300 bg-emerald-50/50 p-3 text-xs space-y-1 shadow-sm">
+                            <div className="flex items-center gap-1.5 font-black text-emerald-900">
+                                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-700 text-[10px] text-white">
+                                    3
+                                </span>
+                                <span>Lô thành phẩm hoàn tất: {lot.lotCode}</span>
                             </div>
-
-                            {viewLot.batchDetails?.rawLots && viewLot.batchDetails.rawLots.length > 0 && (
-                                <div className="space-y-1 pt-1">
-                                    <span className="font-bold text-slate-600 block">Lô nguyên liệu & Vườn nguồn:</span>
-                                    {viewLot.batchDetails.rawLots.map((raw, idx) => (
-                                        <div key={idx} className="flex justify-between items-center p-2 rounded-lg bg-emerald-50/60 border border-emerald-100">
-                                            <div>
-                                                <b className="font-mono text-emerald-900 block">{raw.code}</b>
-                                                <span className="text-slate-600">{raw.farmName} ({raw.variety})</span>
-                                            </div>
-                                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
-                                                <ShieldCheck className="h-3 w-3" /> QC {raw.qcResult === "PASSED" ? "Đạt" : raw.qcResult}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* DANH SÁCH LÔ THƯƠNG MẠI */}
-                        {viewLot.commercialLots.length > 0 && (
-                            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2">
-                                <h4 className="font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
-                                    <QrCode className="h-4 w-4" /> Các lô bán / QR đã phát hành
-                                </h4>
-                                <div className="space-y-1.5">
-                                    {viewLot.commercialLots.map((cm) => (
-                                        <div key={cm.id} className="flex justify-between items-center bg-white p-2.5 rounded-xl border">
-                                            <div>
-                                                <b className="font-mono text-slate-800 block">{cm.lotCode}</b>
-                                                <span className="text-slate-500">{cm.quantity} {cm.unit} · {cm.destinationName}</span>
-                                            </div>
-                                            {cm.traceabilityCode && (
-                                                <Link
-                                                    target="_blank"
-                                                    href={`/trace/${cm.traceabilityCode.publicToken}`}
-                                                    className="inline-flex items-center gap-1 font-mono font-bold text-emerald-700 hover:underline"
-                                                >
-                                                    {cm.traceabilityCode.publicToken} <ExternalLink className="h-3 w-3" />
-                                                </Link>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex gap-2 pt-2">
-                            <Button variant="outline" className="flex-1 rounded-2xl" onClick={() => setViewLot(null)}>
-                                Đóng
-                            </Button>
-                            {viewLot.remainingWeight > 0 && (
-                                <Link
-                                    href={`/dashboard/processing/traceability?source=${viewLot.id}`}
-                                    className="flex-1 inline-flex items-center justify-center rounded-2xl bg-brand-600 hover:bg-brand-700 text-white px-3 py-2 text-sm font-bold shadow-sm transition"
-                                >
-                                    <QrCode className="mr-1.5 h-4 w-4" /> Tạo QR xuất bán
-                                </Link>
-                            )}
+                            <p className="text-slate-700">
+                                Đóng gói <b>{lot.packaging}</b> · Khối lượng: <b>{lot.netWeight.toLocaleString("vi-VN")} kg</b>
+                            </p>
                         </div>
                     </div>
-                </Modal>
-            )}
-        </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                    <Button variant="outline" className="flex-1 rounded-2xl" onClick={onClose}>
+                        Đóng
+                    </Button>
+                    {hasRemaining && (
+                        <Link
+                            href={`/dashboard/processing/traceability?source=${lot.id}`}
+                            className="flex-1 inline-flex items-center justify-center rounded-2xl bg-brand-600 hover:bg-brand-700 text-white px-3.5 py-2 text-sm font-bold shadow-sm transition"
+                        >
+                            <QrCode className="mr-1.5 h-4 w-4" /> Tạo QR xuất bán
+                        </Link>
+                    )}
+                </div>
+            </div>
+        </Modal>
     );
 }
 
@@ -412,20 +430,18 @@ function MetricCard({
     icon: Icon,
     label,
     value,
-    subValue,
     variant,
 }: {
-    icon: typeof PackageCheck;
+    icon: typeof Boxes;
     label: string;
     value: number;
-    subValue?: string;
-    variant: "slate" | "emerald" | "sky" | "amber";
+    variant: "slate" | "sky" | "amber" | "emerald";
 }) {
     const bgMap = {
         slate: "bg-slate-50 text-slate-700",
-        emerald: "bg-emerald-50 text-emerald-700",
         sky: "bg-sky-50 text-sky-700",
         amber: "bg-amber-50 text-amber-700",
+        emerald: "bg-emerald-50 text-emerald-700",
     };
 
     return (
@@ -439,9 +455,6 @@ function MetricCard({
             <p className="mt-2 truncate text-xl font-black text-slate-900 sm:text-2xl">
                 {value.toLocaleString("vi-VN")}
             </p>
-            {subValue && (
-                <p className="mt-0.5 text-xs text-slate-400 truncate">{subValue}</p>
-            )}
         </article>
     );
 }
@@ -454,7 +467,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
                 if (event.target === event.currentTarget) onClose();
             }}
         >
-            <div className="my-auto max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-6">
+            <div className="my-auto max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h2 className="text-xl font-black text-slate-900">{title}</h2>
                     <button

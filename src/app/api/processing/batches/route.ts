@@ -3,26 +3,30 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PROCESSING_STEPS_CONFIG } from "@/lib/processing-facility";
 
 const createBatchSchema = z.object({
-    rawMaterialLotId: z.string().min(1, "Vui lòng chọn nguồn nguyên liệu"),
-    inputWeight: z.coerce.number().positive("Khối lượng đưa vào chế biến phải lớn hơn 0"),
-    method: z.string().trim().min(2, "Vui lòng chọn hoặc nhập phương pháp chế biến"),
-    targetProduct: z.string().trim().min(2, "Vui lòng chọn hoặc nhập sản phẩm mục tiêu"),
+    rawMaterialLotId: z.string().min(1, "Vui lòng chọn lô nguyên liệu"),
+    inputWeight: z.coerce.number().positive("Khối lượng đầu vào phải lớn hơn 0"),
+    method: z.string().min(1, "Vui lòng nhập/chọn phương pháp chế biến"),
+    targetProduct: z.string().min(1, "Vui lòng nhập/chọn sản phẩm mục tiêu"),
+    lineName: z.string().trim().optional(),
     startedAt: z.string().optional(),
     supervisorName: z.string().trim().optional(),
     note: z.string().trim().optional(),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") {
         return NextResponse.json({ success: false, message: "Không có quyền truy cập." }, { status: 403 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const statusParam = searchParams.get("status");
+
     const facility = await prisma.partnerFacility.findFirst({
         where: { ownerId: session.user.id, type: "PROCESSING_FACILITY", deletedAt: null },
-        select: { id: true },
     });
 
     if (!facility) {
@@ -30,7 +34,10 @@ export async function GET() {
     }
 
     const batches = await prisma.processingBatch.findMany({
-        where: { facilityId: facility.id },
+        where: {
+            facilityId: facility.id,
+            ...(statusParam ? { status: statusParam as any } : {}),
+        },
         include: {
             inputs: {
                 include: {
@@ -39,13 +46,18 @@ export async function GET() {
                             rawMaterialReceipt: {
                                 include: {
                                     sourceHarvestLot: { include: { farm: true } },
+                                    sourceCollectionLot: { include: { collectorFacility: true } },
                                 },
                             },
                         },
                     },
                 },
             },
-            supervisor: { select: { fullName: true, phone: true } },
+            supervisor: { select: { id: true, fullName: true, phone: true } },
+            steps: {
+                orderBy: { stepOrder: "asc" },
+                include: { performedBy: { select: { id: true, fullName: true } } },
+            },
             finishedLots: {
                 select: {
                     id: true,
@@ -61,38 +73,74 @@ export async function GET() {
         orderBy: { startedAt: "desc" },
     });
 
-    const formatted = batches.map((batch) => ({
-        id: batch.id,
-        batchCode: batch.batchCode,
-        method: batch.method,
-        targetProduct: batch.targetProduct,
-        startedAt: batch.startedAt,
-        completedAt: batch.completedAt,
-        totalInputWeight: Number(batch.totalInputWeight),
-        totalOutputWeight: Number(batch.totalOutputWeight),
-        lossWeight: Number(batch.lossWeight),
-        yieldPercent: Number(batch.yieldPercent),
-        status: batch.status,
-        note: batch.note,
-        supervisor: batch.supervisor.fullName,
-        inputs: batch.inputs.map((input) => ({
-            id: input.id,
-            rawMaterialLotId: input.rawMaterialLotId,
-            rawMaterialLotCode: input.rawMaterialLot.lotCode,
-            inputWeight: Number(input.inputWeight),
-            farmName: input.rawMaterialLot.rawMaterialReceipt.sourceHarvestLot?.farm.farmName ?? "Lô tổng hợp",
-        })),
-        finishedLots: batch.finishedLots.map((lot) => ({
-            id: lot.id,
-            lotCode: lot.lotCode,
-            productName: lot.productName,
-            netWeight: Number(lot.netWeight),
-            remainingWeight: Number(lot.remainingWeight),
-            status: lot.status,
-        })),
-    }));
+    const data = batches.map((batch) => {
+        const completedStepsCount = batch.steps.filter((s) => s.status === "COMPLETED").length;
+        const currentStep = batch.steps.find((s) => s.status === "IN_PROGRESS") || batch.steps.find((s) => s.status === "PENDING") || batch.steps[batch.steps.length - 1];
 
-    return NextResponse.json({ success: true, data: formatted });
+        return {
+            id: batch.id,
+            batchCode: batch.batchCode,
+            method: batch.method,
+            targetProduct: batch.targetProduct,
+            lineName: batch.lineName || "Dây chuyền 1",
+            startedAt: batch.startedAt,
+            completedAt: batch.completedAt,
+            totalInputWeight: Number(batch.totalInputWeight),
+            totalOutputWeight: Number(batch.totalOutputWeight),
+            lossWeight: Number(batch.lossWeight),
+            yieldPercent: Number(batch.yieldPercent),
+            status: batch.status,
+            note: batch.note,
+            completedStepsCount,
+            totalStepsCount: batch.steps.length || 9,
+            currentStep: currentStep
+                ? {
+                      stepType: currentStep.stepType,
+                      stepOrder: currentStep.stepOrder,
+                      status: currentStep.status,
+                  }
+                : null,
+            supervisor: batch.supervisor.fullName,
+            inputs: batch.inputs.map((inp) => {
+                const raw = inp.rawMaterialLot;
+                const sourceHarvest = raw.rawMaterialReceipt.sourceHarvestLot;
+                const sourceCollection = raw.rawMaterialReceipt.sourceCollectionLot;
+                return {
+                    id: inp.id,
+                    rawMaterialLotId: raw.id,
+                    rawMaterialLotCode: raw.lotCode,
+                    inputWeight: Number(inp.inputWeight),
+                    farmName: sourceHarvest?.farm.farmName ?? sourceCollection?.collectorFacility.name ?? "Vườn",
+                    variety: sourceHarvest?.farm.durianVariety ?? "Sầu riêng Dona",
+                };
+            }),
+            steps: batch.steps.map((step) => ({
+                id: step.id,
+                stepType: step.stepType,
+                stepOrder: step.stepOrder,
+                status: step.status,
+                startedAt: step.startedAt,
+                completedAt: step.completedAt,
+                inputWeight: step.inputWeight ? Number(step.inputWeight) : null,
+                outputWeight: step.outputWeight ? Number(step.outputWeight) : null,
+                lossWeight: step.lossWeight ? Number(step.lossWeight) : null,
+                performedBy: step.performedBy?.fullName || null,
+                note: step.note,
+                metadata: step.metadata,
+            })),
+            finishedLots: batch.finishedLots.map((f) => ({
+                id: f.id,
+                lotCode: f.lotCode,
+                productName: f.productName,
+                quantity: Number(f.quantity),
+                netWeight: Number(f.netWeight),
+                remainingWeight: Number(f.remainingWeight),
+                status: f.status,
+            })),
+        };
+    });
+
+    return NextResponse.json({ success: true, data });
 }
 
 export async function POST(request: Request) {
@@ -174,6 +222,7 @@ export async function POST(request: Request) {
                     facilityId: facility.id,
                     method: value.method,
                     targetProduct: value.targetProduct,
+                    lineName: value.lineName || "Dây chuyền 1",
                     startedAt,
                     supervisorId: session.user.id,
                     totalInputWeight: value.inputWeight,
@@ -201,6 +250,56 @@ export async function POST(request: Request) {
                 },
             });
 
+            // Initialize all 9 processing steps
+            const stepCreates = PROCESSING_STEPS_CONFIG.map((cfg) => {
+                if (cfg.type === "RAW_MATERIAL_ISSUE") {
+                    return tx.processingStep.create({
+                        data: {
+                            processingBatchId: createdBatch.id,
+                            stepType: cfg.type,
+                            stepOrder: cfg.order,
+                            status: "COMPLETED",
+                            startedAt,
+                            completedAt: startedAt,
+                            inputWeight: value.inputWeight,
+                            outputWeight: value.inputWeight,
+                            lossWeight: 0,
+                            performedById: session.user.id,
+                            note: `Xuất kho nguyên liệu ${rawLot.lotCode} (${rawLot.warehouseLocation || "Kho NVL"})`,
+                            metadata: {
+                                rawMaterialLotCode: rawLot.lotCode,
+                                warehouseLocation: rawLot.warehouseLocation || "KHO-NVL-01",
+                                beforeWeight: currentAvailableWeight,
+                                issuedWeight: value.inputWeight,
+                            },
+                        },
+                    });
+                }
+                if (cfg.type === "CLEANING") {
+                    return tx.processingStep.create({
+                        data: {
+                            processingBatchId: createdBatch.id,
+                            stepType: cfg.type,
+                            stepOrder: cfg.order,
+                            status: "IN_PROGRESS",
+                            startedAt,
+                            inputWeight: value.inputWeight,
+                            performedById: session.user.id,
+                        },
+                    });
+                }
+                return tx.processingStep.create({
+                    data: {
+                        processingBatchId: createdBatch.id,
+                        stepType: cfg.type,
+                        stepOrder: cfg.order,
+                        status: "PENDING",
+                    },
+                });
+            });
+
+            await Promise.all(stepCreates);
+
             await tx.lotRelation.create({
                 data: {
                     sourceType: "RAW_MATERIAL_LOT",
@@ -213,6 +312,26 @@ export async function POST(request: Request) {
                 },
             });
 
+            // Log RAW_MATERIAL_ISSUED
+            await tx.traceEvent.create({
+                data: {
+                    entityType: "RAW_MATERIAL_LOT",
+                    entityId: rawLot.id,
+                    eventType: "RAW_MATERIAL_ISSUED",
+                    eventTime: startedAt,
+                    actorId: session.user.id,
+                    actorRole: "PROCESSING_FACILITY",
+                    organizationType: "PROCESSING_FACILITY",
+                    organizationId: facility.id,
+                    title: "Xuất kho nguyên liệu đưa vào chế biến",
+                    description: `Đã xuất ${value.inputWeight} kg từ lô ${rawLot.lotCode} (${rawLot.warehouseLocation || "Kho NVL"}) cho mẻ ${createdBatch.batchCode} (${value.targetProduct}).`,
+                    sourceEntityType: "RAW_MATERIAL_LOT",
+                    sourceEntityId: rawLot.id,
+                    isPublic: true,
+                },
+            });
+
+            // Log PROCESSING_STARTED
             await tx.traceEvent.create({
                 data: {
                     entityType: "PROCESSING_BATCH",
@@ -224,7 +343,7 @@ export async function POST(request: Request) {
                     organizationType: "PROCESSING_FACILITY",
                     organizationId: facility.id,
                     title: `Bắt đầu mẻ chế biến ${createdBatch.batchCode}`,
-                    description: `Sản phẩm: ${value.targetProduct} | Phương pháp: ${value.method} | Nguyên liệu: ${rawLot.lotCode} (${value.inputWeight} kg)`,
+                    description: `Sản phẩm: ${value.targetProduct} | Dây chuyền: ${value.lineName || "Dây chuyền 1"} | Phương pháp: ${value.method} | Đầu vào: ${value.inputWeight} kg`,
                     sourceEntityType: "RAW_MATERIAL_LOT",
                     sourceEntityId: rawLot.id,
                     isPublic: true,

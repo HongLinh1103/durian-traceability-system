@@ -103,11 +103,27 @@ export async function PATCH(request: Request, { params }: { params: { id: string
                 receiptCode: `RMR-${record.code}`, sourceType: "HARVEST_LOT", sourceHarvestLotId: harvestLot?.id || null, facilityId: facility.id,
                 dispatchedWeight: dispatched, receivedWeight: acceptedWeight, receivedAt, receivedById: session.user.id, status: "QC_PENDING", note,
             } });
-            await tx.rawMaterialLot.upsert({ where: { rawMaterialReceiptId: receipt.id }, update: {
+            const rawLot = await tx.rawMaterialLot.upsert({ where: { rawMaterialReceiptId: receipt.id }, update: {
                 acceptedWeight, currentWeight: acceptedWeight, warehouseLocation: body.warehouseLocation || undefined, status: "PENDING_QC",
             }, create: {
                 lotCode: `RM-${record.code}`, facilityId: facility.id, rawMaterialReceiptId: receipt.id, acceptedWeight, currentWeight: acceptedWeight, warehouseLocation: body.warehouseLocation || null, status: "PENDING_QC",
             } });
+
+            await tx.traceEvent.create({
+                data: {
+                    entityType: "RAW_MATERIAL_LOT",
+                    entityId: rawLot.id,
+                    eventType: "RAW_MATERIAL_RECEIVED",
+                    eventTime: receivedAt,
+                    actorId: session.user.id,
+                    actorRole: "PROCESSING_FACILITY",
+                    organizationType: "PROCESSING_FACILITY",
+                    organizationId: facility.id,
+                    title: "Tiếp nhận nguyên liệu",
+                    description: `Đã tiếp nhận nguyên liệu từ ${record.farm?.farmName || "Nông hộ"}. Thực nhận: ${receivedWeight} kg | Từ chối: ${rejectedWeight} kg | Chờ kiểm tra chất lượng (QC).`,
+                    isPublic: true,
+                },
+            }).catch(() => undefined);
         }
 
         if (action === "RECEIVE" && !await tx.farmingLog.findUnique({ where: { harvestRecordId: record.id } })) await tx.farmingLog.create({ data: {

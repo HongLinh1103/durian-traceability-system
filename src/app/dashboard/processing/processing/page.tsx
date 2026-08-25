@@ -49,6 +49,10 @@ export default async function Page() {
                           },
                       },
                       supervisor: { select: { fullName: true } },
+                      steps: {
+                          orderBy: { stepOrder: "asc" },
+                          include: { performedBy: { select: { id: true, fullName: true } } },
+                      },
                       finishedLots: {
                           select: {
                               id: true,
@@ -75,7 +79,7 @@ export default async function Page() {
             id: lot.id,
             code: lot.lotCode,
             variety: sourceHarvest?.farm.durianVariety ?? "Sầu riêng Dona",
-            farmName: sourceHarvest?.farm.farmName ?? sourceCollection?.collectorFacility.name ?? "Lô tổng hợp",
+            farmName: sourceHarvest?.farm.farmName ?? sourceCollection?.collectorFacility.name ?? "Vườn sầu riêng",
             sourceCode: sourceHarvest?.lotCode ?? sourceCollection?.lotCode ?? lot.rawMaterialReceipt.receiptCode,
             qualityGrade: latestInspection?.qualityGrade || "Loại A",
             residueResult: latestInspection?.residueResult || "Đạt",
@@ -90,6 +94,7 @@ export default async function Page() {
         batchCode: row.batchCode,
         method: row.method,
         targetProduct: row.targetProduct,
+        lineName: row.lineName || "Dây chuyền 1",
         startedAt: row.startedAt,
         completedAt: row.completedAt,
         totalInputWeight: Number(row.totalInputWeight),
@@ -104,7 +109,21 @@ export default async function Page() {
             rawMaterialLotId: input.rawMaterialLotId,
             rawMaterialLotCode: input.rawMaterialLot.lotCode,
             inputWeight: Number(input.inputWeight),
-            farmName: input.rawMaterialLot.rawMaterialReceipt.sourceHarvestLot?.farm.farmName ?? "Lô tổng hợp",
+            farmName: input.rawMaterialLot.rawMaterialReceipt.sourceHarvestLot?.farm.farmName ?? "Vườn sầu riêng",
+        })),
+        steps: row.steps.map((step) => ({
+            id: step.id,
+            stepType: step.stepType,
+            stepOrder: step.stepOrder,
+            status: step.status,
+            startedAt: step.startedAt,
+            completedAt: step.completedAt,
+            inputWeight: step.inputWeight ? Number(step.inputWeight) : null,
+            outputWeight: step.outputWeight ? Number(step.outputWeight) : null,
+            lossWeight: step.lossWeight ? Number(step.lossWeight) : null,
+            performedBy: step.performedBy?.fullName || null,
+            note: step.note,
+            metadata: step.metadata,
         })),
         finishedLots: row.finishedLots.map((f) => ({
             id: f.id,
@@ -120,10 +139,10 @@ export default async function Page() {
     return (
         <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
             <header className="rounded-3xl border bg-white p-5 shadow-sm">
-                <p className="text-sm font-bold uppercase tracking-wider text-brand-700">Module chế biến</p>
+                <p className="text-sm font-bold uppercase tracking-wider text-brand-700">MODULE CHẾ BIẾN</p>
                 <h1 className="mt-1 text-3xl font-black text-slate-900">Lô chế biến</h1>
                 <p className="mt-2 text-sm text-slate-500">
-                    Khởi tạo mẻ chế biến từ nguyên liệu đã QC đạt, theo dõi tiến độ, ghi nhận hao hụt và tạo lô thành phẩm.
+                    Quản lý các lô nguyên liệu được đưa vào dây chuyền, theo dõi từng công đoạn chế biến và kết quả đầu ra.
                 </p>
             </header>
 
@@ -135,4 +154,3 @@ export default async function Page() {
         </main>
     );
 }
-

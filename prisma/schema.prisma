@@ -314,6 +314,25 @@ enum ProcessingBatchStatus {
   CANCELLED
 }
 
+enum ProcessingStepType {
+  RAW_MATERIAL_ISSUE
+  CLEANING
+  PEELING_PULP_SEPARATION
+  REJECT_REMOVAL
+  FINAL_WEIGHING
+  PACKAGING
+  FREEZING
+  FINISHED_PRODUCT_QC
+  FINISHED_PRODUCT_WAREHOUSE_IN
+}
+
+enum ProcessingStepStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
 enum FinishedProductLotStatus {
   DRAFT
   AVAILABLE
@@ -599,6 +618,7 @@ model User {
   rawMaterialReceipts      RawMaterialReceipt[]          @relation("RawMaterialReceiver")
   qualityInspections       QualityInspection[]           @relation("QualityInspector")
   supervisedBatches        ProcessingBatch[]             @relation("ProcessingSupervisor")
+  performedProcessingSteps ProcessingStep[]              @relation("StepPerformer")
   issuedTraceCodes         TraceabilityCode[]            @relation("TraceCodeIssuer")
   suspendedTraceCodes      TraceabilityCode[]            @relation("TraceCodeSuspender")
   revokedTraceCodes        TraceabilityCode[]            @relation("TraceCodeRevoker")
@@ -1898,6 +1918,7 @@ model ProcessingBatch {
   facilityId        String
   method            String
   targetProduct     String
+  lineName          String?
   startedAt         DateTime
   completedAt       DateTime?
   supervisorId      String
@@ -1912,10 +1933,35 @@ model ProcessingBatch {
   facility          PartnerFacility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   supervisor        User                   @relation("ProcessingSupervisor", fields: [supervisorId], references: [id], onDelete: Restrict)
   inputs            ProcessingBatchInput[]
+  steps             ProcessingStep[]
   finishedLots      FinishedProductLot[]
 
   @@index([facilityId, status])
   @@map("processing_batches")
+}
+
+model ProcessingStep {
+  id                String               @id @default(cuid())
+  processingBatchId String
+  stepType          ProcessingStepType
+  stepOrder         Int
+  status            ProcessingStepStatus @default(PENDING)
+  startedAt         DateTime?
+  completedAt       DateTime?
+  inputWeight       Decimal?             @db.Decimal(14, 2)
+  outputWeight      Decimal?             @db.Decimal(14, 2)
+  lossWeight        Decimal?             @db.Decimal(14, 2)
+  performedById     String?
+  note              String?
+  metadata          Json?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  processingBatch   ProcessingBatch      @relation(fields: [processingBatchId], references: [id], onDelete: Cascade)
+  performedBy       User?                @relation("StepPerformer", fields: [performedById], references: [id], onDelete: SetNull)
+
+  @@unique([processingBatchId, stepType])
+  @@index([processingBatchId, stepOrder])
+  @@map("processing_steps")
 }
 
 model ProcessingBatchInput {

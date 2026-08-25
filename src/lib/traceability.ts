@@ -242,14 +242,38 @@ export async function getPublicTrace(publicToken: string) {
                     destination: true,
                     shipmentItems: { include: { shipment: { include: { exportInfo: true } } }, orderBy: { createdAt: "desc" } },
                     sourceCollectionLot: { select: { lotCode: true, totalWeight: true, status: true, finalizedAt: true } },
-                    sourceFinishedProductLot: { select: { manufacturedAt: true, productName: true } },
+                    sourceFinishedProductLot: {
+                        include: {
+                            processingBatch: {
+                                include: {
+                                    inputs: { select: { rawMaterialLotId: true } },
+                                },
+                            },
+                        },
+                    },
                 },
             },
         },
     });
     if (!trace) return null;
     const sources = await collectPublicHarvestSources(trace.commercialLotId);
-    const storedTimeline = await prisma.traceEvent.findMany({ where: { commercialLotId: trace.commercialLotId, isPublic: true }, orderBy: [{ eventTime: "desc" }, { createdAt: "desc" }] });
+
+    const fpl = trace.commercialLot.sourceFinishedProductLot;
+    const batchId = fpl?.processingBatchId;
+    const rawLotIds = fpl?.processingBatch.inputs.map((i) => i.rawMaterialLotId) || [];
+
+    const entityIds = [trace.commercialLotId, fpl?.id, batchId, ...rawLotIds].filter(Boolean) as string[];
+
+    const storedTimeline = await prisma.traceEvent.findMany({
+        where: {
+            OR: [
+                { commercialLotId: trace.commercialLotId },
+                { entityId: { in: entityIds } },
+            ],
+            isPublic: true,
+        },
+        orderBy: [{ eventTime: "desc" }, { createdAt: "desc" }],
+    });
     const shipment = trace.commercialLot.shipmentItems[0]?.shipment ?? null;
     type PublicEvent = { eventType: string; eventTime: Date; title: string; description?: string | null; locationText?: string | null; metadata?: unknown };
     const derivedTimeline: PublicEvent[] = [];
@@ -280,12 +304,61 @@ export async function getPublicTrace(publicToken: string) {
     const collection = trace.commercialLot.sourceCollectionLot;
     if (collection?.finalizedAt) derivedTimeline.push({ eventType: "COLLECTION_LOT_FINALIZED", eventTime: collection.finalizedAt, title: "Lô thu mua được hoàn tất", description: `${collection.lotCode} · Tổng khối lượng: ${Number(collection.totalWeight).toLocaleString("vi-VN")} kg`, metadata: { lotCode: collection.lotCode } });
 
-    const publicStoredTimeline: PublicEvent[] = storedTimeline.map(event => {
-        if (event.eventType === "QR_ISSUED") return { ...event, description: `Mã truy xuất: ${trace.code} · Đơn vị phát hành: ${trace.commercialLot.owner?.name ?? trace.commercialLot.farmerOwner?.fullName ?? "Hộ sản xuất"}` };
-        if (event.eventType === "COMMERCIAL_LOT_CREATED") return { ...event, title: "Lô xuất bán được tạo", description: `${trace.commercialLot.lotCode} · ${trace.commercialLot.productName} · ${Number(trace.commercialLot.quantity).toLocaleString("vi-VN")} ${trace.commercialLot.unit} · Điểm đến: ${trace.commercialLot.destination?.name ?? "Chưa xác định"}` };
-        if (["SHIPMENT_DISPATCHED", "DIRECT_RETAIL_DISPATCHED", "EXPORT_DISPATCHED"].includes(event.eventType) && shipment) return { ...event, description: `${trace.commercialLot.destination?.name ?? "Điểm phân phối"} · Khối lượng: ${Number(shipment.dispatchedWeight).toLocaleString("vi-VN")} kg · Xuất bởi: ${trace.commercialLot.owner?.name ?? trace.commercialLot.farmerOwner?.fullName ?? "Đơn vị phát hành"}` };
-        return event;
-    });
+    const publicSummaryEventTypes = new Set([
+        "CROP_SEASON_STARTED",
+        "PRE_HARVEST_CHECKED",
+        "HARVEST_STARTED",
+        "HARVEST_COMPLETED",
+        "FARMER_DELIVERED",
+        "GOODS_RECEIVED",
+        "COLLECTOR_QC_PASSED",
+        "COLLECTION_LOT_FINALIZED",
+        "RAW_MATERIAL_RECEIVED",
+        "RAW_MATERIAL_QC_PASSED",
+        "RAW_MATERIAL_ISSUED",
+        "PROCESSING_STARTED",
+        "PROCESSING_COMPLETED",
+        "FINISHED_PRODUCT_QC_PASSED",
+        "FINISHED_PRODUCT_WAREHOUSED",
+        "FINISHED_PRODUCT_CREATED",
+        "COMMERCIAL_LOT_CREATED",
+        "QR_ISSUED",
+        "SHIPMENT_DISPATCHED",
+        "DIRECT_RETAIL_DISPATCHED",
+        "EXPORT_DISPATCHED",
+    ]);
+
+    const publicStoredTimeline: PublicEvent[] = storedTimeline
+        .filter((event) => publicSummaryEventTypes.has(event.eventType))
+        .map((event) => {
+            if (event.eventType === "QR_ISSUED")
+                return {
+                    ...event,
+                    description: `Mã truy xuất: ${trace.code} · Đơn vị phát hành: ${
+                        trace.commercialLot.owner?.name ?? trace.commercialLot.farmerOwner?.fullName ?? "Hộ sản xuất"
+                    }`,
+                };
+            if (event.eventType === "COMMERCIAL_LOT_CREATED")
+                return {
+                    ...event,
+                    title: "Lô xuất bán được tạo",
+                    description: `${trace.commercialLot.lotCode} · ${trace.commercialLot.productName} · ${Number(
+                        trace.commercialLot.quantity
+                    ).toLocaleString("vi-VN")} ${trace.commercialLot.unit} · Điểm đến: ${
+                        trace.commercialLot.destination?.name ?? "Chưa xác định"
+                    }`,
+                };
+            if (["SHIPMENT_DISPATCHED", "DIRECT_RETAIL_DISPATCHED", "EXPORT_DISPATCHED"].includes(event.eventType) && shipment)
+                return {
+                    ...event,
+                    description: `${trace.commercialLot.destination?.name ?? "Điểm phân phối"} · Khối lượng: ${Number(
+                        shipment.dispatchedWeight
+                    ).toLocaleString("vi-VN")} kg · Xuất bởi: ${
+                        trace.commercialLot.owner?.name ?? trace.commercialLot.farmerOwner?.fullName ?? "Đơn vị phát hành"
+                    }`,
+                };
+            return event;
+        });
     const uniqueEvents = new Map<string, PublicEvent>();
     for (const event of [...publicStoredTimeline, ...derivedTimeline]) {
         const key = `${event.eventType}:${event.eventTime.toISOString()}:${event.title}`;
