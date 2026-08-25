@@ -127,18 +127,18 @@ export function FarmerHarvests({ initial }: { initial: Row[] }) {
             <div className="space-y-4">
                 {rows.map(item => (
                     <Card key={item.id} className="rounded-3xl border-slate-200 shadow-sm transition hover:border-brand-300">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
                             <Link
                                 href={`/dashboard/farmer/harvests/${item.id}`}
-                                className="group flex items-center gap-2 hover:opacity-80 transition"
+                                className="group flex min-w-0 flex-1 items-center gap-2 transition hover:opacity-80"
                             >
                                 <FileText className="h-5 w-5 text-brand-600" />
-                                <span className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-brand-700">
+                                <span className="min-w-0 truncate whitespace-nowrap text-sm font-bold text-slate-900 group-hover:text-brand-700 sm:text-lg">
                                     {item.code}
                                 </span>
                                 <ChevronRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition" />
                             </Link>
-                            <Badge className="bg-brand-50 text-brand-700">
+                            <Badge className="shrink-0 whitespace-nowrap bg-brand-50 px-2.5 text-xs text-brand-700 sm:text-sm">
                                 {labels[item.status] || item.status}
                             </Badge>
                         </CardHeader>

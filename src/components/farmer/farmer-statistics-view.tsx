@@ -374,11 +374,10 @@ export function FarmerStatisticsView({ initialData }: FarmerStatisticsViewProps 
                 <button
                     type="button"
                     onClick={() => setActiveTab("PESTICIDE")}
-                    className={`flex items-center justify-center gap-1.5 rounded-2xl py-3 transition ${
-                        activeTab === "PESTICIDE"
-                            ? "bg-white text-amber-900 shadow-sm"
-                            : "text-slate-600 hover:text-slate-900"
-                    }`}
+                    className={`flex items-center justify-center gap-1.5 rounded-2xl py-3 transition ${activeTab === "PESTICIDE"
+                        ? "bg-white text-amber-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                        }`}
                 >
                     <FlaskConical className="h-4 w-4 text-amber-600" />
                     <span>Thuốc BVTV</span>
@@ -387,11 +386,10 @@ export function FarmerStatisticsView({ initialData }: FarmerStatisticsViewProps 
                 <button
                     type="button"
                     onClick={() => setActiveTab("FERTILIZER")}
-                    className={`flex items-center justify-center gap-1.5 rounded-2xl py-3 transition ${
-                        activeTab === "FERTILIZER"
-                            ? "bg-white text-emerald-900 shadow-sm"
-                            : "text-slate-600 hover:text-slate-900"
-                    }`}
+                    className={`flex items-center justify-center gap-1.5 rounded-2xl py-3 transition ${activeTab === "FERTILIZER"
+                        ? "bg-white text-emerald-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                        }`}
                 >
                     <Leaf className="h-4 w-4 text-emerald-600" />
                     <span>Phân bón</span>
@@ -400,11 +398,10 @@ export function FarmerStatisticsView({ initialData }: FarmerStatisticsViewProps 
                 <button
                     type="button"
                     onClick={() => setActiveTab("EXPENSE")}
-                    className={`flex items-center justify-center gap-1.5 rounded-2xl py-3 transition ${
-                        activeTab === "EXPENSE"
-                            ? "bg-white text-brand-900 shadow-sm"
-                            : "text-slate-600 hover:text-slate-900"
-                    }`}
+                    className={`flex items-center justify-center gap-1.5 rounded-2xl py-3 transition ${activeTab === "EXPENSE"
+                        ? "bg-white text-brand-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                        }`}
                 >
                     <Wallet className="h-4 w-4 text-brand-600" />
                     <span>Tổng chi phí</span>
@@ -462,7 +459,6 @@ export function FarmerStatisticsView({ initialData }: FarmerStatisticsViewProps 
                                     <h2 className="text-base font-bold text-slate-900">
                                         Danh sách thuốc bảo vệ thực vật đã sử dụng
                                     </h2>
-                                    <span className="text-xs text-slate-400">Click vào dòng để xem chi tiết từng lần phun</span>
                                 </div>
 
                                 {pesticidesData.items.length === 0 ? (
@@ -637,7 +633,6 @@ export function FarmerStatisticsView({ initialData }: FarmerStatisticsViewProps 
                                     <h2 className="text-base font-bold text-slate-900">
                                         Danh sách phân bón đã sử dụng
                                     </h2>
-                                    <span className="text-xs text-slate-400">Click vào dòng để xem chi tiết từng lần bón</span>
                                 </div>
 
                                 {fertilizersData.items.length === 0 ? (

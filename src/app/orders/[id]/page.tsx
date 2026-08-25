@@ -263,8 +263,31 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                         3. Danh sách sản phẩm
                     </h2>
 
+                    <div className="space-y-3 md:hidden">
+                        {order.items.map((item) => {
+                            const unitPrice = Number(item.unitPrice);
+                            const lineTotal = unitPrice * item.quantity;
+                            return (
+                                <article key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+                                    <h3 className="break-words font-bold leading-snug text-slate-900">{item.productName}</h3>
+                                    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                        <div><dt className="text-xs text-slate-500">Số lượng</dt><dd className="font-semibold text-slate-800">{item.quantity} {item.unit}</dd></div>
+                                        <div className="text-right"><dt className="text-xs text-slate-500">Đơn giá</dt><dd className="font-semibold text-slate-800">{formatPrice(unitPrice)}</dd></div>
+                                        <div className="col-span-2 flex items-center justify-between border-t border-slate-200 pt-2"><dt className="font-semibold text-slate-600">Thành tiền</dt><dd className="font-black text-brand-700">{formatPrice(lineTotal)}</dd></div>
+                                    </dl>
+                                </article>
+                            );
+                        })}
+                        <dl className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 text-sm">
+                            <div className="flex justify-between gap-4"><dt className="text-slate-600">Tiền hàng</dt><dd className="font-semibold">{formatPrice(subtotal)}</dd></div>
+                            <div className="flex justify-between gap-4"><dt className="text-slate-600">Phí vận chuyển</dt><dd className="font-semibold">{formatPrice(shippingFee)}</dd></div>
+                            <div className="flex justify-between gap-4"><dt className="text-slate-600">Giảm giá</dt><dd>0 đ</dd></div>
+                            <div className="flex items-center justify-between gap-4 border-t-2 border-slate-800 pt-3"><dt className="font-black text-slate-900">Tổng thanh toán</dt><dd className="text-lg font-black text-brand-700">{formatPrice(totalAmount)}</dd></div>
+                        </dl>
+                    </div>
+
                     {/* Bảng hóa đơn (Receipt Table) */}
-                    <div className="overflow-x-auto">
+                    <div className="hidden md:block">
                         <table className="w-full text-left text-sm border-collapse">
                             <thead>
                                 <tr className="border-b border-slate-300 text-xs font-bold text-slate-700">

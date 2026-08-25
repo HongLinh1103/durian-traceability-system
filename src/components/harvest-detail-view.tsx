@@ -141,7 +141,7 @@ export function HarvestDetailView({ harvest: initialData }: { harvest: HarvestDa
 
     const totalEstimatedValue = harvest.varietyItems.reduce((sum, item) => {
         const weight = Number(item.expectedWeight) || 0;
-        const price = Number(item.expectedPricePerKg) || 0;
+        const price = Number(item.expectedPricePerKg ?? harvest.expectedPricePerKg) || 0;
         return sum + weight * price;
     }, 0);
 
@@ -354,7 +354,7 @@ export function HarvestDetailView({ harvest: initialData }: { harvest: HarvestDa
                                 <tbody className="divide-y divide-slate-100">
                                     {harvest.varietyItems.map(item => {
                                         const weight = Number(item.expectedWeight) || 0;
-                                        const price = Number(item.expectedPricePerKg) || 0;
+                                        const price = Number(item.expectedPricePerKg ?? harvest.expectedPricePerKg) || 0;
                                         const total = weight * price;
                                         return (
                                             <tr key={item.id} className="hover:bg-slate-50/60">
