@@ -963,7 +963,7 @@ export default function NewFarmingLogPage() {
             </Card>
 
             {cameraOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/80 p-3 backdrop-blur-sm">
                     <div className="w-full max-w-3xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
                         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                             <div>

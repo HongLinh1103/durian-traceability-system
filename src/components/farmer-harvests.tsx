@@ -229,12 +229,12 @@ export function FarmerHarvests({ initial }: { initial: Row[] }) {
                 typeof document !== "undefined" &&
                 createPortal(
                     <div
-                        className="fixed inset-0 z-[140] grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm"
+                        className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm"
                         onMouseDown={event => {
                             if (event.target === event.currentTarget) setModal(null);
                         }}
                     >
-                        <section className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-4">
+                        <section className="my-auto w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-4">
                             <div className="flex items-start justify-between border-b border-slate-100 pb-3">
                                 <div>
                                     <span className="text-xs font-bold uppercase tracking-wider text-brand-700">

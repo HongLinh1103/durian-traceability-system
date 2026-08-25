@@ -1,2 +1,50 @@
-import { getServerSession } from "next-auth";import { redirect } from "next/navigation";import { CircleDollarSign, Scale, WalletCards } from "lucide-react";import { authOptions } from "@/lib/auth";import { prisma } from "@/lib/prisma";
-export default async function Page(){const s=await getServerSession(authOptions);if(!s?.user?.id||s.user.role!=="COLLECTOR")redirect("/login");const rows=await prisma.harvestRecord.findMany({where:{buyerUserId:s.user.id,status:{notIn:["REJECTED","CANCELLED"]}},select:{status:true,expectedWeight:true,receivedWeight:true,expectedPricePerKg:true}});const expected=rows.reduce((n,r)=>n+Number(r.expectedWeight)*Number(r.expectedPricePerKg??0),0);const completed=rows.filter(r=>r.status==="COMPLETED").reduce((n,r)=>n+Number(r.receivedWeight??r.expectedWeight)*Number(r.expectedPricePerKg??0),0);const volume=rows.reduce((n,r)=>n+Number(r.receivedWeight??0),0);return <main className="mx-auto max-w-7xl space-y-6 px-4 py-7 sm:px-6"><header><p className="text-sm font-bold uppercase tracking-wider text-brand-600">Thu mua và công nợ</p><h1 className="mt-1 text-3xl font-black">Tài chính</h1><p className="mt-2 text-slate-500">Tổng hợp theo dữ liệu giao dịch hiện có.</p></header><div className="grid gap-4 md:grid-cols-3"><Card icon={WalletCards} label="Giá trị thu mua dự kiến" value={`${expected.toLocaleString("vi-VN")} đ`}/><Card icon={CircleDollarSign} label="Giá trị đã hoàn tất" value={`${completed.toLocaleString("vi-VN")} đ`}/><Card icon={Scale} label="Khối lượng đã nhận" value={`${volume.toLocaleString("vi-VN")} kg`}/></div><p className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-800">Công nợ chi tiết sẽ được ghi nhận khi hệ thống bổ sung chứng từ thanh toán; trang này không tự suy đoán số tiền đã trả.</p></main>}function Card({icon:Icon,label,value}:{icon:typeof WalletCards;label:string;value:string}){return <article className="rounded-3xl border bg-white p-5 shadow-sm"><Icon className="h-6 w-6 text-brand-600"/><p className="mt-4 text-sm text-slate-500">{label}</p><p className="mt-1 text-2xl font-black">{value}</p></article>}
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { CircleDollarSign, Scale, WalletCards } from "lucide-react";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export default async function Page() {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id || !["COLLECTOR", "PROCESSING_FACILITY"].includes(session.user.role)) {
+        redirect("/login");
+    }
+
+    const rows = await prisma.harvestRecord.findMany({
+        where: { buyerUserId: session.user.id, status: { notIn: ["REJECTED", "CANCELLED"] } },
+        select: { status: true, expectedWeight: true, receivedWeight: true, expectedPricePerKg: true },
+    });
+    const expected = rows.reduce((n, r) => n + Number(r.expectedWeight) * Number(r.expectedPricePerKg ?? 0), 0);
+    const completed = rows.filter(r => r.status === "COMPLETED").reduce((n, r) => n + Number(r.receivedWeight ?? r.expectedWeight) * Number(r.expectedPricePerKg ?? 0), 0);
+    const volume = rows.reduce((n, r) => n + Number(r.receivedWeight ?? 0), 0);
+
+    return (
+        <main className="mx-auto max-w-7xl space-y-6 px-4 py-7 sm:px-6">
+            <header className="rounded-3xl border bg-white p-5 shadow-sm">
+                <p className="text-sm font-bold uppercase tracking-wider text-brand-600">Thu mua và công nợ</p>
+                <h1 className="mt-1 text-3xl font-black text-slate-900">Tài chính</h1>
+                <p className="mt-2 text-slate-500">Tổng hợp theo dữ liệu giao dịch nguyên liệu và thu mua hiện có.</p>
+            </header>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <Card icon={WalletCards} label="Giá trị thu mua dự kiến" value={`${expected.toLocaleString("vi-VN")} đ`} />
+                <Card icon={CircleDollarSign} label="Giá trị đã hoàn tất" value={`${completed.toLocaleString("vi-VN")} đ`} />
+                <Card icon={Scale} label="Khối lượng đã nhận" value={`${volume.toLocaleString("vi-VN")} kg`} />
+            </div>
+            <p className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-800">
+                Công nợ chi tiết sẽ được ghi nhận khi hệ thống bổ sung chứng từ thanh toán; trang này không tự suy đoán số tiền đã trả.
+            </p>
+        </main>
+    );
+}
+
+function Card({ icon: Icon, label, value }: { icon: typeof WalletCards; label: string; value: string }) {
+    return (
+        <article className="rounded-3xl border bg-white p-5 shadow-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                <Icon className="h-5 w-5" />
+            </div>
+            <p className="mt-4 text-sm font-medium text-slate-500">{label}</p>
+            <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
+        </article>
+    );
+}

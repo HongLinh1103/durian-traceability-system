@@ -557,7 +557,7 @@ export function FarmerInventoryTab({
             {/* MODAL: NHẬP VẬT TƯ THỦ CÔNG */}
             {/* ========================================================================= */}
             {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
                     <div className="w-full max-w-lg rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 className="text-lg font-bold text-slate-900">Nhập vật tư vào kho</h3>
@@ -692,7 +692,7 @@ export function FarmerInventoryTab({
             {/* MODAL: XUẤT KHO SỬ DỤNG CHO CANH TÁC */}
             {/* ========================================================================= */}
             {showExportModal && selectedSupplyForExport && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
                     <div className="w-full max-w-lg rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <div>

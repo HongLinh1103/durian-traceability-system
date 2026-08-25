@@ -218,7 +218,7 @@ export function DocumentsLibrary() {
             )}
 
             {showUpload && isAdmin && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowUpload(false); }}>
                     <form onSubmit={handleUpload} className="max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl">
                         <div className="flex items-center justify-between">
                             <h2 className="text-xl font-bold">Thêm tài liệu</h2>

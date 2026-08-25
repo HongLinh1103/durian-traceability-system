@@ -313,7 +313,7 @@ export default function FarmingManagementPage() {
             </section>
 
             {logFarm && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
                     <div className="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
                         <div className="flex items-center justify-between border-b border-slate-200 p-5">
                             <div><h2 className="text-xl font-bold">Chi tiết vườn · {logFarm.farmName}</h2><p className="text-sm text-slate-500">{logFarm.farmCode} · {logFarm.logCount} bản ghi nhật ký</p></div>

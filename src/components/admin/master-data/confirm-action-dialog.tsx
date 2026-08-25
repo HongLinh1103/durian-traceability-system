@@ -58,7 +58,7 @@ export function ConfirmActionDialog({
     }[variant];
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
             <div className="mx-4 w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
                 <div className="flex items-start gap-4">
                     <div className={`rounded-full p-2 ${variantStyles.icon}`}>

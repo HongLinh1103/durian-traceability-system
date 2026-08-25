@@ -194,7 +194,7 @@ export function NewsManager() {
             </Card>
 
             {selected && edit && (
-                <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setSelected(null); }}>
+                <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setSelected(null); }}>
                     <div className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-[28px] bg-white p-5 shadow-2xl sm:p-6">
                         <div className="flex items-center justify-between">
                             <div><h2 className="text-xl font-black">Xem trước và chỉnh sửa</h2><p className="text-sm text-slate-500">Kiểm tra nội dung trước khi xuất bản công khai.</p></div>

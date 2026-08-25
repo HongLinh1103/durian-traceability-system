@@ -119,10 +119,14 @@ const navigationByRole: Record<string, RoleNavigation> = {
     PROCESSING_FACILITY: {
         items: [
             { label: "Tổng quan", href: "/dashboard/processing", icon: Factory },
-            { label: "Nguyên liệu", href: "/dashboard/processing/raw-materials", icon: Boxes, badgeKey: "processingIncoming" },
-            { label: "Chế biến", href: "/dashboard/processing/processing", icon: Cog },
-            { label: "Thành phẩm", href: "/dashboard/processing/finished-products", icon: Package },
-            { label: "Cá nhân", href: "/account", icon: UserRound },
+            { label: "Nguyên liệu", href: "/dashboard/processing/raw-materials", icon: Boxes, badgeKey: "processingIncoming", matches: ["/dashboard/processing/raw-materials"] },
+            { label: "Chế biến", href: "/dashboard/processing/processing", icon: Cog, matches: ["/dashboard/processing/processing"] },
+            { label: "Cá nhân", href: "/account", icon: UserRound, matches: ["/account"] },
+        ],
+        actions: [
+            { label: "Tạo QR", description: "Phát hành mã QR truy xuất cho lô thành phẩm", href: "/dashboard/processing/traceability", icon: QrCode },
+            { label: "Tài chính", description: "Báo cáo doanh thu, chi phí và hiệu quả chế biến", href: "/dashboard/processing/finance", icon: CircleDollarSign },
+            { label: "Thành phẩm", description: "Quản lý và xuất kho các lô thành phẩm", href: "/dashboard/processing/finished-products", icon: Package },
         ],
     },
 };

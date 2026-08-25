@@ -238,7 +238,7 @@ function Modal({ children, onClose, width = "max-w-4xl" }: { children: React.Rea
     if (!mounted) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex h-[100dvh] w-screen items-center justify-center overflow-hidden bg-slate-950/55 p-4 backdrop-blur-[1px]" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+        <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
             <div role="dialog" aria-modal="true" className={`max-h-[calc(100dvh-2rem)] w-full ${width} overflow-y-auto overscroll-contain rounded-3xl bg-white p-6 shadow-2xl`}>
                 {children}
             </div>

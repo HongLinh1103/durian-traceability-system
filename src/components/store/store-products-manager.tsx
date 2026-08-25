@@ -184,7 +184,7 @@ export function StoreProductsManager() {
 
         {items.length === 0 && <div className="rounded-3xl border border-dashed border-slate-300 py-16 text-center text-slate-500">Cửa hàng chưa có sản phẩm.</div>}
 
-        {editing && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.currentTarget === event.target) setEditing(null); }}>
+        {editing && <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.currentTarget === event.target) setEditing(null); }}>
             <form onSubmit={saveEdit} className="relative grid max-h-[92vh] w-full max-w-4xl gap-4 overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl md:grid-cols-2">
                 <h3 className="pr-12 text-xl font-bold text-slate-900 md:col-span-2">Chỉnh sửa sản phẩm</h3>
                 <Button type="button" variant="ghost" size="sm" className="absolute right-4 top-4 h-9 w-9 p-0" title="Đóng" aria-label="Đóng form chỉnh sửa" onClick={() => setEditing(null)}><X className="h-5 w-5" /></Button>

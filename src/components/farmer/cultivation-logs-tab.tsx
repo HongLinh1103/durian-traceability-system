@@ -539,7 +539,7 @@ export function CultivationLogsTab({
             {/* Modal phóng to ảnh */}
             {previewImage && (
                 <div
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+                    className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-sm"
                     onClick={() => setPreviewImage(null)}
                 >
                     <div

@@ -648,7 +648,7 @@ export default function OrdersPage() {
 
             {/* Modal Xác nhận Hủy đơn */}
             {cancellingId && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
                     <div className="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600">
                             <XCircle className="h-6 w-6" />

@@ -512,7 +512,7 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
             {open &&
                 typeof document !== "undefined" &&
                 createPortal(
-                    <div className="fixed inset-0 z-[140] flex items-center justify-center overflow-y-auto bg-slate-950/50 p-3 sm:p-4 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-3 sm:p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
                         <form
                             onSubmit={save}
                             className="my-auto w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl bg-white p-5 sm:p-7 shadow-2xl space-y-6"

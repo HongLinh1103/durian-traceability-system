@@ -861,7 +861,7 @@ export function PestMonitoringTab({
 
                 {/* MODAL: THÊM BẪY */}
                 {showAddTrapModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+                    <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
                         <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl space-y-4">
                             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <h3 className="font-bold text-slate-900 text-lg">Thêm bẫy mới</h3>
@@ -949,7 +949,7 @@ export function PestMonitoringTab({
 
                 {/* MODAL: GHI NHẬN ĐIỀU TRA */}
                 {showAddInspectionModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+                    <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
                         <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
                             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <h3 className="font-bold text-slate-900 text-lg">Ghi nhận đợt điều tra bẫy</h3>
@@ -1072,7 +1072,7 @@ export function PestMonitoringTab({
 
                 {/* MODAL: GHI NHẬN XỬ LÝ */}
                 {showAddTreatmentModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+                    <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
                         <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl space-y-4">
                             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <h3 className="font-bold text-slate-900 text-lg">Ghi nhận biện pháp xử lý</h3>
@@ -1339,7 +1339,7 @@ export function PestMonitoringTab({
 
             {/* MODAL: TẠO SỔ THEO DÕI */}
             {showCreateBookModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+                <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
                     <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 className="font-bold text-slate-900 text-lg">Tạo sổ theo dõi sinh vật gây hại</h3>

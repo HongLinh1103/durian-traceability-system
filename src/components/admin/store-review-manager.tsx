@@ -131,7 +131,7 @@ export function StoreReviewManager() {
                     </div>
                 </article>)}</div>}
 
-        {review && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.currentTarget === event.target) setReview(null); }}>
+        {review && <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.currentTarget === event.target) setReview(null); }}>
             <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
                 <h3 className="text-xl font-bold text-slate-900">{review.action === "APPROVED" ? "Phê duyệt cửa hàng" : review.action === "REJECTED" ? "Từ chối cửa hàng" : "Yêu cầu bổ sung hồ sơ"}</h3>
                 <p className="mt-2 text-sm text-slate-600">Cửa hàng: <strong>{review.store.name}</strong></p>

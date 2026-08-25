@@ -462,7 +462,7 @@ export default function AdminAccountsPage() {
 
             {/* Reject Confirmation Modal */}
             {rejectModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
                     <div className="mx-4 w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
                         <div className="mb-4 flex items-center gap-3">
                             <div className="rounded-full bg-red-50 p-2 text-red-600">
@@ -539,7 +539,7 @@ function AccountDetailModal({
         : null);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+        <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
             <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
                 <div className="flex items-start justify-between gap-4">
                     <div>
@@ -682,7 +682,7 @@ function EditAccountModal({ account, processing, onClose, onSubmit }: { account:
     const [phone, setPhone] = useState(account.phone);
     const [email, setEmail] = useState(account.email || "");
     const [address, setAddress] = useState(account.address || "");
-    return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    return <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
         <form className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl" onSubmit={(event) => { event.preventDefault(); onSubmit({ fullName: fullName.trim(), phone: phone.trim(), email: email.trim(), address: address.trim() }); }}>
             <div className="flex items-center justify-between"><h2 className="text-xl font-bold">Sửa tài khoản</h2><button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
