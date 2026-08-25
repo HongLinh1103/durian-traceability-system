@@ -20,6 +20,7 @@ import {
     NotebookPen,
     Package,
     Plus,
+    QrCode,
     ShoppingBag,
     Store,
     UserRound,
@@ -108,7 +109,11 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Phiếu thu hoạch", href: "/dashboard/partner/harvests", icon: Wheat, badgeKey: "collectorHarvests" },
             { label: "Đơn thu mua", href: "/dashboard/partner/orders", icon: ClipboardList, badgeKey: "collectorOrders" },
             { label: "Lô hàng", href: "/dashboard/partner/lots", icon: Package, badgeKey: "collectorLots" },
-            { label: "Tài chính", href: "/dashboard/partner/finance", icon: LandPlot },
+        ],
+        actions: [
+            { label: "Tạo QR", description: "Tạo mã QR truy xuất nguồn gốc cho lô hàng", href: "/dashboard/partner/traceability", icon: QrCode },
+            { label: "Cá nhân", description: "Quản lý thông tin tài khoản và cơ sở", href: "/account", icon: UserRound },
+            { label: "Tài chính", description: "Báo cáo doanh thu và chi phí thu mua", href: "/dashboard/partner/finance", icon: CircleDollarSign },
         ],
     },
     PROCESSING_FACILITY: {

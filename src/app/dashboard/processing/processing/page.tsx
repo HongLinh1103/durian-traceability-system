@@ -10,8 +10,28 @@ export default async function Page() {
     if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") redirect("/login");
 
     const facility = await prisma.partnerFacility.findUnique({ where: { ownerId: session.user.id } });
-    const rows = facility ? await prisma.processingBatch.findMany({ where: { facilityId: facility.id }, include: { inputs: { include: { rawMaterialLot: { select: { lotCode: true } } } }, supervisor: { select: { fullName: true } } }, orderBy: { startedAt: "desc" } }) : [];
-    const processingLots = rows.map(row => ({ id: row.id, code: row.batchCode, rawMaterialLotCodes: row.inputs.map(input => input.rawMaterialLot.lotCode), method: row.method, startedAt: row.startedAt, finishedAt: row.completedAt, inputWeight: Number(row.totalInputWeight), outputWeight: Number(row.totalOutputWeight), lossRate: Number(row.totalInputWeight) > 0 ? Number(((Number(row.lossWeight) / Number(row.totalInputWeight)) * 100).toFixed(2)) : 0, supervisor: row.supervisor.fullName, status: row.status, note: row.note ?? "" }));
+    const rows = facility ? await prisma.processingBatch.findMany({
+        where: { facilityId: facility.id },
+        include: {
+            inputs: { include: { rawMaterialLot: { select: { lotCode: true } } } },
+            supervisor: { select: { fullName: true } }
+        },
+        orderBy: { startedAt: "desc" }
+    }) : [];
+    const processingLots = rows.map(row => ({
+        id: row.id,
+        code: row.batchCode,
+        rawMaterialLotCodes: row.inputs.map(input => input.rawMaterialLot.lotCode),
+        method: row.method,
+        startedAt: row.startedAt,
+        finishedAt: row.completedAt,
+        inputWeight: Number(row.totalInputWeight),
+        outputWeight: Number(row.totalOutputWeight),
+        lossRate: Number(row.totalInputWeight) > 0 ? Number(((Number(row.lossWeight) / Number(row.totalInputWeight)) * 100).toFixed(2)) : 0,
+        supervisor: row.supervisor.fullName,
+        status: row.status,
+        note: row.note ?? ""
+    }));
 
     return (
         <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
@@ -21,7 +41,7 @@ export default async function Page() {
                 <p className="mt-2 text-sm text-slate-500">Tạo mẻ chế biến từ một hoặc nhiều lô nguyên liệu, luôn giữ lineage nguồn đầu vào.</p>
             </header>
 
-            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <section className="grid grid-cols-2 gap-3 sm:gap-4">
                 <Metric icon={Factory} label="Tổng lô chế biến" value={processingLots.length} />
                 <Metric icon={PlayCircle} label="Đang chế biến" value={processingLots.filter((lot) => lot.status === "IN_PROGRESS").length} />
                 <Metric icon={PauseCircle} label="Tạm dừng" value={processingLots.filter((lot) => lot.status === "PAUSED").length} />
@@ -37,7 +57,9 @@ export default async function Page() {
                                 <h2 className="mt-1 text-lg font-black text-slate-900">{lot.method}</h2>
                                 <p className="mt-1 text-sm text-slate-500">Nguồn: {lot.rawMaterialLotCodes.join(", ")}</p>
                             </div>
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{formatStatusLabel(lot.status)}</span>
+                            <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                                {formatStatusLabel(lot.status)}
+                            </span>
                         </div>
 
                         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -48,7 +70,9 @@ export default async function Page() {
                             <Row label="Tỷ lệ hao hụt" value={`${lot.lossRate.toLocaleString("vi-VN")} %`} />
                             <Row label="Người phụ trách" value={lot.supervisor ?? "Chưa cập nhật"} />
                         </dl>
-                        <p className="mt-3 rounded-xl bg-brand-50 px-3 py-2 text-xs text-brand-800">{lot.note}</p>
+                        {lot.note && (
+                            <p className="mt-3 rounded-xl bg-brand-50 px-3 py-2 text-xs text-brand-800">{lot.note}</p>
+                        )}
                     </article>
                 ))}
 
@@ -62,10 +86,14 @@ export default async function Page() {
 
 function Metric({ icon: Icon, label, value }: { icon: typeof Factory; label: string; value: number }) {
     return (
-        <article className="rounded-3xl border bg-white p-4 shadow-sm">
-            <Icon className="h-5 w-5 text-brand-700" />
-            <p className="mt-3 text-sm text-slate-500">{label}</p>
-            <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
+        <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:rounded-3xl sm:p-5">
+            <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-xs font-semibold text-slate-500 sm:text-sm">{label}</span>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 sm:h-9 sm:w-9">
+                    <Icon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
+                </span>
+            </div>
+            <p className="mt-2 truncate text-xl font-black text-slate-900 sm:text-2xl">{value.toLocaleString("vi-VN")}</p>
         </article>
     );
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { PackageCheck, QrCode, Truck } from "lucide-react";
+import { CheckCircle2, PackageCheck, QrCode, Truck } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatStatusLabel } from "@/lib/processing-facility";
@@ -11,8 +11,36 @@ export default async function Page() {
     if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") redirect("/login");
 
     const facility = await prisma.partnerFacility.findUnique({ where: { ownerId: session.user.id } });
-    const rows = facility ? await prisma.finishedProductLot.findMany({ where: { facilityId: facility.id }, include: { processingBatch: { select: { batchCode: true } }, commercialLots: { include: { traceabilityCode: true, shipmentItems: { include: { shipment: true } } } } }, orderBy: { manufacturedAt: "desc" } }) : [];
-    const finishedLots = rows.map(row => { const traced = row.commercialLots.find(lot => lot.traceabilityCode); const shipment = traced?.shipmentItems[0]?.shipment; return { id: row.id, code: row.lotCode, productName: row.productName, productType: row.productType, sourceProcessingLotCode: row.processingBatch.batchCode, producedAt: row.manufacturedAt, expiresAt: row.expiryDate, packageSpec: row.packaging, quantity: Number(row.quantity), totalWeight: Number(row.netWeight), unit: "kg", storageCondition: row.storageCondition, qrIssued: Boolean(traced?.traceabilityCode), publicToken: traced?.traceabilityCode?.publicToken, dispatchStatus: shipment?.status ?? "PENDING" }; });
+    const rows = facility ? await prisma.finishedProductLot.findMany({
+        where: { facilityId: facility.id },
+        include: {
+            processingBatch: { select: { batchCode: true } },
+            commercialLots: { include: { traceabilityCode: true, shipmentItems: { include: { shipment: true } } } }
+        },
+        orderBy: { manufacturedAt: "desc" }
+    }) : [];
+
+    const finishedLots = rows.map(row => {
+        const traced = row.commercialLots.find(lot => lot.traceabilityCode);
+        const shipment = traced?.shipmentItems[0]?.shipment;
+        return {
+            id: row.id,
+            code: row.lotCode,
+            productName: row.productName,
+            productType: row.productType,
+            sourceProcessingLotCode: row.processingBatch.batchCode,
+            producedAt: row.manufacturedAt,
+            expiresAt: row.expiryDate,
+            packageSpec: row.packaging,
+            quantity: Number(row.quantity),
+            totalWeight: Number(row.netWeight),
+            unit: "kg",
+            storageCondition: row.storageCondition,
+            qrIssued: Boolean(traced?.traceabilityCode),
+            publicToken: traced?.traceabilityCode?.publicToken,
+            dispatchStatus: shipment?.status ?? "PENDING"
+        };
+    });
 
     return (
         <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
@@ -22,8 +50,9 @@ export default async function Page() {
                 <p className="mt-2 text-sm text-slate-500">Phát hành QR truy xuất cho lô thành phẩm có nguồn hợp lệ, theo chuỗi lô chế biến và lô nguyên liệu.</p>
             </header>
 
-            <section className="grid gap-3 sm:grid-cols-3">
+            <section className="grid grid-cols-2 gap-3 sm:gap-4">
                 <Info icon={PackageCheck} label="Tổng lô thành phẩm" value={finishedLots.length} />
+                <Info icon={CheckCircle2} label="Đã phát hành QR" value={finishedLots.filter((lot) => lot.qrIssued).length} />
                 <Info icon={QrCode} label="Chưa phát hành QR" value={finishedLots.filter((lot) => !lot.qrIssued).length} />
                 <Info icon={Truck} label="Chờ xuất / giao" value={finishedLots.filter((lot) => ["PENDING", "IN_TRANSIT"].includes(lot.dispatchStatus)).length} />
             </section>
@@ -39,7 +68,9 @@ export default async function Page() {
                                     <h2 className="mt-1 text-lg font-black text-slate-900">{lot.productName}</h2>
                                     <p className="mt-1 text-sm text-slate-500">Nguồn chế biến: {lot.sourceProcessingLotCode}</p>
                                 </div>
-                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{formatStatusLabel(lot.dispatchStatus)}</span>
+                                <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                                    {formatStatusLabel(lot.dispatchStatus)}
+                                </span>
                             </div>
 
                             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -83,10 +114,14 @@ export default async function Page() {
 
 function Info({ icon: Icon, label, value }: { icon: typeof PackageCheck; label: string; value: number }) {
     return (
-        <article className="rounded-3xl border bg-white p-4 shadow-sm">
-            <Icon className="h-5 w-5 text-brand-700" />
-            <p className="mt-3 text-sm text-slate-500">{label}</p>
-            <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
+        <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:rounded-3xl sm:p-5">
+            <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-xs font-semibold text-slate-500 sm:text-sm">{label}</span>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 sm:h-9 sm:w-9">
+                    <Icon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
+                </span>
+            </div>
+            <p className="mt-2 truncate text-xl font-black text-slate-900 sm:text-2xl">{value.toLocaleString("vi-VN")}</p>
         </article>
     );
 }

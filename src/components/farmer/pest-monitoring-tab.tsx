@@ -552,24 +552,6 @@ export function PestMonitoringTab({
                             <Printer className="mr-1.5 h-3.5 w-3.5" />
                             In sổ
                         </Button>
-                        <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => setShowAddInspectionModal(true)}
-                            className="rounded-2xl bg-blue-600 text-xs font-bold text-white hover:bg-blue-700 shadow-soft"
-                        >
-                            <Plus className="mr-1 h-3.5 w-3.5" />
-                            Ghi nhận điều tra
-                        </Button>
-                        <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => setShowAddTrapModal(true)}
-                            className="rounded-2xl bg-brand-600 text-xs font-bold text-white hover:bg-brand-700 shadow-soft"
-                        >
-                            <Plus className="mr-1 h-3.5 w-3.5" />
-                            Thêm bẫy
-                        </Button>
                     </div>
                 </div>
 

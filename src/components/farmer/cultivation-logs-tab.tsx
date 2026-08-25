@@ -398,9 +398,18 @@ export function CultivationLogsTab({
 
                                             {log.chemicalName && (
                                                 <div className="col-span-2">
-                                                    <dt className="text-slate-400">Vật tư & Liều lượng</dt>
+                                                    <dt className="text-slate-400">Vật tư sử dụng</dt>
                                                     <dd className="mt-0.5 font-semibold text-slate-900">
-                                                        {log.chemicalName}{log.dosage ? ` · ${log.dosage}` : ""}
+                                                        {log.chemicalName}
+                                                    </dd>
+                                                </div>
+                                            )}
+
+                                            {log.dosage && (
+                                                <div className="col-span-2">
+                                                    <dt className="text-slate-400">Liều lượng</dt>
+                                                    <dd className="mt-0.5 font-semibold text-slate-900">
+                                                        {log.dosage}
                                                     </dd>
                                                 </div>
                                             )}
