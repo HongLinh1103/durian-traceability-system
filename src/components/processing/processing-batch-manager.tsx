@@ -98,7 +98,6 @@ export function ProcessingBatchManager({
     // Stepper modal states
     const [activeStepBatch, setActiveStepBatch] = useState<ProcessingBatchItem | null>(null);
     const [activeStepType, setActiveStepType] = useState<ProcessingStepKey | null>(null);
-    const [viewBatch, setViewBatch] = useState<ProcessingBatchItem | null>(null);
     const [packagingSuccessInfo, setPackagingSuccessInfo] = useState<{
         batchCode: string;
         inputWeight: number;
@@ -373,8 +372,8 @@ export function ProcessingBatchManager({
                                             >
                                                 {badge.label}
                                             </span>
-                                            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">
-                                                {lot.lineName || "Dây chuyền 1"}
+                                            <span className="rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold">
+                                                {isDone ? "Công đoạn: Đã đóng gói" : `Công đoạn: ${currentStepConfig?.name || "Làm sạch"}`}
                                             </span>
                                         </div>
                                         <h3 className="mt-1.5 text-lg font-black text-slate-900">
@@ -491,17 +490,8 @@ export function ProcessingBatchManager({
                                 </div>
 
                                 {/* CARD FOOTER ACTIONS */}
-                                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setViewBatch(lot)}
-                                        className="rounded-xl font-bold text-xs"
-                                    >
-                                        <FileText className="mr-1.5 h-3.5 w-3.5" /> Xem chi tiết
-                                    </Button>
-
-                                    <div className="flex items-center gap-2">
+                                {(isRunning || isPaused || isDone) && (
+                                    <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
                                         {isRunning && (
                                             <Button
                                                 variant="outline"
@@ -526,31 +516,16 @@ export function ProcessingBatchManager({
                                             </Button>
                                         )}
 
-                                        {!isDone && currentStep && (
-                                            <Button
-                                                size="sm"
-                                                onClick={() => {
-                                                    setActiveStepBatch(lot);
-                                                    setActiveStepType(currentStep.stepType);
-                                                    setError("");
-                                                }}
-                                                className="rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm"
-                                            >
-                                                Thực hiện: {currentStepConfig?.name || "Bước tiếp theo"}
-                                                <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                                            </Button>
-                                        )}
-
                                         {isDone && (
                                             <Link
                                                 href="/dashboard/processing/finished-products"
-                                                className="inline-flex items-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 text-xs shadow-sm transition"
+                                                className="inline-flex items-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-1.5 text-xs shadow-sm transition"
                                             >
                                                 Xem lô thành phẩm <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                                             </Link>
                                         )}
                                     </div>
-                                </div>
+                                )}
                             </article>
                         );
                     })}
@@ -576,20 +551,6 @@ export function ProcessingBatchManager({
                         setActiveStepType(null);
                     }}
                     onSubmit={(data) => handleExecuteStep(activeStepBatch.id, activeStepType, data)}
-                />
-            )}
-
-            {/* MODAL: XEM CHI TIẾT LÔ CHẾ BIẾN */}
-            {viewBatch && (
-                <BatchDetailModal
-                    batch={viewBatch}
-                    onClose={() => setViewBatch(null)}
-                    onOpenStep={(stepType) => {
-                        const b = viewBatch;
-                        setViewBatch(null);
-                        setActiveStepBatch(b);
-                        setActiveStepType(stepType);
-                    }}
                 />
             )}
 
@@ -1367,122 +1328,7 @@ function StepExecutionModal({
 
 // ---------------------- BATCH DETAIL MODAL ----------------------
 
-function BatchDetailModal({
-    batch,
-    onClose,
-    onOpenStep,
-}: {
-    batch: ProcessingBatchItem;
-    onClose: () => void;
-    onOpenStep: (stepType: ProcessingStepKey) => void;
-}) {
-    const badge = getStatusBadgeVariant(batch.status);
-    return (
-        <Modal title={`CHI TIẾT MẺ CHẾ BIẾN: ${batch.batchCode}`} onClose={onClose}>
-            <div className="space-y-4 text-xs sm:text-sm">
-                <div className="flex items-center justify-between border-b pb-2">
-                    <span className="font-bold text-slate-900">{batch.targetProduct}</span>
-                    <span className={`rounded-full px-3 py-0.5 text-xs font-bold border ${badge.bg} ${badge.text} ${badge.border}`}>
-                        {badge.label}
-                    </span>
-                </div>
 
-                <div className="rounded-2xl border bg-slate-50 p-3.5 space-y-2 text-xs">
-                    <div className="flex justify-between">
-                        <span className="text-slate-500 font-medium">Dây chuyền:</span>
-                        <b className="text-slate-800">{batch.lineName || "Dây chuyền 1"}</b>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-slate-500 font-medium">Phương pháp:</span>
-                        <b className="text-slate-800">{batch.method}</b>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-slate-500 font-medium">Nguồn nguyên liệu:</span>
-                        <b className="text-emerald-700">{batch.inputs.map((i) => i.rawMaterialLotCode).join(", ")}</b>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-slate-500 font-medium">Khối lượng đầu vào:</span>
-                        <b className="text-slate-900 font-bold">{batch.totalInputWeight.toLocaleString("vi-VN")} kg</b>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-slate-500 font-medium">Thời gian bắt đầu:</span>
-                        <b className="text-slate-800">{new Date(batch.startedAt).toLocaleString("vi-VN")}</b>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-slate-500 font-medium">Giám sát:</span>
-                        <b className="text-slate-800">{batch.supervisor}</b>
-                    </div>
-                </div>
-
-                <div>
-                    <h4 className="font-bold text-slate-900 text-xs mb-2 uppercase tracking-wide">
-                        Tiến độ 5 công đoạn chế biến
-                    </h4>
-                    <div className="space-y-2">
-                        {PROCESSING_STEPS_CONFIG.map((cfg) => {
-                            const step = batch.steps.find((s) => s.stepType === cfg.type);
-                            const isDone = step?.status === "COMPLETED";
-                            const isActive = step?.status === "IN_PROGRESS";
-
-                            return (
-                                <div
-                                    key={cfg.type}
-                                    className={`flex items-center justify-between p-2.5 rounded-2xl border text-xs ${
-                                        isDone
-                                            ? "bg-emerald-50/70 border-emerald-200"
-                                            : isActive
-                                            ? "bg-sky-50 border-sky-200"
-                                            : "bg-slate-50 border-slate-200 text-slate-400"
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <span
-                                            className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black ${
-                                                isDone
-                                                    ? "bg-emerald-600 text-white"
-                                                    : isActive
-                                                    ? "bg-sky-600 text-white"
-                                                    : "bg-slate-200 text-slate-600"
-                                            }`}
-                                        >
-                                            {isDone ? "✓" : cfg.order}
-                                        </span>
-                                        <span className="font-bold text-slate-800 truncate">{cfg.name}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <span className="text-[11px] text-slate-500">
-                                            {isDone && step.outputWeight
-                                                ? `${Number(step.outputWeight).toLocaleString("vi-VN")} kg`
-                                                : isDone
-                                                ? "Hoàn tất"
-                                                : isActive
-                                                ? "Đang làm"
-                                                : "Chờ"}
-                                        </span>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => onOpenStep(cfg.type)}
-                                            className="h-7 rounded-xl text-[10px] font-bold px-2 py-0"
-                                        >
-                                            {isDone ? "Xem" : "Thực hiện"}
-                                        </Button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                <div className="flex justify-end pt-2">
-                    <Button variant="outline" className="rounded-2xl font-bold" onClick={onClose}>
-                        Đóng
-                    </Button>
-                </div>
-            </div>
-        </Modal>
-    );
-}
 
 function MetricCard({
     icon: Icon,
