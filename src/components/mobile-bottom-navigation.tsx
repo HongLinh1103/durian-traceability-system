@@ -161,11 +161,10 @@ export function MobileBottomNavigation() {
                 }
 
                 if (role === "PROCESSING_FACILITY") {
-                    const response = await fetch("/api/harvests", { cache: "no-store" });
+                    const response = await fetch("/api/processing/raw-materials", { cache: "no-store" });
                     const payload = await response.json();
                     if (!payload.success || cancelled) return;
-                    const rows = payload.data ?? [];
-                    const processingIncoming = rows.filter((item: { status: string }) => ["WAITING_CONFIRMATION", "CONFIRMED", "HARVESTING"].includes(item.status)).length;
+                    const processingIncoming = payload.actionRequiredCount ?? 0;
                     setBadges({ processingIncoming });
                     return;
                 }

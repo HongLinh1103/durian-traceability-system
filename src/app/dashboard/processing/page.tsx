@@ -10,17 +10,19 @@ export default async function Page() {
     if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") redirect("/login");
 
     const facility = await prisma.partnerFacility.findUnique({ where: { ownerId: session.user.id } });
-    const [rawRows, processingRows, finishedRows] = facility ? await Promise.all([
+    const [rawRows, processingRows, finishedRows, incomingActionCount] = facility ? await Promise.all([
         prisma.rawMaterialLot.findMany({ where: { facilityId: facility.id }, include: { rawMaterialReceipt: true } }),
         prisma.processingBatch.findMany({ where: { facilityId: facility.id } }),
         prisma.finishedProductLot.findMany({ where: { facilityId: facility.id }, include: { commercialLots: { include: { traceabilityCode: true, shipmentItems: { include: { shipment: true } } } } } }),
-    ]) : [[], [], []];
+        prisma.harvestRecord.count({ where: { buyerUserId: session.user.id, buyerType: "PROCESSING_FACILITY", status: { in: ["WAITING_CONFIRMATION", "DELIVERY_CONFIRMED"] } } }),
+    ]) : [[], [], [], 0];
     /* All dashboard metrics below are derived from persisted lots and receipts. */
     const rawLots = rawRows.map(row => ({ status: row.status, receivedAt: row.rawMaterialReceipt.receivedAt, actualReceivedWeight: Number(row.rawMaterialReceipt.receivedWeight) }));
     const processingLots = processingRows.map(row => ({ status: row.status }));
     const finishedLots = finishedRows.map(row => { const commercial = row.commercialLots.find(lot => lot.traceabilityCode); return { totalWeight: Number(row.netWeight), qrIssued: Boolean(commercial?.traceabilityCode), dispatchStatus: commercial?.shipmentItems[0]?.shipment.status ?? "PENDING" }; });
 
     const waitingInspection = rawLots.filter((lot) => lot.status === "PENDING_QC").length;
+    const rawMaterialActionCount = incomingActionCount + waitingInspection;
     const activeProcessing = processingLots.filter((lot) => lot.status === "IN_PROGRESS").length;
     const pausedProcessing = processingLots.filter((lot) => lot.status === "CANCELLED").length;
     const pendingDispatch = finishedLots.filter((lot) => lot.dispatchStatus === "PENDING" || lot.dispatchStatus === "IN_TRANSIT").length;
@@ -49,7 +51,7 @@ export default async function Page() {
             </header>
 
             <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-                <KpiCard icon={Boxes} label="Lô chờ tiếp nhận / kiểm tra" value={String(waitingInspection)} />
+                <KpiCard icon={Boxes} label="Nguyên liệu cần xử lý" value={String(rawMaterialActionCount)} />
                 <KpiCard icon={Factory} label="Lô đang chế biến" value={String(activeProcessing)} />
                 <KpiCard icon={PackageCheck} label="Lô thành phẩm" value={String(finishedLots.length)} />
                 <KpiCard icon={Truck} label="Lô chờ xuất / giao" value={String(pendingDispatch)} />
@@ -66,7 +68,7 @@ export default async function Page() {
                         <p className="mt-1 text-sm text-slate-500">Hiển thị trực tiếp các việc cần thao tác để không bỏ sót công đoạn.</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <Link href="/dashboard/processing/raw-materials" className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white">Xem nguyên liệu</Link>
+                        <Link href="/dashboard/processing/raw-materials?filter=action-required" className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white">Xem nguyên liệu</Link>
                         <Link href="/dashboard/processing/finished-products" className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">Xem thành phẩm</Link>
                     </div>
                 </div>

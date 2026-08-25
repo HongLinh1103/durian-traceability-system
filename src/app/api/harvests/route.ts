@@ -192,8 +192,10 @@ export async function POST(request: Request) {
                 data: {
                     userId: facility.ownerId,
                     type: "HARVEST_REQUEST",
-                    title: "Phiếu thu hoạch mới",
-                    message: `${farm.farmName} gửi phiếu ${code}, dự kiến ${totalExpectedWeight} kg.`,
+                    title: safeBuyerType === "PROCESSING_FACILITY" ? "Có nguồn nguyên liệu mới" : "Phiếu thu hoạch mới",
+                    message: safeBuyerType === "PROCESSING_FACILITY"
+                        ? `${farm.farmName} gửi phiếu ${code}, dự kiến thu hoạch ${totalExpectedWeight} kg ${selectedVarieties.join(", ")} ngày ${harvestDate.toLocaleDateString("vi-VN")}.`
+                        : `${farm.farmName} gửi phiếu ${code}, dự kiến ${totalExpectedWeight} kg.`,
                 },
             }).catch(() => {});
         }

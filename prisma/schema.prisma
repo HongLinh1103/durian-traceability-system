@@ -1349,6 +1349,8 @@ model FarmingPlan {
   stage         GrowthStage
   activityType  ActivityType
   otherActivity String?
+  plannedMaterial String?
+  plannedQuantity String?
   notes         String?
   status        PlanStatus   @default(PLANNED)
   startedAt     DateTime?

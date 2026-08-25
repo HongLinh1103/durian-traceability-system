@@ -1,236 +1,72 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { CalendarDays, Check, ChevronLeft, ChevronRight, ClipboardCheck, Clock3, Eye, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { activitiesByStage, growthStages, type GrowthStageLabel } from "@/lib/constants";
 
 type Farm = { id: string; farmName: string; farmCode: string };
-type Plan = { id: string; plannedDate: string; createdAt: string; title: string; stage: string; activityType: string; otherActivity: string | null; notes: string | null; status: "PLANNED" | "IN_PROGRESS" | "COMPLETED"; farmId: string; farm: { farmName: string; farmCode: string } };
-type Draft = { farmId: string; date: string; time: string; stage: GrowthStageLabel | ""; activity: string; otherActivity: string; notes: string };
+type Plan = { id: string; plannedDate: string; createdAt: string; title: string; stage: string; activityType: string; otherActivity: string | null; plannedMaterial: string | null; plannedQuantity: string | null; notes: string | null; status: "PLANNED" | "IN_PROGRESS" | "COMPLETED"; farmId: string; farm: { farmName: string; farmCode: string } };
+type Draft = { date: string; time: string; stage: GrowthStageLabel | ""; activity: string; otherActivity: string; plannedMaterial: string; plannedQuantity: string; notes: string };
 type Quick = "all" | "today" | "upcoming" | "overdue" | "completed";
+
 const stageLabels: Record<string, GrowthStageLabel> = { POST_HARVEST_RECOVERY: "Phục hồi sau thu hoạch", MAKING_SPROUT: "Làm đọt", FLOWER_INDUCTION: "Xử lý ra hoa", FLOWERING: "Ra hoa", FRUIT_SETTING: "Đậu trái", FRUIT_GROWING: "Nuôi trái", PRE_HARVEST: "Trước thu hoạch", HARVEST: "Thu hoạch" };
 const activityLabels: Record<string, string> = { BASE_FERTILIZING: "Bón lót", PLANTING: "Trồng", MULCHING: "Tủ gốc", SPRAY_PESTICIDE: "Phun thuốc BVTV", FERTILIZE: "Bón phân", FOLIAR_FERTILIZING: "Phun phân bón lá", IRRIGATE: "Tưới nước", PRUNE: "Tỉa cành / tạo tán", WEEDING: "Làm cỏ", SHOOT_MANAGEMENT: "Quản lý đọt", WATER_STRESS: "Xiết nước", FLOWER_INDUCTION: "Xử lý ra hoa", FLOWER_THINNING: "Tỉa bông", POLLINATION: "Thụ phấn", FRUIT_THINNING: "Tỉa trái", PEST_INSPECTION: "Kiểm tra sâu bệnh", TRACK_FRUIT: "Theo dõi trái", FRUIT_BAGGING: "Bao trái", BRANCH_SUPPORT: "Chống cành", HARVEST: "Thu hoạch", FRUIT_GRADING: "Phân loại trái", GARDEN_SANITATION: "Vệ sinh vườn", OTHER: "Khác" };
+const todayKey = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
 const dateKey = (value: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
-const timeText = (value: string) => { const time = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(value)); return time === "00:00" || time === "24:00" ? "—" : time; };
-const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
-const blank = (farmId=""): Draft => ({ farmId, date: todayKey(), time: "", stage: "", activity: "", otherActivity: "", notes: "" });
-const dateToVietnamese = (value: string) => { const [year, month, day] = value.split("-"); return day && month && year ? `${day}/${month}/${year}` : ""; };
-const vietnameseToDate = (value: string) => { const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if (!match) return null; const [, day, month, year] = match; const date = new Date(Number(year), Number(month)-1, Number(day)); return date.getFullYear()===Number(year)&&date.getMonth()===Number(month)-1&&date.getDate()===Number(day)?`${year}-${month}-${day}`:null; };
+const timeText = (value: string) => { const result = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(value)); return ["00:00", "24:00"].includes(result) ? "—" : result; };
+const blank = (): Draft => ({ date: todayKey(), time: "", stage: "", activity: "", otherActivity: "", plannedMaterial: "", plannedQuantity: "", notes: "" });
 
 export function FarmingPlanCalendar() {
- const router=useRouter(); const [plans,setPlans]=useState<Plan[]>([]); const [farms,setFarms]=useState<Farm[]>([]); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [error,setError]=useState("");
- const [quick,setQuick]=useState<Quick>("all"); const [farmFilter,setFarmFilter]=useState(""); const [monthFilter,setMonthFilter]=useState(""); const [stageFilter,setStageFilter]=useState(""); const [activityFilter,setActivityFilter]=useState(""); const [search,setSearch]=useState("");
- const [adding,setAdding]=useState(false); const [editingId,setEditingId]=useState<string|null>(null); const [draft,setDraft]=useState<Draft>(()=>blank());
- const load=useCallback(async()=>{setLoading(true);setError("");try{const response=await fetch("/api/farming-plans",{cache:"no-store"});const payload=await response.json();if(!response.ok)throw new Error(payload.message||"Không thể tải kế hoạch.");setPlans(payload.plans??[]);setFarms(payload.farms??[]);setDraft(current=>({...current,farmId:current.farmId||payload.farms?.[0]?.id||""}));}catch(e){setError(e instanceof Error?e.message:"Không thể tải kế hoạch.");}finally{setLoading(false);}},[]); useEffect(()=>{void load();},[load]);
- const today=todayKey(); const filtered=useMemo(()=>plans.filter(plan=>{const date=dateKey(plan.plannedDate);const overdue=date<today&&plan.status!=="COMPLETED";if(quick==="today"&&date!==today)return false;if(quick==="upcoming"&&(date<=today||plan.status==="COMPLETED"))return false;if(quick==="overdue"&&!overdue)return false;if(quick==="completed"&&plan.status!=="COMPLETED")return false;if(farmFilter&&plan.farmId!==farmFilter)return false;if(monthFilter&&!date.startsWith(monthFilter))return false;if(stageFilter&&plan.stage!==stageFilter)return false;if(activityFilter&&plan.activityType!==activityFilter)return false;const q=search.trim().toLowerCase();return !q||`${plan.title} ${plan.farm.farmName} ${plan.notes??""}`.toLowerCase().includes(q);}).sort((a,b)=>{const aDone=a.status==="COMPLETED";const bDone=b.status==="COMPLETED";if(aDone!==bDone)return aDone?1:-1;return new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime();}),[activityFilter,farmFilter,monthFilter,plans,quick,search,stageFilter,today]);
- const selectedYear=monthFilter.slice(0,4); const selectedMonth=monthFilter.slice(5,7); const currentYear=new Date().getFullYear(); const years=Array.from(new Set([currentYear-1,currentYear,currentYear+1,...plans.map(plan=>Number(dateKey(plan.plannedDate).slice(0,4)))]).values()).sort((a,b)=>a-b);
- function setMonthPart(nextMonth:string){if(!nextMonth){setMonthFilter("");return;}setMonthFilter(`${selectedYear||currentYear}-${nextMonth}`);} function setYearPart(nextYear:string){if(!nextYear){setMonthFilter("");return;}setMonthFilter(`${nextYear}-${selectedMonth||String(new Date().getMonth()+1).padStart(2,"0")}`);}
- function stageChange(stage:GrowthStageLabel){setDraft(d=>({...d,stage,activity:"",otherActivity:""}));} function cancel(){setAdding(false);setEditingId(null);setError("");} function add(){setEditingId(null);setDraft(blank(farmFilter||farms[0]?.id||""));setAdding(true);} function edit(plan:Plan){const stage=stageLabels[plan.stage]??growthStages[0];setAdding(false);setEditingId(plan.id);setDraft({farmId:plan.farmId,date:dateKey(plan.plannedDate),time:timeText(plan.plannedDate)==="—"?"":timeText(plan.plannedDate),stage,activity:activityLabels[plan.activityType]??activitiesByStage[stage][0],otherActivity:plan.otherActivity??"",notes:plan.notes??""});}
- async function save(id?:string){setSaving(true);setError("");try{const title=draft.activity==="Khác"?draft.otherActivity.trim():draft.activity;const response=await fetch(id?`/api/farming-plans/${id}`:"/api/farming-plans",{method:id?"PATCH":"POST",headers:{"content-type":"application/json"},body:JSON.stringify({farmId:draft.farmId,plannedDate:draft.date,plannedTime:draft.time,title,stage:draft.stage,activityType:draft.activity,otherActivity:draft.otherActivity,notes:draft.notes})});const payload=await response.json();if(!response.ok)throw new Error(payload.message||"Không thể lưu công việc.");cancel();await load();window.dispatchEvent(new Event("plans-updated"));}catch(e){setError(e instanceof Error?e.message:"Không thể lưu công việc.");}finally{setSaving(false);}}
- async function remove(plan:Plan){if(!confirm(`Xóa công việc “${plan.title}”?`))return;await fetch(`/api/farming-plans/${plan.id}`,{method:"DELETE"});await load();window.dispatchEvent(new Event("plans-updated"));} async function start(plan:Plan){const response=await fetch(`/api/farming-plans/${plan.id}`,{method:"PATCH"});if(!response.ok)return;const time=timeText(plan.plannedDate);const params=new URLSearchParams({planId:plan.id,farmId:plan.farmId,date:dateKey(plan.plannedDate),stage:stageLabels[plan.stage]??plan.stage,activity:activityLabels[plan.activityType]??plan.activityType,notes:plan.notes??"",...(time!=="—"?{time}:{}),...(plan.otherActivity?{otherActivity:plan.otherActivity}:{})});router.push(`/dashboard/farmer/logs/new?${params}`);}
- const editor=(id?:string)=><><td className="p-2"><PlanDateInput value={draft.date} onChange={date=>setDraft(d=>({...d,date}))}/></td><td className="p-2"><PlanTimeInput value={draft.time} onChange={time=>setDraft(d=>({...d,time}))}/></td><td className="p-2"><select className="h-10 min-w-44 rounded-xl border px-3" value={draft.farmId} onChange={e=>setDraft(d=>({...d,farmId:e.target.value}))}>{farms.map(f=><option key={f.id} value={f.id}>{f.farmName}</option>)}</select></td><td className="p-2"><select className="h-10 min-w-40 rounded-xl border px-3" value={draft.stage} onChange={e=>stageChange(e.target.value as GrowthStageLabel)}><option value="" disabled>Chọn giai đoạn</option>{growthStages.map(v=><option key={v}>{v}</option>)}</select></td><td className="p-2"><select className="h-10 min-w-40 rounded-xl border px-3 disabled:bg-slate-100 disabled:text-slate-400" value={draft.activity} disabled={!draft.stage} onChange={e=>setDraft(d=>({...d,activity:e.target.value}))}><option value="" disabled>Chọn hoạt động</option>{draft.stage&&activitiesByStage[draft.stage].map(v=><option key={v}>{v}</option>)}</select>{draft.activity==="Khác"&&<Input className="mt-2" value={draft.otherActivity} onChange={e=>setDraft(d=>({...d,otherActivity:e.target.value}))}/>}</td><td className="p-2"><Input className="min-w-48" placeholder="Vật tư, ghi chú..." value={draft.notes} onChange={e=>setDraft(d=>({...d,notes:e.target.value}))}/></td><td className="p-2"><span className="whitespace-nowrap rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">Chưa thực hiện</span></td><td className="p-2"><div className="flex gap-1"><Button size="sm" className="bg-brand-600 hover:bg-brand-700 text-white shadow-soft" disabled={saving||!draft.farmId||!draft.date||!draft.stage||!draft.activity} onClick={()=>void save(id)}><Check className="h-4 w-4"/></Button><Button size="sm" variant="ghost" onClick={cancel}><X className="h-4 w-4"/></Button></div></td></>;
- return (
-  <main className="mx-auto min-h-screen max-w-[1500px] space-y-5 px-3.5 py-5 sm:px-6 lg:px-8">
-    <header className="flex flex-col gap-4 rounded-3xl bg-gradient-to-br from-brand-800 to-brand-600 p-4 sm:p-6 text-white shadow-lg sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[.2em] text-brand-100">Quản lý canh tác</p>
-        <h1 className="mt-1 text-2xl sm:text-3xl font-black">Kế hoạch công việc</h1>
-        <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-brand-50">Theo dõi và cập nhật các công việc dự kiến tại vườn.</p>
-      </div>
-      <Button className="w-full sm:w-auto bg-white text-brand-700 hover:bg-brand-50 shadow-soft font-bold" onClick={add}>
-        <Plus className="mr-2 h-4 w-4" />Thêm công việc
-      </Button>
-    </header>
+    const [plans, setPlans] = useState<Plan[]>([]); const [farms, setFarms] = useState<Farm[]>([]); const [farmId, setFarmId] = useState("");
+    const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState(""); const [toast, setToast] = useState("");
+    const [quick, setQuick] = useState<Quick>("all"); const [month, setMonth] = useState(""); const [year, setYear] = useState(""); const [activity, setActivity] = useState(""); const [search, setSearch] = useState("");
+    const [formOpen, setFormOpen] = useState(false); const [editing, setEditing] = useState<Plan | null>(null); const [deleting, setDeleting] = useState<Plan | null>(null); const [draft, setDraft] = useState<Draft>(blank);
 
-    {error && <div className="rounded-2xl bg-red-50 p-3 text-red-700">{error}</div>}
+    const load = useCallback(async () => { setLoading(true); setError(""); try { const response = await fetch("/api/farming-plans", { cache: "no-store" }); const payload = await response.json(); if (!response.ok) throw new Error(payload.message || "Không thể tải kế hoạch."); setPlans(payload.plans ?? []); setFarms(payload.farms ?? []); setFarmId((current) => current || payload.farms?.[0]?.id || ""); } catch (cause) { setError(cause instanceof Error ? cause.message : "Không thể tải kế hoạch."); } finally { setLoading(false); } }, []);
+    useEffect(() => { void load(); }, [load]);
+    useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 3500); return () => window.clearTimeout(timer); }, [toast]);
 
-    <section className="space-y-4 rounded-3xl border bg-white p-4 sm:p-5 shadow-sm">
-      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-        {([['all', 'Tất cả'], ['today', 'Hôm nay'], ['upcoming', 'Sắp tới'], ['overdue', 'Quá hạn'], ['completed', 'Đã thực hiện']] as [Quick, string][]).map(([value, label]) => (
-          <button
-            key={value}
-            onClick={() => setQuick(value)}
-            className={`shrink-0 rounded-full px-4 py-2 text-xs sm:text-sm font-bold transition ${quick === value ? "bg-brand-600 text-white shadow-soft" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+    const currentFarm = farms.find((farm) => farm.id === farmId);
+    const today = todayKey();
+    const filtered = useMemo(() => plans.filter((plan) => {
+        if (plan.farmId !== farmId) return false;
+        const date = dateKey(plan.plannedDate); const completed = plan.status === "COMPLETED"; const overdue = new Date(plan.plannedDate).getTime() < Date.now() && !completed;
+        if (quick === "today" && date !== today) return false; if (quick === "upcoming" && (date <= today || completed)) return false; if (quick === "overdue" && !overdue) return false; if (quick === "completed" && !completed) return false;
+        if (month && date.slice(5, 7) !== month) return false; if (year && date.slice(0, 4) !== year) return false; if (activity && plan.activityType !== activity) return false;
+        const query = search.trim().toLowerCase(); return !query || `${plan.title} ${plan.otherActivity ?? ""} ${plan.plannedMaterial ?? ""} ${plan.plannedQuantity ?? ""} ${plan.notes ?? ""}`.toLowerCase().includes(query);
+    }).sort((a, b) => new Date(a.plannedDate).getTime() - new Date(b.plannedDate).getTime()), [activity, farmId, month, plans, quick, search, today, year]);
+    const years = useMemo(() => Array.from(new Set([new Date().getFullYear(), ...plans.map((plan) => Number(dateKey(plan.plannedDate).slice(0, 4)))]).values()).sort((a, b) => a - b), [plans]);
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <select aria-label="Lọc theo vườn" className="h-11 rounded-xl border px-3 text-sm bg-white" value={farmFilter} onChange={e => setFarmFilter(e.target.value)}>
-          <option value="">Tất cả vườn</option>
-          {farms.map(f => <option key={f.id} value={f.id}>{f.farmName}</option>)}
-        </select>
-        <div className="grid grid-cols-2 gap-2">
-          <select aria-label="Chọn tháng" className="h-11 rounded-xl border px-3 text-sm bg-white" value={selectedMonth} onChange={e => setMonthPart(e.target.value)}>
-            <option value="">Tất cả tháng</option>
-            {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0")).map(value => <option key={value} value={value}>Tháng {Number(value)}</option>)}
-          </select>
-          <select aria-label="Chọn năm" className="h-11 rounded-xl border px-3 text-sm bg-white" value={selectedYear} onChange={e => setYearPart(e.target.value)}>
-            <option value="">Năm</option>
-            {years.map(year => <option key={year} value={year}>{year}</option>)}
-          </select>
-        </div>
-        <select aria-label="Lọc theo giai đoạn" className="h-11 rounded-xl border px-3 text-sm bg-white" value={stageFilter} onChange={e => setStageFilter(e.target.value)}>
-          <option value="">Tất cả giai đoạn</option>
-          {Object.entries(stageLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
-        <select aria-label="Lọc theo hoạt động" className="h-11 rounded-xl border px-3 text-sm bg-white" value={activityFilter} onChange={e => setActivityFilter(e.target.value)}>
-          <option value="">Tất cả hoạt động</option>
-          {Object.entries(activityLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
-        <div className="relative">
-          <Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
-          <Input className="pl-9 text-sm" placeholder="Tìm kiếm..." value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-      </div>
-    </section>
+    function openAdd() { if (!farmId) return; setEditing(null); setDraft(blank()); setFormOpen(true); setError(""); }
+    function openEdit(plan: Plan) { const stage = stageLabels[plan.stage] ?? growthStages[0]; setEditing(plan); setDraft({ date: dateKey(plan.plannedDate), time: timeText(plan.plannedDate) === "—" ? "" : timeText(plan.plannedDate), stage, activity: activityLabels[plan.activityType] ?? plan.otherActivity ?? "Khác", otherActivity: plan.otherActivity ?? "", plannedMaterial: plan.plannedMaterial ?? "", plannedQuantity: plan.plannedQuantity ?? "", notes: plan.notes ?? "" }); setFormOpen(true); setError(""); }
+    async function save(event: FormEvent) { event.preventDefault(); if (!currentFarm) return; setSaving(true); setError(""); try { const title = draft.activity === "Khác" ? draft.otherActivity.trim() : draft.activity; const response = await fetch(editing ? `/api/farming-plans/${editing.id}` : "/api/farming-plans", { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...(!editing ? { farmId } : {}), plannedDate: draft.date, plannedTime: draft.time, title, stage: draft.stage, activityType: draft.activity, otherActivity: draft.otherActivity, plannedMaterial: draft.plannedMaterial, plannedQuantity: draft.plannedQuantity, notes: draft.notes }) }); const payload = await response.json(); if (!response.ok) throw new Error(payload.message || "Không thể lưu công việc."); setFormOpen(false); await load(); window.dispatchEvent(new Event("plans-updated")); setToast(editing ? "Đã cập nhật công việc." : "Đã thêm công việc."); } catch (cause) { setError(cause instanceof Error ? cause.message : "Không thể lưu công việc."); } finally { setSaving(false); } }
+    async function toggle(plan: Plan, isCompleted: boolean) { setError(""); const response = await fetch(`/api/farming-plans/${plan.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isCompleted }) }); const payload = await response.json(); if (!response.ok) { setError(payload.message || "Không thể cập nhật công việc."); return; } setPlans((current) => current.map((item) => item.id === plan.id ? { ...item, status: isCompleted ? "COMPLETED" : "PLANNED" } : item)); window.dispatchEvent(new Event("plans-updated")); setToast(isCompleted ? "Đã đánh dấu công việc hoàn thành." : "Đã chuyển công việc về chưa thực hiện."); }
+    async function remove() { if (!deleting) return; setSaving(true); const response = await fetch(`/api/farming-plans/${deleting.id}`, { method: "DELETE" }); if (response.ok) { setDeleting(null); await load(); window.dispatchEvent(new Event("plans-updated")); setToast("Đã xóa công việc."); } else setError("Không thể xóa công việc."); setSaving(false); }
 
-    <section className="overflow-hidden rounded-3xl border bg-white shadow-sm">
-      {/* Mobile Card List View */}
-      <div className="space-y-3 p-3.5 md:hidden">
-        {loading ? (
-          <div className="py-12 text-center"><Loader2 className="mx-auto h-7 w-7 animate-spin text-brand-600" /></div>
-        ) : filtered.length === 0 && !adding ? (
-          <div className="py-12 text-center text-sm text-slate-500">Chưa có công việc phù hợp.</div>
-        ) : (
-          filtered.map(plan => (
-            <MobilePlanCard
-              key={plan.id}
-              plan={plan}
-              today={today}
-              edit={edit}
-              remove={remove}
-              start={start}
-            />
-          ))
-        )}
-      </div>
-
-      {/* Desktop Table View */}
-      <div className="hidden md:block overflow-x-auto">
-        <table className="w-full min-w-[1180px] text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr>
-              {["Ngày", "Giờ", "Vườn", "Giai đoạn", "Hoạt động", "Chi tiết / Vật tư", "Trạng thái", "Thao tác"].map(v => (
-                <th key={v} className="p-4">{v}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {adding && <tr className="bg-brand-50/60">{editor()}</tr>}
-            {loading ? (
-              <tr><td colSpan={8} className="py-16"><Loader2 className="mx-auto animate-spin text-brand-600" /></td></tr>
-            ) : filtered.length === 0 && !adding ? (
-              <tr><td colSpan={8} className="py-16 text-center text-slate-500">Chưa có công việc phù hợp.</td></tr>
-            ) : (
-              filtered.map(plan => (
-                editingId === plan.id ? (
-                  <tr key={plan.id} className="bg-brand-50/60">{editor(plan.id)}</tr>
-                ) : (
-                  <Row key={plan.id} plan={plan} today={today} edit={edit} remove={remove} start={start} />
-                )
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </main>
- );
+    return <main className="mx-auto min-h-screen max-w-[1500px] space-y-5 px-3.5 py-5 sm:px-6 lg:px-8">
+        <header className="flex flex-col gap-4 rounded-3xl bg-gradient-to-br from-brand-800 to-brand-600 p-4 text-white shadow-lg sm:flex-row sm:items-end sm:justify-between sm:p-6"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-brand-100">Quản lý canh tác</p><h1 className="mt-1 text-2xl font-black sm:text-3xl">Kế hoạch công việc</h1><p className="mt-2 text-sm text-brand-50">Lập và theo dõi các công việc dự kiến tại vườn.</p></div><Button className="w-full bg-white font-bold text-brand-700 hover:bg-brand-50 sm:w-auto" onClick={openAdd} disabled={!farmId}><Plus className="mr-2 h-4 w-4"/>Thêm công việc</Button></header>
+        {error && <p className="rounded-2xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</p>}{toast && <div className="fixed right-4 top-20 z-[120] rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-xl">{toast}{toast.includes("hoàn thành") && <Link href="/dashboard/farmer/logs/new" className="ml-3 text-brand-300 underline">Ghi vào nhật ký</Link>}</div>}
+        <section className="space-y-4 rounded-3xl border bg-white p-4 shadow-sm sm:p-5"><div className="flex gap-2 overflow-x-auto pb-1">{([["all", "Tất cả"], ["today", "Hôm nay"], ["upcoming", "Sắp tới"], ["overdue", "Quá hạn"], ["completed", "Đã thực hiện"]] as [Quick, string][]).map(([value, label]) => <button key={value} onClick={() => setQuick(value)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold ${quick === value ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</button>)}</div>
+            <div>{farms.length === 1 ? <div className="rounded-2xl bg-brand-50 px-4 py-3"><p className="text-xs font-semibold text-brand-700">Vườn đang xem</p><p className="font-bold text-slate-900">{currentFarm?.farmName}</p></div> : <label className="block text-sm font-semibold text-slate-600">Vườn đang xem<select value={farmId} onChange={(event) => setFarmId(event.target.value)} className="mt-1 h-11 w-full rounded-xl border bg-white px-3"><option value="" disabled>Chọn vườn</option>{farms.map((farm) => <option key={farm.id} value={farm.id}>{farm.farmName}</option>)}</select></label>}</div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div className="grid grid-cols-2 gap-2"><select aria-label="Tháng" value={month} onChange={(event) => setMonth(event.target.value)} className="h-11 rounded-xl border bg-white px-3 text-sm"><option value="">Tất cả tháng</option>{Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0")).map((value) => <option key={value} value={value}>Tháng {Number(value)}</option>)}</select><select aria-label="Năm" value={year} onChange={(event) => setYear(event.target.value)} className="h-11 rounded-xl border bg-white px-3 text-sm"><option value="">Tất cả năm</option>{years.map((value) => <option key={value}>{value}</option>)}</select></div><select aria-label="Hoạt động" value={activity} onChange={(event) => setActivity(event.target.value)} className="h-11 rounded-xl border bg-white px-3 text-sm"><option value="">Tất cả hoạt động</option>{Object.entries(activityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><div className="relative sm:col-span-2 lg:col-span-2"><Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-400"/><Input value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" placeholder="Tìm hoạt động, vật tư, ghi chú..."/></div></div>
+        </section>
+        <section className="overflow-hidden rounded-3xl border bg-white shadow-sm"><div className="space-y-3 p-3 md:hidden">{loading ? <Loading/> : filtered.length ? filtered.map((plan) => <PlanCard key={plan.id} plan={plan} today={today} toggle={toggle} edit={openEdit} remove={setDeleting}/>) : <Empty/>}</div><div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[900px] text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr>{["Ngày", "Giờ", "Hoạt động", "Vật tư sử dụng", "Đã thực hiện", "Thao tác"].map((label) => <th key={label} className="p-4 text-center">{label}</th>)}</tr></thead><tbody className="divide-y">{loading ? <tr><td colSpan={6}><Loading/></td></tr> : filtered.length ? filtered.map((plan) => <PlanRow key={plan.id} plan={plan} today={today} toggle={toggle} edit={openEdit} remove={setDeleting}/>) : <tr><td colSpan={6}><Empty/></td></tr>}</tbody></table></div></section>
+        {formOpen && <Modal title={editing ? "Chỉnh sửa công việc" : "Thêm công việc"} onClose={() => setFormOpen(false)}><form onSubmit={save} className="space-y-4"><ReadOnly label="Vườn" value={currentFarm?.farmName ?? "—"}/><div className="grid grid-cols-2 gap-3"><Field label="Ngày thực hiện *"><input type="date" required value={draft.date} onChange={(event) => setDraft({ ...draft, date: event.target.value })}/></Field><Field label="Giờ thực hiện"><input type="time" value={draft.time} onChange={(event) => setDraft({ ...draft, time: event.target.value })}/></Field></div><Field label="Giai đoạn canh tác *"><select required value={draft.stage} onChange={(event) => setDraft({ ...draft, stage: event.target.value as GrowthStageLabel, activity: "" })}><option value="" disabled>Chọn giai đoạn</option>{growthStages.map((value) => <option key={value}>{value}</option>)}</select></Field><Field label="Hoạt động *"><select required disabled={!draft.stage} value={draft.activity} onChange={(event) => setDraft({ ...draft, activity: event.target.value })}><option value="" disabled>Chọn hoạt động</option>{draft.stage && activitiesByStage[draft.stage].map((value) => <option key={value}>{value}</option>)}</select></Field>{draft.activity === "Khác" && <Field label="Tên hoạt động *"><input required value={draft.otherActivity} onChange={(event) => setDraft({ ...draft, otherActivity: event.target.value })}/></Field>}<Field label="Vật tư sử dụng"><input value={draft.plannedMaterial} onChange={(event) => setDraft({ ...draft, plannedMaterial: event.target.value })} placeholder="Ví dụ: NPK 16-16-8"/></Field><Field label="Số lượng / Liều lượng dự kiến"><input value={draft.plannedQuantity} onChange={(event) => setDraft({ ...draft, plannedQuantity: event.target.value })} placeholder="Ví dụ: 2 kg"/></Field><Field label="Ghi chú"><textarea rows={3} value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })}/></Field><div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setFormOpen(false)}>Hủy</Button><Button disabled={saving}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}{editing ? "Lưu thay đổi" : "Thêm công việc"}</Button></div></form></Modal>}
+        {deleting && <Modal title="Xóa công việc?" onClose={() => setDeleting(null)}><p className="text-sm text-slate-600">Công việc này sẽ bị xóa khỏi kế hoạch của bạn.</p><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setDeleting(null)}>Hủy</Button><Button className="bg-rose-600 hover:bg-rose-700" disabled={saving} onClick={() => void remove()}>Xóa công việc</Button></div></Modal>}
+    </main>;
 }
 
-function MobilePlanCard({
-  plan,
-  today,
-  edit,
-  remove,
-  start,
-}: {
-  plan: Plan;
-  today: string;
-  edit: (p: Plan) => void;
-  remove: (p: Plan) => void;
-  start: (p: Plan) => void;
-}) {
-  const date = dateKey(plan.plannedDate);
-  const done = plan.status === "COMPLETED";
-  const overdue = date < today && !done;
-  return (
-    <article className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-xs font-bold text-slate-400">
-            {new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")} · {timeText(plan.plannedDate)}
-          </p>
-          <h3 className="mt-0.5 text-base font-bold text-slate-900">{plan.farm.farmName}</h3>
-        </div>
-        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${done ? "bg-brand-100 text-brand-700" : overdue ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
-          {done ? "Đã thực hiện" : overdue ? "Quá hạn" : "Chưa thực hiện"}
-        </span>
-      </div>
-
-      <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 text-xs">
-        <div>
-          <dt className="text-slate-400">Giai đoạn</dt>
-          <dd className="mt-0.5 font-bold text-slate-800">{stageLabels[plan.stage]}</dd>
-        </div>
-        <div>
-          <dt className="text-slate-400">Hoạt động</dt>
-          <dd className="mt-0.5 font-bold text-brand-700">
-            {plan.otherActivity || activityLabels[plan.activityType] || plan.title}
-          </dd>
-        </div>
-        {plan.notes && (
-          <div className="col-span-2">
-            <dt className="text-slate-400">Chi tiết / Vật tư</dt>
-            <dd className="mt-0.5 text-slate-600">{plan.notes}</dd>
-          </div>
-        )}
-      </dl>
-
-      <div className="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
-        {done ? (
-          <Button asChild size="sm" variant="ghost" className="text-xs font-semibold text-brand-700">
-            <Link href="/dashboard/farmer/logs"><Eye className="mr-1 h-4 w-4" />Xem nhật ký</Link>
-          </Button>
-        ) : (
-          <>
-            <Button size="sm" variant="ghost" className="h-9 rounded-xl text-red-600 hover:bg-red-50 text-xs" onClick={() => void remove(plan)}>
-              <Trash2 className="mr-1 h-3.5 w-3.5" />Xóa
-            </Button>
-            <Button size="sm" variant="outline" className="h-9 rounded-xl text-slate-700 hover:bg-slate-50 text-xs" onClick={() => edit(plan)}>
-              <Pencil className="mr-1 h-3.5 w-3.5" />Sửa
-            </Button>
-            <Button size="sm" className="h-9 rounded-xl bg-brand-600 text-white hover:bg-brand-700 text-xs font-bold shadow-soft" onClick={() => void start(plan)}>
-              <ClipboardCheck className="mr-1 h-4 w-4" />Thực hiện
-            </Button>
-          </>
-        )}
-      </div>
-    </article>
-  );
-}
-
-function Row({plan,today,edit,remove,start}:{plan:Plan;today:string;edit:(p:Plan)=>void;remove:(p:Plan)=>void;start:(p:Plan)=>void}){const date=dateKey(plan.plannedDate);const done=plan.status==="COMPLETED";const overdue=date<today&&!done;return <tr className="hover:bg-slate-50"><td className="whitespace-nowrap p-4 font-semibold">{new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")}</td><td className="p-4">{timeText(plan.plannedDate)}</td><td className="p-4"><b>{plan.farm.farmName}</b><p className="text-xs text-slate-400">{plan.farm.farmCode}</p></td><td className="p-4">{stageLabels[plan.stage]}</td><td className="p-4 font-semibold">{plan.otherActivity||activityLabels[plan.activityType]||plan.title}</td><td className="max-w-64 p-4 text-slate-600">{plan.notes||"—"}</td><td className="p-4"><span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${done?"bg-brand-100 text-brand-700":overdue?"bg-red-100 text-red-700":"bg-amber-100 text-amber-700"}`}>{done?"Đã thực hiện":overdue?"Quá hạn":"Chưa thực hiện"}</span></td><td className="p-4">{done?<Button asChild size="sm" variant="ghost"><Link href="/dashboard/farmer/logs"><Eye className="mr-1 h-4 w-4"/>Xem nhật ký</Link></Button>:<div className="flex items-center gap-1"><Button size="sm" variant="outline" className="h-10 w-10 rounded-full border-brand-200 p-0 text-brand-700 hover:bg-brand-50" title="Đánh dấu đã thực hiện" aria-label="Đánh dấu đã thực hiện" onClick={()=>void start(plan)}><ClipboardCheck className="h-5 w-5"/></Button><Button size="sm" variant="ghost" className="h-10 w-10 rounded-full p-0 text-brand-700 hover:bg-brand-50" title="Sửa công việc" aria-label="Sửa công việc" onClick={()=>edit(plan)}><Pencil className="h-4 w-4"/></Button><Button size="sm" variant="ghost" className="h-10 w-10 rounded-full p-0 text-red-600 hover:bg-red-50" title="Xóa công việc" aria-label="Xóa công việc" onClick={()=>void remove(plan)}><Trash2 className="h-4 w-4"/></Button></div>}</td></tr>}
-
-function PlanDateInput({value,onChange}:{value:string;onChange:(value:string)=>void}){
- const [display,setDisplay]=useState(()=>dateToVietnamese(value)); const [open,setOpen]=useState(false); const [view,setView]=useState(()=>new Date(`${value}T00:00:00`)); const anchor=useRef<HTMLDivElement|null>(null);
- useEffect(()=>setDisplay(dateToVietnamese(value)),[value]);
- function update(text:string){const digits=text.replace(/\D/g,"").slice(0,8);const formatted=[digits.slice(0,2),digits.slice(2,4),digits.slice(4,8)].filter(Boolean).join("/");setDisplay(formatted);const parsed=vietnameseToDate(formatted);if(parsed)onChange(parsed);}
- function choose(day:number){const chosen=new Date(view.getFullYear(),view.getMonth(),day);onChange(`${chosen.getFullYear()}-${String(chosen.getMonth()+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`);setOpen(false);}
- const first=new Date(view.getFullYear(),view.getMonth(),1); const offset=(first.getDay()+6)%7; const total=new Date(view.getFullYear(),view.getMonth()+1,0).getDate(); const cells=Array.from({length:offset+total},(_,i)=>i<offset?null:i-offset+1); const rect=anchor.current?.getBoundingClientRect();
- return <div ref={anchor} className="relative min-w-40"><Input className="pr-11" inputMode="numeric" placeholder="dd/mm/yyyy" value={display} onChange={event=>update(event.target.value)} onBlur={()=>setDisplay(dateToVietnamese(value))} aria-label="Ngày thực hiện, định dạng ngày tháng năm"/><button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-brand-700 hover:bg-brand-50" aria-label="Mở lịch chọn ngày" onClick={()=>{setView(new Date(`${value}T00:00:00`));setOpen(v=>!v);}}><CalendarDays className="h-4 w-4"/></button>{open&&rect&&typeof document!=="undefined"&&createPortal(<><button className="fixed inset-0 z-[109] cursor-default" aria-label="Đóng lịch" onClick={()=>setOpen(false)}/><div className="fixed z-[110] w-72 rounded-2xl border bg-white p-4 shadow-2xl" style={{left:Math.min(rect.left,window.innerWidth-304),top:Math.min(rect.bottom+8,window.innerHeight-360)}}><div className="flex items-center justify-between"><button type="button" className="rounded-lg p-2 hover:bg-slate-100" onClick={()=>setView(new Date(view.getFullYear(),view.getMonth()-1,1))}><ChevronLeft className="h-4 w-4"/></button><b className="capitalize">{view.toLocaleDateString("vi-VN",{month:"long",year:"numeric"})}</b><button type="button" className="rounded-lg p-2 hover:bg-slate-100" onClick={()=>setView(new Date(view.getFullYear(),view.getMonth()+1,1))}><ChevronRight className="h-4 w-4"/></button></div><div className="mt-3 grid grid-cols-7 text-center text-xs font-bold text-slate-400">{["T2","T3","T4","T5","T6","T7","CN"].map(d=><span key={d} className="py-2">{d}</span>)}</div><div className="grid grid-cols-7">{cells.map((day,index)=>day?<button type="button" key={day} onClick={()=>choose(day)} className={`m-0.5 grid h-8 w-8 place-items-center rounded-full text-sm hover:bg-brand-100 ${value===`${view.getFullYear()}-${String(view.getMonth()+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`?"bg-brand-600 font-bold text-white hover:bg-brand-600 shadow-sm":""}`}>{day}</button>:<span key={`empty-${index}`}/>)}</div><button type="button" className="mt-3 w-full rounded-xl bg-brand-50 py-2 text-sm font-bold text-brand-700 hover:bg-brand-100 transition" onClick={()=>{const now=new Date();setView(new Date(now.getFullYear(),now.getMonth(),1));onChange(todayKey());setOpen(false);}}>Chọn hôm nay</button></div></>,document.body)}</div>;
-}
-
-function PlanTimeInput({value,onChange}:{value:string;onChange:(value:string)=>void}){
- const [open,setOpen]=useState(false); const [selectedHour,setSelectedHour]=useState(value.split(":")[0]||""); const [selectedMinute,setSelectedMinute]=useState(value.split(":")[1]||"00"); const anchor=useRef<HTMLDivElement|null>(null); const rect=anchor.current?.getBoundingClientRect();
- function show(){setSelectedHour(value.split(":")[0]||"");setSelectedMinute(value.split(":")[1]||"00");setOpen(true);} function done(){if(selectedHour)onChange(`${selectedHour}:${selectedMinute}`);setOpen(false);}
- return <div ref={anchor} className="min-w-44"><button type="button" onClick={show} className="flex h-10 w-full items-center justify-between rounded-xl border bg-white px-3 text-sm shadow-sm hover:border-brand-300" aria-label="Chọn giờ thực hiện"><span className={value?"font-semibold text-slate-800":"text-slate-400"}>{value||"Chọn giờ"}</span><Clock3 className="h-4 w-4 text-brand-600"/></button>{open&&rect&&typeof document!=="undefined"&&createPortal(<><button className="fixed inset-0 z-[109] cursor-default" aria-label="Đóng bảng chọn giờ" onClick={()=>setOpen(false)}/><div className="fixed z-[110] w-80 rounded-2xl border bg-white p-4 shadow-2xl" style={{left:Math.max(8,Math.min(rect.left,window.innerWidth-336)),top:Math.max(8,Math.min(rect.bottom+8,window.innerHeight-500))}}><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wide text-brand-600">Giờ dự kiến</p><h3 className="mt-1 font-black text-slate-900">Chọn giờ thực hiện</h3></div><button type="button" className="rounded-xl p-2 text-slate-400 hover:bg-slate-100" onClick={()=>setOpen(false)}><X className="h-4 w-4"/></button></div><p className="mb-2 mt-4 text-xs font-bold text-slate-500">GIỜ (24 GIỜ)</p><div className="grid grid-cols-6 gap-1">{Array.from({length:24},(_,index)=>String(index).padStart(2,"0")).map(hour=><button type="button" key={hour} onClick={()=>setSelectedHour(hour)} className={`h-9 rounded-lg text-sm font-semibold ${selectedHour===hour?"bg-brand-600 text-white shadow-soft":"bg-slate-50 text-slate-700 hover:bg-brand-50"}`}>{hour}</button>)}</div><p className="mb-2 mt-4 text-xs font-bold text-slate-500">PHÚT</p><div className="grid grid-cols-6 gap-1">{Array.from({length:12},(_,index)=>String(index*5).padStart(2,"0")).map(minute=><button type="button" key={minute} onClick={()=>setSelectedMinute(minute)} className={`h-9 rounded-lg text-sm font-semibold ${selectedMinute===minute?"bg-brand-600 text-white shadow-soft":"bg-slate-50 text-slate-700 hover:bg-brand-50"}`}>{minute}</button>)}</div><div className="mt-4 flex gap-2"><Button type="button" className="flex-1" variant="outline" onClick={()=>{onChange("");setOpen(false);}}>Không chọn giờ</Button><Button type="button" className="flex-1 bg-brand-600 font-bold text-white hover:bg-brand-700 shadow-soft" disabled={!selectedHour} onClick={done}>Xong</Button></div></div></>,document.body)}</div>;
-}
+function PlanRow({ plan, today, toggle, edit, remove }: PlanActions) { const overdue = new Date(plan.plannedDate).getTime() < Date.now() && plan.status !== "COMPLETED"; return <tr className="hover:bg-slate-50"><td className={`p-4 text-center font-semibold ${overdue ? "text-rose-700" : ""}`}>{new Date(`${dateKey(plan.plannedDate)}T00:00:00`).toLocaleDateString("vi-VN")}{overdue && <small className="block text-[10px]">Quá hạn</small>}</td><td className="p-4 text-center">{timeText(plan.plannedDate)}</td><td className="p-4 font-semibold">{plan.otherActivity || activityLabels[plan.activityType] || plan.title}</td><td className="p-4"><Material plan={plan}/></td><td className="p-4 text-center"><CheckBox checked={plan.status === "COMPLETED"} onChange={(checked) => void toggle(plan, checked)}/></td><td className="p-4"><div className="flex justify-center gap-1"><IconButton label="Chỉnh sửa" onClick={() => edit(plan)}><Pencil className="h-4 w-4"/></IconButton><IconButton label="Xóa công việc" danger onClick={() => remove(plan)}><Trash2 className="h-4 w-4"/></IconButton></div></td></tr>; }
+function PlanCard({ plan, toggle, edit, remove }: PlanActions) { const overdue = new Date(plan.plannedDate).getTime() < Date.now() && plan.status !== "COMPLETED"; return <article className="rounded-2xl border p-4"><div className="flex items-start justify-between gap-3"><div><p className={`text-xs font-bold ${overdue ? "text-rose-600" : "text-slate-400"}`}>{new Date(`${dateKey(plan.plannedDate)}T00:00:00`).toLocaleDateString("vi-VN")} · {timeText(plan.plannedDate)}{overdue ? " · Quá hạn" : ""}</p><h3 className="mt-1 font-bold">{plan.otherActivity || activityLabels[plan.activityType] || plan.title}</h3></div><CheckBox checked={plan.status === "COMPLETED"} onChange={(checked) => void toggle(plan, checked)}/></div><div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm"><p className="text-xs text-slate-400">Vật tư dự kiến</p><Material plan={plan}/></div><div className="mt-3 flex justify-end gap-1"><IconButton label="Chỉnh sửa" onClick={() => edit(plan)}><Pencil className="h-4 w-4"/></IconButton><IconButton label="Xóa công việc" danger onClick={() => remove(plan)}><Trash2 className="h-4 w-4"/></IconButton></div></article>; }
+type PlanActions = { plan: Plan; today: string; toggle: (plan: Plan, checked: boolean) => Promise<void>; edit: (plan: Plan) => void; remove: (plan: Plan) => void };
+function Material({ plan }: { plan: Plan }) { const items = (plan.plannedMaterial ?? "").split(/[,;\n]/).map((item) => item.trim()).filter(Boolean); if (!items.length) return <>—</>; return <><span className="font-semibold">{items[0]}</span>{plan.plannedQuantity && <small className="block text-slate-500">{plan.plannedQuantity}</small>}{items.length > 1 && <small className="block text-brand-700">+{items.length - 1} vật tư</small>}</>; }
+function CheckBox({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) { return <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} aria-label={checked ? "Bỏ đánh dấu đã thực hiện" : "Đánh dấu đã thực hiện"} className="h-5 w-5 cursor-pointer rounded border-slate-300 accent-emerald-600"/>; }
+function IconButton({ label, danger, onClick, children }: { label: string; danger?: boolean; onClick: () => void; children: React.ReactNode }) { return <button type="button" title={label} aria-label={label} onClick={onClick} className={`grid h-9 w-9 place-items-center rounded-full ${danger ? "text-rose-600 hover:bg-rose-50" : "text-brand-700 hover:bg-brand-50"}`}>{children}</button>; }
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) { return <div className="fixed inset-0 z-[110] grid place-items-center bg-slate-950/50 p-4"><div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h2 className="text-xl font-black">{title}</h2><button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100"><X className="h-5 w-5"/></button></div>{children}</div></div>; }
+function Field({ label, children }: { label: string; children: React.ReactElement }) { return <label className="block text-sm font-semibold text-slate-700">{label}{<div className="mt-1 [&>*]:w-full [&>*]:rounded-xl [&>*]:border [&>*]:px-3 [&>*]:py-2">{children}</div>}</label>; }
+function ReadOnly({ label, value }: { label: string; value: string }) { return <div className="rounded-xl bg-brand-50 p-3"><p className="text-xs font-semibold text-brand-700">{label}</p><p className="font-bold">{value}</p></div>; }
+function Loading() { return <div className="py-14 text-center"><Loader2 className="mx-auto h-7 w-7 animate-spin text-brand-600"/></div>; }
+function Empty() { return <div className="py-14 text-center text-sm text-slate-500">Chưa có công việc phù hợp.</div>; }

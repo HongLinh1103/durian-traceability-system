@@ -182,13 +182,12 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
         let cancelled = false;
         const fetchCollectorNotices = async () => {
             try {
-                const response = await fetch("/api/harvests", { cache: "no-store" });
+                const response = await fetch(userRole === "PROCESSING_FACILITY" ? "/api/processing/raw-materials" : "/api/harvests", { cache: "no-store" });
                 const payload = await response.json();
                 if (!cancelled && payload.success) {
+                    if (userRole === "PROCESSING_FACILITY") { setCollectorNoticeCount(payload.actionRequiredCount ?? 0); return; }
                     const rows = payload.data ?? [];
-                    const count = userRole === "COLLECTOR"
-                        ? rows.filter((item: { status: string }) => ["WAITING_CONFIRMATION", "HARVESTED"].includes(item.status)).length
-                        : rows.filter((item: { status: string }) => ["WAITING_CONFIRMATION", "CONFIRMED", "HARVESTING"].includes(item.status)).length;
+                    const count = rows.filter((item: { status: string }) => ["WAITING_CONFIRMATION", "HARVESTED"].includes(item.status)).length;
                     setCollectorNoticeCount(count);
                 }
             } catch {
