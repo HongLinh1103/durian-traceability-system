@@ -5,7 +5,7 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
-        "vercel-build": "prisma generate && prisma migrate deploy && next build",
+        "vercel-build": "prisma generate && (prisma migrate resolve --rolled-back \"202608250002_add_processing_steps\" || true) && prisma migrate deploy && next build",
         "postinstall": "prisma generate",
         "start": "next start",
         "lint": "next lint",
