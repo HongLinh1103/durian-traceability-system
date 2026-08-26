@@ -276,6 +276,11 @@ export async function getCollectors(): Promise<FacilityItem[]> {
                 type: "COLLECTOR",
                 status: "APPROVED",
                 deletedAt: null,
+                NOT: [
+                    { name: { contains: "Demo 1", mode: "insensitive" } },
+                    { name: { contains: "Demo 2", mode: "insensitive" } },
+                    { name: { contains: "Vựa thu mua Demo", mode: "insensitive" } },
+                ],
             },
             include: {
                 owner: {
@@ -289,37 +294,49 @@ export async function getCollectors(): Promise<FacilityItem[]> {
             orderBy: { createdAt: "desc" },
         });
 
-        const mappedDb: FacilityItem[] = (dbItems || []).map((item, idx) => {
-            const fallback = FALLBACK_COLLECTORS[idx % FALLBACK_COLLECTORS.length];
-            return {
-                id: item.id,
-                type: "COLLECTOR",
-                name: item.name,
-                representativeName: item.representativeName || item.owner?.fullName || fallback.representativeName,
-                representativePhone: item.representativePhone || item.owner?.phone || fallback.representativePhone,
-                phone: item.phone || fallback.phone,
-                email: item.email || fallback.email,
-                website: item.website || fallback.website,
-                address: item.address,
-                province: item.province,
-                ward: item.ward,
-                organizationType: item.organizationType || fallback.organizationType,
-                taxCode: item.taxCode,
-                businessCode: item.businessCode,
-                purchasingAreas: item.purchasingAreas?.length ? item.purchasingAreas : fallback.purchasingAreas,
-                processingTypes: item.processingTypes,
-                expectedCapacity: item.expectedCapacity ? Number(item.expectedCapacity) : fallback.expectedCapacity,
-                capacityUnit: item.capacityUnit || fallback.capacityUnit,
-                imageUrls: item.imageUrls?.length ? item.imageUrls : fallback.imageUrls,
-                avatar: item.imageUrls?.[0] || item.owner?.avatar || fallback.avatar,
-                certifications: fallback.certifications,
-                description: item.description || fallback.description,
-                establishedYear: fallback.establishedYear,
-                rating: fallback.rating,
-            };
-        });
+        const mappedDb: FacilityItem[] = (dbItems || [])
+            .filter((item) => {
+                const lowerName = (item.name || "").toLowerCase();
+                const lowerRep = (item.representativeName || "").toLowerCase();
+                return (
+                    !lowerName.includes("demo 1") &&
+                    !lowerName.includes("demo 2") &&
+                    !lowerName.includes("vựa thu mua demo") &&
+                    !lowerRep.includes("demo 1") &&
+                    !lowerRep.includes("demo 2")
+                );
+            })
+            .map((item, idx) => {
+                const fallback = FALLBACK_COLLECTORS[idx % FALLBACK_COLLECTORS.length];
+                return {
+                    id: item.id,
+                    type: "COLLECTOR",
+                    name: item.name,
+                    representativeName: item.representativeName || item.owner?.fullName || fallback.representativeName,
+                    representativePhone: item.representativePhone || item.owner?.phone || fallback.representativePhone,
+                    phone: item.phone || fallback.phone,
+                    email: item.email || fallback.email,
+                    website: item.website || fallback.website,
+                    address: item.address,
+                    province: item.province,
+                    ward: item.ward,
+                    organizationType: item.organizationType || fallback.organizationType,
+                    taxCode: item.taxCode,
+                    businessCode: item.businessCode,
+                    purchasingAreas: item.purchasingAreas?.length ? item.purchasingAreas : fallback.purchasingAreas,
+                    processingTypes: item.processingTypes,
+                    expectedCapacity: item.expectedCapacity ? Number(item.expectedCapacity) : fallback.expectedCapacity,
+                    capacityUnit: item.capacityUnit || fallback.capacityUnit,
+                    imageUrls: item.imageUrls?.length ? item.imageUrls : fallback.imageUrls,
+                    avatar: item.imageUrls?.[0] || item.owner?.avatar || fallback.avatar,
+                    certifications: fallback.certifications,
+                    description: item.description || fallback.description,
+                    establishedYear: fallback.establishedYear,
+                    rating: fallback.rating,
+                };
+            });
 
-        // Merge to guarantee all 4 collectors are always displayed
+        // Merge to guarantee all 4 official collectors are always displayed
         const result = [...mappedDb];
         for (const fb of FALLBACK_COLLECTORS) {
             const exists = result.some(
@@ -343,6 +360,11 @@ export async function getProcessingFacilities(): Promise<FacilityItem[]> {
                 type: "PROCESSING_FACILITY",
                 status: "APPROVED",
                 deletedAt: null,
+                NOT: [
+                    { name: { contains: "Demo 1", mode: "insensitive" } },
+                    { name: { contains: "Demo 2", mode: "insensitive" } },
+                    { name: { contains: "Cơ sở chế biến Demo", mode: "insensitive" } },
+                ],
             },
             include: {
                 owner: {
@@ -356,37 +378,49 @@ export async function getProcessingFacilities(): Promise<FacilityItem[]> {
             orderBy: { createdAt: "desc" },
         });
 
-        const mappedDb: FacilityItem[] = (dbItems || []).map((item, idx) => {
-            const fallback = FALLBACK_PROCESSING_FACILITIES[idx % FALLBACK_PROCESSING_FACILITIES.length];
-            return {
-                id: item.id,
-                type: "PROCESSING_FACILITY",
-                name: item.name,
-                representativeName: item.representativeName || item.owner?.fullName || fallback.representativeName,
-                representativePhone: item.representativePhone || item.owner?.phone || fallback.representativePhone,
-                phone: item.phone || fallback.phone,
-                email: item.email || fallback.email,
-                website: item.website || fallback.website,
-                address: item.address,
-                province: item.province,
-                ward: item.ward,
-                organizationType: item.organizationType || fallback.organizationType,
-                taxCode: item.taxCode,
-                businessCode: item.businessCode,
-                purchasingAreas: item.purchasingAreas?.length ? item.purchasingAreas : fallback.purchasingAreas,
-                processingTypes: item.processingTypes?.length ? item.processingTypes : fallback.processingTypes,
-                expectedCapacity: item.expectedCapacity ? Number(item.expectedCapacity) : fallback.expectedCapacity,
-                capacityUnit: item.capacityUnit || fallback.capacityUnit,
-                imageUrls: item.imageUrls?.length ? item.imageUrls : fallback.imageUrls,
-                avatar: item.imageUrls?.[0] || item.owner?.avatar || fallback.avatar,
-                certifications: fallback.certifications,
-                description: item.description || fallback.description,
-                establishedYear: fallback.establishedYear,
-                rating: fallback.rating,
-            };
-        });
+        const mappedDb: FacilityItem[] = (dbItems || [])
+            .filter((item) => {
+                const lowerName = (item.name || "").toLowerCase();
+                const lowerRep = (item.representativeName || "").toLowerCase();
+                return (
+                    !lowerName.includes("demo 1") &&
+                    !lowerName.includes("demo 2") &&
+                    !lowerName.includes("cơ sở chế biến demo") &&
+                    !lowerRep.includes("demo 1") &&
+                    !lowerRep.includes("demo 2")
+                );
+            })
+            .map((item, idx) => {
+                const fallback = FALLBACK_PROCESSING_FACILITIES[idx % FALLBACK_PROCESSING_FACILITIES.length];
+                return {
+                    id: item.id,
+                    type: "PROCESSING_FACILITY",
+                    name: item.name,
+                    representativeName: item.representativeName || item.owner?.fullName || fallback.representativeName,
+                    representativePhone: item.representativePhone || item.owner?.phone || fallback.representativePhone,
+                    phone: item.phone || fallback.phone,
+                    email: item.email || fallback.email,
+                    website: item.website || fallback.website,
+                    address: item.address,
+                    province: item.province,
+                    ward: item.ward,
+                    organizationType: item.organizationType || fallback.organizationType,
+                    taxCode: item.taxCode,
+                    businessCode: item.businessCode,
+                    purchasingAreas: item.purchasingAreas?.length ? item.purchasingAreas : fallback.purchasingAreas,
+                    processingTypes: item.processingTypes?.length ? item.processingTypes : fallback.processingTypes,
+                    expectedCapacity: item.expectedCapacity ? Number(item.expectedCapacity) : fallback.expectedCapacity,
+                    capacityUnit: item.capacityUnit || fallback.capacityUnit,
+                    imageUrls: item.imageUrls?.length ? item.imageUrls : fallback.imageUrls,
+                    avatar: item.imageUrls?.[0] || item.owner?.avatar || fallback.avatar,
+                    certifications: fallback.certifications,
+                    description: item.description || fallback.description,
+                    establishedYear: fallback.establishedYear,
+                    rating: fallback.rating,
+                };
+            });
 
-        // Merge to guarantee all 4 processing facilities are always displayed
+        // Merge to guarantee all 4 official processing facilities are always displayed
         const result = [...mappedDb];
         for (const fb of FALLBACK_PROCESSING_FACILITIES) {
             const exists = result.some(

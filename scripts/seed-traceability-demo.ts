@@ -10,8 +10,25 @@ async function user(email: string, phone: string, role: UserRole, fullName: stri
     return prisma.user.upsert({ where: { email }, update: { phone, role, fullName, password: hashed, isApproved: true, isLocked: false, accountStatus: "APPROVED", deletedAt: null }, create: { email, phone, role, fullName, password: hashed, isApproved: true, accountStatus: "APPROVED", approvedAt: new Date() } });
 }
 
-async function facility(ownerId: string, type: "COLLECTOR" | "PROCESSING_FACILITY", index: number) {
-    return prisma.partnerFacility.upsert({ where: { ownerId }, update: { status: "APPROVED", deletedAt: null }, create: { ownerId, type, representativeName: type === "COLLECTOR" ? `Chủ vựa Demo ${index}` : `Quản lý chế biến Demo ${index}`, representativePhone: `09093000${index}${type === "COLLECTOR" ? "1" : "2"}`, identityNumber: `0792060000${index}${type === "COLLECTOR" ? "1" : "2"}`, name: type === "COLLECTOR" ? `Vựa thu mua Demo ${index}` : `Cơ sở chế biến Demo ${index}`, organizationType: "Doanh nghiệp demo", phone: `09093000${index}${type === "COLLECTOR" ? "1" : "2"}`, address: "Đồng Nai", province: "Đồng Nai", status: "APPROVED", approvedAt: new Date() } });
+async function facility(ownerId: string, type: "COLLECTOR" | "PROCESSING_FACILITY") {
+    return prisma.partnerFacility.upsert({
+        where: { ownerId },
+        update: { status: "APPROVED", deletedAt: null },
+        create: {
+            ownerId,
+            type,
+            representativeName: type === "COLLECTOR" ? "Nguyễn Thành Phát" : "Lê Văn Trị",
+            representativePhone: type === "COLLECTOR" ? "0909000002" : "0909000003",
+            identityNumber: type === "COLLECTOR" ? "079203000002" : "079203000003",
+            name: type === "COLLECTOR" ? "Vựa Sầu riêng Thành Phát" : "Cơ sở Chế biến Sầu riêng Trị An",
+            organizationType: type === "COLLECTOR" ? "Hộ kinh doanh" : "Công ty TNHH",
+            phone: type === "COLLECTOR" ? "0909000002" : "0909000003",
+            address: "Đồng Nai",
+            province: "Đồng Nai",
+            status: "APPROVED",
+            approvedAt: new Date(),
+        },
+    });
 }
 
 async function main() {
@@ -20,12 +37,10 @@ async function main() {
     const managerTp = await user("manager.tanphu@triviet.local", "0909100003", "AREA_MANAGER", "Trưởng ban Tân Phú");
     const farmers = await Promise.all(Array.from({ length: 6 }, (_, index) => user(`farmer${index + 1}@triviet.local`, `090920000${index + 1}`, "FARMER", `Nông dân Demo ${index + 1}`)));
     await Promise.all([1, 2].map((index) => user(`store${index}@triviet.local`, `090925000${index}`, "STORE_OWNER", `Chủ cửa hàng Demo ${index}`)));
-    const collectors = await Promise.all([1, 2].map((index) => user(`collector${index}@triviet.local`, `090930000${index}`, "COLLECTOR", `Chủ vựa Demo ${index}`)));
-    const processors = await Promise.all([1, 2].map((index) => user(`processor${index}@triviet.local`, `090940000${index}`, "PROCESSING_FACILITY", `Quản lý chế biến Demo ${index}`)));
-    const collector = await facility(collectors[0].id, "COLLECTOR", 1);
-    await facility(collectors[1].id, "COLLECTOR", 2);
-    const processor = await facility(processors[0].id, "PROCESSING_FACILITY", 1);
-    await facility(processors[1].id, "PROCESSING_FACILITY", 2);
+    const collectors = [await user("collector@triviet.vn", "0909000002", "COLLECTOR", "Nguyễn Thành Phát")];
+    const processors = [await user("processor@triviet.vn", "0909000003", "PROCESSING_FACILITY", "Lê Văn Trị")];
+    const collector = await facility(collectors[0].id, "COLLECTOR");
+    const processor = await facility(processors[0].id, "PROCESSING_FACILITY");
 
     const storeUsers = await prisma.user.findMany({ where: { email: { in: ["store1@triviet.local", "store2@triviet.local"] } }, orderBy: { email: "asc" } });
     for (let index = 0; index < storeUsers.length; index++) {
