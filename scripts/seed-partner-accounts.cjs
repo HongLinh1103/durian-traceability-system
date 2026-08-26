@@ -5,8 +5,41 @@ const prisma = new PrismaClient();
 
 const accounts = [
     // ==========================================
-    // 3 VỰA THU MUA (COLLECTOR)
+    // 4 VỰA THU MUA (COLLECTOR)
     // ==========================================
+    {
+        phone: "0909000002",
+        email: "collector@triviet.vn",
+        password: "ThuMua@123",
+        fullName: "Nguyễn Thành Phát",
+        role: "COLLECTOR",
+        facility: {
+            type: "COLLECTOR",
+            representativeName: "Nguyễn Thành Phát",
+            representativePhone: "0909000002",
+            representativeEmail: "collector@triviet.vn",
+            identityNumber: "079203000002",
+            name: "Vựa Sầu riêng Thành Phát",
+            organizationType: "Hộ kinh doanh",
+            taxCode: "3603999002",
+            businessCode: "HKD-TP-2026",
+            phone: "0909000002",
+            email: "collector@triviet.vn",
+            address: "128 Đường Hùng Vương, Phường Xuân Lập, TP. Long Khánh, Tỉnh Đồng Nai",
+            province: "Đồng Nai",
+            ward: "Phường Xuân Lập",
+            contactPerson: "Nguyễn Thành Phát",
+            purchasingAreas: ["Đồng Nai", "Bình Phước", "Lâm Đồng"],
+            processingTypes: [],
+            expectedCapacity: 50,
+            capacityUnit: "tấn/ngày",
+            imageUrls: [
+                "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
+                "https://images.unsplash.com/photo-1595246140625-573b715d11dc?auto=format&fit=crop&w=600&q=80"
+            ],
+            description: "Vựa thu mua sầu riêng trực tiếp từ các vườn trồng chuẩn VietGAP tại Đồng Nai và khu vực lân cận.",
+        },
+    },
     {
         phone: "0909111001",
         email: "hoanglong.collector@triviet.vn",
@@ -108,8 +141,41 @@ const accounts = [
     },
 
     // ==========================================
-    // 3 CƠ SỞ CHẾ BIẾN - ĐÓNG GÓI (PROCESSING_FACILITY)
+    // 4 CƠ SỞ CHẾ BIẾN - ĐÓNG GÓI (PROCESSING_FACILITY)
     // ==========================================
+    {
+        phone: "0909000003",
+        email: "processing@triviet.vn",
+        password: "CheBien@123",
+        fullName: "Trần Minh Anh",
+        role: "PROCESSING_FACILITY",
+        facility: {
+            type: "PROCESSING_FACILITY",
+            representativeName: "Trần Minh Anh",
+            representativePhone: "0909000003",
+            representativeEmail: "processing@triviet.vn",
+            identityNumber: "079203000003",
+            name: "Cơ sở Chế biến Sầu riêng Trị An",
+            organizationType: "Công ty TNHH",
+            taxCode: "3603999003",
+            businessCode: "DN-CB-2026",
+            phone: "0909000003",
+            email: "processing@triviet.vn",
+            address: "Tuyến ĐT 767, Xã Sông Trầu, Huyện Trảng Bom, Tỉnh Đồng Nai",
+            province: "Đồng Nai",
+            ward: "Xã Sông Trầu",
+            contactPerson: "Trần Minh Anh",
+            purchasingAreas: ["Đồng Nai", "Bình Phước", "Bình Thuận"],
+            processingTypes: ["Sầu riêng nguyên trái xuất khẩu", "Tách múi hút chân không", "Cấp đông nhanh IQF"],
+            expectedCapacity: 35,
+            capacityUnit: "tấn/ngày",
+            imageUrls: [
+                "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80",
+                "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80"
+            ],
+            description: "Cơ sở tiếp nhận, sơ chế, khử khuẩn và chế biến sầu riêng đạt tiêu chuẩn an toàn thực phẩm quốc tế, phục vụ thị trường nội địa và xuất khẩu.",
+        },
+    },
     {
         phone: "0909222001",
         email: "dongphu.factory@triviet.vn",
@@ -225,7 +291,7 @@ const accounts = [
 ];
 
 async function seed() {
-    console.log("==> Bắt đầu seed 3 Vựa Thu Mua & 3 Cơ Sở Chế Biến...");
+    console.log("==> Bắt đầu seed 4 Vựa Thu Mua & 4 Cơ Sở Chế Biến...");
 
     for (const acc of accounts) {
         const hashedPassword = await bcryptjs.hash(acc.password, 10);
@@ -324,7 +390,7 @@ async function seed() {
         }
     }
 
-    console.log("==> Hoàn tất seed đối tác thu mua & chế biến.");
+    console.log("==> Hoàn tất seed 4 vựa & 4 cơ sở.");
 }
 
 seed()

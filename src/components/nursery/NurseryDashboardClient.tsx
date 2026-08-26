@@ -79,9 +79,12 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
         NURSERY_ACCOUNTS.find((n) => n.phone === selectedNurseryPhone) || NURSERY_ACCOUNTS[0];
 
     // Filter items of selected nursery
-    const nurseryItems = items.filter(
-        (it) => it.ownerPhone === selectedNurseryPhone || it.nurseryPhone === selectedNurseryPhone
-    );
+    const nurseryItems =
+        selectedNurseryPhone === "ALL"
+            ? items
+            : items.filter(
+                  (it) => it.ownerPhone === selectedNurseryPhone || it.nurseryPhone === selectedNurseryPhone
+              );
 
     const totalStock = nurseryItems.reduce((sum, it) => sum + (it.availableQuantity || 0), 0);
     const inStockCount = nurseryItems.filter((it) => it.status === "IN_STOCK").length;
@@ -266,6 +269,7 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
                                 onChange={(e) => setSelectedNurseryPhone(e.target.value)}
                                 className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-brand-500"
                             >
+                                <option value="ALL">Tất cả trại giống ({items.length} giống)</option>
                                 {NURSERY_ACCOUNTS.map((acc) => (
                                     <option key={acc.phone} value={acc.phone}>
                                         {acc.name}
