@@ -289,11 +289,7 @@ export async function getCollectors(): Promise<FacilityItem[]> {
             orderBy: { createdAt: "desc" },
         });
 
-        if (!dbItems || dbItems.length === 0) {
-            return FALLBACK_COLLECTORS;
-        }
-
-        return dbItems.map((item, idx) => {
+        const mappedDb: FacilityItem[] = (dbItems || []).map((item, idx) => {
             const fallback = FALLBACK_COLLECTORS[idx % FALLBACK_COLLECTORS.length];
             return {
                 id: item.id,
@@ -322,6 +318,19 @@ export async function getCollectors(): Promise<FacilityItem[]> {
                 rating: fallback.rating,
             };
         });
+
+        // Merge to guarantee all 4 facilities are always displayed
+        const result = [...mappedDb];
+        for (const fb of FALLBACK_COLLECTORS) {
+            const exists = result.some(
+                (r) => r.phone === fb.phone || r.name.trim().toLowerCase() === fb.name.trim().toLowerCase()
+            );
+            if (!exists) {
+                result.push(fb);
+            }
+        }
+
+        return result.length > 0 ? result : FALLBACK_COLLECTORS;
     } catch {
         return FALLBACK_COLLECTORS;
     }
@@ -347,11 +356,7 @@ export async function getProcessingFacilities(): Promise<FacilityItem[]> {
             orderBy: { createdAt: "desc" },
         });
 
-        if (!dbItems || dbItems.length === 0) {
-            return FALLBACK_PROCESSING_FACILITIES;
-        }
-
-        return dbItems.map((item, idx) => {
+        const mappedDb: FacilityItem[] = (dbItems || []).map((item, idx) => {
             const fallback = FALLBACK_PROCESSING_FACILITIES[idx % FALLBACK_PROCESSING_FACILITIES.length];
             return {
                 id: item.id,
@@ -380,6 +385,19 @@ export async function getProcessingFacilities(): Promise<FacilityItem[]> {
                 rating: fallback.rating,
             };
         });
+
+        // Merge to guarantee all 4 processing facilities are always displayed
+        const result = [...mappedDb];
+        for (const fb of FALLBACK_PROCESSING_FACILITIES) {
+            const exists = result.some(
+                (r) => r.phone === fb.phone || r.name.trim().toLowerCase() === fb.name.trim().toLowerCase()
+            );
+            if (!exists) {
+                result.push(fb);
+            }
+        }
+
+        return result.length > 0 ? result : FALLBACK_PROCESSING_FACILITIES;
     } catch {
         return FALLBACK_PROCESSING_FACILITIES;
     }
