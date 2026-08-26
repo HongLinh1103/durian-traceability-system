@@ -60,23 +60,10 @@ export const SYSTEM_ACCOUNTS: SystemAccount[] = [
     },
 
     // =========================================================================
-    // 2. 4 VỰA THU MUA (COLLECTOR)
+    // 2. 3 VỰA THU MUA (COLLECTOR)
     // =========================================================================
     {
         id: "user-collector-01",
-        phone: "0909000002",
-        email: "collector@triviet.vn",
-        password: "ThuMua@123",
-        fullName: "Nguyễn Thành Phát",
-        role: "COLLECTOR",
-        isApproved: true,
-        facilityName: "Vựa Sầu riêng Thành Phát",
-        facilityType: "COLLECTOR",
-        address: "128 Đường Hùng Vương, Phường Xuân Lập, TP. Long Khánh, Tỉnh Đồng Nai",
-        province: "Đồng Nai",
-    },
-    {
-        id: "user-collector-02",
         phone: "0909111001",
         email: "hoanglong.collector@triviet.vn",
         password: "ThuMua@123",
@@ -89,7 +76,7 @@ export const SYSTEM_ACCOUNTS: SystemAccount[] = [
         province: "Bình Phước",
     },
     {
-        id: "user-collector-03",
+        id: "user-collector-02",
         phone: "0909111002",
         email: "taynguyen.collector@triviet.vn",
         password: "ThuMua@123",
@@ -102,7 +89,7 @@ export const SYSTEM_ACCOUNTS: SystemAccount[] = [
         province: "Đắk Lắk",
     },
     {
-        id: "user-collector-04",
+        id: "user-collector-03",
         phone: "0909111003",
         email: "mekong.collector@triviet.vn",
         password: "ThuMua@123",
@@ -116,23 +103,10 @@ export const SYSTEM_ACCOUNTS: SystemAccount[] = [
     },
 
     // =========================================================================
-    // 3. 4 CƠ SỞ CHẾ BIẾN - ĐÓNG GÓI (PROCESSING_FACILITY)
+    // 3. 3 CƠ SỞ CHẾ BIẾN - ĐÓNG GÓI (PROCESSING_FACILITY)
     // =========================================================================
     {
         id: "user-processing-01",
-        phone: "0909000003",
-        email: "processing@triviet.vn",
-        password: "CheBien@123",
-        fullName: "Trần Minh Anh",
-        role: "PROCESSING_FACILITY",
-        isApproved: true,
-        facilityName: "Cơ sở Chế biến Sầu riêng Trị An",
-        facilityType: "PROCESSING_FACILITY",
-        address: "Tuyến ĐT 767, Xã Sông Trầu, Huyện Trảng Bom, Tỉnh Đồng Nai",
-        province: "Đồng Nai",
-    },
-    {
-        id: "user-processing-02",
         phone: "0909222001",
         email: "dongphu.factory@triviet.vn",
         password: "CheBien@123",
@@ -145,7 +119,7 @@ export const SYSTEM_ACCOUNTS: SystemAccount[] = [
         province: "Bình Phước",
     },
     {
-        id: "user-processing-03",
+        id: "user-processing-02",
         phone: "0909222002",
         email: "krongpac.factory@triviet.vn",
         password: "CheBien@123",
@@ -158,7 +132,7 @@ export const SYSTEM_ACCOUNTS: SystemAccount[] = [
         province: "Đắk Lắk",
     },
     {
-        id: "user-processing-04",
+        id: "user-processing-03",
         phone: "0909222003",
         email: "mientay.factory@triviet.vn",
         password: "CheBien@123",

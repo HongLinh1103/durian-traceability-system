@@ -334,26 +334,15 @@ export function FacilityListClient({ items, type }: FacilityListClientProps) {
                         </div>
 
                         {/* Card Action Footer */}
-                        <div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50/80 px-5 py-3.5">
+                        <div className="border-t border-slate-100 bg-slate-50/80 px-5 py-3.5">
                             <Button
                                 asChild
-                                className="flex-1 rounded-xl bg-brand-600 font-bold text-white shadow-sm hover:bg-brand-700"
+                                className="w-full rounded-xl bg-brand-600 font-bold text-white shadow-sm hover:bg-brand-700"
                             >
                                 <a href={`tel:${facility.phone}`}>
                                     <PhoneCall className="mr-2 h-4 w-4" />
                                     Gọi liên hệ ({facility.phone})
                                 </a>
-                            </Button>
-
-                            <Button
-                                asChild
-                                variant="outline"
-                                className="rounded-xl border-slate-200 bg-white font-semibold text-slate-700 hover:bg-slate-100"
-                            >
-                                <Link href="/trace">
-                                    <Sparkles className="mr-1.5 h-3.5 w-3.5 text-brand-600" />
-                                    Tra cứu
-                                </Link>
                             </Button>
                         </div>
                     </article>

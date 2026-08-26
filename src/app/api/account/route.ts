@@ -28,6 +28,24 @@ const passwordSchema = z.object({
     message: "Mật khẩu xác nhận không khớp.",
 });
 
+const facilitySchema = z.object({
+    action: z.literal("facility"),
+    name: z.string().trim().min(2, "Tên cơ sở phải có ít nhất 2 ký tự."),
+    phone: z.string().trim().min(8, "Số điện thoại không hợp lệ."),
+    email: z.string().trim().email("Email không hợp lệ.").optional().or(z.literal("")),
+    organizationType: z.string().trim().min(1, "Vui lòng chọn loại hình tổ chức."),
+    taxCode: z.string().trim().optional(),
+    businessCode: z.string().trim().optional(),
+    address: z.string().trim().min(3, "Địa chỉ không hợp lệ."),
+    province: z.string().trim().min(2, "Tỉnh thành không hợp lệ."),
+    ward: z.string().trim().optional(),
+    expectedCapacity: z.union([z.number(), z.string().transform((v) => (v ? Number(v) : null))]).nullable().optional(),
+    capacityUnit: z.string().trim().optional(),
+    purchasingAreas: z.array(z.string()).optional(),
+    processingTypes: z.array(z.string()).optional(),
+    description: z.string().trim().optional(),
+});
+
 export async function PATCH(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -73,6 +91,74 @@ export async function PATCH(request: Request) {
                 data: { password: await hashPassword(parsed.data.newPassword), passwordUpdatedAt: new Date() },
             });
             return NextResponse.json({ success: true, message: "Đổi mật khẩu thành công." });
+        }
+
+        if (action === "facility") {
+            const parsed = facilitySchema.safeParse(body);
+            if (!parsed.success) {
+                return NextResponse.json({ success: false, message: parsed.error.issues[0]?.message || "Thông tin cơ sở không hợp lệ." }, { status: 400 });
+            }
+            const data = parsed.data;
+            const user = await prisma.user.findUnique({
+                where: { id: session.user.id },
+                include: { partnerFacility: true },
+            });
+
+            if (!user) {
+                return NextResponse.json({ success: false, message: "Không tìm thấy người dùng." }, { status: 404 });
+            }
+
+            const facilityType = user.role === "PROCESSING_FACILITY" ? "PROCESSING_FACILITY" : "COLLECTOR";
+
+            if (user.partnerFacility) {
+                await prisma.partnerFacility.update({
+                    where: { id: user.partnerFacility.id },
+                    data: {
+                        name: data.name,
+                        phone: data.phone,
+                        email: data.email || null,
+                        organizationType: data.organizationType,
+                        taxCode: data.taxCode || null,
+                        businessCode: data.businessCode || null,
+                        address: data.address,
+                        province: data.province,
+                        ward: data.ward || null,
+                        expectedCapacity: data.expectedCapacity ? Number(data.expectedCapacity) : null,
+                        capacityUnit: data.capacityUnit || "tấn/ngày",
+                        purchasingAreas: data.purchasingAreas || [],
+                        processingTypes: data.processingTypes || [],
+                        description: data.description || null,
+                    },
+                });
+            } else {
+                await prisma.partnerFacility.create({
+                    data: {
+                        ownerId: user.id,
+                        type: facilityType,
+                        name: data.name,
+                        representativeName: user.fullName || "Đại diện",
+                        representativePhone: user.phone,
+                        representativeEmail: user.email,
+                        identityNumber: `ID-${user.phone}`,
+                        phone: data.phone,
+                        email: data.email || null,
+                        organizationType: data.organizationType,
+                        taxCode: data.taxCode || null,
+                        businessCode: data.businessCode || null,
+                        address: data.address,
+                        province: data.province,
+                        ward: data.ward || null,
+                        expectedCapacity: data.expectedCapacity ? Number(data.expectedCapacity) : null,
+                        capacityUnit: data.capacityUnit || "tấn/ngày",
+                        purchasingAreas: data.purchasingAreas || [],
+                        processingTypes: data.processingTypes || [],
+                        description: data.description || null,
+                        status: "APPROVED",
+                    },
+                });
+            }
+
+            return NextResponse.json({ success: true, message: "Đã cập nhật thông tin cơ sở thành công." });
         }
 
         return NextResponse.json({ success: false, message: "Thao tác không hợp lệ." }, { status: 400 });

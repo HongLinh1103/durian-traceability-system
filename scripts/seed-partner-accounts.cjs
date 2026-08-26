@@ -5,41 +5,8 @@ const prisma = new PrismaClient();
 
 const accounts = [
     // ==========================================
-    // 4 VỰA THU MUA (COLLECTOR)
+    // 3 VỰA THU MUA (COLLECTOR)
     // ==========================================
-    {
-        phone: "0909000002",
-        email: "collector@triviet.vn",
-        password: "ThuMua@123",
-        fullName: "Nguyễn Thành Phát",
-        role: "COLLECTOR",
-        facility: {
-            type: "COLLECTOR",
-            representativeName: "Nguyễn Thành Phát",
-            representativePhone: "0909000002",
-            representativeEmail: "collector@triviet.vn",
-            identityNumber: "079203000002",
-            name: "Vựa Sầu riêng Thành Phát",
-            organizationType: "Hộ kinh doanh",
-            taxCode: "3603999002",
-            businessCode: "HKD-TP-2026",
-            phone: "0909000002",
-            email: "collector@triviet.vn",
-            address: "128 Đường Hùng Vương, Phường Xuân Lập, TP. Long Khánh, Tỉnh Đồng Nai",
-            province: "Đồng Nai",
-            ward: "Phường Xuân Lập",
-            contactPerson: "Nguyễn Thành Phát",
-            purchasingAreas: ["Đồng Nai", "Bình Phước", "Lâm Đồng"],
-            processingTypes: [],
-            expectedCapacity: 50,
-            capacityUnit: "tấn/ngày",
-            imageUrls: [
-                "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
-                "https://images.unsplash.com/photo-1595246140625-573b715d11dc?auto=format&fit=crop&w=600&q=80"
-            ],
-            description: "Vựa thu mua sầu riêng trực tiếp từ các vườn trồng chuẩn VietGAP tại Đồng Nai và khu vực lân cận.",
-        },
-    },
     {
         phone: "0909111001",
         email: "hoanglong.collector@triviet.vn",
@@ -70,7 +37,7 @@ const accounts = [
                 "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=600&q=80",
                 "https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=600&q=80"
             ],
-            description: "Hợp tác xã thu mua nông sản chuyên nghiệp, liên kết bền vững với hơn 80 hộ nông dân vùng Bình Phước.",
+            description: "Hợp tác xã thu mua nông sản chuyên nghiệp, liên kết bền vững với hơn 80 hộ nông dân vùng Bình Phước, cam kết bao tiêu đầu ra ổn định.",
         },
     },
     {
@@ -103,7 +70,7 @@ const accounts = [
                 "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80",
                 "https://images.unsplash.com/photo-1595246140625-573b715d11dc?auto=format&fit=crop&w=600&q=80"
             ],
-            description: "Đầu mối thu mua sầu riêng Dona & Ri6 trọng điểm Tây Nguyên, có hệ thống cân điện tử và kiểm định chất lượng tại vựa.",
+            description: "Đầu mối thu mua sầu riêng Dona & Ri6 trọng điểm Tây Nguyên, trang bị hệ thống phân loại quang học và kiểm định chất lượng tại vựa.",
         },
     },
     {
@@ -136,47 +103,13 @@ const accounts = [
                 "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
                 "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=600&q=80"
             ],
-            description: "Vựa thu mua sầu riêng lâu năm tại vương quốc sầu riêng Ngũ Hiệp - Cai Lậy, thu mua sầu riêng chín cây và sầu riêng cắt xuất khẩu.",
+            description: "Vựa thu mua sầu riêng uy tín tại vương quốc sầu riêng Ngũ Hiệp - Cai Lậy, thu mua sầu riêng chín cây và sầu riêng cắt xuất khẩu chất lượng cao.",
         },
     },
 
     // ==========================================
-    // 4 XƯỞNG CHẾ BIẾN - ĐÓNG GÓI (PROCESSING_FACILITY)
+    // 3 CƠ SỞ CHẾ BIẾN - ĐÓNG GÓI (PROCESSING_FACILITY)
     // ==========================================
-    {
-        phone: "0909000003",
-        email: "processing@triviet.vn",
-        password: "CheBien@123",
-        fullName: "Trần Minh Anh",
-        role: "PROCESSING_FACILITY",
-        facility: {
-            type: "PROCESSING_FACILITY",
-            representativeName: "Trần Minh Anh",
-            representativePhone: "0909000003",
-            representativeEmail: "processing@triviet.vn",
-            identityNumber: "079203000003",
-            name: "Cơ sở Chế biến Sầu riêng Trị An",
-            organizationType: "Công ty TNHH",
-            taxCode: "3603999003",
-            businessCode: "DN-CB-2026",
-            phone: "0909000003",
-            email: "processing@triviet.vn",
-            website: "https://triviet.vn",
-            address: "Tuyến ĐT 767, Xã Sông Trầu, Huyện Trảng Bom, Tỉnh Đồng Nai",
-            province: "Đồng Nai",
-            ward: "Xã Sông Trầu",
-            contactPerson: "Trần Minh Anh",
-            purchasingAreas: ["Đồng Nai", "Bình Phước", "Bình Thuận"],
-            processingTypes: ["Sầu riêng nguyên trái xuất khẩu", "Tách múi hút chân không", "Cấp đông nhanh IQF"],
-            expectedCapacity: 35,
-            capacityUnit: "tấn/ngày",
-            imageUrls: [
-                "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80",
-                "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80"
-            ],
-            description: "Cơ sở tiếp nhận, sơ chế, khử khuẩn và chế biến sầu riêng đạt tiêu chuẩn an toàn thực phẩm HACCP & ISO 22000.",
-        },
-    },
     {
         phone: "0909222001",
         email: "dongphu.factory@triviet.vn",
@@ -195,20 +128,24 @@ const accounts = [
             businessCode: "CP-DP-2026",
             phone: "0909222001",
             email: "dongphu.factory@triviet.vn",
-            website: "https://dongphufruit.vn",
             address: "KCN Nam Đồng Phú, Xã Tân Lập, Huyện Đồng Phú, Tỉnh Bình Phước",
             province: "Bình Phước",
             ward: "Xã Tân Lập",
             contactPerson: "Phạm Thanh Hải",
             purchasingAreas: ["Bình Phước", "Đồng Nai", "Đắk Nông"],
-            processingTypes: ["Phân loại quang học laser", "Xông hơi khử trùng kiểm dịch", "Đóng thùng carton chuẩn GACC", "Cơm sầu riêng sấy thăng hoa"],
+            processingTypes: [
+                "Phân loại quang học laser",
+                "Xông hơi khử trùng kiểm dịch",
+                "Đóng thùng carton chuẩn GACC",
+                "Cơm sầu riêng sấy thăng hoa"
+            ],
             expectedCapacity: 50,
             capacityUnit: "tấn/ngày",
             imageUrls: [
                 "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=600&q=80",
                 "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80"
             ],
-            description: "Nhà máy chế biến và đóng gói hiện đại với dây chuyền tự động hóa, sở hữu mã cơ sở đóng gói xuất khẩu chính ngạch sang Trung Quốc.",
+            description: "Nhà máy chế biến và đóng gói hiện đại với dây chuyền tự động hóa 100%, sở hữu mã cơ sở đóng gói xuất khẩu chính ngạch sang Trung Quốc.",
         },
     },
     {
@@ -234,7 +171,11 @@ const accounts = [
             ward: "Xã Ea Đar",
             contactPerson: "Vũ Đức Trọng",
             purchasingAreas: ["Đắk Lắk", "Gia Lai", "Kon Tum"],
-            processingTypes: ["Cấp đông nitơ lỏng nguyên trái", "Tách múi đông sâu -40°C", "Đóng khay chân không cao cấp"],
+            processingTypes: [
+                "Cấp đông nitơ lỏng nguyên trái",
+                "Tách múi đông sâu -40°C",
+                "Đóng khay chân không cao cấp"
+            ],
             expectedCapacity: 45,
             capacityUnit: "tấn/ngày",
             imageUrls: [
@@ -262,13 +203,16 @@ const accounts = [
             businessCode: "CP-MT-2026",
             phone: "0909222003",
             email: "mientay.factory@triviet.vn",
-            website: "https://mientaypackaging.vn",
             address: "QL1A, Xã Long Định, Huyện Châu Thành, Tỉnh Tiền Giang",
             province: "Tiền Giang",
             ward: "Xã Long Định",
             contactPerson: "Võ Hoàng Nam",
             purchasingAreas: ["Tiền Giang", "Bến Tre", "Vĩnh Long", "Hậu Giang"],
-            processingTypes: ["Xử lý chiếu xạ kiểm dịch thực vật", "Dán tem QR truy xuất nguồn gốc", "Đóng container lạnh xuất khẩu"],
+            processingTypes: [
+                "Xử lý chiếu xạ kiểm dịch thực vật",
+                "Dán tem QR truy xuất nguồn gốc",
+                "Đóng container lạnh xuất khẩu"
+            ],
             expectedCapacity: 40,
             capacityUnit: "tấn/ngày",
             imageUrls: [
@@ -280,57 +224,114 @@ const accounts = [
     },
 ];
 
-async function main() {
-    console.log("Seeding Collectors and Processing Facilities...");
-    for (const account of accounts) {
-        const password = await bcryptjs.hash(account.password, 10);
+async function seed() {
+    console.log("==> Bắt đầu seed 3 Vựa Thu Mua & 3 Cơ Sở Chế Biến...");
+
+    for (const acc of accounts) {
+        const hashedPassword = await bcryptjs.hash(acc.password, 10);
+
         const user = await prisma.user.upsert({
-            where: { phone: account.phone },
+            where: { phone: acc.phone },
             update: {
-                email: account.email,
-                password,
-                fullName: account.fullName,
-                role: account.role,
+                email: acc.email,
+                fullName: acc.fullName,
+                password: hashedPassword,
+                role: acc.role,
                 isApproved: true,
                 accountStatus: "APPROVED",
-                approvedAt: new Date(),
-                isLocked: false,
-                deletedAt: null,
+                province: acc.facility.province,
+                ward: acc.facility.ward,
+                address: acc.facility.address,
             },
             create: {
-                phone: account.phone,
-                email: account.email,
-                password,
-                fullName: account.fullName,
-                role: account.role,
+                phone: acc.phone,
+                email: acc.email,
+                fullName: acc.fullName,
+                password: hashedPassword,
+                role: acc.role,
                 isApproved: true,
                 accountStatus: "APPROVED",
-                approvedAt: new Date(),
+                province: acc.facility.province,
+                ward: acc.facility.ward,
+                address: acc.facility.address,
             },
         });
-        await prisma.partnerFacility.upsert({
+
+        console.log(`[USER OK] ${acc.role} - ${acc.fullName} (${acc.phone})`);
+
+        const existingFacility = await prisma.partnerFacility.findFirst({
             where: { ownerId: user.id },
-            update: {
-                ...account.facility,
-                status: "APPROVED",
-                reviewReason: null,
-                approvedAt: new Date(),
-                deletedAt: null,
-            },
-            create: {
-                ownerId: user.id,
-                ...account.facility,
-                status: "APPROVED",
-                approvedAt: new Date(),
-            },
         });
-        console.log(`[OK] ${account.role}: ${account.phone} (${account.email}) | ${account.facility.name}`);
+
+        if (existingFacility) {
+            await prisma.partnerFacility.update({
+                where: { id: existingFacility.id },
+                data: {
+                    type: acc.facility.type,
+                    representativeName: acc.facility.representativeName,
+                    representativePhone: acc.facility.representativePhone,
+                    representativeEmail: acc.facility.representativeEmail,
+                    identityNumber: acc.facility.identityNumber,
+                    name: acc.facility.name,
+                    organizationType: acc.facility.organizationType,
+                    taxCode: acc.facility.taxCode,
+                    businessCode: acc.facility.businessCode,
+                    phone: acc.facility.phone,
+                    email: acc.facility.email,
+                    address: acc.facility.address,
+                    province: acc.facility.province,
+                    ward: acc.facility.ward,
+                    contactPerson: acc.facility.contactPerson,
+                    purchasingAreas: acc.facility.purchasingAreas,
+                    processingTypes: acc.facility.processingTypes,
+                    expectedCapacity: acc.facility.expectedCapacity,
+                    capacityUnit: acc.facility.capacityUnit,
+                    imageUrls: acc.facility.imageUrls,
+                    description: acc.facility.description,
+                    status: "APPROVED",
+                },
+            });
+            console.log(`  └─ [FACILITY UPDATED] ${acc.facility.name}`);
+        } else {
+            await prisma.partnerFacility.create({
+                data: {
+                    ownerId: user.id,
+                    type: acc.facility.type,
+                    representativeName: acc.facility.representativeName,
+                    representativePhone: acc.facility.representativePhone,
+                    representativeEmail: acc.facility.representativeEmail,
+                    identityNumber: acc.facility.identityNumber,
+                    name: acc.facility.name,
+                    organizationType: acc.facility.organizationType,
+                    taxCode: acc.facility.taxCode,
+                    businessCode: acc.facility.businessCode,
+                    phone: acc.facility.phone,
+                    email: acc.facility.email,
+                    address: acc.facility.address,
+                    province: acc.facility.province,
+                    ward: acc.facility.ward,
+                    contactPerson: acc.facility.contactPerson,
+                    purchasingAreas: acc.facility.purchasingAreas,
+                    processingTypes: acc.facility.processingTypes,
+                    expectedCapacity: acc.facility.expectedCapacity,
+                    capacityUnit: acc.facility.capacityUnit,
+                    imageUrls: acc.facility.imageUrls,
+                    description: acc.facility.description,
+                    status: "APPROVED",
+                },
+            });
+            console.log(`  └─ [FACILITY CREATED] ${acc.facility.name}`);
+        }
     }
-    console.log("Seeding completed successfully!");
+
+    console.log("==> Hoàn tất seed đối tác thu mua & chế biến.");
 }
 
-main()
-    .catch((err) => {
-        console.error("Error seeding partners:", err);
+seed()
+    .catch((e) => {
+        console.error("Lỗi khi seed:", e);
+        process.exit(1);
     })
-    .finally(() => prisma.$disconnect());
+    .finally(async () => {
+        await prisma.$disconnect();
+    });
