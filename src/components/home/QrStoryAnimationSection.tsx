@@ -10,7 +10,6 @@ import {
     Factory,
     Store,
     Wifi,
-    Battery,
     Signal,
     Leaf,
     MapPin,
@@ -135,7 +134,7 @@ export function QrStoryAnimationSection() {
     const showStep4 = ["timeline_4", "timeline_5", "completed"].includes(phase);
     const showStep5 = ["timeline_5", "completed"].includes(phase);
 
-    // Height of vertical green line
+    // Height of vertical green line in timeline
     let timelineLineHeight = "0%";
     if (showStep5) timelineLineHeight = "100%";
     else if (showStep4) timelineLineHeight = "80%";
@@ -169,11 +168,11 @@ export function QrStoryAnimationSection() {
                     </p>
                 </div>
 
-                {/* ANIMATION CARD */}
+                {/* ANIMATION CARD CONTAINER */}
                 <div className="relative mx-auto rounded-[28px] border border-emerald-100/90 bg-gradient-to-b from-white via-emerald-50/20 to-slate-50 p-4 shadow-soft sm:rounded-[34px] sm:p-6 lg:p-7">
                     <div className="grid items-center gap-4 lg:grid-cols-12 lg:gap-6">
                         {/* ============================================================== */}
-                        {/* LEFT COLUMN: 40% QR BADGE ILLUSTRATION                         */}
+                        {/* LEFT COLUMN: QR BADGE ILLUSTRATION                             */}
                         {/* ============================================================== */}
                         <div className="flex flex-col items-center lg:col-span-5 lg:items-end">
                             <div
@@ -231,7 +230,7 @@ export function QrStoryAnimationSection() {
                                         </div>
                                     )}
 
-                                    {/* Scanner Laser Beam (runs 0.0s - 0.7s) */}
+                                    {/* Scanner Laser Beam (0.0s - 0.7s) */}
                                     {isScanning && (
                                         <div className="pointer-events-none absolute inset-x-1.5 h-0.5 bg-gradient-to-r from-transparent via-emerald-500 to-transparent shadow-[0_0_8px_#10b981] animate-[scan-laser_1.4s_ease-in-out_infinite]" />
                                     )}
@@ -250,7 +249,7 @@ export function QrStoryAnimationSection() {
                         </div>
 
                         {/* ============================================================== */}
-                        {/* MIDDLE: ANIMATED DATA FLOW & STATUS BADGE (Desktop & Mobile)   */}
+                        {/* MIDDLE: ANIMATED DATA FLOW & STATUS BADGE                      */}
                         {/* ============================================================== */}
                         <div className="hidden lg:col-span-2 lg:flex lg:flex-col lg:items-center lg:justify-center lg:gap-2">
                             {/* Status Text Pill */}
@@ -317,63 +316,83 @@ export function QrStoryAnimationSection() {
                         </div>
 
                         {/* ============================================================== */}
-                        {/* RIGHT COLUMN: 60% PHONE MOCKUP WITH STAGGERED TIMELINE CARDS   */}
+                        {/* RIGHT COLUMN: IPHONE 15 PRO MAX (FIXED DIMENSIONS)             */}
                         {/* ============================================================== */}
-                        <div className="lg:col-span-5">
-                            <div className="relative mx-auto w-full max-w-[300px] rounded-[34px] border-[5px] border-slate-900 bg-slate-950 p-1.5 shadow-xl sm:max-w-[320px]">
-                                {/* Dynamic Island */}
-                                <div className="absolute left-1/2 top-2.5 z-30 flex h-3.5 w-24 -translate-x-1/2 items-center justify-center rounded-full bg-slate-900">
-                                    <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-slate-950" />
-                                    <span
-                                        className={cn(
-                                            "h-1 w-1 rounded-full transition-colors",
-                                            isAuthenticated ? "bg-emerald-400" : "bg-slate-700"
-                                        )}
-                                    />
-                                </div>
+                        <div className="flex justify-center lg:col-span-5 lg:justify-start">
+                            {/* iPhone 15 Pro Max Titanium Chassis - CỐ ĐỊNH CHIỀU CAO */}
+                            <div className="relative h-[530px] w-[280px] shrink-0 rounded-[44px] bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 p-[8px] shadow-[0_20px_50px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.1)_inset] ring-1 ring-slate-700/60 sm:h-[550px] sm:w-[295px]">
+                                {/* Physical Side Buttons */}
+                                {/* Action Button */}
+                                <span className="absolute -left-[10px] top-[88px] h-5 w-[2.5px] rounded-l-sm bg-slate-700" />
+                                {/* Volume Up */}
+                                <span className="absolute -left-[10px] top-[125px] h-9 w-[2.5px] rounded-l-sm bg-slate-700" />
+                                {/* Volume Down */}
+                                <span className="absolute -left-[10px] top-[170px] h-9 w-[2.5px] rounded-l-sm bg-slate-700" />
+                                {/* Power / Siri Button */}
+                                <span className="absolute -right-[10px] top-[135px] h-12 w-[2.5px] rounded-r-sm bg-slate-700" />
 
-                                {/* Phone Screen Frame */}
-                                <div className="relative flex min-h-[400px] flex-col overflow-hidden rounded-[26px] bg-slate-50 text-slate-900">
-                                    {/* Status Bar */}
-                                    <div className="flex items-center justify-between px-4 pt-2 text-[10px] font-bold text-slate-700">
-                                        <span>09:41</span>
-                                        <div className="flex items-center gap-1 text-slate-500">
-                                            <Signal className="h-2.5 w-2.5" />
-                                            <Wifi className="h-2.5 w-2.5" />
-                                            <Battery className="h-3 w-3" />
-                                        </div>
+                                {/* Screen Bezel */}
+                                <div className="relative flex h-full w-full flex-col justify-between overflow-hidden rounded-[36px] bg-slate-50 text-slate-900 shadow-inner">
+                                    {/* Dynamic Island Pill */}
+                                    <div className="absolute left-1/2 top-2 z-30 flex h-[20px] w-[80px] -translate-x-1/2 items-center justify-between rounded-full bg-black px-2 shadow-sm transition-all duration-300">
+                                        <span className="h-2 w-2 rounded-full bg-slate-950 ring-1 ring-slate-800" />
+                                        <span
+                                            className={cn(
+                                                "h-1.5 w-1.5 rounded-full transition-all duration-500",
+                                                isAuthenticated
+                                                    ? "bg-emerald-400 shadow-[0_0_6px_#34d399]"
+                                                    : isScanning || isConnecting
+                                                    ? "bg-amber-400 animate-pulse"
+                                                    : "bg-slate-900"
+                                            )}
+                                        />
                                     </div>
 
-                                    {/* App Header Bar */}
-                                    <div className="mt-1.5 flex items-center justify-between border-b border-slate-200/70 bg-white/90 px-3 py-1.5 backdrop-blur">
-                                        <div className="flex items-center gap-1">
-                                            <div className="flex h-4 w-4 items-center justify-center rounded bg-emerald-600 text-white">
-                                                <Leaf className="h-2.5 w-2.5" />
+                                    {/* TOP SECTION: Status Bar & App Header */}
+                                    <div className="shrink-0">
+                                        {/* Status Bar */}
+                                        <div className="flex items-center justify-between px-4 pt-2.5 text-[10px] font-bold text-slate-700 select-none">
+                                            <span>09:41</span>
+                                            <div className="flex items-center gap-1.5 text-slate-600">
+                                                <Signal className="h-2.5 w-2.5 fill-current" />
+                                                <Wifi className="h-2.5 w-2.5" />
+                                                <div className="flex h-2.5 w-4.5 items-center rounded-[3px] border border-slate-600 p-0.5">
+                                                    <div className="h-full w-full rounded-[1px] bg-slate-700" />
+                                                </div>
                                             </div>
-                                            <span className="text-[10px] font-black tracking-tight text-slate-900">
-                                                TriViet Trace
-                                            </span>
                                         </div>
 
-                                        {isAuthenticated ? (
-                                            <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-800 animate-in fade-in zoom-in-95 duration-200">
-                                                <Check className="h-2.5 w-2.5 text-emerald-700" />
-                                                Mã hợp lệ
-                                            </span>
-                                        ) : (
-                                            <span className="text-[8px] font-semibold text-slate-400">
-                                                Tra cứu
-                                            </span>
-                                        )}
+                                        {/* App Header Bar */}
+                                        <div className="mt-1.5 flex items-center justify-between border-b border-slate-200/70 bg-white/90 px-3.5 py-1.5 backdrop-blur">
+                                            <div className="flex items-center gap-1">
+                                                <div className="flex h-4 w-4 items-center justify-center rounded bg-emerald-600 text-white">
+                                                    <Leaf className="h-2.5 w-2.5" />
+                                                </div>
+                                                <span className="text-[10px] font-black tracking-tight text-slate-900">
+                                                    TriViet Trace
+                                                </span>
+                                            </div>
+
+                                            {isAuthenticated ? (
+                                                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-800 animate-in fade-in zoom-in-95 duration-200">
+                                                    <Check className="h-2.5 w-2.5 text-emerald-700" />
+                                                    Mã hợp lệ
+                                                </span>
+                                            ) : (
+                                                <span className="text-[8px] font-semibold text-slate-400">
+                                                    Tra cứu
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    {/* Screen Content Body */}
-                                    <div className="flex flex-1 flex-col p-2.5">
+                                    {/* MIDDLE SECTION: Content Body (Fixed Area) */}
+                                    <div className="relative flex flex-1 flex-col justify-center overflow-hidden p-2.5">
                                         {/* State 1: Initial Standby */}
                                         {!isPastConnecting && (
-                                            <div className="my-auto flex flex-col items-center justify-center py-6 text-center animate-in fade-in duration-200">
-                                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100/70 text-emerald-700">
-                                                    <QrCode className="h-5 w-5" />
+                                            <div className="flex flex-col items-center justify-center text-center animate-in fade-in duration-200">
+                                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100/70 text-emerald-700">
+                                                    <QrCode className="h-6 w-6" />
                                                 </div>
                                                 <h4 className="mt-2.5 text-xs font-black uppercase tracking-wider text-slate-800">
                                                     TRIVIET
@@ -389,8 +408,8 @@ export function QrStoryAnimationSection() {
 
                                         {/* State 2: Authenticating */}
                                         {phase === "authenticating" && (
-                                            <div className="my-auto flex flex-col items-center justify-center py-6 text-center animate-in fade-in duration-200">
-                                                <Loader2 className="h-7 w-7 animate-spin text-emerald-600" />
+                                            <div className="flex flex-col items-center justify-center text-center animate-in fade-in duration-200">
+                                                <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
                                                 <p className="mt-2.5 text-[10px] font-bold text-slate-700">
                                                     Đang xác thực mã truy xuất...
                                                 </p>
@@ -402,13 +421,13 @@ export function QrStoryAnimationSection() {
 
                                         {/* State 3+: Product Card & Staggered Timeline */}
                                         {isPastConnecting && phase !== "authenticating" && (
-                                            <div className="space-y-2 animate-in fade-in duration-300">
+                                            <div className="flex h-full flex-col justify-between py-0.5 animate-in fade-in duration-300">
                                                 {/* Product Header Card */}
                                                 {showProduct && (
                                                     <div className="rounded-xl border border-emerald-200/70 bg-white p-2 shadow-2xs animate-in fade-in slide-in-from-top-1 duration-200">
                                                         <div className="flex items-start justify-between gap-1">
                                                             <div>
-                                                                <h4 className="text-[11px] font-black text-slate-900">
+                                                                <h4 className="text-[11px] font-black text-slate-900 leading-tight">
                                                                     Sầu riêng Ri6
                                                                 </h4>
                                                                 <p className="font-mono text-[9px] font-bold text-emerald-700">
@@ -428,7 +447,7 @@ export function QrStoryAnimationSection() {
 
                                                 {/* Timeline Heading */}
                                                 {showProduct && (
-                                                    <div className="flex items-center justify-between px-0.5">
+                                                    <div className="flex items-center justify-between px-0.5 py-0.5">
                                                         <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">
                                                             Hành trình sản phẩm
                                                         </p>
@@ -439,12 +458,12 @@ export function QrStoryAnimationSection() {
                                                 )}
 
                                                 {/* Vertical Timeline with Staggered Cards */}
-                                                <div className="relative pl-4 space-y-1.5 pb-1">
+                                                <div className="relative pl-4 space-y-1">
                                                     {/* Background line */}
-                                                    <div className="absolute left-[7px] top-1.5 bottom-1.5 w-0.5 bg-slate-200" />
+                                                    <div className="absolute left-[7px] top-1 bottom-1 w-0.5 bg-slate-200" />
                                                     {/* Progress line */}
                                                     <div
-                                                        className="absolute left-[7px] top-1.5 w-0.5 bg-emerald-500 transition-all duration-300"
+                                                        className="absolute left-[7px] top-1 w-0.5 bg-emerald-500 transition-all duration-300"
                                                         style={{ height: timelineLineHeight }}
                                                     />
 
@@ -454,14 +473,14 @@ export function QrStoryAnimationSection() {
                                                             <span className="absolute -left-[13px] top-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white">
                                                                 <Store className="h-1.5 w-1.5" />
                                                             </span>
-                                                            <div className="rounded-lg border border-emerald-100 bg-white p-1.5 shadow-2xs">
+                                                            <div className="rounded-lg border border-emerald-100 bg-white p-1 shadow-2xs">
                                                                 <span className="text-[7.5px] font-black uppercase tracking-wider text-emerald-700">
                                                                     ĐÃ ĐƯA ĐẾN ĐIỂM PHÂN PHỐI
                                                                 </span>
-                                                                <p className="text-[9.5px] font-bold text-slate-900 leading-tight">
+                                                                <p className="text-[9px] font-bold text-slate-900 leading-tight">
                                                                     Chợ đầu mối Thủ Đức
                                                                 </p>
-                                                                <p className="text-[8.5px] text-slate-500">
+                                                                <p className="text-[8px] text-slate-500">
                                                                     TP. Hồ Chí Minh
                                                                 </p>
                                                             </div>
@@ -474,7 +493,7 @@ export function QrStoryAnimationSection() {
                                                             <span className="absolute -left-[13px] top-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white">
                                                                 <Factory className="h-1.5 w-1.5" />
                                                             </span>
-                                                            <div className="rounded-lg border border-slate-100 bg-white p-1.5 shadow-2xs">
+                                                            <div className="rounded-lg border border-slate-100 bg-white p-1 shadow-2xs">
                                                                 <div className="flex items-center justify-between">
                                                                     <span className="text-[7.5px] font-black uppercase tracking-wider text-emerald-700">
                                                                         CHẾ BIẾN
@@ -483,10 +502,10 @@ export function QrStoryAnimationSection() {
                                                                         QC: Đạt
                                                                     </span>
                                                                 </div>
-                                                                <p className="text-[9.5px] font-bold text-slate-900 leading-tight">
+                                                                <p className="text-[9px] font-bold text-slate-900 leading-tight">
                                                                     Cơ sở Chế biến Trị An
                                                                 </p>
-                                                                <p className="text-[8.5px] text-slate-500">
+                                                                <p className="text-[8px] text-slate-500">
                                                                     Làm sạch · Tách múi · Cấp đông
                                                                 </p>
                                                             </div>
@@ -499,7 +518,7 @@ export function QrStoryAnimationSection() {
                                                             <span className="absolute -left-[13px] top-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white">
                                                                 <Truck className="h-1.5 w-1.5" />
                                                             </span>
-                                                            <div className="rounded-lg border border-slate-100 bg-white p-1.5 shadow-2xs">
+                                                            <div className="rounded-lg border border-slate-100 bg-white p-1 shadow-2xs">
                                                                 <div className="flex items-center justify-between">
                                                                     <span className="text-[7.5px] font-black uppercase tracking-wider text-emerald-700">
                                                                         THU MUA
@@ -508,10 +527,10 @@ export function QrStoryAnimationSection() {
                                                                         QC: Đạt
                                                                     </span>
                                                                 </div>
-                                                                <p className="text-[9.5px] font-bold text-slate-900 leading-tight">
+                                                                <p className="text-[9px] font-bold text-slate-900 leading-tight">
                                                                     Vựa Sầu riêng Thành Phát
                                                                 </p>
-                                                                <p className="text-[8.5px] text-slate-500">
+                                                                <p className="text-[8px] text-slate-500">
                                                                     Khối lượng: 700 kg
                                                                 </p>
                                                             </div>
@@ -524,14 +543,14 @@ export function QrStoryAnimationSection() {
                                                             <span className="absolute -left-[13px] top-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white">
                                                                 <Calendar className="h-1.5 w-1.5" />
                                                             </span>
-                                                            <div className="rounded-lg border border-slate-100 bg-white p-1.5 shadow-2xs">
+                                                            <div className="rounded-lg border border-slate-100 bg-white p-1 shadow-2xs">
                                                                 <span className="text-[7.5px] font-black uppercase tracking-wider text-emerald-700">
                                                                     THU HOẠCH
                                                                 </span>
-                                                                <p className="text-[9.5px] font-bold text-slate-900 leading-tight">
+                                                                <p className="text-[9px] font-bold text-slate-900 leading-tight">
                                                                     24/08/2026
                                                                 </p>
-                                                                <p className="font-mono text-[8.5px] text-slate-500">
+                                                                <p className="font-mono text-[8px] text-slate-500">
                                                                     Lô: HL-DEMO-001
                                                                 </p>
                                                             </div>
@@ -544,14 +563,14 @@ export function QrStoryAnimationSection() {
                                                             <span className="absolute -left-[13px] top-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white">
                                                                 <Sprout className="h-1.5 w-1.5" />
                                                             </span>
-                                                            <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-1.5 shadow-2xs">
+                                                            <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-1 shadow-2xs">
                                                                 <span className="text-[7.5px] font-black uppercase tracking-wider text-emerald-800">
                                                                     NGUỒN GỐC VƯỜN TRỒNG
                                                                 </span>
-                                                                <p className="text-[9.5px] font-bold text-slate-900 leading-tight">
+                                                                <p className="text-[9px] font-bold text-slate-900 leading-tight">
                                                                     Vườn sầu riêng Minh Phát
                                                                 </p>
-                                                                <p className="font-mono text-[8.5px] text-emerald-700">
+                                                                <p className="font-mono text-[8px] text-emerald-700">
                                                                     MSVT-DN-LK-001 · Giống: Ri6
                                                                 </p>
                                                             </div>
@@ -562,8 +581,10 @@ export function QrStoryAnimationSection() {
                                         )}
                                     </div>
 
-                                    {/* Phone Home Bar */}
-                                    <div className="mx-auto my-1 h-1 w-16 rounded-full bg-slate-300" />
+                                    {/* BOTTOM SECTION: iPhone Home Bar */}
+                                    <div className="shrink-0 pb-1.5 pt-0.5">
+                                        <div className="mx-auto h-1 w-20 rounded-full bg-slate-300" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
