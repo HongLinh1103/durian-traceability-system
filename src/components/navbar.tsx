@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 const publicLinks = [
     { href: "/", label: "Trang chủ" },
+    { href: "/trace", label: "Quét mã QR" },
     { href: "/documents", label: "Tài liệu", notificationKey: "documents" as const },
     { href: "/news", label: "Tin tức", notificationKey: "news" as const },
 ];

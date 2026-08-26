@@ -232,8 +232,17 @@ export async function collectPublicHarvestSources(lotId: string) {
 }
 
 export async function getPublicTrace(publicToken: string) {
-    const trace = await prisma.traceabilityCode.findUnique({
-        where: { publicToken },
+    const cleanToken = publicToken?.trim();
+    if (!cleanToken) return null;
+
+    const trace = await prisma.traceabilityCode.findFirst({
+        where: {
+            OR: [
+                { publicToken: { equals: cleanToken, mode: "insensitive" } },
+                { code: { equals: cleanToken, mode: "insensitive" } },
+                { commercialLot: { lotCode: { equals: cleanToken, mode: "insensitive" } } },
+            ],
+        },
         include: {
             commercialLot: {
                 include: {

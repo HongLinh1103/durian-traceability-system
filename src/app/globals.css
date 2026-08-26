@@ -43,6 +43,16 @@
 @keyframes weather-sky-drift { from { transform: translate3d(-2%, -1%, 0) scale(1.04); } to { transform: translate3d(3%, 2%, 0) scale(1.12); } }
 @keyframes weather-sky-drift-front { from { transform: translate3d(3%, 1%, 0) scale(1.1); } to { transform: translate3d(-3%, -2%, 0) scale(1.18); } }
 @keyframes weather-lightning-flash { 0%, 92%, 94%, 96%, 100% { opacity: 0; } 93% { opacity: .26; } 95% { opacity: .12; } }
+@keyframes scan-laser {
+    0%, 100% {
+        top: 0%;
+        opacity: 0.8;
+    }
+    50% {
+        top: 96%;
+        opacity: 1;
+    }
+}
 @media (max-width: 640px) { .weather-rain span:nth-child(2n), .weather-cloud--three { display: none; } .weather-cloud { opacity: .48; } }
 @media (prefers-reduced-motion: reduce) { .weather-scene *, .weather-scene *::before, .weather-scene *::after { animation: none !important; } .weather-cloud { left: 68%; } .weather-rain { display: none; } }
 
