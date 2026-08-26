@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 const publicLinks = [
     { href: "/", label: "Trang chủ" },
+    { href: "/seedlings", label: "Trại giống" },
     { href: "/trace", label: "Quét mã QR" },
     { href: "/processing-facilities", label: "Xưởng Chế biến - Đóng gói" },
     { href: "/collectors", label: "Vựa thu mua" },
@@ -47,6 +48,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/admin/regions", label: "Vùng trồng", roles: ["ADMIN"] },
     { href: "/dashboard/admin/catalog", label: "Danh mục", roles: ["ADMIN"] },
     { href: "/dashboard/admin/traceability", label: "Truy xuất & QR", roles: ["ADMIN"] },
+    { href: "/dashboard/nursery", label: "Quản lý Trại giống", roles: ["STORE_OWNER", "ADMIN"] },
     { href: "/dashboard/store", label: "Tổng quan", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/products", label: "Sản phẩm", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/inventory", label: "Kho hàng", roles: ["STORE_OWNER"] },
