@@ -212,16 +212,11 @@ export function QrStoryAnimationSection() {
         <section
             ref={sectionRef}
             aria-label="Minh họa truy xuất nguồn gốc QR"
-            className="my-6 overflow-hidden py-2 sm:my-8 sm:py-4"
+            className="mt-1 mb-6 overflow-hidden py-1 sm:mt-2 sm:mb-8 sm:py-2"
         >
             <div className="mx-auto max-w-5xl px-2.5 sm:px-6">
                 {/* SECTION HEADER */}
-                <div className="mx-auto mb-4 max-w-2xl text-center sm:mb-7">
-                    <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-800">
-                        <Sparkles className="h-3 w-3 text-emerald-600" />
-                        <span>Mô phỏng truy xuất nguồn gốc</span>
-                    </div>
-
+                <div className="mx-auto mb-3 max-w-2xl text-center sm:mb-5">
                     <h2
                         className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl md:text-3xl"
                         style={{ fontFamily: "var(--font-display)" }}
@@ -229,7 +224,7 @@ export function QrStoryAnimationSection() {
                         Quét một mã. Theo dõi cả hành trình.
                     </h2>
 
-                    <p className="mt-1.5 text-xs leading-relaxed text-slate-600 sm:text-sm">
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm">
                         Mỗi mã QR kết nối với lịch sử của lô hàng, từ vùng trồng đến điểm phân phối.
                     </p>
                 </div>
