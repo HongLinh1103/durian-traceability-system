@@ -343,12 +343,6 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <Button asChild variant="outline" className="rounded-xl border-slate-200">
-                        <Link href="/seedlings" target="_blank">
-                            <Eye className="mr-1.5 h-4 w-4 text-slate-500" />
-                            Xem trang khách
-                        </Link>
-                    </Button>
                     <Button
                         onClick={openCreateModal}
                         className="rounded-xl bg-brand-600 font-bold text-white shadow-sm hover:bg-brand-700"
@@ -359,142 +353,245 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
                 </div>
             </div>
 
-            {/* SEEDLING ITEMS TABLE / LIST */}
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                        <thead className="border-b border-slate-200 bg-slate-50 font-bold text-slate-700">
-                            <tr>
-                                <th className="p-4">Hình ảnh & Tên sản phẩm</th>
-                                <th className="p-4">Mã & Giống</th>
-                                <th className="p-4">Giá bán niêm yết</th>
-                                <th className="p-4">Số lượng khả dụng</th>
-                                <th className="p-4">Đặc điểm (Tuổi / Chiều cao)</th>
-                                <th className="p-4">Trạng thái</th>
-                                <th className="p-4 text-right">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {nurseryItems.length === 0 ? (
-                                <tr>
-                                    <td colSpan={7} className="p-8 text-center text-slate-400">
-                                        Chưa có sản phẩm cây giống nào. Bấm nút &ldquo;Đăng bán cây giống mới&rdquo; ở trên để thêm.
-                                    </td>
-                                </tr>
-                            ) : (
-                                nurseryItems.map((item) => (
-                                    <tr key={item.id} className="hover:bg-slate-50/70 transition">
-                                        {/* Image & Title */}
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-slate-100 border">
-                                                    <Image
-                                                        src={item.imageUrls[0] || item.nurseryAvatar}
-                                                        alt={item.title}
-                                                        fill
-                                                        sizes="60px"
-                                                        className="object-cover"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <Link
-                                                        href={`/seedlings/${item.id}`}
-                                                        target="_blank"
-                                                        className="font-bold text-slate-900 hover:text-brand-700 line-clamp-1 block text-sm"
-                                                    >
-                                                        {item.title}
-                                                    </Link>
-                                                    <span className="text-[11px] text-slate-400">
-                                                        Quy cách: {item.specifications.packagingSpec} ({item.specifications.potSize})
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        {/* Code & Variety */}
-                                        <td className="p-4">
-                                            <span className="font-mono font-bold text-slate-700 block">
+            {/* SEEDLING ITEMS LIST (RESPONSIVE: MOBILE CARD VIEW & DESKTOP TABLE) */}
+            {nurseryItems.length === 0 ? (
+                <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center text-slate-400 shadow-sm">
+                    Chưa có sản phẩm cây giống nào. Bấm nút &ldquo;Đăng bán cây giống mới&rdquo; ở trên để thêm.
+                </div>
+            ) : (
+                <>
+                    {/* MOBILE CARD VIEW (block md:hidden) */}
+                    <div className="grid grid-cols-1 gap-4 md:hidden">
+                        {nurseryItems.map((item) => (
+                            <article
+                                key={item.id}
+                                className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm space-y-3.5 transition hover:shadow-md"
+                            >
+                                {/* Card Header */}
+                                <div className="flex items-start gap-3">
+                                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-100 border border-slate-200 shadow-xs">
+                                        <Image
+                                            src={item.imageUrls[0] || item.nurseryAvatar}
+                                            alt={item.title}
+                                            fill
+                                            sizes="80px"
+                                            className="object-cover"
+                                        />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="font-mono text-[11px] font-bold text-slate-500">
                                                 {item.code}
                                             </span>
-                                            <span className="inline-block rounded bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-700">
+                                            <span className="rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">
                                                 {item.variety}
                                             </span>
-                                        </td>
-
-                                        {/* Price */}
-                                        <td className="p-4 font-black text-emerald-700 text-sm">
+                                        </div>
+                                        <h4 className="font-bold text-slate-900 text-sm line-clamp-2 mt-1">
+                                            {item.title}
+                                        </h4>
+                                        <p className="mt-1 text-base font-black text-emerald-700">
                                             {item.priceFormatted}
-                                        </td>
+                                        </p>
+                                    </div>
+                                </div>
 
-                                        {/* Quantity */}
-                                        <td className="p-4">
-                                            <span className="font-bold text-slate-900">
-                                                {item.availableQuantity} cây
-                                            </span>
-                                        </td>
+                                {/* Specs Pill Box */}
+                                <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-50 p-3 text-xs text-slate-700">
+                                    <div>
+                                        <span className="text-[11px] text-slate-400 block">Số lượng khả dụng:</span>
+                                        <span className="font-black text-slate-900">{item.availableQuantity} cây</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-[11px] text-slate-400 block">Tuổi cây:</span>
+                                        <span className="font-bold text-slate-800">{item.specifications.treeAge}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-[11px] text-slate-400 block">Chiều cao:</span>
+                                        <span className="font-bold text-slate-800">{item.specifications.treeHeight}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-[11px] text-slate-400 block">Quy cách bầu:</span>
+                                        <span className="font-bold text-slate-800 truncate block">{item.specifications.potSize}</span>
+                                    </div>
+                                </div>
 
-                                        {/* Specs */}
-                                        <td className="p-4 text-slate-600">
-                                            <div>{item.specifications.treeAge}</div>
-                                            <div className="font-semibold text-slate-800">{item.specifications.treeHeight}</div>
-                                        </td>
+                                {/* Card Actions & Status */}
+                                <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleToggleStatus(item)}
+                                        className={cn(
+                                            "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold transition",
+                                            item.status === "IN_STOCK"
+                                                ? "bg-emerald-100 text-emerald-800"
+                                                : "bg-rose-100 text-rose-800"
+                                        )}
+                                    >
+                                        {item.status === "IN_STOCK" ? (
+                                            <>
+                                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                                                Còn hàng
+                                            </>
+                                        ) : (
+                                            <>
+                                                <AlertCircle className="h-3.5 w-3.5 text-rose-600" />
+                                                Tạm hết hàng
+                                            </>
+                                        )}
+                                    </button>
 
-                                        {/* Status Toggle */}
-                                        <td className="p-4">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleToggleStatus(item)}
-                                                className={cn(
-                                                    "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition",
-                                                    item.status === "IN_STOCK"
-                                                        ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                                                        : "bg-rose-100 text-rose-800 hover:bg-rose-200"
-                                                )}
-                                            >
-                                                {item.status === "IN_STOCK" ? (
-                                                    <>
-                                                        <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                                                        Còn hàng
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <AlertCircle className="h-3 w-3 text-rose-600" />
-                                                        Tạm hết hàng
-                                                    </>
-                                                )}
-                                            </button>
-                                        </td>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => openEditModal(item)}
+                                            className="h-8 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 border-slate-200"
+                                        >
+                                            <Edit3 className="mr-1 h-3.5 w-3.5 text-brand-600" />
+                                            Chỉnh sửa
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleDelete(item.id)}
+                                            className="h-8 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 border-rose-200"
+                                        >
+                                            <Trash2 className="mr-1 h-3.5 w-3.5" />
+                                            Xóa
+                                        </Button>
+                                    </div>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
 
-                                        {/* Actions */}
-                                        <td className="p-4 text-right">
-                                            <div className="flex items-center justify-end gap-1.5">
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => openEditModal(item)}
-                                                    className="h-8 w-8 p-0 rounded-lg text-slate-600 hover:text-brand-700 hover:bg-brand-50"
-                                                    title="Chỉnh sửa"
-                                                >
-                                                    <Edit3 className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => handleDelete(item.id)}
-                                                    className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                                                    title="Xóa"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </td>
+                    {/* DESKTOP TABLE VIEW (hidden md:block) */}
+                    <div className="hidden md:block overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                                <thead className="border-b border-slate-200 bg-slate-50 font-bold text-slate-700">
+                                    <tr>
+                                        <th className="p-4">Hình ảnh & Tên sản phẩm</th>
+                                        <th className="p-4">Mã & Giống</th>
+                                        <th className="p-4">Giá bán niêm yết</th>
+                                        <th className="p-4">Số lượng khả dụng</th>
+                                        <th className="p-4">Đặc điểm (Tuổi / Chiều cao)</th>
+                                        <th className="p-4">Trạng thái</th>
+                                        <th className="p-4 text-right">Thao tác</th>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {nurseryItems.map((item) => (
+                                        <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                                            {/* Image & Title */}
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-slate-100 border">
+                                                        <Image
+                                                            src={item.imageUrls[0] || item.nurseryAvatar}
+                                                            alt={item.title}
+                                                            fill
+                                                            sizes="60px"
+                                                            className="object-cover"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-bold text-slate-900 line-clamp-1 block text-sm">
+                                                            {item.title}
+                                                        </span>
+                                                        <span className="text-[11px] text-slate-400">
+                                                            Quy cách: {item.specifications.packagingSpec} ({item.specifications.potSize})
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            {/* Code & Variety */}
+                                            <td className="p-4">
+                                                <span className="font-mono font-bold text-slate-700 block">
+                                                    {item.code}
+                                                </span>
+                                                <span className="inline-block rounded bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-700">
+                                                    {item.variety}
+                                                </span>
+                                            </td>
+
+                                            {/* Price */}
+                                            <td className="p-4 font-black text-emerald-700 text-sm">
+                                                {item.priceFormatted}
+                                            </td>
+
+                                            {/* Quantity */}
+                                            <td className="p-4">
+                                                <span className="font-bold text-slate-900">
+                                                    {item.availableQuantity} cây
+                                                </span>
+                                            </td>
+
+                                            {/* Specs */}
+                                            <td className="p-4 text-slate-600">
+                                                <div>{item.specifications.treeAge}</div>
+                                                <div className="font-semibold text-slate-800">{item.specifications.treeHeight}</div>
+                                            </td>
+
+                                            {/* Status Toggle */}
+                                            <td className="p-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleStatus(item)}
+                                                    className={cn(
+                                                        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition",
+                                                        item.status === "IN_STOCK"
+                                                            ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                                                            : "bg-rose-100 text-rose-800 hover:bg-rose-200"
+                                                    )}
+                                                >
+                                                    {item.status === "IN_STOCK" ? (
+                                                        <>
+                                                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                                            Còn hàng
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <AlertCircle className="h-3 w-3 text-rose-600" />
+                                                            Tạm hết hàng
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </td>
+
+                                            {/* Actions */}
+                                            <td className="p-4 text-right">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => openEditModal(item)}
+                                                        className="h-8 w-8 p-0 rounded-lg text-slate-600 hover:text-brand-700 hover:bg-brand-50"
+                                                        title="Chỉnh sửa"
+                                                    >
+                                                        <Edit3 className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => handleDelete(item.id)}
+                                                        className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                                        title="Xóa"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </>
+            )}
 
             {/* CREATE / EDIT MODAL */}
             {isModalOpen && (
