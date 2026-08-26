@@ -27,6 +27,8 @@ type StepPhase =
     | "authenticating"
     | "authenticated"
     | "product"
+    | "journey_header"
+    | "line_start"
     | "timeline_1"
     | "timeline_2"
     | "timeline_3"
@@ -73,28 +75,44 @@ export function QrStoryAnimationSection() {
                         return;
                     }
 
-                    // 1. QR scanning line (0.0s - 0.7s)
+                    // 1. QR scanning line (0.0s - 0.6s)
                     setPhase("scanning");
 
-                    // 2. Data flow from QR to Phone (0.7s - 1.3s)
-                    const t1 = setTimeout(() => setPhase("connecting"), 700);
+                    // 2. Data flow from QR to Phone (0.6s - 1.1s)
+                    const t1 = setTimeout(() => setPhase("connecting"), 600);
 
-                    // 3. Phone authenticating (1.3s - 1.7s)
-                    const t2 = setTimeout(() => setPhase("authenticating"), 1300);
+                    // 3. Phone authenticating spinner (1.1s - 1.4s)
+                    const t2 = setTimeout(() => setPhase("authenticating"), 1100);
 
-                    // 4. Phone valid badge (1.7s - 1.9s)
-                    const t3 = setTimeout(() => setPhase("authenticated"), 1700);
+                    // 4. [0.0s in phone sequence] Phone "Mã hợp lệ" badge appears (1.4s total)
+                    const t3 = setTimeout(() => setPhase("authenticated"), 1400);
 
-                    // 5. Product info card appears (1.9s - 2.1s)
-                    const t4 = setTimeout(() => setPhase("product"), 1900);
+                    // 5. [0.3s] Product info card appears (1.7s total)
+                    const t4 = setTimeout(() => setPhase("product"), 1700);
 
-                    // 6. Staggered timeline cards (every 200ms from 2.1s)
-                    const t5 = setTimeout(() => setPhase("timeline_1"), 2100); // 0.0s
-                    const t6 = setTimeout(() => setPhase("timeline_2"), 2300); // 0.2s
-                    const t7 = setTimeout(() => setPhase("timeline_3"), 2500); // 0.4s
-                    const t8 = setTimeout(() => setPhase("timeline_4"), 2700); // 0.6s
-                    const t9 = setTimeout(() => setPhase("timeline_5"), 2900); // 0.8s
-                    const t10 = setTimeout(() => setPhase("completed"), 3200);
+                    // 6. [0.6s] "HÀNH TRÌNH SẢN PHẨM" header appears (2.0s total)
+                    const t5 = setTimeout(() => setPhase("journey_header"), 2000);
+
+                    // 7. [0.8s] Timeline line starts drawing down (2.2s total)
+                    const t6 = setTimeout(() => setPhase("line_start"), 2200);
+
+                    // 8. [1.0s] Node 1 & Card: Đã đến điểm phân phối (2.4s total)
+                    const t7 = setTimeout(() => setPhase("timeline_1"), 2400);
+
+                    // 9. [1.25s] Node 2 & Card: Chế biến (2.65s total)
+                    const t8 = setTimeout(() => setPhase("timeline_2"), 2650);
+
+                    // 10. [1.50s] Node 3 & Card: Thu mua (2.90s total)
+                    const t9 = setTimeout(() => setPhase("timeline_3"), 2900);
+
+                    // 11. [1.75s] Node 4 & Card: Thu hoạch (3.15s total)
+                    const t10 = setTimeout(() => setPhase("timeline_4"), 3150);
+
+                    // 12. [2.00s] Node 5 & Card: Vùng sản xuất (3.40s total)
+                    const t11 = setTimeout(() => setPhase("timeline_5"), 3400);
+
+                    // 13. Sequence completed (3.70s total)
+                    const t12 = setTimeout(() => setPhase("completed"), 3700);
 
                     return () => {
                         clearTimeout(t1);
@@ -107,6 +125,8 @@ export function QrStoryAnimationSection() {
                         clearTimeout(t8);
                         clearTimeout(t9);
                         clearTimeout(t10);
+                        clearTimeout(t11);
+                        clearTimeout(t12);
                     };
                 }
             },
@@ -120,26 +140,73 @@ export function QrStoryAnimationSection() {
         return () => observer.disconnect();
     }, [hasTriggered]);
 
-    // Helpers
+    // Helpers for phases
     const isScanning = phase === "scanning";
     const isConnecting = phase === "connecting";
     const isPastConnecting = !["idle", "scanning", "connecting"].includes(phase);
     const isAuthenticated = !["idle", "scanning", "connecting", "authenticating"].includes(phase);
     const showProduct = !["idle", "scanning", "connecting", "authenticating", "authenticated"].includes(phase);
+    const showJourneyHeader = ![
+        "idle",
+        "scanning",
+        "connecting",
+        "authenticating",
+        "authenticated",
+        "product",
+    ].includes(phase);
+    const showLineStart = ![
+        "idle",
+        "scanning",
+        "connecting",
+        "authenticating",
+        "authenticated",
+        "product",
+        "journey_header",
+    ].includes(phase);
 
-    const showStep1 = ["timeline_1", "timeline_2", "timeline_3", "timeline_4", "timeline_5", "completed"].includes(phase);
-    const showStep2 = ["timeline_2", "timeline_3", "timeline_4", "timeline_5", "completed"].includes(phase);
-    const showStep3 = ["timeline_3", "timeline_4", "timeline_5", "completed"].includes(phase);
-    const showStep4 = ["timeline_4", "timeline_5", "completed"].includes(phase);
-    const showStep5 = ["timeline_5", "completed"].includes(phase);
+    const showStep1 = [
+        "timeline_1",
+        "timeline_2",
+        "timeline_3",
+        "timeline_4",
+        "timeline_5",
+        "completed",
+    ].includes(phase);
 
-    // Height of vertical green line in timeline
+    const showStep2 = [
+        "timeline_2",
+        "timeline_3",
+        "timeline_4",
+        "timeline_5",
+        "completed",
+    ].includes(phase);
+
+    const showStep3 = [
+        "timeline_3",
+        "timeline_4",
+        "timeline_5",
+        "completed",
+    ].includes(phase);
+
+    const showStep4 = [
+        "timeline_4",
+        "timeline_5",
+        "completed",
+    ].includes(phase);
+
+    const showStep5 = [
+        "timeline_5",
+        "completed",
+    ].includes(phase);
+
+    // Height of progressive vertical green line in timeline
     let timelineLineHeight = "0%";
     if (showStep5) timelineLineHeight = "100%";
-    else if (showStep4) timelineLineHeight = "80%";
+    else if (showStep4) timelineLineHeight = "82%";
     else if (showStep3) timelineLineHeight = "60%";
-    else if (showStep2) timelineLineHeight = "40%";
-    else if (showStep1) timelineLineHeight = "20%";
+    else if (showStep2) timelineLineHeight = "38%";
+    else if (showStep1) timelineLineHeight = "18%";
+    else if (showLineStart) timelineLineHeight = "8%";
 
     return (
         <section
@@ -229,7 +296,7 @@ export function QrStoryAnimationSection() {
                                         </div>
                                     )}
 
-                                    {/* Scanner Laser Beam (0.0s - 0.7s) */}
+                                    {/* Scanner Laser Beam */}
                                     {isScanning && (
                                         <div className="pointer-events-none absolute inset-x-1 top-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-500 to-transparent shadow-[0_0_8px_#10b981] animate-[scan-laser_1.4s_ease-in-out_infinite] sm:inset-x-1.5" />
                                     )}
@@ -292,8 +359,8 @@ export function QrStoryAnimationSection() {
                         {/* RIGHT: IPHONE 15 PRO MAX (FIXED RATIO FOR ALL SCREENS)         */}
                         {/* ============================================================== */}
                         <div className="flex shrink-0 justify-center lg:col-span-5 lg:justify-start">
-                            {/* iPhone 15 Pro Max Chassis - KÍCH THƯỚC CỐ ĐỊNH, KHÔNG CO DÃN */}
-                            <div className="relative h-[450px] w-[195px] shrink-0 rounded-[34px] bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 p-[6px] shadow-[0_15px_35px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.1)_inset] ring-1 ring-slate-700/60 sm:h-[500px] sm:w-[245px] sm:rounded-[40px] sm:p-[7px] lg:h-[550px] lg:w-[295px] lg:rounded-[44px] lg:p-[8px]">
+                            {/* iPhone 15 Pro Max Chassis - KÍCH THƯỚC CỐ ĐỊNH */}
+                            <div className="relative h-[455px] w-[195px] shrink-0 rounded-[34px] bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 p-[6px] shadow-[0_15px_35px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.1)_inset] ring-1 ring-slate-700/60 sm:h-[505px] sm:w-[245px] sm:rounded-[40px] sm:p-[7px] lg:h-[555px] lg:w-[295px] lg:rounded-[44px] lg:p-[8px]">
                                 {/* Physical Side Buttons */}
                                 <span className="absolute -left-[6px] top-[75px] h-4 w-[2px] rounded-l-sm bg-slate-700 sm:-left-[8px] sm:top-[88px] sm:h-5 sm:w-[2.5px]" />
                                 <span className="absolute -left-[6px] top-[105px] h-7 w-[2px] rounded-l-sm bg-slate-700 sm:-left-[8px] sm:top-[125px] sm:h-9 sm:w-[2.5px]" />
@@ -342,10 +409,11 @@ export function QrStoryAnimationSection() {
                                                 </span>
                                             </div>
 
+                                            {/* [0.0s] MÃ HỢP LỆ BADGE */}
                                             {isAuthenticated ? (
-                                                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[7.5px] font-bold text-emerald-800 animate-in fade-in zoom-in-95 duration-200 sm:px-2 sm:text-[9px]">
+                                                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[7.5px] font-bold text-emerald-800 transition-all duration-300 ease-out sm:px-2 sm:text-[9px]">
                                                     <Check className="h-2 w-2 text-emerald-700 sm:h-2.5 sm:w-2.5" />
-                                                    Hợp lệ
+                                                    Mã hợp lệ
                                                 </span>
                                             ) : (
                                                 <span className="text-[7.5px] font-semibold text-slate-400 sm:text-[8px]">
@@ -355,11 +423,11 @@ export function QrStoryAnimationSection() {
                                         </div>
                                     </div>
 
-                                    {/* MIDDLE SECTION: Content Body (Fixed Area) */}
-                                    <div className="relative flex flex-1 flex-col justify-center overflow-hidden p-2 sm:p-2.5">
+                                    {/* MIDDLE SECTION: Content Body (Fixed Container) */}
+                                    <div className="relative flex flex-1 flex-col overflow-hidden p-2 sm:p-2.5">
                                         {/* State 1: Initial Standby */}
                                         {!isPastConnecting && (
-                                            <div className="flex flex-col items-center justify-center text-center animate-in fade-in duration-200">
+                                            <div className="my-auto flex flex-col items-center justify-center text-center animate-in fade-in duration-200">
                                                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100/70 text-emerald-700 sm:h-12 sm:w-12">
                                                     <QrCode className="h-5 w-5 sm:h-6 sm:w-6" />
                                                 </div>
@@ -377,7 +445,7 @@ export function QrStoryAnimationSection() {
 
                                         {/* State 2: Authenticating */}
                                         {phase === "authenticating" && (
-                                            <div className="flex flex-col items-center justify-center text-center animate-in fade-in duration-200">
+                                            <div className="my-auto flex flex-col items-center justify-center text-center animate-in fade-in duration-200">
                                                 <Loader2 className="h-6 w-6 animate-spin text-emerald-600 sm:h-8 sm:w-8" />
                                                 <p className="mt-2 text-[9px] font-bold text-slate-700 sm:text-[10px]">
                                                     Đang xác thực mã...
@@ -388,163 +456,223 @@ export function QrStoryAnimationSection() {
                                             </div>
                                         )}
 
-                                        {/* State 3+: Product Card & Staggered Timeline */}
+                                        {/* State 3+: Sequence of Product & Timeline (Seamless vertical flow) */}
                                         {isPastConnecting && phase !== "authenticating" && (
-                                            <div className="flex h-full flex-col justify-between py-0.5 animate-in fade-in duration-300">
-                                                {/* Product Header Card */}
-                                                {showProduct && (
-                                                    <div className="rounded-xl border border-emerald-200/70 bg-white p-1.5 shadow-2xs animate-in fade-in slide-in-from-top-1 duration-200 sm:p-2">
-                                                        <div className="flex items-start justify-between gap-1">
-                                                            <div>
-                                                                <h4 className="text-[10px] font-black leading-tight text-slate-900 sm:text-[11px]">
-                                                                    Sầu riêng Ri6
-                                                                </h4>
-                                                                <p className="font-mono text-[8px] font-bold text-emerald-700 sm:text-[9px]">
-                                                                    Mã: TV-DEMO-001
-                                                                </p>
-                                                            </div>
-                                                            <span className="rounded bg-emerald-50 px-1 py-0.5 text-[7px] font-bold text-emerald-700 sm:px-1.5 sm:text-[8px]">
-                                                                Chính hãng
-                                                            </span>
+                                            <div className="flex flex-col">
+                                                {/* [0.3s] THÔNG TIN SẢN PHẨM */}
+                                                <div
+                                                    className={cn(
+                                                        "rounded-xl border border-emerald-200/70 bg-white p-1.5 shadow-2xs transition-all duration-300 ease-out sm:p-2",
+                                                        showProduct
+                                                            ? "opacity-100 translate-y-0"
+                                                            : "opacity-0 translate-y-2 pointer-events-none"
+                                                    )}
+                                                >
+                                                    <div className="flex items-start justify-between gap-1">
+                                                        <div>
+                                                            <h4 className="text-[10px] font-black leading-tight text-slate-900 sm:text-[11px]">
+                                                                Sầu riêng Ri6
+                                                            </h4>
+                                                            <p className="font-mono text-[8px] font-bold text-emerald-700 sm:text-[9px]">
+                                                                Mã: TV-DEMO-001
+                                                            </p>
                                                         </div>
-                                                        <p className="mt-0.5 flex items-center gap-0.5 text-[8px] text-slate-500 sm:text-[9px]">
-                                                            <MapPin className="h-2 w-2 text-emerald-600 shrink-0 sm:h-2.5 sm:w-2.5" />
-                                                            <span className="truncate">Long Khánh, Đồng Nai</span>
-                                                        </p>
-                                                    </div>
-                                                )}
-
-                                                {/* Timeline Heading */}
-                                                {showProduct && (
-                                                    <div className="flex items-center justify-between px-0.5 py-0.5">
-                                                        <p className="text-[8px] font-black uppercase tracking-wider text-slate-500 sm:text-[9px]">
-                                                            Hành trình sản phẩm
-                                                        </p>
-                                                        <span className="text-[7px] font-semibold text-emerald-700 sm:text-[8px]">
-                                                            Mới nhất trước
+                                                        <span className="rounded bg-emerald-50 px-1 py-0.5 text-[7px] font-bold text-emerald-700 sm:px-1.5 sm:text-[8px]">
+                                                            Chính hãng
                                                         </span>
                                                     </div>
-                                                )}
+                                                    <p className="mt-0.5 flex items-center gap-0.5 text-[8px] text-slate-500 sm:text-[9px]">
+                                                        <MapPin className="h-2 w-2 text-emerald-600 shrink-0 sm:h-2.5 sm:w-2.5" />
+                                                        <span className="truncate">Long Khánh, Đồng Nai</span>
+                                                    </p>
+                                                </div>
 
-                                                {/* Vertical Timeline with Staggered Cards */}
+                                                {/* [0.6s] TIÊU ĐỀ HÀNH TRÌNH SẢN PHẨM (Kéo sát timeline 16-20px) */}
+                                                <div
+                                                    className={cn(
+                                                        "mt-2 sm:mt-2.5 flex items-center justify-between px-0.5 pb-1 transition-all duration-300 ease-out",
+                                                        showJourneyHeader
+                                                            ? "opacity-100 translate-y-0"
+                                                            : "opacity-0 translate-y-2 pointer-events-none"
+                                                    )}
+                                                >
+                                                    <p className="text-[8px] font-black uppercase tracking-wider text-slate-500 sm:text-[9px]">
+                                                        HÀNH TRÌNH SẢN PHẨM
+                                                    </p>
+                                                    <span className="text-[7px] font-semibold text-emerald-700 sm:text-[8px]">
+                                                        Mới nhất trước
+                                                    </span>
+                                                </div>
+
+                                                {/* VERTICAL PROGRESSIVE TIMELINE (XUẤT HIỆN TỪNG MỐC TỪ TRÊN XUỐNG) */}
                                                 <div className="relative space-y-1 pl-3.5 sm:pl-4">
-                                                    {/* Background line */}
+                                                    {/* Background line track */}
                                                     <div className="absolute left-[6px] top-1 bottom-1 w-0.5 bg-slate-200 sm:left-[7px]" />
-                                                    {/* Progress line */}
+                                                    {/* Progressive animated line */}
                                                     <div
-                                                        className="absolute left-[6px] top-1 w-0.5 bg-emerald-500 transition-all duration-300 sm:left-[7px]"
+                                                        className="absolute left-[6px] top-1 w-0.5 bg-emerald-500 transition-all duration-300 ease-out sm:left-[7px]"
                                                         style={{ height: timelineLineHeight }}
                                                     />
 
-                                                    {/* Card 1: Điểm phân phối (0.0s) */}
-                                                    {showStep1 && (
-                                                        <div className="relative animate-in fade-in slide-in-from-top-1 duration-200">
-                                                            <span className="absolute -left-[11px] top-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white sm:-left-[13px] sm:h-3 sm:w-3">
-                                                                <Store className="h-1.5 w-1.5" />
+                                                    {/* [1.0s] Mốc 1: ĐIỂM PHÂN PHỐI */}
+                                                    <div
+                                                        className={cn(
+                                                            "relative transition-all duration-300 ease-out",
+                                                            showStep1
+                                                                ? "opacity-100 translate-y-0"
+                                                                : "opacity-0 translate-y-2 pointer-events-none"
+                                                        )}
+                                                    >
+                                                        <span
+                                                            className={cn(
+                                                                "absolute -left-[11px] top-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white transition-all duration-300 sm:-left-[13px] sm:h-3 sm:w-3",
+                                                                showStep1 ? "scale-100 opacity-100" : "scale-50 opacity-0"
+                                                            )}
+                                                        >
+                                                            <Store className="h-1.5 w-1.5" />
+                                                        </span>
+                                                        <div className="rounded-lg border border-emerald-100 bg-white p-1 shadow-2xs">
+                                                            <span className="text-[7px] font-black uppercase tracking-wider text-emerald-700 sm:text-[7.5px]">
+                                                                ĐÃ ĐẾN ĐIỂM PHÂN PHỐI
                                                             </span>
-                                                            <div className="rounded-lg border border-emerald-100 bg-white p-1 shadow-2xs">
+                                                            <p className="truncate text-[8px] font-bold leading-tight text-slate-900 sm:text-[9px]">
+                                                                Chợ đầu mối Thủ Đức
+                                                            </p>
+                                                            <p className="text-[7px] text-slate-500 sm:text-[8px]">
+                                                                TP. Hồ Chí Minh
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* [1.25s] Mốc 2: CHẾ BIẾN */}
+                                                    <div
+                                                        className={cn(
+                                                            "relative transition-all duration-300 ease-out",
+                                                            showStep2
+                                                                ? "opacity-100 translate-y-0"
+                                                                : "opacity-0 translate-y-2 pointer-events-none"
+                                                        )}
+                                                    >
+                                                        <span
+                                                            className={cn(
+                                                                "absolute -left-[11px] top-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white transition-all duration-300 sm:-left-[13px] sm:h-3 sm:w-3",
+                                                                showStep2 ? "scale-100 opacity-100" : "scale-50 opacity-0"
+                                                            )}
+                                                        >
+                                                            <Factory className="h-1.5 w-1.5" />
+                                                        </span>
+                                                        <div className="rounded-lg border border-slate-100 bg-white p-1 shadow-2xs">
+                                                            <div className="flex items-center justify-between">
                                                                 <span className="text-[7px] font-black uppercase tracking-wider text-emerald-700 sm:text-[7.5px]">
-                                                                    ĐÃ ĐẾN ĐIỂM PHÂN PHỐI
+                                                                    CHẾ BIẾN
                                                                 </span>
-                                                                <p className="truncate text-[8px] font-bold leading-tight text-slate-900 sm:text-[9px]">
-                                                                    Chợ đầu mối Thủ Đức
-                                                                </p>
-                                                                <p className="text-[7px] text-slate-500 sm:text-[8px]">
-                                                                    TP. Hồ Chí Minh
-                                                                </p>
+                                                                <span className="rounded bg-emerald-50 px-1 text-[7px] font-bold text-emerald-700">
+                                                                    QC: Đạt
+                                                                </span>
                                                             </div>
+                                                            <p className="truncate text-[8px] font-bold leading-tight text-slate-900 sm:text-[9px]">
+                                                                Cơ sở Chế biến Trị An
+                                                            </p>
+                                                            <p className="truncate text-[7px] text-slate-500 sm:text-[8px]">
+                                                                Tách múi · Cấp đông
+                                                            </p>
                                                         </div>
-                                                    )}
+                                                    </div>
 
-                                                    {/* Card 2: Chế biến (+0.2s) */}
-                                                    {showStep2 && (
-                                                        <div className="relative animate-in fade-in slide-in-from-top-1 duration-200">
-                                                            <span className="absolute -left-[11px] top-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white sm:-left-[13px] sm:h-3 sm:w-3">
-                                                                <Factory className="h-1.5 w-1.5" />
-                                                            </span>
-                                                            <div className="rounded-lg border border-slate-100 bg-white p-1 shadow-2xs">
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className="text-[7px] font-black uppercase tracking-wider text-emerald-700 sm:text-[7.5px]">
-                                                                        CHẾ BIẾN
-                                                                    </span>
-                                                                    <span className="rounded bg-emerald-50 px-1 text-[7px] font-bold text-emerald-700">
-                                                                        QC: Đạt
-                                                                    </span>
-                                                                </div>
-                                                                <p className="truncate text-[8px] font-bold leading-tight text-slate-900 sm:text-[9px]">
-                                                                    Cơ sở Chế biến Trị An
-                                                                </p>
-                                                                <p className="truncate text-[7px] text-slate-500 sm:text-[8px]">
-                                                                    Tách múi · Cấp đông
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Card 3: Vựa thu mua (+0.4s) */}
-                                                    {showStep3 && (
-                                                        <div className="relative animate-in fade-in slide-in-from-top-1 duration-200">
-                                                            <span className="absolute -left-[11px] top-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white sm:-left-[13px] sm:h-3 sm:w-3">
-                                                                <Truck className="h-1.5 w-1.5" />
-                                                            </span>
-                                                            <div className="rounded-lg border border-slate-100 bg-white p-1 shadow-2xs">
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className="text-[7px] font-black uppercase tracking-wider text-emerald-700 sm:text-[7.5px]">
-                                                                        THU MUA
-                                                                    </span>
-                                                                    <span className="rounded bg-emerald-50 px-1 text-[7px] font-bold text-emerald-700">
-                                                                        QC: Đạt
-                                                                    </span>
-                                                                </div>
-                                                                <p className="truncate text-[8px] font-bold leading-tight text-slate-900 sm:text-[9px]">
-                                                                    Vựa Sầu riêng Thành Phát
-                                                                </p>
-                                                                <p className="text-[7px] text-slate-500 sm:text-[8px]">
-                                                                    Khối lượng: 700 kg
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Card 4: Thu hoạch (+0.6s) */}
-                                                    {showStep4 && (
-                                                        <div className="relative animate-in fade-in slide-in-from-top-1 duration-200">
-                                                            <span className="absolute -left-[11px] top-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white sm:-left-[13px] sm:h-3 sm:w-3">
-                                                                <Calendar className="h-1.5 w-1.5" />
-                                                            </span>
-                                                            <div className="rounded-lg border border-slate-100 bg-white p-1 shadow-2xs">
+                                                    {/* [1.50s] Mốc 3: THU MUA */}
+                                                    <div
+                                                        className={cn(
+                                                            "relative transition-all duration-300 ease-out",
+                                                            showStep3
+                                                                ? "opacity-100 translate-y-0"
+                                                                : "opacity-0 translate-y-2 pointer-events-none"
+                                                        )}
+                                                    >
+                                                        <span
+                                                            className={cn(
+                                                                "absolute -left-[11px] top-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white transition-all duration-300 sm:-left-[13px] sm:h-3 sm:w-3",
+                                                                showStep3 ? "scale-100 opacity-100" : "scale-50 opacity-0"
+                                                            )}
+                                                        >
+                                                            <Truck className="h-1.5 w-1.5" />
+                                                        </span>
+                                                        <div className="rounded-lg border border-slate-100 bg-white p-1 shadow-2xs">
+                                                            <div className="flex items-center justify-between">
                                                                 <span className="text-[7px] font-black uppercase tracking-wider text-emerald-700 sm:text-[7.5px]">
-                                                                    THU HOẠCH
+                                                                    THU MUA
                                                                 </span>
-                                                                <p className="text-[8px] font-bold leading-tight text-slate-900 sm:text-[9px]">
-                                                                    24/08/2026
-                                                                </p>
-                                                                <p className="font-mono text-[7px] text-slate-500 sm:text-[8px]">
-                                                                    Lô: HL-DEMO-001
-                                                                </p>
+                                                                <span className="rounded bg-emerald-50 px-1 text-[7px] font-bold text-emerald-700">
+                                                                    QC: Đạt
+                                                                </span>
                                                             </div>
+                                                            <p className="truncate text-[8px] font-bold leading-tight text-slate-900 sm:text-[9px]">
+                                                                Vựa Sầu riêng Thành Phát
+                                                            </p>
+                                                            <p className="text-[7px] text-slate-500 sm:text-[8px]">
+                                                                Khối lượng: 700 kg
+                                                            </p>
                                                         </div>
-                                                    )}
+                                                    </div>
 
-                                                    {/* Card 5: Vườn trồng (+0.8s) */}
-                                                    {showStep5 && (
-                                                        <div className="relative animate-in fade-in slide-in-from-top-1 duration-200">
-                                                            <span className="absolute -left-[11px] top-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white sm:-left-[13px] sm:h-3 sm:w-3">
-                                                                <Sprout className="h-1.5 w-1.5" />
+                                                    {/* [1.75s] Mốc 4: THU HOẠCH */}
+                                                    <div
+                                                        className={cn(
+                                                            "relative transition-all duration-300 ease-out",
+                                                            showStep4
+                                                                ? "opacity-100 translate-y-0"
+                                                                : "opacity-0 translate-y-2 pointer-events-none"
+                                                        )}
+                                                    >
+                                                        <span
+                                                            className={cn(
+                                                                "absolute -left-[11px] top-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white transition-all duration-300 sm:-left-[13px] sm:h-3 sm:w-3",
+                                                                showStep4 ? "scale-100 opacity-100" : "scale-50 opacity-0"
+                                                            )}
+                                                        >
+                                                            <Calendar className="h-1.5 w-1.5" />
+                                                        </span>
+                                                        <div className="rounded-lg border border-slate-100 bg-white p-1 shadow-2xs">
+                                                            <span className="text-[7px] font-black uppercase tracking-wider text-emerald-700 sm:text-[7.5px]">
+                                                                THU HOẠCH
                                                             </span>
-                                                            <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-1 shadow-2xs">
-                                                                <span className="text-[7px] font-black uppercase tracking-wider text-emerald-800 sm:text-[7.5px]">
-                                                                    VƯỜN TRỒNG
-                                                                </span>
-                                                                <p className="truncate text-[8px] font-bold leading-tight text-slate-900 sm:text-[9px]">
-                                                                    Vườn Minh Phát
-                                                                </p>
-                                                                <p className="font-mono text-[7px] text-emerald-700 sm:text-[8px]">
-                                                                    MSVT-DN-LK-001
-                                                                </p>
-                                                            </div>
+                                                            <p className="text-[8px] font-bold leading-tight text-slate-900 sm:text-[9px]">
+                                                                24/08/2026
+                                                            </p>
+                                                            <p className="font-mono text-[7px] text-slate-500 sm:text-[8px]">
+                                                                Lô: HL-DEMO-001
+                                                            </p>
                                                         </div>
-                                                    )}
+                                                    </div>
+
+                                                    {/* [2.00s] Mốc 5: VÙNG SẢN XUẤT */}
+                                                    <div
+                                                        className={cn(
+                                                            "relative transition-all duration-300 ease-out",
+                                                            showStep5
+                                                                ? "opacity-100 translate-y-0"
+                                                                : "opacity-0 translate-y-2 pointer-events-none"
+                                                        )}
+                                                    >
+                                                        <span
+                                                            className={cn(
+                                                                "absolute -left-[11px] top-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white transition-all duration-300 sm:-left-[13px] sm:h-3 sm:w-3",
+                                                                showStep5 ? "scale-100 opacity-100" : "scale-50 opacity-0"
+                                                            )}
+                                                        >
+                                                            <Sprout className="h-1.5 w-1.5" />
+                                                        </span>
+                                                        <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-1 shadow-2xs">
+                                                            <span className="text-[7px] font-black uppercase tracking-wider text-emerald-800 sm:text-[7.5px]">
+                                                                VÙNG SẢN XUẤT
+                                                            </span>
+                                                            <p className="truncate text-[8px] font-bold leading-tight text-slate-900 sm:text-[9px]">
+                                                                Vườn Minh Phát
+                                                            </p>
+                                                            <p className="font-mono text-[7px] text-emerald-700 sm:text-[8px]">
+                                                                MSVT-DN-LK-001 · Giống: Ri6
+                                                            </p>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
