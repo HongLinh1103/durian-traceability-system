@@ -252,13 +252,6 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
                                 </h2>
                             </div>
                         </div>
-
-                        <div className="flex items-center gap-1.5">
-                            <span className="rounded-full bg-brand-50 border border-brand-200 px-3 py-1 text-xs font-bold text-brand-800 flex items-center gap-1">
-                                <CheckCircle2 className="h-3.5 w-3.5 text-brand-600" />
-                                {currentNursery.province}
-                            </span>
-                        </div>
                     </div>
 
                     <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-600">
