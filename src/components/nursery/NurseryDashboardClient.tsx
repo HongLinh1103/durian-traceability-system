@@ -48,43 +48,35 @@ const NURSERY_ACCOUNTS = [
 ];
 
 export function NurseryDashboardClient({ initialItems, currentAccountPhone }: NurseryDashboardClientProps) {
-    const [selectedNurseryPhone, setSelectedNurseryPhone] = useState(
-        currentAccountPhone || "0909333001"
-    );
     const [items, setItems] = useState<SeedlingItem[]>(initialItems);
     const [isLoading, setIsLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<SeedlingItem | null>(null);
 
-    // Form state
+    // Form state (all empty by default for new creations)
     const [formTitle, setFormTitle] = useState("");
     const [formCode, setFormCode] = useState("");
-    const [formVariety, setFormVariety] = useState("Ri6");
-    const [formPrice, setFormPrice] = useState("85000");
-    const [formQuantity, setFormQuantity] = useState("300");
+    const [formVariety, setFormVariety] = useState("");
+    const [formPrice, setFormPrice] = useState("");
+    const [formQuantity, setFormQuantity] = useState("");
     const [formStatus, setFormStatus] = useState<"IN_STOCK" | "OUT_OF_STOCK">("IN_STOCK");
-    const [formImages, setFormImages] = useState(
-        "https://images.unsplash.com/photo-1595246140625-573b715d11dc?auto=format&fit=crop&w=800&q=80"
-    );
-    const [formPropagation, setFormPropagation] = useState("Ghép nêm đọt non");
-    const [formTreeAge, setFormTreeAge] = useState("8 tháng");
-    const [formTreeHeight, setFormTreeHeight] = useState("70 – 90 cm");
-    const [formRootstock, setFormRootstock] = useState("Sầu riêng hạt chọn lọc (2 năm tuổi)");
-    const [formPlantHealth, setFormPlantHealth] = useState("Khỏe mạnh, đọt non xanh mướt, rễ kín bầu");
-    const [formPackaging, setFormPackaging] = useState("Cây / bầu");
-    const [formPotSize, setFormPotSize] = useState("15 × 25 cm");
+    const [formImages, setFormImages] = useState("");
+    const [formPropagation, setFormPropagation] = useState("");
+    const [formTreeAge, setFormTreeAge] = useState("");
+    const [formTreeHeight, setFormTreeHeight] = useState("");
+    const [formRootstock, setFormRootstock] = useState("");
+    const [formPlantHealth, setFormPlantHealth] = useState("");
+    const [formPackaging, setFormPackaging] = useState("");
+    const [formPotSize, setFormPotSize] = useState("");
     const [formDescription, setFormDescription] = useState("");
 
     const currentNursery =
-        NURSERY_ACCOUNTS.find((n) => n.phone === selectedNurseryPhone) || NURSERY_ACCOUNTS[0];
+        NURSERY_ACCOUNTS.find((n) => n.phone === currentAccountPhone) || NURSERY_ACCOUNTS[0];
 
-    // Filter items of selected nursery
-    const nurseryItems =
-        selectedNurseryPhone === "ALL"
-            ? items
-            : items.filter(
-                  (it) => it.ownerPhone === selectedNurseryPhone || it.nurseryPhone === selectedNurseryPhone
-              );
+    // Filter items belonging to the current nursery
+    const nurseryItems = items.filter(
+        (it) => it.ownerPhone === currentNursery.phone || it.nurseryPhone === currentNursery.phone
+    );
 
     const totalStock = nurseryItems.reduce((sum, it) => sum + (it.availableQuantity || 0), 0);
     const inStockCount = nurseryItems.filter((it) => it.status === "IN_STOCK").length;
@@ -92,20 +84,20 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
     const resetForm = () => {
         setEditingItem(null);
         setFormTitle("");
-        setFormCode(`CG-${Date.now().toString().slice(-4)}`);
-        setFormVariety("Ri6");
-        setFormPrice("85000");
-        setFormQuantity("300");
+        setFormCode("");
+        setFormVariety("");
+        setFormPrice("");
+        setFormQuantity("");
         setFormStatus("IN_STOCK");
-        setFormImages("https://images.unsplash.com/photo-1595246140625-573b715d11dc?auto=format&fit=crop&w=800&q=80");
-        setFormPropagation("Ghép nêm đọt non");
-        setFormTreeAge("8 tháng");
-        setFormTreeHeight("70 – 90 cm");
-        setFormRootstock("Sầu riêng hạt chọn lọc");
-        setFormPlantHealth("Khỏe mạnh, đọt non xanh mướt, sạch sâu bệnh");
-        setFormPackaging("Cây / bầu");
-        setFormPotSize("15 × 25 cm");
-        setFormDescription("Cây giống chất lượng cao chuẩn F1 được thuần dưỡng kỹ càng.");
+        setFormImages("");
+        setFormPropagation("");
+        setFormTreeAge("");
+        setFormTreeHeight("");
+        setFormRootstock("");
+        setFormPlantHealth("");
+        setFormPackaging("");
+        setFormPotSize("");
+        setFormDescription("");
     };
 
     const openCreateModal = () => {
@@ -261,21 +253,11 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
                             </div>
                         </div>
 
-                        {/* Account Switcher */}
                         <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-slate-500 font-semibold">Chuyển trại:</span>
-                            <select
-                                value={selectedNurseryPhone}
-                                onChange={(e) => setSelectedNurseryPhone(e.target.value)}
-                                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-brand-500"
-                            >
-                                <option value="ALL">Tất cả trại giống ({items.length} giống)</option>
-                                {NURSERY_ACCOUNTS.map((acc) => (
-                                    <option key={acc.phone} value={acc.phone}>
-                                        {acc.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <span className="rounded-full bg-brand-50 border border-brand-200 px-3 py-1 text-xs font-bold text-brand-800 flex items-center gap-1">
+                                <CheckCircle2 className="h-3.5 w-3.5 text-brand-600" />
+                                {currentNursery.province}
+                            </span>
                         </div>
                     </div>
 
@@ -653,10 +635,12 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
                                             Tên giống *:
                                         </label>
                                         <select
+                                            required
                                             value={formVariety}
                                             onChange={(e) => setFormVariety(e.target.value)}
                                             className="w-full rounded-xl border border-slate-200 p-2.5 text-xs outline-none focus:border-brand-500"
                                         >
+                                            <option value="">-- Chọn giống cây trồng --</option>
                                             <option value="Ri6">Ri6</option>
                                             <option value="Monthong (Dona)">Monthong (Dona)</option>
                                             <option value="Musang King">Musang King (D197)</option>
