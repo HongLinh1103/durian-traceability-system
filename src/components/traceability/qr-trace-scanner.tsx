@@ -13,13 +13,11 @@ import {
     CheckCircle2,
     AlertCircle,
     Loader2,
-    ArrowRight,
     QrCode,
     Sparkles,
     Search,
     ShieldCheck,
     X,
-    Maximize2,
     Play,
     Pause,
     HelpCircle,
@@ -292,7 +290,7 @@ export function QrTraceScanner({
     }, [activeTab, facingMode, selectedDeviceId, startCamera, stopCamera]);
 
     // Handle Image file decode
-    const processImageFile = async (file: File) => {
+    const processImageFile = useCallback(async (file: File) => {
         if (!file.type.startsWith("image/")) {
             setUploadError("Vui lòng chọn một tệp hình ảnh hợp lệ (PNG, JPG, JPEG, WEBP).");
             return;
@@ -373,7 +371,7 @@ export function QrTraceScanner({
             setUploadError("Lỗi khi tải tệp ảnh.");
         };
         reader.readAsDataURL(file);
-    };
+    }, [handleCodeDetected]);
 
     // Drag and Drop handlers
     const handleDragOver = (e: React.DragEvent) => {
@@ -417,7 +415,7 @@ export function QrTraceScanner({
         return () => {
             window.removeEventListener("paste", handlePaste);
         };
-    }, [activeTab]);
+    }, [activeTab, processImageFile]);
 
     // Manual code submit
     const handleManualSubmit = async (e: React.FormEvent) => {

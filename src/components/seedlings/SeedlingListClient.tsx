@@ -9,12 +9,8 @@ import {
     MapPin,
     Building2,
     ArrowRight,
-    Sparkles,
     CheckCircle2,
-    PhoneCall,
     Filter,
-    ShieldCheck,
-    Boxes,
 } from "lucide-react";
 import type { SeedlingItem } from "@/lib/seedlings-data";
 import { Button } from "@/components/ui/button";
@@ -25,7 +21,7 @@ type SeedlingListClientProps = {
 };
 
 export function SeedlingListClient({ initialItems }: SeedlingListClientProps) {
-    const [items, setItems] = useState<SeedlingItem[]>(initialItems);
+    const [items] = useState<SeedlingItem[]>(initialItems);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedVariety, setSelectedVariety] = useState<string>("ALL");
     const [selectedNursery, setSelectedNursery] = useState<string>("ALL");

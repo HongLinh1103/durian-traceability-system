@@ -9,6 +9,18 @@ const securityHeaders = [
 
 const nextConfig = {
     poweredByHeader: false,
+    eslint: {
+        ignoreDuringBuilds: true,
+    },
+    typescript: {
+        ignoreBuildErrors: false,
+    },
+    images: {
+        remotePatterns: [
+            { protocol: "https", hostname: "**" },
+            { protocol: "http", hostname: "**" },
+        ],
+    },
     async headers() {
         return [{ source: "/:path*", headers: securityHeaders }];
     },

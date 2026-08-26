@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -15,11 +15,8 @@ import {
     MapPin,
     Eye,
     Package,
-    TrendingUp,
-    Sparkles,
     Trees,
     X,
-    Check,
     Loader2,
 } from "lucide-react";
 import type { SeedlingItem } from "@/lib/seedlings-data";
@@ -377,7 +374,7 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
                             {nurseryItems.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="p-8 text-center text-slate-400">
-                                        Chưa có sản phẩm cây giống nào. Bấm nút "Đăng bán cây giống mới" ở trên để thêm.
+                                        Chưa có sản phẩm cây giống nào. Bấm nút &ldquo;Đăng bán cây giống mới&rdquo; ở trên để thêm.
                                     </td>
                                 </tr>
                             ) : (

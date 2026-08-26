@@ -10,19 +10,10 @@ import {
     PhoneCall,
     MapPin,
     Building2,
-    Calendar,
-    Ruler,
-    Layers,
     PackageCheck,
     Check,
     ChevronRight,
-    Home,
     Phone,
-    Share2,
-    Trees,
-    AlertCircle,
-    Truck,
-    HelpCircle,
 } from "lucide-react";
 import type { SeedlingItem } from "@/lib/seedlings-data";
 import { Button } from "@/components/ui/button";

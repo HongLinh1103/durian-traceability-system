@@ -156,7 +156,7 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [defaultFarmId]);
 
     const dates = useMemo(() => {
         if (from || to) return { from, to };
