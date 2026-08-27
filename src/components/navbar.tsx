@@ -51,8 +51,6 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/admin/accounts", label: "Quản lý tài khoản", roles: ["ADMIN"], badge: true },
     { href: "/dashboard/admin/regions", label: "Vùng trồng", roles: ["ADMIN"] },
     { href: "/dashboard/admin/catalog", label: "Danh mục", roles: ["ADMIN"] },
-    { href: "/dashboard/admin/traceability", label: "Truy xuất & QR", roles: ["ADMIN"] },
-    { href: "/dashboard/nursery", label: "Quản lý Trại giống", roles: ["ADMIN"] },
     { href: "/dashboard/store", label: "Tổng quan", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/products", label: "Sản phẩm", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/inventory", label: "Kho hàng", roles: ["STORE_OWNER"] },
@@ -113,7 +111,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
         : isAuthed
             ? publicLinks.filter((l) => {
                 if (l.href === "/") return false;
-                if (isAdmin && (l.href === "/collectors" || l.href === "/processing-facilities")) return false;
+                if (isAdmin && (l.href === "/collectors" || l.href === "/processing-facilities" || l.href === "/seedlings")) return false;
                 return true;
             })
             : publicLinks;
