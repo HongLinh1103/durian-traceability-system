@@ -35,7 +35,10 @@ export default async function Page() {
     // Fetch Raw Material Purchases from Farmers
     const harvestPurchases = await prisma.harvestRecord.findMany({
         where: {
-            buyerUserId: session.user.id,
+            OR: [
+                { buyerUserId: session.user.id },
+                { buyerFacilityId: facility.id },
+            ],
             status: { notIn: ["REJECTED", "CANCELLED"] },
         },
         include: {

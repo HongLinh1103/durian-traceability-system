@@ -33,8 +33,20 @@ export async function GET() {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) return NextResponse.json({ success: false, message: "Chưa đăng nhập." }, { status: 401 });
         const buyer = ["COLLECTOR", "PROCESSING_FACILITY"].includes(session.user.role);
+        let whereCondition: any = { farmerId: session.user.id };
+        if (buyer) {
+            const facility = await prisma.partnerFacility.findFirst({
+                where: { ownerId: session.user.id, deletedAt: null },
+            });
+            whereCondition = {
+                OR: [
+                    { buyerUserId: session.user.id },
+                    ...(facility ? [{ buyerFacilityId: facility.id }] : []),
+                ],
+            };
+        }
         const data = await prisma.harvestRecord.findMany({
-            where: buyer ? { buyerUserId: session.user.id } : { farmerId: session.user.id },
+            where: whereCondition,
             include: {
                 varietyItems: true,
                 farm: { select: { farmName: true, farmCode: true, address: true, durianVariety: true } },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
     CheckCircle2,
@@ -1198,8 +1199,10 @@ function ExportProgressModal({
         }
     }
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs overflow-y-auto">
+    if (typeof document === "undefined") return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs overflow-y-auto w-screen h-screen">
             <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden my-8 border border-slate-200">
                 <div className="bg-gradient-to-r from-indigo-950 via-indigo-900 to-slate-900 p-6 text-white flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -1349,6 +1352,7 @@ function ExportProgressModal({
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

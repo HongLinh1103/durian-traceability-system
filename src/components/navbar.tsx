@@ -56,7 +56,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/store/orders", label: "Đơn hàng", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/finance", label: "Tài chính", roles: ["STORE_OWNER"] },
     { href: "/dashboard/partner", label: "Tổng quan", roles: ["COLLECTOR"] },
-    { href: "/dashboard/partner/harvests", label: "Phiếu thu hoạch", roles: ["COLLECTOR"] },
+    { href: "/dashboard/partner/harvests", label: "Phiếu thu hoạch", roles: ["COLLECTOR"], collectorBadge: true },
     { href: "/dashboard/partner/orders", label: "Đơn thu mua", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/lots", label: "Lô hàng", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/traceability", label: "Tạo QR", roles: ["COLLECTOR"] },
@@ -194,7 +194,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                 if (!cancelled && payload.success) {
                     if (userRole === "PROCESSING_FACILITY") { setCollectorNoticeCount(payload.actionRequiredCount ?? 0); return; }
                     const rows = payload.data ?? [];
-                    const count = rows.filter((item: { status: string }) => ["WAITING_CONFIRMATION", "HARVESTED"].includes(item.status)).length;
+                    const count = rows.filter((item: { status: string }) => ["WAITING_CONFIRMATION", "CONFIRMED", "HARVESTING", "HARVESTED"].includes(item.status)).length;
                     setCollectorNoticeCount(count);
                 }
             } catch {
@@ -348,7 +348,11 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                         {duePlanCount > 99 ? "99+" : duePlanCount}
                                     </span>
                                 )}
-                                {link.collectorBadge && collectorNoticeCount > 0 && <CartBadge count={collectorNoticeCount} />}
+                                {link.collectorBadge && collectorNoticeCount > 0 && (
+                                    <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white" aria-label={`${collectorNoticeCount} phiếu cần xử lý`}>
+                                        {collectorNoticeCount > 99 ? "99+" : collectorNoticeCount}
+                                    </span>
+                                )}
                             </Link>
                         ))}
                 </div>

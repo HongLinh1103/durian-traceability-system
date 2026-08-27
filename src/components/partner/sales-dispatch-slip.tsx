@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import QRCode from "qrcode";
 import { 
     Printer, 
@@ -72,7 +73,12 @@ export function SalesDispatchSlip({
     onIssueQr?: (id: string) => Promise<void> | void;
     issuingQr?: boolean;
 }) {
+    const [mounted, setMounted] = useState<boolean>(false);
     const [qrSrc, setQrSrc] = useState<string>("");
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const token = data.traceabilityCode?.publicToken || data.traceabilityCode?.code;
 
@@ -282,13 +288,15 @@ export function SalesDispatchSlip({
             </html>
         `);
         printWindow.document.close();
-        setTimeout(() => {
+                        setTimeout(() => {
             printWindow.print();
         }, 300);
     }
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs overflow-y-auto">
+    if (!mounted || typeof document === "undefined") return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs overflow-y-auto w-screen h-screen">
             <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden my-8 border border-slate-200">
                 {/* Modal Header */}
                 <div className={`p-6 text-white flex items-center justify-between ${
@@ -320,150 +328,186 @@ export function SalesDispatchSlip({
                 </div>
 
                 {/* Modal Content */}
-                <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-                    {/* General Lot Info */}
-                    <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100 space-y-3">
-                        <div className="grid grid-cols-2 gap-4 text-xs">
-                            <div>
-                                <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Đơn vị xuất:</span>
-                                <span className="font-bold text-slate-800 text-sm block truncate">
-                                    {data.ownerName || "Cơ sở xuất hàng"}
-                                </span>
-                            </div>
-                            <div>
-                                <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Ngày xuất:</span>
-                                <span className="font-bold text-slate-800 text-sm block flex items-center gap-1">
-                                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                                    {formattedDate}
-                                </span>
-                            </div>
-                            <div className="col-span-2 border-t pt-2">
-                                <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Sản phẩm:</span>
-                                <span className="font-black text-slate-900 text-base block">{data.productName}</span>
-                            </div>
+                <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto text-xs">
+                    {/* Facility & Lot Info Banner */}
+                    <div className="rounded-2xl bg-slate-50 p-4 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Đơn vị xuất hàng</span>
+                            <p className="text-sm font-black text-slate-900 mt-0.5">{data.ownerName || (isProcessingFacility ? "Cơ sở Chế biến Sầu riêng Trị An" : "Vựa Sầu riêng Thành Phát")}</p>
+                            <p className="text-[11px] text-slate-500">{isProcessingFacility ? "Đồng Nai · Giấy phép VSATTP & GACC" : "Long Khánh, Đồng Nai"}</p>
                         </div>
-
-                        {/* Export specific details */}
-                        {isExport && (
-                            <div className="grid grid-cols-2 gap-3 pt-2 border-t text-xs bg-indigo-50/60 p-3 rounded-xl border-indigo-100">
-                                <div>
-                                    <span className="text-indigo-600 font-bold uppercase tracking-wider block text-[10px]">Thị trường:</span>
-                                    <span className="font-black text-indigo-950 text-sm block">
-                                        {data.destinationCountry || "Trung Quốc"}
-                                    </span>
-                                </div>
-                                <div>
-                                    <span className="text-indigo-600 font-bold uppercase tracking-wider block text-[10px]">Cửa khẩu / Cảng:</span>
-                                    <span className="font-bold text-indigo-900 block truncate">
-                                        {data.portOfLoading || "Cửa khẩu Hữu Nghị"}
-                                    </span>
-                                </div>
-                                {data.containerNumber && (
-                                    <div>
-                                        <span className="text-indigo-600 font-bold uppercase tracking-wider block text-[10px]">Container:</span>
-                                        <span className="font-mono font-bold text-slate-800">{data.containerNumber}</span>
-                                    </div>
-                                )}
-                                {data.sealNumber && (
-                                    <div>
-                                        <span className="text-indigo-600 font-bold uppercase tracking-wider block text-[10px]">Seal:</span>
-                                        <span className="font-mono font-bold text-slate-800">{data.sealNumber}</span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        <div className="sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
+                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Ngày xuất hàng</span>
+                            <p className="text-xs font-bold text-slate-800 mt-0.5 flex items-center sm:justify-end gap-1">
+                                <Calendar className="h-3.5 w-3.5 text-slate-500" />
+                                {formattedDate}
+                            </p>
+                        </div>
                     </div>
 
-                    {/* Quantity & Finance Breakdown */}
-                    <div className="rounded-2xl border border-slate-200 overflow-hidden text-xs">
-                        <div className="bg-slate-100 px-4 py-2 font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-                            Chi tiết khối lượng & Thanh toán tài chính
-                        </div>
-                        <div className="divide-y divide-slate-100 p-4 space-y-2 text-slate-700">
-                            <div className="flex justify-between py-1">
-                                <span className="text-slate-500">Tồn kho trước xuất:</span>
-                                <span className="font-bold text-slate-800">{stockBefore.toLocaleString("vi-VN")} {unit}</span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-slate-500">Khối lượng xuất:</span>
-                                <span className="font-black text-emerald-800 text-sm">{quantity.toLocaleString("vi-VN")} {unit}</span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-slate-500">Đơn giá xuất:</span>
-                                <span className="font-bold text-slate-800">
-                                    {unitPrice > 0 ? `${unitPrice.toLocaleString("vi-VN")} đ/${unit}` : "Thỏa thuận"}
-                                </span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-slate-500">Thành tiền:</span>
-                                <span className="font-bold text-slate-800">{subtotal > 0 ? `${subtotal.toLocaleString("vi-VN")} đ` : "—"}</span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-slate-500">Chiết khấu:</span>
-                                <span className="font-bold text-slate-800">{discount > 0 ? `${discount.toLocaleString("vi-VN")} đ` : "0 đ"}</span>
-                            </div>
-                            <div className="flex justify-between py-2 bg-emerald-50 px-3 rounded-xl border border-emerald-100">
-                                <span className="font-black text-emerald-900 text-sm">TỔNG PHẢI THU:</span>
-                                <span className="font-black text-emerald-900 text-base">{totalAmount > 0 ? `${totalAmount.toLocaleString("vi-VN")} đ` : "—"}</span>
-                            </div>
-                            <div className="flex justify-between py-1 pt-2">
-                                <span className="text-slate-500">Đã thanh toán ({data.paymentMethod || "CK"}):</span>
-                                <span className="font-bold text-emerald-700">{paidAmount.toLocaleString("vi-VN")} đ</span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-slate-500">Còn phải thu / Công nợ:</span>
-                                <span className={`font-black ${debtAmount > 0 ? "text-rose-600" : "text-emerald-700"}`}>
-                                    {debtAmount > 0 ? `${debtAmount.toLocaleString("vi-VN")} đ` : "0 đ (Đã thanh toán đủ)"}
-                                </span>
-                            </div>
-                        </div>
+                    {/* Core Financial & Dispatch Grid */}
+                    <div className="rounded-2xl border border-slate-200 overflow-hidden">
+                        <table className="w-full text-left text-xs border-collapse">
+                            <tbody>
+                                <tr className="border-b border-slate-100 bg-slate-50/50">
+                                    <td className="p-3 text-slate-500 font-semibold w-1/3">Mã lô hàng:</td>
+                                    <td className="p-3 font-mono font-black text-slate-900">{data.lotCode}</td>
+                                </tr>
+                                <tr className="border-b border-slate-100">
+                                    <td className="p-3 text-slate-500 font-semibold">Tên sản phẩm:</td>
+                                    <td className="p-3 font-bold text-emerald-800">{data.productName}</td>
+                                </tr>
+                                <tr className="border-b border-slate-100 bg-slate-50/50">
+                                    <td className="p-3 text-slate-500 font-semibold">Tồn kho trước xuất:</td>
+                                    <td className="p-3 font-semibold text-slate-800">{stockBefore.toLocaleString("vi-VN")} {unit}</td>
+                                </tr>
+                                {isExport ? (
+                                    <>
+                                        <tr className="border-b border-slate-100">
+                                            <td className="p-3 text-slate-500 font-semibold">Thị trường xuất khẩu:</td>
+                                            <td className="p-3 font-black text-indigo-900">{data.destinationCountry || "Trung Quốc"}</td>
+                                        </tr>
+                                        <tr className="border-b border-slate-100 bg-slate-50/50">
+                                            <td className="p-3 text-slate-500 font-semibold">Cửa khẩu / Cảng xuất:</td>
+                                            <td className="p-3 font-semibold text-slate-800">{data.portOfLoading || "Cửa khẩu Quốc tế Hữu Nghị (Lạng Sơn)"}</td>
+                                        </tr>
+                                        {data.containerNumber && (
+                                            <tr className="border-b border-slate-100">
+                                                <td className="p-3 text-slate-500 font-semibold">Số Container:</td>
+                                                <td className="p-3 font-mono font-bold text-slate-900">{data.containerNumber}</td>
+                                            </tr>
+                                        )}
+                                        {data.sealNumber && (
+                                            <tr className="border-b border-slate-100 bg-slate-50/50">
+                                                <td className="p-3 text-slate-500 font-semibold">Số Seal niêm phong:</td>
+                                                <td className="p-3 font-mono font-bold text-slate-900">{data.sealNumber}</td>
+                                            </tr>
+                                        )}
+                                        {data.vehicleReference && (
+                                            <tr className="border-b border-slate-100">
+                                                <td className="p-3 text-slate-500 font-semibold">Biển số phương tiện:</td>
+                                                <td className="p-3 font-mono font-bold text-slate-900">{data.vehicleReference}</td>
+                                            </tr>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <tr className="border-b border-slate-100">
+                                            <td className="p-3 text-slate-500 font-semibold">Bên mua (Khách hàng):</td>
+                                            <td className="p-3 font-black text-slate-900">{data.buyerName || "Chưa có thông tin"}</td>
+                                        </tr>
+                                        {data.buyerPhone && (
+                                            <tr className="border-b border-slate-100 bg-slate-50/50">
+                                                <td className="p-3 text-slate-500 font-semibold">Số điện thoại bên mua:</td>
+                                                <td className="p-3 font-mono font-semibold text-slate-800">{data.buyerPhone}</td>
+                                            </tr>
+                                        )}
+                                        {data.buyerAddress && (
+                                            <tr className="border-b border-slate-100">
+                                                <td className="p-3 text-slate-500 font-semibold">Địa chỉ giao nhận:</td>
+                                                <td className="p-3 font-medium text-slate-700">{data.buyerAddress}</td>
+                                            </tr>
+                                        )}
+                                    </>
+                                )}
+                                <tr className="border-b border-slate-100 bg-slate-50/50">
+                                    <td className="p-3 text-slate-500 font-semibold">Khối lượng xuất:</td>
+                                    <td className="p-3 font-black text-emerald-800 text-sm">{quantity.toLocaleString("vi-VN")} {unit}</td>
+                                </tr>
+                                <tr className="border-b border-slate-100">
+                                    <td className="p-3 text-slate-500 font-semibold">Đơn giá:</td>
+                                    <td className="p-3 font-bold text-slate-800">
+                                        {unitPrice > 0 ? `${unitPrice.toLocaleString("vi-VN")} đ/${unit}` : "Thỏa thuận"}
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-slate-100 bg-slate-50/50">
+                                    <td className="p-3 text-slate-500 font-semibold">Thành tiền:</td>
+                                    <td className="p-3 font-bold text-slate-800">
+                                        {subtotal > 0 ? `${subtotal.toLocaleString("vi-VN")} đ` : "—"}
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-slate-100">
+                                    <td className="p-3 text-slate-500 font-semibold">Chiết khấu:</td>
+                                    <td className="p-3 font-bold text-slate-800">
+                                        {discount > 0 ? `${discount.toLocaleString("vi-VN")} đ` : "0 đ"}
+                                    </td>
+                                </tr>
+                                <tr className="border-b-2 border-emerald-500 bg-emerald-50/80">
+                                    <td className="p-3.5 text-emerald-950 font-black text-xs uppercase">TỔNG PHẢI THU:</td>
+                                    <td className="p-3.5 font-black text-emerald-800 text-base">
+                                        {totalAmount > 0 ? `${totalAmount.toLocaleString("vi-VN")} đ` : "—"}
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-slate-100">
+                                    <td className="p-3 text-slate-500 font-semibold">Thanh toán:</td>
+                                    <td className="p-3 font-black">
+                                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black ${
+                                            data.paymentStatus === "PAID" ? "bg-emerald-100 text-emerald-800" :
+                                            data.paymentStatus === "PARTIAL" ? "bg-amber-100 text-amber-800" :
+                                            "bg-rose-100 text-rose-800"
+                                        }`}>
+                                            {paymentStatusText}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-slate-100 bg-slate-50/50">
+                                    <td className="p-3 text-slate-500 font-semibold">Đã nhận thanh toán:</td>
+                                    <td className="p-3 font-black text-emerald-700">
+                                        {paidAmount > 0 ? `${paidAmount.toLocaleString("vi-VN")} đ` : "0 đ"}
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-slate-100">
+                                    <td className="p-3 text-slate-500 font-semibold">Còn phải thu (Công nợ):</td>
+                                    <td className={`p-3 font-black ${debtAmount > 0 ? "text-rose-600" : "text-emerald-700"}`}>
+                                        {debtAmount > 0 ? `${debtAmount.toLocaleString("vi-VN")} đ` : "0 đ (Đã trả đủ)"}
+                                    </td>
+                                </tr>
+                                <tr className="bg-slate-50/50">
+                                    <td className="p-3 text-slate-500 font-semibold">Phương thức:</td>
+                                    <td className="p-3 font-semibold text-slate-800">{paymentMethodText}</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
 
                     {/* QR Code Section */}
-                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 text-center space-y-3">
-                        {token && qrSrc ? (
-                            <div className="flex flex-col items-center">
-                                <div className="p-2 bg-white rounded-2xl shadow-sm border border-emerald-200">
-                                    <img src={qrSrc} alt="QR Code" width={160} height={160} className="rounded-lg" />
-                                </div>
-                                <span className="font-mono text-xs font-black text-emerald-900 mt-2">
-                                    Mã QR: {token}
-                                </span>
-                                <p className="text-[11px] text-slate-500 mt-0.5">
-                                    Quét để xem Timeline truy xuất nguồn gốc công khai
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-2xs border border-emerald-200">
+                                <QrCode className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h4 className="font-black text-slate-900 text-xs uppercase">Mã QR Truy Xuất Nguồn Gốc</h4>
+                                <p className="text-[11px] text-slate-600 mt-0.5">
+                                    {token ? `Mã định danh: ${token}` : "Lô hàng chưa được phát hành mã QR"}
                                 </p>
-                                <a
-                                    href={`/trace/${token}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900 underline"
+                            </div>
+                        </div>
+
+                        <div>
+                            {token ? (
+                                qrSrc ? (
+                                    <img src={qrSrc} alt="QR Code" className="h-16 w-16 rounded-xl border bg-white p-1 shadow-2xs" />
+                                ) : (
+                                    <span className="text-xs text-emerald-700 font-bold">Đã có QR</span>
+                                )
+                            ) : onIssueQr ? (
+                                <Button
+                                    type="button"
+                                    onClick={() => onIssueQr(data.id)}
+                                    disabled={issuingQr}
+                                    className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold px-4 h-9 gap-1.5 shadow-xs"
                                 >
-                                    Mở trang truy xuất công khai <ExternalLink className="h-3.5 w-3.5" />
-                                </a>
-                            </div>
-                        ) : (
-                            <div className="py-3 space-y-2">
-                                <p className="text-xs font-bold text-slate-600">
-                                    Lô hàng đã ghi nhận xuất bán thành công. Bạn có thể phát hành mã QR truy xuất ngay bây giờ.
-                                </p>
-                                {onIssueQr && (
-                                    <Button
-                                        type="button"
-                                        onClick={() => onIssueQr(data.id)}
-                                        disabled={issuingQr}
-                                        className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs gap-2"
-                                    >
-                                        <QrCode className="h-4 w-4" />
-                                        {issuingQr ? "Đang tạo mã QR..." : "Tạo & Phát hành Mã QR ngay"}
-                                    </Button>
-                                )}
-                            </div>
-                        )}
+                                    <QrCode className="h-4 w-4" />
+                                    {issuingQr ? "Đang tạo..." : "Tạo mã QR ngay"}
+                                </Button>
+                            ) : null}
+                        </div>
                     </div>
                 </div>
 
-                {/* Modal Footer */}
-                <div className="p-4 bg-slate-50 border-t flex items-center justify-between">
+                {/* Modal Footer Actions */}
+                <div className="p-4 bg-slate-50 border-t flex items-center justify-between gap-3">
                     <Button
                         type="button"
                         variant="outline"
@@ -485,6 +529,7 @@ export function SalesDispatchSlip({
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

@@ -373,177 +373,159 @@ export function PartnerFinanceManager({
                 </div>
             </div>
 
-            {/* Top KPI Cards */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Top KPI Cards (2 columns on mobile, 4 columns on desktop) */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                 {/* Revenue Card */}
-                <div className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-xs transition hover:shadow-md">
+                <div className="rounded-2xl sm:rounded-3xl border border-emerald-100 bg-white p-3.5 sm:p-5 shadow-xs transition hover:shadow-md">
                     <div className="flex items-center justify-between">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                            <TrendingUp className="h-6 w-6" />
+                        <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-50 text-emerald-600">
+                            <TrendingUp className="h-4 w-4 sm:h-6 sm:w-6" />
                         </div>
-                        <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">
-                            {data.sales.length} lô xuất bán
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold text-emerald-800">
+                            {data.sales.length} lô xuất
                         </span>
                     </div>
-                    <p className="mt-4 text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <p className="mt-3 sm:mt-4 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
                         1. Doanh thu xuất bán
                     </p>
-                    <p className="mt-1 text-2xl font-black text-slate-900">
+                    <p className="mt-1 text-base sm:text-2xl font-black text-slate-900 truncate">
                         {kpis.totalRevenue.toLocaleString("vi-VN")} đ
                     </p>
-                    <div className="mt-2 flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-                        <span>Đã thu: <b className="text-emerald-700 font-bold">{kpis.totalReceived.toLocaleString("vi-VN")} đ</b></span>
-                        <span className="text-[11px] font-semibold text-emerald-600">
+                    <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between text-[10px] sm:text-xs text-slate-500 pt-2 border-t border-slate-100 gap-0.5">
+                        <span className="truncate">Đã thu: <b className="text-emerald-700 font-bold">{kpis.totalReceived.toLocaleString("vi-VN")} đ</b></span>
+                        <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-600">
                             {kpis.totalRevenue > 0 ? `${Math.round((kpis.totalReceived / kpis.totalRevenue) * 100)}%` : "0%"}
                         </span>
                     </div>
                 </div>
 
                 {/* Receivables Card */}
-                <div className="rounded-3xl border border-amber-100 bg-white p-5 shadow-xs transition hover:shadow-md">
+                <div className="rounded-2xl sm:rounded-3xl border border-amber-100 bg-white p-3.5 sm:p-5 shadow-xs transition hover:shadow-md">
                     <div className="flex items-center justify-between">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
-                            <WalletCards className="h-6 w-6" />
+                        <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-amber-50 text-amber-600">
+                            <WalletCards className="h-4 w-4 sm:h-6 sm:w-6" />
                         </div>
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                        <span className={`rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold ${
                             kpis.totalReceivable > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
                         }`}>
-                            {kpis.totalReceivable > 0 ? "Còn công nợ" : "Đã thu hết"}
+                            {kpis.totalReceivable > 0 ? "Còn nợ" : "Đã thu hết"}
                         </span>
                     </div>
-                    <p className="mt-4 text-xs font-bold uppercase tracking-wider text-slate-500">
-                        2. Công nợ phải thu (Khách nợ)
+                    <p className="mt-3 sm:mt-4 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
+                        2. Công nợ phải thu
                     </p>
-                    <p className={`mt-1 text-2xl font-black ${kpis.totalReceivable > 0 ? "text-amber-600" : "text-slate-900"}`}>
+                    <p className={`mt-1 text-base sm:text-2xl font-black truncate ${kpis.totalReceivable > 0 ? "text-amber-600" : "text-slate-900"}`}>
                         {kpis.totalReceivable.toLocaleString("vi-VN")} đ
                     </p>
-                    <div className="mt-2 text-xs text-slate-500 pt-2 border-t border-slate-100 flex items-center justify-between">
-                        <span>Chưa thu: {data.sales.filter((s) => s.debtAmount > 0).length} phiếu xuất</span>
-                        <span className="font-bold text-amber-700">Cần thu hồi</span>
+                    <div className="mt-2 text-[10px] sm:text-xs text-slate-500 pt-2 border-t border-slate-100 flex items-center justify-between">
+                        <span className="truncate">Chưa thu: {data.sales.filter((s) => s.debtAmount > 0).length} phiếu</span>
+                        <span className="font-bold text-amber-700 text-[10px] sm:text-xs">Cần thu</span>
                     </div>
                 </div>
 
                 {/* Expenses Card */}
-                <div className="rounded-3xl border border-rose-100 bg-white p-5 shadow-xs transition hover:shadow-md">
+                <div className="rounded-2xl sm:rounded-3xl border border-rose-100 bg-white p-3.5 sm:p-5 shadow-xs transition hover:shadow-md">
                     <div className="flex items-center justify-between">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
-                            <Receipt className="h-6 w-6" />
+                        <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-rose-50 text-rose-600">
+                            <Receipt className="h-4 w-4 sm:h-6 sm:w-6" />
                         </div>
-                        <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-800">
-                            Thu mua + Vận hành
+                        <span className="rounded-full bg-rose-100 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold text-rose-800">
+                            Thu mua + Xưởng
                         </span>
                     </div>
-                    <p className="mt-4 text-xs font-bold uppercase tracking-wider text-slate-500">
-                        3. Tổng chi phí đầu vào & xưởng
+                    <p className="mt-3 sm:mt-4 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
+                        3. Tổng chi phí
                     </p>
-                    <p className="mt-1 text-2xl font-black text-slate-900">
+                    <p className="mt-1 text-base sm:text-2xl font-black text-slate-900 truncate">
                         {kpis.totalExpense.toLocaleString("vi-VN")} đ
                     </p>
-                    <div className="mt-2 flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-                        <span>Tiền sầu: <b>{kpis.totalMaterialCost.toLocaleString("vi-VN")} đ</b></span>
-                        <span>Vận hành: <b>{kpis.totalOperatingExpense.toLocaleString("vi-VN")} đ</b></span>
+                    <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between text-[10px] sm:text-xs text-slate-500 pt-2 border-t border-slate-100 gap-0.5">
+                        <span className="truncate">Sầu: <b>{kpis.totalMaterialCost.toLocaleString("vi-VN")} đ</b></span>
+                        <span className="truncate">Vận hành: <b>{kpis.totalOperatingExpense.toLocaleString("vi-VN")} đ</b></span>
                     </div>
                 </div>
 
                 {/* Profit Card */}
-                <div className={`rounded-3xl border p-5 shadow-xs transition hover:shadow-md ${
+                <div className={`rounded-2xl sm:rounded-3xl border p-3.5 sm:p-5 shadow-xs transition hover:shadow-md ${
                     kpis.estimatedProfit >= 0 ? "border-emerald-200 bg-emerald-50/40" : "border-rose-200 bg-rose-50/40"
                 }`}>
                     <div className="flex items-center justify-between">
-                        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+                        <div className={`flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl ${
                             kpis.estimatedProfit >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
                         }`}>
-                            <CircleDollarSign className="h-6 w-6" />
+                            <CircleDollarSign className="h-4 w-4 sm:h-6 sm:w-6" />
                         </div>
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                        <span className={`rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold ${
                             kpis.estimatedProfit >= 0 ? "bg-emerald-200/70 text-emerald-900" : "bg-rose-200/70 text-rose-900"
                         }`}>
                             {kpis.estimatedProfit >= 0 ? "Lãi ước tính" : "Tạm lỗ"}
                         </span>
                     </div>
-                    <p className="mt-4 text-xs font-bold uppercase tracking-wider text-slate-600">
-                        4. Lợi nhuận ước tính (Gộp)
+                    <p className="mt-3 sm:mt-4 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-600">
+                        4. Lợi nhuận (Gộp)
                     </p>
-                    <p className={`mt-1 text-2xl font-black ${
+                    <p className={`mt-1 text-base sm:text-2xl font-black truncate ${
                         kpis.estimatedProfit >= 0 ? "text-emerald-700" : "text-rose-700"
                     }`}>
                         {kpis.estimatedProfit.toLocaleString("vi-VN")} đ
                     </p>
-                    <div className="mt-2 text-xs text-slate-600 pt-2 border-t border-emerald-200/50">
-                        Doanh thu ({kpis.totalRevenue.toLocaleString("vi-VN")} đ) - Chi phí ({kpis.totalExpense.toLocaleString("vi-VN")} đ)
+                    <div className="mt-2 text-[10px] sm:text-xs text-slate-600 pt-2 border-t border-emerald-200/50 truncate">
+                        Doanh thu - Tổng chi phí
                     </div>
                 </div>
             </div>
 
-            {/* Navigation Tabs & Actions Bar */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
-                <div className="flex items-center gap-2 overflow-x-auto">
+            {/* Navigation Tabs Bar (Compact, No Counts, No Black Scrollbar) */}
+            <div className="border-b border-slate-200 pb-3">
+                <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden py-1">
                     <button
                         type="button"
                         onClick={() => setActiveTab("ANALYTICS")}
-                        className={`flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold transition whitespace-nowrap ${
+                        className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition shrink-0 whitespace-nowrap ${
                             activeTab === "ANALYTICS"
                                 ? "bg-emerald-700 text-white shadow-xs"
                                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
                         }`}
                     >
-                        <BarChart3 className="h-4 w-4" />
-                        Biểu Đồ Thống Kê (6 Biểu đồ)
+                        <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Biểu Đồ Thống Kê
                     </button>
                     <button
                         type="button"
                         onClick={() => setActiveTab("SALES")}
-                        className={`flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold transition whitespace-nowrap ${
+                        className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition shrink-0 whitespace-nowrap ${
                             activeTab === "SALES"
                                 ? "bg-emerald-700 text-white shadow-xs"
                                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
                         }`}
                     >
-                        <FileText className="h-4 w-4" />
-                        Phiếu Xuất Bán & Công Nợ ({data.sales.length})
+                        <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Phiếu Xuất Bán & Công Nợ
                     </button>
                     <button
                         type="button"
                         onClick={() => setActiveTab("EXPENSES")}
-                        className={`flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold transition whitespace-nowrap ${
+                        className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition shrink-0 whitespace-nowrap ${
                             activeTab === "EXPENSES"
                                 ? "bg-emerald-700 text-white shadow-xs"
                                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
                         }`}
                     >
-                        <Receipt className="h-4 w-4" />
-                        Chi Phí & Công Nợ Phải Trả ({data.expenses.length + data.harvestPurchases.length})
+                        <Receipt className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Chi Phí & Công Nợ Phải Trả
                     </button>
                     <button
                         type="button"
                         onClick={() => setActiveTab("HISTORY")}
-                        className={`flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold transition whitespace-nowrap ${
+                        className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition shrink-0 whitespace-nowrap ${
                             activeTab === "HISTORY"
                                 ? "bg-emerald-700 text-white shadow-xs"
                                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
                         }`}
                     >
-                        <Clock className="h-4 w-4" />
-                        Nhật Ký Dòng Tiền ({data.paymentHistory.length})
+                        <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Nhật Ký Dòng Tiền
                     </button>
-                </div>
-
-                <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <Button
-                        type="button"
-                        onClick={() => setShowAddExpenseModal(true)}
-                        className="bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 font-bold rounded-2xl text-xs sm:text-sm h-10 px-4 flex items-center gap-1.5"
-                    >
-                        <Plus className="h-4 w-4 text-emerald-600" />
-                        Thêm Khoản Chi
-                    </Button>
-                    <Link
-                        href={isProcessing ? "/dashboard/processing/traceability" : "/dashboard/partner/traceability"}
-                        className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-700 px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-emerald-800 transition"
-                    >
-                        <FileText className="h-4 w-4" />
-                        Xuất Lô Bán Hàng Mới
-                    </Link>
                 </div>
             </div>
 
@@ -743,6 +725,22 @@ export function PartnerFinanceManager({
             {/* TAB 2: CHI PHÍ & CÔNG NỢ PHẢI TRẢ */}
             {activeTab === "EXPENSES" && (
                 <div className="space-y-6">
+                    {/* Header Action Bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-3xl border shadow-2xs">
+                        <div>
+                            <h3 className="text-base font-black text-slate-900">Chi Phí Hoạt Động & Chi Trả Nợ</h3>
+                            <p className="text-xs text-slate-500">Quản lý tiền mua nguyên liệu từ nhà vườn và các khoản chi phí vận hành</p>
+                        </div>
+                        <Button
+                            type="button"
+                            onClick={() => setShowAddExpenseModal(true)}
+                            className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-2xl text-xs sm:text-sm h-10 px-4 flex items-center gap-1.5 self-start sm:self-auto shadow-xs"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Thêm Chi Phí Mới
+                        </Button>
+                    </div>
+
                     {/* Raw Material Purchases from Farmers */}
                     <div className="rounded-3xl border bg-white p-5 shadow-xs space-y-4">
                         <div className="flex items-center justify-between border-b pb-3">
