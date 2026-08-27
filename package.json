@@ -28,6 +28,7 @@
         "seed:system-demo": "node scripts/seed-system-demo.cjs",
         "seed:farming-history": "node scripts/seed-farming-history.cjs",
         "seed:traceability": "tsx scripts/seed-traceability-demo.ts",
+        "seed:partner-finance": "npx tsx scripts/seed-partner-finance-data.ts",
         "test:traceability": "tsx scripts/test-traceability.ts"
     },
     "dependencies": {

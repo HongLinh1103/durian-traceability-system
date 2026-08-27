@@ -122,6 +122,7 @@ async function main() {
     const rawReceipt = await prisma.rawMaterialReceipt.upsert({ where: { receiptCode: "RMR-001" }, update: {}, create: { receiptCode: "RMR-001", sourceType: "COLLECTION_LOT", sourceCollectionLotId: processCollection.id, facilityId: processor.id, dispatchedWeight: 970, receivedWeight: 950, receivedAt: at("2026-08-22"), receivedById: processors[0].id, status: "ACCEPTED" } });
     const rawLot = await prisma.rawMaterialLot.upsert({ where: { lotCode: "RM-001" }, update: {}, create: { lotCode: "RM-001", facilityId: processor.id, rawMaterialReceiptId: rawReceipt.id, acceptedWeight: 900, currentWeight: 0, warehouseLocation: "Kho lạnh NL-01", status: "USED" } });
     if (!await prisma.qualityInspection.findFirst({ where: { rawMaterialLotId: rawLot.id, result: "PASSED" } })) await prisma.qualityInspection.create({ data: { rawMaterialLotId: rawLot.id, inspectorId: processors[0].id, inspectedAt: at("2026-08-22"), appearance: "Đạt", qualityGrade: "A", residueResult: "Đạt", result: "PASSED" } });
+    const batchMay = await prisma.processingBatch.upsert({ where: { batchCode: "PB-202605-01" }, update: {}, create: { batchCode: "PB-202605-01", facilityId: processor.id, method: "Tách múi cấp đông", targetProduct: "Sầu riêng Ri6 cấp đông", startedAt: at("2026-05-14"), completedAt: at("2026-05-15"), supervisorId: processors[0].id, totalInputWeight: 3500, totalOutputWeight: 2520, lossWeight: 980, yieldPercent: 72.0, status: "COMPLETED" } });
     const batchJune = await prisma.processingBatch.upsert({ where: { batchCode: "PB-202606-01" }, update: {}, create: { batchCode: "PB-202606-01", facilityId: processor.id, method: "Tách múi cấp đông", targetProduct: "Sầu riêng Ri6 cấp đông", startedAt: at("2026-06-15"), completedAt: at("2026-06-16"), supervisorId: processors[0].id, totalInputWeight: 1200, totalOutputWeight: 870, lossWeight: 330, yieldPercent: 72.5, status: "COMPLETED" } });
     const batchJuly = await prisma.processingBatch.upsert({ where: { batchCode: "PB-202607-01" }, update: {}, create: { batchCode: "PB-202607-01", facilityId: processor.id, method: "Tách múi cấp đông", targetProduct: "Sầu riêng Dona cấp đông", startedAt: at("2026-07-10"), completedAt: at("2026-07-11"), supervisorId: processors[0].id, totalInputWeight: 1800, totalOutputWeight: 1332, lossWeight: 468, yieldPercent: 74.0, status: "COMPLETED" } });
     const batch = await prisma.processingBatch.upsert({ where: { batchCode: "PB-001" }, update: {}, create: { batchCode: "PB-001", facilityId: processor.id, method: "Tách múi cấp đông", targetProduct: "Sầu riêng Ri6 cấp đông", startedAt: at("2026-08-22"), completedAt: at("2026-08-23"), supervisorId: processors[0].id, totalInputWeight: 900, totalOutputWeight: 650, lossWeight: 250, yieldPercent: 72.22, status: "COMPLETED" } });
@@ -237,6 +238,58 @@ async function main() {
             debtAmount: 0,
             paymentStatus: "PAID" as const,
             paymentMethod: "Tiền mặt",
+            qrStatus: "ACTIVE" as const 
+        },
+        { 
+            lotCode: "TP-20260516-001", 
+            token: "TV-PROCESS-MAY-001", 
+            owner: processor, 
+            ownerUser: processors[0], 
+            ownerType: "PROCESSING_FACILITY" as const, 
+            sourceType: "FINISHED_PRODUCT_LOT" as const, 
+            sourceId: finished.id, 
+            sourceCollectionLotId: null, 
+            sourceFinishedProductLotId: finished.id, 
+            destination: winmart, 
+            quantity: 2200, 
+            productName: "Sầu riêng Ri6 tách múi cấp đông", 
+            stockBeforeDispatch: 2500,
+            buyerName: "Chuỗi Siêu thị WinMart",
+            unitPrice: 140000,
+            subtotal: 308000000,
+            discount: 3000000,
+            totalAmount: 305000000,
+            paidAmount: 305000000,
+            debtAmount: 0,
+            paymentStatus: "PAID" as const,
+            paymentMethod: "Chuyển khoản",
+            dispatchedAt: at("2026-05-16"),
+            qrStatus: "ACTIVE" as const 
+        },
+        { 
+            lotCode: "CM-COL-20260515-001", 
+            token: "TV-COLLECTOR-MAY-001", 
+            owner: collector, 
+            ownerUser: collectors[0], 
+            ownerType: "COLLECTOR" as const, 
+            sourceType: "COLLECTION_LOT" as const, 
+            sourceId: retailCollection.id, 
+            sourceCollectionLotId: retailCollection.id, 
+            sourceFinishedProductLotId: null, 
+            destination: retail, 
+            quantity: 2200, 
+            productName: "Sầu riêng tươi Ri6 Loại 1", 
+            stockBeforeDispatch: 2500,
+            buyerName: "Chợ đầu mối Nông sản Thủ Đức",
+            unitPrice: 78000,
+            subtotal: 171600000,
+            discount: 1600000,
+            totalAmount: 170000000,
+            paidAmount: 170000000,
+            debtAmount: 0,
+            paymentStatus: "PAID" as const,
+            paymentMethod: "Chuyển khoản",
+            dispatchedAt: at("2026-05-15"),
             qrStatus: "ACTIVE" as const 
         },
         { 
