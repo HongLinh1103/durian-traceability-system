@@ -67,6 +67,7 @@ export function FarmBoundaryMapPicker({
     const streetLayerRef = useRef<any>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const leafletRef = useRef<any>(null);
+    const onBoundaryChangeRef = useRef(onBoundaryChange);
 
     const [isMapReady, setIsMapReady] = useState(false);
     const [points, setPoints] = useState<LatLngPoint[]>(() => {
@@ -95,6 +96,12 @@ export function FarmBoundaryMapPicker({
     const [isSearching, setIsSearching] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
     const [searchMessage, setSearchMessage] = useState<string | null>(null);
+
+    // The parent form creates a new callback on every render. Keep the latest
+    // callback without making Leaflet rebuild all geometry after a form update.
+    useEffect(() => {
+        onBoundaryChangeRef.current = onBoundaryChange;
+    }, [onBoundaryChange]);
 
     // Tính diện tích và so sánh
     const mappedAreaM2 = computePolygonArea(points);
@@ -311,7 +318,7 @@ export function FarmBoundaryMapPicker({
             const centroid = computePolygonCentroid(points);
             const areaM2 = computePolygonArea(points);
 
-            onBoundaryChange({
+            onBoundaryChangeRef.current({
                 boundary: boundaryGeoJson,
                 mappedAreaM2: areaM2,
                 mappedAreaHa: Number((areaM2 / 10_000).toFixed(4)),
@@ -319,7 +326,7 @@ export function FarmBoundaryMapPicker({
                 centerLng: centroid?.lng,
             });
         }
-    }, [points, isDrawing, isEditing, onBoundaryChange]);
+    }, [points, isDrawing, isEditing]);
 
     // Handle Search Location via Nominatim
     const handleSearchLocation = async (queryText?: string) => {
@@ -540,6 +547,50 @@ export function FarmBoundaryMapPicker({
                 }`}
             >
                 <div ref={mapContainerRef} className="w-full h-full" />
+
+                {/* Controls remain available directly on the canvas in fullscreen mode. */}
+                <div className="absolute right-3 top-14 z-[1000] flex flex-col items-end gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsFullScreen((value) => !value)}
+                        className="h-10 w-10 rounded-lg border-slate-200 bg-white text-slate-700 shadow-md hover:bg-slate-50"
+                        title={isFullScreen ? "Thoát toàn màn hình" : "Xem toàn màn hình"}
+                        aria-label={isFullScreen ? "Thoát toàn màn hình" : "Xem toàn màn hình"}
+                    >
+                        {isFullScreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+                    </Button>
+                    <div className="flex overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md">
+                        <button
+                            type="button"
+                            onClick={() => setMapLayerType("streets")}
+                            className={`h-10 px-3 text-xs font-bold transition ${mapLayerType === "streets" ? "bg-emerald-700 text-white" : "text-slate-700 hover:bg-slate-50"}`}
+                        >
+                            Bản đồ
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setMapLayerType("satellite")}
+                            className={`h-10 border-l border-slate-200 px-3 text-xs font-bold transition ${mapLayerType === "satellite" ? "bg-emerald-700 text-white" : "text-slate-700 hover:bg-slate-50"}`}
+                        >
+                            Vệ tinh
+                        </button>
+                    </div>
+                </div>
+
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGetMyLocation}
+                    disabled={isLocating}
+                    className="absolute left-3 top-14 z-[1000] h-11 w-11 rounded-full border-slate-200 bg-white text-blue-600 shadow-md hover:bg-slate-50"
+                    title="Đến vị trí của tôi"
+                    aria-label="Đến vị trí của tôi"
+                >
+                    {isLocating ? <Loader2 className="h-5 w-5 animate-spin" /> : <LocateFixed className="h-5 w-5" />}
+                </Button>
 
                 {/* Top Floating Guide & Points Count */}
                 <div className="absolute top-3 left-3 right-3 sm:right-auto z-[1000] flex flex-wrap items-center gap-2 pointer-events-none">
