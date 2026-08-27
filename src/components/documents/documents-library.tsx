@@ -105,17 +105,20 @@ export function DocumentsLibrary() {
         }
     };
 
-    const updateDocument = async (id: string, action: "delete" | "restore" | "publish" | "unpublish") => {
+    const updateDocument = async (id: string, action: "delete" | "restore" | "publish" | "unpublish" | "purge") => {
+        if (action === "purge" && !window.confirm("Xóa vĩnh viễn tài liệu này? Dữ liệu và tệp đính kèm sẽ không thể khôi phục.")) return;
         setProcessingId(id);
         try {
             const response = await fetch(`/api/admin/documents/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action }),
+                method: action === "purge" ? "DELETE" : "PATCH",
+                ...(action === "purge" ? {} : {
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action }),
+                }),
             });
             const payload = await response.json();
             if (!response.ok) throw new Error(payload.message);
-            toast({ title: "Đã cập nhật tài liệu", variant: "success" });
+            toast({ title: action === "purge" ? "Đã xóa vĩnh viễn tài liệu" : "Đã cập nhật tài liệu", variant: "success" });
             await loadDocuments();
         } catch (error) {
             toast({
@@ -201,7 +204,10 @@ export function DocumentsLibrary() {
                             {isAdmin && (
                                 <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
                                     {item.deletedAt ? (
-                                        <button disabled={processingId === item.id} onClick={() => void updateDocument(item.id, "restore")} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700"><ArchiveRestore className="h-4 w-4" />Khôi phục</button>
+                                        <>
+                                            <button disabled={processingId === item.id} onClick={() => void updateDocument(item.id, "restore")} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700"><ArchiveRestore className="h-4 w-4" />Khôi phục</button>
+                                            <button disabled={processingId === item.id} onClick={() => void updateDocument(item.id, "purge")} className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-red-700"><Trash2 className="h-4 w-4" />Xóa vĩnh viễn</button>
+                                        </>
                                     ) : (
                                         <>
                                             <button disabled={processingId === item.id} onClick={() => void updateDocument(item.id, item.status === "PUBLISHED" ? "unpublish" : "publish")} className="text-xs font-semibold text-amber-700">
