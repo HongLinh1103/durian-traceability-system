@@ -13,6 +13,7 @@ const publicLinks = [
     { href: "/", label: "Trang chủ" },
     { href: "/seedlings", label: "Trại giống" },
     { href: "/trace", label: "Quét mã QR" },
+    { href: "/china-port", label: "China Port" },
     { href: "/processing-facilities", label: "Xưởng Chế biến - Đóng gói" },
     { href: "/collectors", label: "Vựa thu mua" },
     { href: "/documents", label: "Tài liệu", notificationKey: "documents" as const },
