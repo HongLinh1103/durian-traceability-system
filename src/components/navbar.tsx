@@ -42,6 +42,9 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/farmer/plans", label: "Kế hoạch", roles: ["FARMER"], planBadge: true },
     { href: "/dashboard/farmer/harvests", label: "Phiếu thu hoạch", roles: ["FARMER"] },
     { href: "/dashboard/farmer/traceability", label: "Tạo QR", roles: ["FARMER"] },
+    { href: "/china-port", label: "China Port", roles: ["FARMER", "COLLECTOR", "PROCESSING_FACILITY"] },
+    { href: "/documents", label: "Tài liệu", roles: ["FARMER"] },
+    { href: "/news", label: "Tin tức", roles: ["FARMER"] },
     { href: "/region-manager/gardens", label: "Quản lý vườn trồng", roles: ["AREA_MANAGER"] },
     { href: "/region-manager/farmers", label: "Hồ sơ nông dân", roles: ["AREA_MANAGER"], badge: true },
     { href: "/dashboard/admin/farming", label: "Quản lý canh tác", roles: ["ADMIN"] },
@@ -103,11 +106,13 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
     const isCollector = userRole === "COLLECTOR";
     const isStoreOwner = userRole === "STORE_OWNER";
     const isProcessingFacility = userRole === "PROCESSING_FACILITY";
-    const visiblePublicLinks = (isCollector || isStoreOwner || isProcessingFacility)
+    const isFarmer = userRole === "FARMER";
+    const visiblePublicLinks = (isCollector || isStoreOwner || isProcessingFacility || isFarmer)
         ? []
         : isAuthed
             ? publicLinks.filter((l) => l.href !== "/")
             : publicLinks;
+
     useEffect(() => {
         if (!isAuthed) { setCurrentUserName(null); return; }
         void fetch("/api/auth/me", { cache: "no-store" })
@@ -115,6 +120,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
             .then((payload) => { if (payload.success) setCurrentUserName(payload.user.fullName || payload.user.phone); })
             .catch(() => undefined);
     }, [isAuthed]);
+
     useEffect(() => {
         if (!isAuthed || !["ADMIN", "AREA_MANAGER"].includes(userRole ?? "")) {
             setPendingCount(0);

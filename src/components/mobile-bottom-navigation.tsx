@@ -13,6 +13,7 @@ import {
     Cog,
     ClipboardList,
     Factory,
+    Globe2,
     Home,
     LandPlot,
     LibraryBig,
@@ -59,6 +60,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
+            { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Thống kê", description: "Thống kê chi phí, thuốc BVTV và phân bón", href: "/dashboard/farmer/statistics", icon: CircleDollarSign },
             { label: "Kế hoạch", description: "Lập lịch và theo dõi công việc canh tác", href: "/dashboard/farmer/plans", icon: CalendarDays },
             { label: "Tài liệu", description: "Tra cứu tài liệu kỹ thuật canh tác", href: "/documents", icon: BookOpenCheck },
@@ -111,6 +113,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Cá nhân", href: "/account", icon: UserRound, matches: ["/account"] },
         ],
         actions: [
+            { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Tạo QR", description: "Tạo mã QR truy xuất nguồn gốc cho lô hàng", href: "/dashboard/partner/traceability", icon: QrCode },
             { label: "Tài chính", description: "Báo cáo doanh thu và chi phí thu mua", href: "/dashboard/partner/finance", icon: CircleDollarSign },
             { label: "Lô hàng", description: "Xem và quản lý các lô hàng đã tiếp nhận", href: "/dashboard/partner/lots", icon: Package },
@@ -124,6 +127,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Thành phẩm", href: "/dashboard/processing/finished-products", icon: Package, matches: ["/dashboard/processing/finished-products"] },
         ],
         actions: [
+            { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Tạo QR", description: "Phát hành mã QR truy xuất cho lô thành phẩm", href: "/dashboard/processing/traceability", icon: QrCode },
             { label: "Tài chính", description: "Báo cáo doanh thu, chi phí và hiệu quả chế biến", href: "/dashboard/processing/finance", icon: CircleDollarSign },
             { label: "Cá nhân", description: "Quản lý thông tin tài khoản và đổi mật khẩu", href: "/account", icon: UserRound },
