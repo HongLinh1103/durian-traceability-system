@@ -725,6 +725,58 @@ export function FarmBoundaryMapPicker({
                 </div>
             </div>
 
+            {/* Coordinate list for every unique polygon vertex. */}
+            {points.length > 0 && (
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+                    <div className="flex flex-col gap-1 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h4 className="text-sm font-black text-slate-900">Bảng tọa độ các điểm ranh giới</h4>
+                            <p className="text-xs text-slate-500">
+                                Tọa độ được cập nhật tự động khi thêm hoặc kéo chỉnh điểm.
+                            </p>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-700">
+                            {points.length} điểm
+                        </span>
+                    </div>
+
+                    <div className="max-h-72 overflow-auto">
+                        <table className="w-full min-w-[520px] text-left text-sm">
+                            <thead className="sticky top-0 z-10 bg-white text-[11px] uppercase tracking-wide text-slate-500 shadow-[0_1px_0_0_#e2e8f0]">
+                                <tr>
+                                    <th className="w-20 px-4 py-3 font-bold">Điểm</th>
+                                    <th className="px-4 py-3 font-bold">Vĩ độ (Latitude)</th>
+                                    <th className="px-4 py-3 font-bold">Kinh độ (Longitude)</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {points.map((point, index) => (
+                                    <tr key={`${index}-${point.lat}-${point.lng}`} className="hover:bg-emerald-50/40">
+                                        <td className="px-4 py-2.5">
+                                            <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-xs font-black text-white ${index === 0 ? "bg-emerald-900" : "bg-emerald-600"}`}>
+                                                {index + 1}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-2.5 font-mono text-xs font-semibold tabular-nums text-slate-800">
+                                            {point.lat.toFixed(7)}
+                                        </td>
+                                        <td className="px-4 py-2.5 font-mono text-xs font-semibold tabular-nums text-slate-800">
+                                            {point.lng.toFixed(7)}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {points.length >= 3 && (
+                        <p className="border-t border-slate-100 bg-emerald-50/50 px-4 py-2 text-[11px] text-slate-600">
+                            Khi lưu, hệ thống tự nối điểm {points.length} về điểm 1 để khép kín ranh giới.
+                        </p>
+                    )}
+                </div>
+            )}
+
             {/* Comparison Box (Diện tích khai báo vs Diện tích bản đồ) */}
             {points.length >= 3 && (
                 <div
