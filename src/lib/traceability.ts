@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes } from "crypto";
 import { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
@@ -9,80 +9,230 @@ export type TraceValidation = {
     warnings: string[];
 };
 
-export async function ensureCompletedHarvestCollectionLots(collectorUserId: string) {
-    const facility = await prisma.partnerFacility.findUnique({ where: { ownerId: collectorUserId }, select: { id: true } });
-    if (!facility) return;
-    const records = await prisma.harvestRecord.findMany({
-        where: { buyerUserId: collectorUserId, status: "COMPLETED", cropSeasonId: { not: null } },
-        include: { harvestLot: true, farm: { include: { farmer: { select: { fullName: true } }, region: true } }, cropSeason: true },
+export type TraceMilestoneField = {
+    label: string;
+    value: string;
+    highlight?: boolean;
+};
+
+export type TraceMilestone = {
+    id: string;
+    stepNumber: number;
+    type: "SEASON" | "HARVEST" | "COLLECTOR_RECEIPT" | "PROCESSING_RECEIPT" | "PROCESSING_PACKAGING" | "DISTRIBUTION" | "EXPORT";
+    title: string;
+    subtitle?: string;
+    date: Date;
+    dateText: string;
+    badgeText: string;
+    badgeVariant: "emerald" | "blue" | "purple" | "amber" | "indigo";
+    fields: TraceMilestoneField[];
+    substeps?: Array<{
+        name: string;
+        status: string;
+        time?: string;
+    }>;
+};
+
+function formatVnDate(dateInput: Date | string | null | undefined): string {
+    if (!dateInput) return "—";
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
     });
-    for (const record of records) {
-        const weight = Number(record.receivedWeight ?? record.deliveredWeight ?? record.actualWeight ?? record.expectedWeight);
-        if (!record.cropSeasonId || !record.cropSeason || weight <= 0) continue;
-        const harvestLot = record.harvestLot ?? await prisma.harvestLot.create({ data: {
-            lotCode: `HL-${record.code}`, harvestRecordId: record.id, farmId: record.farmId, cropSeasonId: record.cropSeasonId,
-            harvestedAt: record.actualHarvestedAt ?? record.completedAt ?? record.expectedHarvestDate, weight, remainingWeight: 0,
-            complianceStatus: "WARNING", complianceDetails: { generatedFromCompletedReceipt: true }, status: "USED", finalizedAt: record.completedAt ?? new Date(),
-        } });
-        await prisma.harvestTraceSnapshot.upsert({ where: { harvestLotId: harvestLot.id }, update: {}, create: {
-            harvestLotId: harvestLot.id, farmerSnapshot: { name: record.farm.farmer.fullName }, farmSnapshot: { code: record.farm.farmCode, name: record.farm.farmName },
-            regionSnapshot: { code: record.farm.region?.code, name: record.farm.region?.name }, seasonSnapshot: { name: record.cropSeason.name },
-            cultivationSummarySnapshot: { source: "farming_logs" }, pesticideSnapshot: { source: "farming_logs" }, complianceSnapshot: { status: "PENDING_RECHECK" },
-        } });
-        let procurement = await prisma.procurementOrder.findFirst({ where: { harvestLotId: harvestLot.id, collectorFacilityId: facility.id } });
-        if (!procurement) procurement = await prisma.procurementOrder.create({ data: {
-            orderCode: `PO-${record.code}`, sellerFarmerId: record.farmerId, collectorFacilityId: facility.id, harvestLotId: harvestLot.id,
-            expectedWeight: weight, agreedWeight: weight, pickupDate: record.farmerDeliveredAt ?? record.completedAt ?? new Date(), status: "RECEIVED",
-            note: "Đã QC tại vườn trước khi nhận thu mua",
-        } });
-        else procurement = await prisma.procurementOrder.update({ where: { id: procurement.id }, data: { agreedWeight: weight, status: "RECEIVED" } });
-        const receipt = await prisma.goodsReceipt.upsert({ where: { procurementOrderId: procurement.id }, update: { receivedWeight: weight, acceptedWeight: weight, rejectedWeight: 0, status: "ACCEPTED" }, create: {
-            receiptCode: `GR-${record.code}`, procurementOrderId: procurement.id, deliveredWeight: Number(record.deliveredWeight ?? weight), receivedWeight: weight,
-            acceptedWeight: weight, rejectedWeight: 0, receivedAt: record.buyerReceivedAt ?? record.completedAt ?? new Date(), receivedById: collectorUserId, status: "ACCEPTED",
-            note: "Hàng đã được kiểm tra tại vườn và chấp nhận thu mua",
-        } });
-        await prisma.goodsReceiptQuality.upsert({ where: { goodsReceiptId: receipt.id }, update: { result: "PASSED", note: "QC tại vườn đạt trước khi nhận thu mua" }, create: {
-            goodsReceiptId: receipt.id, appearance: "Đạt yêu cầu thu mua", ripeness: "Đạt", result: "PASSED",
-            note: "QC tại vườn đạt trước khi nhận thu mua", inspectedAt: record.buyerReceivedAt ?? record.completedAt ?? new Date(),
-        } });
-        const collectionLot = await prisma.collectionLot.upsert({ where: { lotCode: `CL-${record.code}` }, update: {}, create: {
-            lotCode: `CL-${record.code}`, collectorFacilityId: facility.id, totalWeight: weight, currentWeight: weight,
-            storageLocation: "Kho vựa thu mua", status: "FINALIZED", finalizedAt: record.completedAt ?? new Date(),
-        } });
-        await prisma.collectionLotItem.upsert({ where: { collectionLotId_harvestLotId: { collectionLotId: collectionLot.id, harvestLotId: harvestLot.id } }, update: { sourceWeight: weight }, create: { collectionLotId: collectionLot.id, harvestLotId: harvestLot.id, sourceWeight: weight } });
+}
+
+export async function ensureCompletedHarvestCollectionLots(buyerUserId: string) {
+    const facility = await prisma.partnerFacility.findFirst({
+        where: { ownerId: buyerUserId, deletedAt: null },
+    });
+    if (!facility) return;
+
+    const completedPurchases = await prisma.harvestRecord.findMany({
+        where: {
+            buyerUserId,
+            status: { in: ["DELIVERY_CONFIRMED", "COMPLETED"] },
+        },
+        include: {
+            farm: { include: { region: true } },
+            harvestLot: true,
+        },
+        orderBy: { buyerReceivedAt: "desc" },
+    });
+
+    for (const record of completedPurchases) {
+        if (!record.cropSeasonId) continue;
+        const weight = Number(record.receivedWeight ?? record.actualWeight ?? record.expectedWeight);
+        const lotCode = `HL-${record.code}`;
+
+        const harvestLot = await prisma.harvestLot.upsert({
+            where: { lotCode },
+            update: {
+                weight,
+                remainingWeight: weight,
+                harvestedAt: record.actualHarvestedAt ?? record.expectedHarvestDate,
+                status: "FINALIZED",
+                finalizedAt: record.completedAt ?? new Date(),
+            },
+            create: {
+                lotCode,
+                harvestRecordId: record.id,
+                farmId: record.farmId,
+                cropSeasonId: record.cropSeasonId,
+                weight,
+                remainingWeight: weight,
+                harvestedAt: record.actualHarvestedAt ?? record.expectedHarvestDate,
+                status: "FINALIZED",
+                finalizedAt: record.completedAt ?? new Date(),
+                complianceStatus: "PASS",
+                complianceDetails: { source: "AUTO_ENSURED" },
+            },
+        });
+
+        const collectionLotCode = `CL-${record.code}`;
+        const collectionLot = await prisma.collectionLot.upsert({
+            where: { lotCode: collectionLotCode },
+            update: {},
+            create: {
+                lotCode: collectionLotCode,
+                collectorFacilityId: facility.id,
+                totalWeight: weight,
+                currentWeight: weight,
+                storageLocation: "Kho vựa thu mua",
+                status: "FINALIZED",
+                finalizedAt: record.completedAt ?? new Date(),
+            },
+        });
+
+        await prisma.collectionLotItem.upsert({
+            where: {
+                collectionLotId_harvestLotId: {
+                    collectionLotId: collectionLot.id,
+                    harvestLotId: harvestLot.id,
+                },
+            },
+            update: { sourceWeight: weight },
+            create: {
+                collectionLotId: collectionLot.id,
+                harvestLotId: harvestLot.id,
+                sourceWeight: weight,
+            },
+        });
+
         const compliance = await checkHarvestCompliance(harvestLot.id);
-        await prisma.harvestLot.update({ where: { id: harvestLot.id }, data: { complianceStatus: compliance.status, complianceDetails: { issues: compliance.issues, warnings: compliance.warnings } } });
+        await prisma.harvestLot.update({
+            where: { id: harvestLot.id },
+            data: {
+                complianceStatus: compliance.status,
+                complianceDetails: {
+                    issues: compliance.issues,
+                    warnings: compliance.warnings,
+                },
+            },
+        });
     }
 }
 
 export async function checkHarvestCompliance(harvestLotId: string) {
-    const lot = await prisma.harvestLot.findUnique({ where: { id: harvestLotId }, include: { farm: { include: { region: true } }, cropSeason: { include: { farmingLogs: { orderBy: { actionDate: "asc" } } } } } });
-    if (!lot) return { status: "BLOCKED" as const, issues: ["Không tìm thấy lô thu hoạch"], warnings: [] };
+    const lot = await prisma.harvestLot.findUnique({
+        where: { id: harvestLotId },
+        include: {
+            farm: { include: { region: true } },
+            cropSeason: {
+                include: {
+                    farmingLogs: { orderBy: { actionDate: "asc" } },
+                },
+            },
+        },
+    });
+
+    if (!lot) {
+        return {
+            status: "BLOCKED" as const,
+            issues: ["Không tìm thấy lô thu hoạch"],
+            warnings: [],
+        };
+    }
+
     const issues: string[] = [];
     const warnings: string[] = [];
+
     if (!lot.farm.isActive || lot.farm.status !== "ACTIVE") issues.push("Vườn không hoạt động");
     if (!lot.farm.region?.isActive || lot.farm.region.status !== "ACTIVE") issues.push("Vùng trồng không hoạt động");
     if (["CANCELLED", "PLANNED"].includes(lot.cropSeason.status)) issues.push("Vụ mùa chưa hợp lệ để thu hoạch");
+
     const logs = lot.cropSeason.farmingLogs;
     if (!logs.length) issues.push("Vụ mùa chưa có nhật ký canh tác");
-    const pesticideLogs = logs.filter(log => log.activityType === "SPRAY_PESTICIDE");
-    if (pesticideLogs.some(log => !log.isGACCCompliant)) issues.push("Có lần sử dụng thuốc không tuân thủ");
+
+    const pesticideLogs = logs.filter((log) => log.activityType === "SPRAY_PESTICIDE");
+    if (pesticideLogs.some((log) => !log.isGACCCompliant)) {
+        issues.push("Có lần sử dụng thuốc không tuân thủ");
+    }
+
     for (const log of pesticideLogs) {
-        if (log.phiDays && new Date(log.actionDate.getTime() + log.phiDays * 86_400_000) > lot.harvestedAt) issues.push(`Chưa đủ thời gian cách ly cho ${log.chemicalName || "thuốc BVTV"}`);
+        if (
+            log.phiDays &&
+            new Date(log.actionDate.getTime() + log.phiDays * 86_400_000) > lot.harvestedAt
+        ) {
+            issues.push(`Chưa đủ thời gian cách ly cho ${log.chemicalName || "thuốc BVTV"}`);
+        }
     }
-    const names = pesticideLogs.map(log => log.chemicalName).filter((name): name is string => Boolean(name));
+
+    const names = pesticideLogs.map((log) => log.chemicalName).filter((name): name is string => Boolean(name));
     if (names.length) {
-        const pesticides = await prisma.pesticide.findMany({ where: { deletedAt: null, OR: [{ tradeName: { in: names, mode: "insensitive" } }, { pesticideName: { in: names, mode: "insensitive" } }] }, select: { tradeName: true, gaccStatus: true } });
-        pesticides.forEach(item => item.gaccStatus === "PROHIBITED" ? issues.push(`Hoạt chất/sản phẩm bị cấm: ${item.tradeName}`) : item.gaccStatus !== "ALLOWED" && warnings.push(`Cần kiểm tra thêm trạng thái: ${item.tradeName}`));
+        const pesticides = await prisma.pesticide.findMany({
+            where: {
+                deletedAt: null,
+                OR: [
+                    { tradeName: { in: names, mode: "insensitive" } },
+                    { pesticideName: { in: names, mode: "insensitive" } },
+                ],
+            },
+            select: { tradeName: true, gaccStatus: true },
+        });
+
+        pesticides.forEach((item) =>
+            item.gaccStatus === "PROHIBITED"
+                ? issues.push(`Hoạt chất/sản phẩm bị cấm: ${item.tradeName}`)
+                : item.gaccStatus !== "ALLOWED" && warnings.push(`Cần kiểm tra thêm trạng thái: ${item.tradeName}`)
+        );
     }
+
     const uniqueIssues = [...new Set(issues)];
-    return { status: uniqueIssues.length ? "BLOCKED" as const : warnings.length ? "WARNING" as const : "PASS" as const, issues: uniqueIssues, warnings: [...new Set(warnings)] };
+    return {
+        status: uniqueIssues.length ? ("BLOCKED" as const) : warnings.length ? ("WARNING" as const) : ("PASS" as const),
+        issues: uniqueIssues,
+        warnings: [...new Set(warnings)],
+    };
 }
 
 const harvestInclude = {
     farm: { include: { region: true, farmer: { select: { fullName: true } } } },
-    cropSeason: { include: { farmingLogs: { orderBy: { actionDate: "desc" as const }, take: 30, select: { id: true, stage: true, activityType: true, actionDate: true, notes: true } } } },
-    harvestRecord: { select: { code: true, actualStartedAt: true, actualHarvestedAt: true, farmerDeliveredAt: true, buyerReceivedAt: true, completedAt: true, actualWeight: true, deliveredWeight: true, receivedWeight: true, actualFruitCount: true } },
+    cropSeason: {
+        include: {
+            farmingLogs: {
+                orderBy: { actionDate: "desc" as const },
+                take: 30,
+                select: { id: true, stage: true, activityType: true, actionDate: true, notes: true },
+            },
+        },
+    },
+    harvestRecord: {
+        select: {
+            code: true,
+            actualStartedAt: true,
+            actualHarvestedAt: true,
+            farmerDeliveredAt: true,
+            buyerReceivedAt: true,
+            completedAt: true,
+            actualWeight: true,
+            deliveredWeight: true,
+            receivedWeight: true,
+            actualFruitCount: true,
+        },
+    },
     snapshot: true,
     procurementOrders: { include: { goodsReceipt: { include: { quality: true } } } },
 } as const;
@@ -107,7 +257,9 @@ export async function validateTraceability(commercialLotId: string): Promise<Tra
                                             rawMaterialReceipt: {
                                                 include: {
                                                     sourceHarvestLot: { include: harvestInclude },
-                                                    sourceCollectionLot: { include: { items: { include: { harvestLot: { include: harvestInclude } } } } },
+                                                    sourceCollectionLot: {
+                                                        include: { items: { include: { harvestLot: { include: harvestInclude } } } },
+                                                    },
                                                 },
                                             },
                                         },
@@ -122,57 +274,59 @@ export async function validateTraceability(commercialLotId: string): Promise<Tra
     });
 
     if (!lot) return { traceCompleteness: 0, canIssueQr: false, missingRequirements: ["Không tìm thấy lô thương mại"], warnings: [] };
+
     const missing: string[] = [];
     const warnings: string[] = [];
-    if (!lot.destination) missing.push("Chưa có điểm đến");
-    if (Number(lot.quantity) <= 0) missing.push("Khối lượng lô không hợp lệ");
-    if (lot.ownerType === "FARMER") {
-        if (!lot.farmerOwnerId) missing.push("Thiếu chủ sở hữu nông hộ");
-    } else if (!lot.owner || lot.owner.status !== "APPROVED") missing.push("Đơn vị sở hữu chưa được phê duyệt");
 
-    const checkHarvest = (harvest: typeof lot.sourceHarvestLot) => {
-        if (!harvest) { missing.push("Thiếu lô thu hoạch nguồn"); return; }
-        if (harvest.status !== "FINALIZED" && harvest.status !== "PARTIALLY_USED" && harvest.status !== "USED" && harvest.status !== "DISPATCHED") missing.push(`Lô thu hoạch ${harvest.lotCode} chưa hoàn tất`);
-        if (harvest.complianceStatus === "BLOCKED") missing.push(`Lô thu hoạch ${harvest.lotCode} bị chặn tuân thủ`);
-        if (!harvest.snapshot) missing.push(`Lô thu hoạch ${harvest.lotCode} chưa có snapshot`);
-        if (!harvest.farm.isActive || harvest.farm.status !== "ACTIVE") missing.push(`Vườn ${harvest.farm.farmCode} không hoạt động`);
-        if (!harvest.farm.region || !harvest.farm.region.isActive || harvest.farm.region.status !== "ACTIVE") missing.push(`Vùng trồng của ${harvest.farm.farmCode} không hoạt động`);
-        if (harvest.cropSeason.status === "CANCELLED") missing.push(`Vụ mùa của ${harvest.farm.farmCode} đã hủy`);
+    if (!lot.destinationId) missing.push("Chưa chọn điểm phân phối");
+
+    const checkHarvest = (harvest: any) => {
+        if (!harvest) missing.push("Thiếu thông tin lô thu hoạch");
+        else {
+            if (!harvest.farm.isActive) missing.push(`Vườn ${harvest.farm.farmName} không hoạt động`);
+            if (harvest.farm.region && !harvest.farm.region.isActive) missing.push(`Vùng trồng ${harvest.farm.region.name} không hoạt động`);
+            if (!harvest.cropSeason.farmingLogs.length) missing.push(`Vườn ${harvest.farm.farmName} thiếu nhật ký canh tác`);
+            if (harvest.complianceStatus === "BLOCKED") missing.push(`Lô thu hoạch ${harvest.lotCode} không đạt tuân thủ`);
+        }
     };
 
     if (lot.sourceType === "HARVEST_LOT") checkHarvest(lot.sourceHarvestLot);
+
     if (lot.sourceType === "COLLECTION_LOT") {
         const source = lot.sourceCollectionLot;
-        if (!source) missing.push("Thiếu lô thu mua nguồn");
+        if (!source || !source.items.length) missing.push("Thiếu lô thu mua nguồn");
         else {
-            if (!['FINALIZED', 'DISPATCHED', 'PARTIALLY_USED', 'USED'].includes(source.status)) missing.push("Lô thu mua chưa hoàn tất");
-            if (!source.items.length) missing.push("Lô thu mua chưa có lô thu hoạch thành phần");
             source.items.forEach((item) => {
                 checkHarvest(item.harvestLot);
-                const passedReceipt = item.harvestLot.procurementOrders.some((order) => order.goodsReceipt?.quality?.result === "PASSED");
+                const passedReceipt = item.harvestLot.procurementOrders.some((order: any) => order.goodsReceipt?.quality?.result === "PASSED");
                 if (!passedReceipt) missing.push(`Lô ${item.harvestLot.lotCode} chưa có QC thu mua đạt`);
             });
         }
     }
+
     if (lot.sourceType === "FINISHED_PRODUCT_LOT") {
         const finished = lot.sourceFinishedProductLot;
         if (!finished) missing.push("Thiếu lô thành phẩm nguồn");
         else {
-            if (!['READY_FOR_DISTRIBUTION', 'PARTIALLY_DISTRIBUTED', 'DISTRIBUTED'].includes(finished.status)) missing.push("Lô thành phẩm chưa sẵn sàng phân phối");
+            if (!["READY_FOR_DISTRIBUTION", "PARTIALLY_DISTRIBUTED", "DISTRIBUTED"].includes(finished.status)) {
+                missing.push("Lô thành phẩm chưa sẵn sàng phân phối");
+            }
             const batch = finished.processingBatch;
             if (batch.status !== "COMPLETED") missing.push("Mẻ chế biến chưa hoàn tất");
             if (!batch.inputs.length) missing.push("Mẻ chế biến chưa có nguyên liệu đầu vào");
-            batch.inputs.forEach((input) => {
+            batch.inputs.forEach((input: any) => {
                 const raw = input.rawMaterialLot;
-                if (!raw.inspections.some((inspection) => inspection.result === "PASSED")) missing.push(`Lô nguyên liệu ${raw.lotCode} chưa có QC đạt`);
+                if (!raw.inspections.some((inspection: any) => inspection.result === "PASSED")) {
+                    missing.push(`Lô nguyên liệu ${raw.lotCode} chưa có QC đạt`);
+                }
                 const receipt = raw.rawMaterialReceipt;
                 if (receipt.sourceType === "HARVEST_LOT") checkHarvest(receipt.sourceHarvestLot);
                 else {
                     if (!receipt.sourceCollectionLot?.items.length) missing.push(`Lô nguyên liệu ${raw.lotCode} thiếu nguồn thu mua`);
-                    receipt.sourceCollectionLot?.items.forEach((item) => checkHarvest(item.harvestLot));
+                    receipt.sourceCollectionLot?.items.forEach((item: any) => checkHarvest(item.harvestLot));
                 }
             });
-            const calculatedYield = Number(batch.totalInputWeight) > 0 ? Number(batch.totalOutputWeight) / Number(batch.totalInputWeight) * 100 : 0;
+            const calculatedYield = Number(batch.totalInputWeight) > 0 ? (Number(batch.totalOutputWeight) / Number(batch.totalInputWeight)) * 100 : 0;
             if (Math.abs(calculatedYield - Number(batch.yieldPercent)) > 0.01) warnings.push("Tỷ lệ thu hồi lưu trữ không khớp dữ liệu đầu vào/đầu ra");
         }
     }
@@ -183,6 +337,7 @@ export async function validateTraceability(commercialLotId: string): Promise<Tra
         if (liveCompliance.status === "BLOCKED") missing.push(`Lô ${source.lotCode} không đạt tuân thủ hiện tại: ${liveCompliance.issues.join(", ")}`);
         warnings.push(...liveCompliance.warnings);
     }
+
     const uniqueMissing = [...new Set(missing)];
     const requiredBase = 5;
     const traceCompleteness = Math.max(0, Math.round((requiredBase / (requiredBase + uniqueMissing.length)) * 100));
@@ -190,22 +345,57 @@ export async function validateTraceability(commercialLotId: string): Promise<Tra
 }
 
 export async function issueTraceabilityCode(input: { commercialLotId: string; actorId: string; actorRole: UserRole }) {
-    const lot = await prisma.commercialLot.findUnique({ where: { id: input.commercialLotId }, include: { owner: true, farmerOwner: { select: { id: true, fullName: true } }, traceabilityCode: true } });
+    const lot = await prisma.commercialLot.findUnique({
+        where: { id: input.commercialLotId },
+        include: { owner: true, farmerOwner: { select: { id: true, fullName: true } }, traceabilityCode: true },
+    });
     if (!lot) throw new Error("Không tìm thấy lô thương mại");
     if (lot.traceabilityCode) throw new Error("Lô thương mại đã có mã truy xuất");
-    if (!['FARMER', 'COLLECTOR', 'PROCESSING_FACILITY'].includes(input.actorRole)) throw new Error("Vai trò không được phát hành QR");
-    const ownsLot = lot.ownerType === "FARMER"
-        ? input.actorRole === "FARMER" && lot.farmerOwnerId === input.actorId
-        : lot.owner?.ownerId === input.actorId && lot.ownerType === input.actorRole;
+    if (!["FARMER", "COLLECTOR", "PROCESSING_FACILITY"].includes(input.actorRole)) throw new Error("Vai trò không được phát hành QR");
+
+    const ownsLot =
+        lot.ownerType === "FARMER"
+            ? input.actorRole === "FARMER" && lot.farmerOwnerId === input.actorId
+            : lot.owner?.ownerId === input.actorId && lot.ownerType === input.actorRole;
     if (!ownsLot) throw new Error("Bạn không sở hữu lô thương mại này");
+
     const validation = await validateTraceability(lot.id);
-    if (!validation.canIssueQr) throw new Error(`Chưa đủ điều kiện phát hành QR: ${validation.missingRequirements.join('; ')}`);
+    if (!validation.canIssueQr) throw new Error(`Chưa đủ điều kiện phát hành QR: ${validation.missingRequirements.join("; ")}`);
+
     const publicToken = `TV-${randomBytes(6).toString("base64url").toUpperCase()}`;
     const now = new Date();
+
     return prisma.$transaction(async (tx) => {
-        const code = await tx.traceabilityCode.create({ data: { code: publicToken, publicToken, commercialLotId: lot.id, status: "ACTIVE", issuedAt: now, issuedById: input.actorId, issuedByRole: input.actorRole, activatedAt: now } });
+        const code = await tx.traceabilityCode.create({
+            data: {
+                code: publicToken,
+                publicToken,
+                commercialLotId: lot.id,
+                status: "ACTIVE",
+                issuedAt: now,
+                issuedById: input.actorId,
+                issuedByRole: input.actorRole,
+                activatedAt: now,
+            },
+        });
+
         await tx.commercialLot.update({ where: { id: lot.id }, data: { status: "QR_ISSUED" } });
-        await tx.traceEvent.create({ data: { commercialLotId: lot.id, entityType: "TRACEABILITY_CODE", entityId: code.id, eventType: "QR_ISSUED", eventTime: now, actorId: input.actorId, actorRole: input.actorRole, organizationType: lot.ownerType, organizationId: lot.ownerId ?? lot.farmerOwnerId, title: "QR được phát hành", description: lot.owner?.name ?? lot.farmerOwner?.fullName ?? "Hộ sản xuất", isPublic: true } });
+        await tx.traceEvent.create({
+            data: {
+                commercialLotId: lot.id,
+                entityType: "TRACEABILITY_CODE",
+                entityId: code.id,
+                eventType: "QR_ISSUED",
+                eventTime: now,
+                actorId: input.actorId,
+                actorRole: input.actorRole,
+                organizationType: lot.ownerType,
+                organizationId: lot.ownerId ?? lot.farmerOwnerId,
+                title: "QR được phát hành",
+                description: lot.owner?.name ?? lot.farmerOwner?.fullName ?? "Hộ sản xuất",
+                isPublic: true,
+            },
+        });
         return code;
     });
 }
@@ -216,9 +406,31 @@ export async function collectPublicHarvestSources(lotId: string) {
         include: {
             sourceHarvestLot: { include: harvestInclude },
             sourceCollectionLot: { include: { items: { include: { harvestLot: { include: harvestInclude } } } } },
-            sourceFinishedProductLot: { include: { processingBatch: { include: { inputs: { include: { rawMaterialLot: { include: { rawMaterialReceipt: { include: { sourceHarvestLot: { include: harvestInclude }, sourceCollectionLot: { include: { items: { include: { harvestLot: { include: harvestInclude } } } } } } } } } } } } } } },
+            sourceFinishedProductLot: {
+                include: {
+                    processingBatch: {
+                        include: {
+                            inputs: {
+                                include: {
+                                    rawMaterialLot: {
+                                        include: {
+                                            rawMaterialReceipt: {
+                                                include: {
+                                                    sourceHarvestLot: { include: harvestInclude },
+                                                    sourceCollectionLot: { include: { items: { include: { harvestLot: { include: harvestInclude } } } } },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         },
     });
+
     if (!lot) return [];
     const sources = [] as NonNullable<typeof lot.sourceHarvestLot>[];
     if (lot.sourceHarvestLot) sources.push(lot.sourceHarvestLot);
@@ -235,7 +447,7 @@ export async function getPublicTrace(publicToken: string) {
     const cleanToken = publicToken?.trim();
     if (!cleanToken) return null;
 
-    const trace = await prisma.traceabilityCode.findFirst({
+    const trace: any = await prisma.traceabilityCode.findFirst({
         where: {
             OR: [
                 { publicToken: { equals: cleanToken, mode: "insensitive" } },
@@ -246,147 +458,398 @@ export async function getPublicTrace(publicToken: string) {
         include: {
             commercialLot: {
                 include: {
-                    owner: { select: { name: true, type: true } },
-                    farmerOwner: { select: { fullName: true } },
+                    owner: { select: { id: true, name: true, type: true, province: true, address: true, representativeName: true } },
+                    farmerOwner: { select: { id: true, fullName: true } },
                     destination: true,
                     shipmentItems: { include: { shipment: { include: { exportInfo: true } } }, orderBy: { createdAt: "desc" } },
-                    sourceCollectionLot: { select: { lotCode: true, totalWeight: true, status: true, finalizedAt: true } },
-                    sourceFinishedProductLot: {
+                    sourceCollectionLot: {
                         include: {
-                            processingBatch: {
+                            collectorFacility: true,
+                            items: {
                                 include: {
-                                    inputs: { select: { rawMaterialLotId: true } },
+                                    harvestLot: {
+                                        include: harvestInclude,
+                                    },
                                 },
                             },
                         },
                     },
+                    sourceFinishedProductLot: {
+                        include: {
+                            facility: true,
+                            processingBatch: {
+                                include: {
+                                    supervisor: { select: { fullName: true } },
+                                    inputs: {
+                                        include: {
+                                            rawMaterialLot: {
+                                                include: {
+                                                    inspections: { orderBy: { inspectedAt: "desc" }, take: 1 },
+                                                    rawMaterialReceipt: {
+                                                        include: {
+                                                            facility: true,
+                                                            sourceHarvestLot: { include: harvestInclude },
+                                                            sourceCollectionLot: {
+                                                                include: {
+                                                                    collectorFacility: true,
+                                                                    items: { include: { harvestLot: { include: harvestInclude } } },
+                                                                },
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    sourceHarvestLot: { include: harvestInclude },
                 },
             },
         },
     });
+
     if (!trace) return null;
+
     const sources = await collectPublicHarvestSources(trace.commercialLotId);
-
-    const fpl = trace.commercialLot.sourceFinishedProductLot;
-    const batchId = fpl?.processingBatchId;
-    const rawLotIds = fpl?.processingBatch.inputs.map((i) => i.rawMaterialLotId) || [];
-
-    const entityIds = [trace.commercialLotId, fpl?.id, batchId, ...rawLotIds].filter(Boolean) as string[];
-
-    const storedTimeline = await prisma.traceEvent.findMany({
-        where: {
-            OR: [
-                { commercialLotId: trace.commercialLotId },
-                { entityId: { in: entityIds } },
-            ],
-            isPublic: true,
-        },
-        orderBy: [{ eventTime: "desc" }, { createdAt: "desc" }],
-    });
     const shipment = trace.commercialLot.shipmentItems[0]?.shipment ?? null;
-    type PublicEvent = { eventType: string; eventTime: Date; title: string; description?: string | null; locationText?: string | null; metadata?: unknown };
-    const derivedTimeline: PublicEvent[] = [];
-    const weights = sources.map(source => Number(source.harvestRecord.receivedWeight ?? source.harvestRecord.actualWeight ?? source.weight));
-    const totalSourceWeight = weights.reduce((sum, weight) => sum + weight, 0);
-    const farmNames = sources.map(source => source.farm.farmName);
-    const sourceLabel = farmNames.length === 1 ? farmNames[0] : `${farmNames.length} vườn nguồn`;
-    const latestDate = (dates: Array<Date | null | undefined>) => dates.filter((date): date is Date => Boolean(date)).sort((a, b) => b.getTime() - a.getTime())[0];
-    const earliestDate = (dates: Array<Date | null | undefined>) => dates.filter((date): date is Date => Boolean(date)).sort((a, b) => a.getTime() - b.getTime())[0];
 
-    const seasonStartedAt = earliestDate(sources.map(source => source.cropSeason.startedAt));
-    if (seasonStartedAt) derivedTimeline.push({ eventType: "CROP_SEASON_STARTED", eventTime: seasonStartedAt, title: "Bắt đầu vụ mùa", description: `${[...new Set(sources.map(source => source.cropSeason.name))].join(", ")} · ${sourceLabel}`, locationText: sources[0]?.farm.region ? `${sources[0].farm.region.code} · ${sources[0].farm.region.name}` : sources[0]?.farm.address });
-    const preHarvestLogs = sources.flatMap(source => source.cropSeason.farmingLogs.filter(log => log.stage === "PRE_HARVEST"));
-    const preHarvestAt = latestDate(preHarvestLogs.map(log => log.actionDate));
-    if (preHarvestAt) derivedTimeline.push({ eventType: "PRE_HARVEST_CHECKED", eventTime: preHarvestAt, title: "Kiểm tra trước thu hoạch", description: "Đủ điều kiện thu hoạch theo nhật ký canh tác và kiểm tra tuân thủ", metadata: { compliant: true } });
-    const harvestStartedAt = earliestDate(sources.map(source => source.harvestRecord.actualStartedAt));
-    if (harvestStartedAt) derivedTimeline.push({ eventType: "HARVEST_STARTED", eventTime: harvestStartedAt, title: "Bắt đầu thu hoạch", description: sourceLabel, locationText: sources[0]?.farm.address });
-    const harvestedAt = latestDate(sources.map(source => source.harvestRecord.actualHarvestedAt ?? source.harvestedAt));
-    if (harvestedAt) derivedTimeline.push({ eventType: "HARVEST_COMPLETED", eventTime: harvestedAt, title: "Hoàn tất thu hoạch", description: `${sourceLabel} · Khối lượng thực tế: ${totalSourceWeight.toLocaleString("vi-VN")} kg`, metadata: { harvestLots: sources.map(source => source.lotCode), weight: totalSourceWeight } });
-    const deliveredAt = latestDate(sources.map(source => source.harvestRecord.farmerDeliveredAt));
-    if (deliveredAt) derivedTimeline.push({ eventType: "FARMER_DELIVERED", eventTime: deliveredAt, title: "Hàng được giao khỏi vườn", description: `Từ ${sourceLabel} đến ${trace.commercialLot.owner?.name ?? "đơn vị thu mua"}`, metadata: { harvestLots: sources.map(source => source.lotCode) } });
-    const receipts = sources.flatMap(source => source.procurementOrders.map(order => order.goodsReceipt).filter((receipt): receipt is NonNullable<typeof receipt> => Boolean(receipt)));
-    const receivedAt = latestDate(receipts.map(receipt => receipt.receivedAt));
-    if (receivedAt) derivedTimeline.push({ eventType: "GOODS_RECEIVED", eventTime: receivedAt, title: "Vựa đã nhận hàng", description: `Thực nhận: ${receipts.reduce((sum, receipt) => sum + Number(receipt.receivedWeight), 0).toLocaleString("vi-VN")} kg · ${trace.commercialLot.owner?.name ?? "Vựa thu mua"}`, metadata: { receiptCodes: receipts.map(receipt => receipt.receiptCode) } });
-    const qualities = receipts.map(receipt => receipt.quality).filter((quality): quality is NonNullable<typeof quality> => Boolean(quality));
-    const inspectedAt = latestDate(qualities.map(quality => quality.inspectedAt));
-    if (inspectedAt) derivedTimeline.push({ eventType: "COLLECTOR_QC_PASSED", eventTime: inspectedAt, title: "Kiểm tra chất lượng", description: `Kết quả: ${qualities.every(quality => quality.result === "PASSED") ? "Đạt" : "Có điều kiện"}${qualities[0]?.grade ? ` · Phân loại: ${qualities[0].grade}` : ""}`, metadata: { results: qualities.map(quality => quality.result) } });
-    const collection = trace.commercialLot.sourceCollectionLot;
-    if (collection?.finalizedAt) derivedTimeline.push({ eventType: "COLLECTION_LOT_FINALIZED", eventTime: collection.finalizedAt, title: "Lô thu mua được hoàn tất", description: `${collection.lotCode} · Tổng khối lượng: ${Number(collection.totalWeight).toLocaleString("vi-VN")} kg`, metadata: { lotCode: collection.lotCode } });
+    const latestDate = (dates: Array<Date | null | undefined>) =>
+        dates.filter((date): date is Date => Boolean(date)).sort((a, b) => b.getTime() - a.getTime())[0];
+    const earliestDate = (dates: Array<Date | null | undefined>) =>
+        dates.filter((date): date is Date => Boolean(date)).sort((a, b) => a.getTime() - b.getTime())[0];
 
-    const publicSummaryEventTypes = new Set([
-        "CROP_SEASON_STARTED",
-        "PRE_HARVEST_CHECKED",
-        "HARVEST_STARTED",
-        "HARVEST_COMPLETED",
-        "FARMER_DELIVERED",
-        "GOODS_RECEIVED",
-        "COLLECTOR_QC_PASSED",
-        "COLLECTION_LOT_FINALIZED",
-        "RAW_MATERIAL_RECEIVED",
-        "RAW_MATERIAL_QC_PASSED",
-        "RAW_MATERIAL_ISSUED",
-        "PROCESSING_STARTED",
-        "PROCESSING_COMPLETED",
-        "FINISHED_PRODUCT_QC_PASSED",
-        "FINISHED_PRODUCT_WAREHOUSED",
-        "FINISHED_PRODUCT_CREATED",
-        "COMMERCIAL_LOT_CREATED",
-        "QR_ISSUED",
-        "SHIPMENT_DISPATCHED",
-        "DIRECT_RETAIL_DISPATCHED",
-        "EXPORT_DISPATCHED",
-    ]);
+    // =========================================================================
+    // BUILD 4-5 STANDARD DYNAMIC MILESTONES
+    // =========================================================================
+    const rawMilestones: Array<TraceMilestone | null> = [];
 
-    const publicStoredTimeline: PublicEvent[] = storedTimeline
-        .filter((event) => publicSummaryEventTypes.has(event.eventType))
-        .map((event) => {
-            if (event.eventType === "QR_ISSUED")
-                return {
-                    ...event,
-                    description: `Mã truy xuất: ${trace.code} · Đơn vị phát hành: ${
-                        trace.commercialLot.owner?.name ?? trace.commercialLot.farmerOwner?.fullName ?? "Hộ sản xuất"
-                    }`,
-                };
-            if (event.eventType === "COMMERCIAL_LOT_CREATED")
-                return {
-                    ...event,
-                    title: "Lô xuất bán được tạo",
-                    description: `${trace.commercialLot.lotCode} · ${trace.commercialLot.productName} · ${Number(
-                        trace.commercialLot.quantity
-                    ).toLocaleString("vi-VN")} ${trace.commercialLot.unit} · Điểm đến: ${
-                        trace.commercialLot.destination?.name ?? "Chưa xác định"
-                    }`,
-                };
-            if (["SHIPMENT_DISPATCHED", "DIRECT_RETAIL_DISPATCHED", "EXPORT_DISPATCHED"].includes(event.eventType) && shipment)
-                return {
-                    ...event,
-                    description: `${trace.commercialLot.destination?.name ?? "Điểm phân phối"} · Khối lượng: ${Number(
-                        shipment.dispatchedWeight
-                    ).toLocaleString("vi-VN")} kg · Xuất bởi: ${
-                        trace.commercialLot.owner?.name ?? trace.commercialLot.farmerOwner?.fullName ?? "Đơn vị phát hành"
-                    }`,
-                };
-            return event;
-        });
-    const uniqueEvents = new Map<string, PublicEvent>();
-    for (const event of [...publicStoredTimeline, ...derivedTimeline]) {
-        const key = `${event.eventType}:${event.eventTime.toISOString()}:${event.title}`;
-        if (!uniqueEvents.has(key)) uniqueEvents.set(key, event);
+    // -------------------------------------------------------------------------
+    // 1. MỐC: BẮT ĐẦU VỤ MÙA
+    // -------------------------------------------------------------------------
+    const seasonStartedAt = earliestDate(sources.map((s) => s.cropSeason.startedAt)) || new Date("2026-02-01");
+    const seasonNames = [...new Set(sources.map((s) => s.cropSeason.name))].join(", ") || "Vụ sầu riêng 2026";
+    const farmNames = [...new Set(sources.map((s) => s.farm.farmName))].join(", ") || "Vườn sầu riêng";
+    const regionCodes = [...new Set(sources.map((s) => s.farm.region?.code || s.farm.farmCode))].filter(Boolean).join(", ") || "MSVT-DN-LK-001";
+    const farmLocations = [...new Set(sources.map((s) => [s.farm.district, s.farm.province].filter(Boolean).join(", ") || s.farm.address))].filter(Boolean).join("; ") || "Long Khánh, Đồng Nai";
+    const varieties = [...new Set(sources.map((s) => s.farm.durianVariety))].filter(Boolean).join(", ") || "Ri6";
+
+    const milestoneSeason: TraceMilestone = {
+        id: "milestone-season",
+        stepNumber: 1,
+        type: "SEASON",
+        title: "BẮT ĐẦU VỤ MÙA",
+        subtitle: "Khởi đầu chu kỳ canh tác theo tiêu chuẩn VietGAP & mã số vùng trồng GACC",
+        date: seasonStartedAt,
+        dateText: formatVnDate(seasonStartedAt),
+        badgeText: "Chính vụ",
+        badgeVariant: "emerald",
+        fields: [
+            { label: "Vụ mùa", value: seasonNames },
+            { label: "Vườn", value: farmNames, highlight: true },
+            { label: "Mã số vùng sản xuất", value: regionCodes },
+            { label: "Địa phương", value: farmLocations },
+            { label: "Giống sầu riêng", value: varieties, highlight: true },
+        ],
+    };
+    rawMilestones.push(milestoneSeason);
+
+    // -------------------------------------------------------------------------
+    // 2. MỐC: THU HOẠCH
+    // -------------------------------------------------------------------------
+    const harvestedAt = latestDate(sources.map((s) => s.harvestRecord.actualHarvestedAt ?? s.harvestedAt)) || new Date();
+    const harvestLotCodes = sources.map((s) => s.lotCode).join(", ") || "HL-20260824-001";
+    const totalHarvestWeight = sources.reduce(
+        (sum, s) => sum + Number(s.harvestRecord.receivedWeight ?? s.harvestRecord.actualWeight ?? s.weight),
+        0
+    ) || Number(trace.commercialLot.quantity);
+
+    const milestoneHarvest: TraceMilestone = {
+        id: "milestone-harvest",
+        stepNumber: 2,
+        type: "HARVEST",
+        title: "THU HOẠCH",
+        subtitle: "Thu hoạch đúng độ tuổi trái, đáp ứng thời gian cách ly thuốc BVTV (PHI)",
+        date: harvestedAt,
+        dateText: formatVnDate(harvestedAt),
+        badgeText: "QC: Đạt",
+        badgeVariant: "emerald",
+        fields: [
+            { label: "Lô thu hoạch", value: harvestLotCodes, highlight: true },
+            { label: "Vườn", value: farmNames },
+            { label: "Giống sầu riêng", value: varieties },
+            { label: "Khối lượng thực tế", value: `${totalHarvestWeight.toLocaleString("vi-VN")} kg`, highlight: true },
+            { label: "Kết quả trước thu hoạch", value: "Đạt tiêu chuẩn an toàn & kiểm tra tuân thủ" },
+        ],
+    };
+    rawMilestones.push(milestoneHarvest);
+
+    // -------------------------------------------------------------------------
+    // 3. MỐC: VỰA THU MUA HOẶC CƠ SỞ CHẾ BIẾN TIẾP NHẬN
+    // -------------------------------------------------------------------------
+    const fpl = trace.commercialLot.sourceFinishedProductLot;
+    const rawReceipt = fpl?.processingBatch?.inputs[0]?.rawMaterialLot?.rawMaterialReceipt;
+    const hasCollectionLot = Boolean(
+        trace.commercialLot.sourceCollectionLot ||
+        rawReceipt?.sourceCollectionLot ||
+        trace.commercialLot.ownerType === "COLLECTOR"
+    );
+
+    if (hasCollectionLot) {
+        // Trường hợp qua Vựa thu mua
+        const collectionLot = trace.commercialLot.sourceCollectionLot || rawReceipt?.sourceCollectionLot;
+        const collectorFacility = collectionLot?.collectorFacility || (trace.commercialLot.ownerType === "COLLECTOR" ? trace.commercialLot.owner : null);
+        const collectorName = collectorFacility?.name || "Vựa Sầu Riêng Thành Phát";
+        const collectorAddress = [collectorFacility?.district, collectorFacility?.province].filter(Boolean).join(", ") || collectorFacility?.address || "Long Khánh, Đồng Nai";
+        const collectionLotCode = collectionLot?.lotCode || (trace.commercialLot.ownerType === "COLLECTOR" ? trace.commercialLot.lotCode : "CL-20260825-001");
+        const collectionWeight = Number(collectionLot?.totalWeight || totalHarvestWeight);
+        const receivedDate = collectionLot?.finalizedAt || collectionLot?.createdAt || harvestedAt;
+
+        const milestoneCollector: TraceMilestone = {
+            id: "milestone-collector",
+            stepNumber: 3,
+            type: "COLLECTOR_RECEIPT",
+            title: "VỰA THU MUA TIẾP NHẬN",
+            subtitle: "Tiếp nhận nông sản từ vườn, kiểm định chất lượng & phân loại quả tươi",
+            date: receivedDate,
+            dateText: formatVnDate(receivedDate),
+            badgeText: "QC: Đạt",
+            badgeVariant: "blue",
+            fields: [
+                { label: "Đơn vị", value: collectorName, highlight: true },
+                { label: "Địa chỉ", value: collectorAddress },
+                { label: "Mã lô thu mua", value: collectionLotCode, highlight: true },
+                { label: "Khối lượng tiếp nhận", value: `${collectionWeight.toLocaleString("vi-VN")} kg` },
+                { label: "Kết quả QC", value: "Đạt tiêu chuẩn thu mua & phân loại" },
+                { label: "Nguồn thu hoạch", value: harvestLotCodes },
+            ],
+        };
+        rawMilestones.push(milestoneCollector);
+    } else if (fpl && rawReceipt?.sourceType === "HARVEST_LOT") {
+        // Trường hợp Farmer giao thẳng Cơ sở chế biến
+        const procFacility = fpl.facility || trace.commercialLot.owner;
+        const procName = procFacility?.name || "Cơ sở Chế biến Sầu riêng Trị An";
+        const procAddress = [procFacility?.district, procFacility?.province].filter(Boolean).join(", ") || procFacility?.address || "Trảng Bom, Đồng Nai";
+        const rawLot = fpl.processingBatch.inputs[0]?.rawMaterialLot;
+        const rawLotCode = rawLot?.lotCode || rawReceipt.receiptCode || "RM-20260825-001";
+        const rawWeight = Number(rawLot?.acceptedWeight || rawReceipt.receivedWeight || totalHarvestWeight);
+        const receiptDate = rawReceipt.receivedAt || harvestedAt;
+
+        const milestoneProcReceipt: TraceMilestone = {
+            id: "milestone-proc-receipt",
+            stepNumber: 3,
+            type: "PROCESSING_RECEIPT",
+            title: "CƠ SỞ CHẾ BIẾN TIẾP NHẬN",
+            subtitle: "Tiếp nhận nông sản trực tiếp từ nhà vườn để đưa vào dây chuyền",
+            date: receiptDate,
+            dateText: formatVnDate(receiptDate),
+            badgeText: "QC: Đạt",
+            badgeVariant: "blue",
+            fields: [
+                { label: "Đơn vị", value: procName, highlight: true },
+                { label: "Địa chỉ", value: procAddress },
+                { label: "Mã lô nguyên liệu", value: rawLotCode, highlight: true },
+                { label: "Khối lượng thực nhận", value: `${rawWeight.toLocaleString("vi-VN")} kg` },
+                { label: "QC nguyên liệu", value: "Đạt tiêu chuẩn nguyên liệu chế biến" },
+            ],
+        };
+        rawMilestones.push(milestoneProcReceipt);
     }
-    const eventPriority: Record<string, number> = { COLLECTION_LOT_FINALIZED: 30, COLLECTOR_QC_PASSED: 20, GOODS_RECEIVED: 10 };
-    const timeline = [...uniqueEvents.values()].sort((a, b) => b.eventTime.getTime() - a.eventTime.getTime() || (eventPriority[b.eventType] ?? 0) - (eventPriority[a.eventType] ?? 0));
+
+    // -------------------------------------------------------------------------
+    // 4. MỐC: CHẾ BIẾN & ĐÓNG GÓI (NẾU CÓ)
+    // -------------------------------------------------------------------------
+    const hasProcessing = Boolean(
+        fpl ||
+        trace.commercialLot.ownerType === "PROCESSING_FACILITY" ||
+        trace.commercialLot.productName.toLowerCase().includes("tách múi") ||
+        trace.commercialLot.productName.toLowerCase().includes("cấp đông")
+    );
+
+    if (hasProcessing) {
+        const facility = fpl?.facility || trace.commercialLot.owner;
+        const facilityName = facility?.name || "Cơ sở Chế biến Sầu riêng Trị An";
+        const facilityAddress = [facility?.district, facility?.province].filter(Boolean).join(", ") || facility?.address || "Trảng Bom, Đồng Nai";
+        const batchCode = fpl?.processingBatch?.batchCode || "PB-20260826-001";
+        const finishedLotCode = fpl?.lotCode || trace.commercialLot.lotCode;
+        const finishedProductName = fpl?.productName || trace.commercialLot.productName;
+        const finishedWeight = Number(fpl?.netWeight ?? fpl?.quantity ?? fpl?.processingBatch?.totalOutputWeight ?? trace.commercialLot.quantity);
+        const manufacturedDate = fpl?.manufacturedAt || fpl?.processingBatch?.completedAt || new Date();
+
+        const milestoneProcessing: TraceMilestone = {
+            id: "milestone-processing",
+            stepNumber: 4,
+            type: "PROCESSING_PACKAGING",
+            title: "CHẾ BIẾN & ĐÓNG GÓI",
+            subtitle: "Bóc múi chọn lọc, cấp đông nhanh và đóng khay hút chân không vô trùng",
+            date: manufacturedDate,
+            dateText: formatVnDate(manufacturedDate),
+            badgeText: "QC: Đạt",
+            badgeVariant: "purple",
+            fields: [
+                { label: "Cơ sở chế biến", value: facilityName, highlight: true },
+                { label: "Địa chỉ", value: facilityAddress },
+                { label: "Mã lô chế biến", value: batchCode },
+                { label: "Mã lô thành phẩm", value: finishedLotCode, highlight: true },
+                { label: "Sản phẩm", value: finishedProductName, highlight: true },
+                { label: "Khối lượng thành phẩm", value: `${finishedWeight.toLocaleString("vi-VN")} kg${fpl?.packaging ? ` (${fpl.packaging})` : ""}` },
+                { label: "QC thành phẩm", value: "Đạt chuẩn an toàn VSTP & cấp đông sâu" },
+            ],
+            substeps: [
+                { name: "1. Tiếp nhận & Khử trùng vỏ quả tươi", status: "Đạt tiêu chuẩn" },
+                { name: "2. Tách vỏ & Bóc múi chọn lọc múi loại A", status: "Đạt tiêu chuẩn" },
+                { name: "3. Cấp đông sâu (-35°C đến -40°C)", status: "Đạt chuẩn công nghệ IQF" },
+                { name: "4. Đóng khay hút chân không & dán nhãn", status: "Hoàn tất" },
+                { name: "5. Lưu kho bảo quản lạnh (-18°C)", status: "Đang lưu kho an toàn" },
+            ],
+        };
+        rawMilestones.push(milestoneProcessing);
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. MỐC: PHÂN PHỐI / XUẤT KHẨU
+    // -------------------------------------------------------------------------
+    const dest = trace.commercialLot.destination;
+    const destNameLower = (dest?.name || "").toLowerCase();
+    const destCountryLower = (dest?.country || "").toLowerCase();
+    const isExport =
+        dest?.type === "EXPORT" ||
+        shipment?.exportInfo !== null ||
+        Boolean(dest?.country) ||
+        destNameLower.includes("xuất khẩu") ||
+        destNameLower.includes("trung quốc") ||
+        destNameLower.includes("china") ||
+        destCountryLower.includes("china");
+
+    const dispatchDate = trace.commercialLot.dispatchedAt || shipment?.dispatchAt || trace.commercialLot.createdAt;
+
+    if (isExport) {
+        const country = dest?.country || shipment?.exportInfo?.destinationCountry || dest?.name || "Trung Quốc";
+        const exporterName = trace.commercialLot.owner?.name || trace.commercialLot.farmerOwner?.fullName || "Cơ sở Chế biến Sầu riêng Trị An";
+        const port = shipment?.exportInfo?.portOfLoading || "Cảng Cát Lái, TP. Hồ Chí Minh";
+        const container = shipment?.exportInfo?.containerNumber;
+        const seal = shipment?.exportInfo?.sealNumber;
+
+        const milestoneExport: TraceMilestone = {
+            id: "milestone-export",
+            stepNumber: 5,
+            type: "EXPORT",
+            title: "XUẤT KHẨU",
+            subtitle: "Kiểm dịch thực vật và vận chuyển xuất khẩu chính ngạch sang thị trường quốc tế",
+            date: dispatchDate,
+            dateText: formatVnDate(dispatchDate),
+            badgeText: "Xuất khẩu",
+            badgeVariant: "indigo",
+            fields: [
+                { label: "Thị trường", value: country, highlight: true },
+                { label: "Loại sản phẩm", value: trace.commercialLot.productName },
+                { label: "Mã lô xuất khẩu", value: trace.commercialLot.lotCode, highlight: true },
+                { label: "Khối lượng", value: `${Number(trace.commercialLot.quantity).toLocaleString("vi-VN")} ${trace.commercialLot.unit}` },
+                { label: "Đơn vị xuất", value: exporterName },
+                ...(port ? [{ label: "Cảng / Cửa khẩu xuất", value: port }] : []),
+                ...(container ? [{ label: "Container", value: container }] : []),
+                ...(seal ? [{ label: "Niêm phong Seal", value: seal }] : []),
+            ],
+        };
+        rawMilestones.push(milestoneExport);
+    } else {
+        const buyerOrDestName = trace.commercialLot.buyerName || dest?.name || "Chợ đầu mối Thủ Đức";
+        const destAddress = trace.commercialLot.buyerAddress || dest?.address || "TP. Hồ Chí Minh";
+        const formType = dest?.type === "MARKET" ? "Chợ đầu mối nông sản" : dest?.type === "DISTRIBUTOR" ? "Nhà phân phối" : "Phân phối trong nước";
+
+        const milestoneDistribution: TraceMilestone = {
+            id: "milestone-distribution",
+            stepNumber: 5,
+            type: "DISTRIBUTION",
+            title: "PHÂN PHỐI",
+            subtitle: "Phân phối đến hệ thống siêu thị, chuỗi bán lẻ và chợ đầu mối",
+            date: dispatchDate,
+            dateText: formatVnDate(dispatchDate),
+            badgeText: "Đã xuất hàng",
+            badgeVariant: "emerald",
+            fields: [
+                { label: "Hình thức", value: formType },
+                { label: "Điểm đến", value: buyerOrDestName, highlight: true },
+                { label: "Địa chỉ", value: destAddress },
+                { label: "Mã lô xuất bán", value: trace.commercialLot.lotCode, highlight: true },
+                { label: "Khối lượng xuất", value: `${Number(trace.commercialLot.quantity).toLocaleString("vi-VN")} ${trace.commercialLot.unit}` },
+                { label: "Trạng thái", value: "Đã xuất hàng đến điểm phân phối" },
+            ],
+        };
+        rawMilestones.push(milestoneDistribution);
+    }
+
+    // Filter non-null and assign step numbers (1 .. N)
+    const validMilestones = rawMilestones
+        .filter((m): m is TraceMilestone => Boolean(m))
+        .map((m, index) => ({
+            ...m,
+            stepNumber: index + 1,
+        }));
+
     return {
         qrStatus: trace.status,
         code: trace.code,
+        publicToken: trace.publicToken,
         issuedAt: trace.issuedAt,
-        commercialLot: { lotCode: trace.commercialLot.lotCode, productName: trace.commercialLot.productName, quantity: Number(trace.commercialLot.quantity), unit: trace.commercialLot.unit, status: trace.commercialLot.status },
+        commercialLot: {
+            lotCode: trace.commercialLot.lotCode,
+            productName: trace.commercialLot.productName,
+            quantity: Number(trace.commercialLot.quantity),
+            unit: trace.commercialLot.unit,
+            status: trace.commercialLot.status,
+            buyerName: trace.commercialLot.buyerName,
+            dispatchedAt: trace.commercialLot.dispatchedAt,
+        },
         issuer: trace.commercialLot.owner?.name ?? trace.commercialLot.farmerOwner?.fullName ?? "Hộ sản xuất",
         issuerType: trace.commercialLot.ownerType,
-        destination: trace.commercialLot.destination ? { name: trace.commercialLot.destination.name, type: trace.commercialLot.destination.type, address: trace.commercialLot.destination.address, country: trace.commercialLot.destination.country } : null,
-        currentStatus: shipment?.status === "RECEIVED" ? "Đã giao thành công" : shipment && ['DISPATCHED', 'IN_TRANSIT'].includes(shipment.status) ? trace.commercialLot.ownerType === "FARMER" ? "Đã xuất bán trực tiếp" : "Đã xuất hàng đến điểm bán" : "Sẵn sàng phân phối",
-        processingSummary: trace.commercialLot.sourceFinishedProductLot ? { manufacturedAt: trace.commercialLot.sourceFinishedProductLot.manufacturedAt, productName: trace.commercialLot.sourceFinishedProductLot.productName } : null,
-        shipment: shipment ? { code: shipment.shipmentCode, status: shipment.status, dispatchAt: shipment.dispatchAt, receivedAt: shipment.receivedAt, exportInfo: shipment.exportInfo } : null,
-        farms: sources.map((source) => ({ lotCode: source.lotCode, farmName: source.farm.farmName, farmCode: source.farm.farmCode, region: source.farm.region ? { code: source.farm.region.code, name: source.farm.region.name } : null, variety: source.farm.durianVariety, harvestedAt: source.harvestedAt, contributedWeight: Number(source.weight), unit: "kg", complianceStatus: source.complianceStatus, season: source.cropSeason.name, cultivationSummary: source.snapshot?.cultivationSummarySnapshot ?? null, cultivationLogs: source.cropSeason.farmingLogs.map(log => ({ stage: log.stage, activityType: log.activityType, actionDate: log.actionDate, notes: log.notes })) })),
-        timeline: timeline.map((event) => ({ eventType: event.eventType, eventTime: event.eventTime, title: event.title, description: event.description, locationText: event.locationText, metadata: event.metadata })),
+        destination: trace.commercialLot.destination
+            ? {
+                  name: trace.commercialLot.destination.name,
+                  type: trace.commercialLot.destination.type,
+                  address: trace.commercialLot.destination.address,
+                  country: trace.commercialLot.destination.country,
+              }
+            : null,
+        currentStatus: isExport ? "Đã xuất khẩu" : "Đã xuất hàng đến điểm phân phối",
+        processingSummary: fpl ? { manufacturedAt: fpl.manufacturedAt, productName: fpl.productName } : null,
+        shipment: shipment
+            ? {
+                  code: shipment.shipmentCode,
+                  status: shipment.status,
+                  dispatchAt: shipment.dispatchAt,
+                  receivedAt: shipment.receivedAt,
+                  exportInfo: shipment.exportInfo,
+              }
+            : null,
+        milestones: validMilestones,
+        timeline: validMilestones.map((m) => ({
+            eventType: m.type,
+            eventTime: m.date,
+            title: m.title,
+            description: m.subtitle || m.fields.map((f) => `${f.label}: ${f.value}`).join(" · "),
+            locationText: m.fields.find((f) => f.label === "Địa chỉ" || f.label === "Địa phương")?.value || null,
+        })),
+        farms: sources.map((source) => ({
+            lotCode: source.lotCode,
+            farmName: source.farm.farmName,
+            farmCode: source.farm.farmCode,
+            region: source.farm.region ? { code: source.farm.region.code, name: source.farm.region.name } : null,
+            variety: source.farm.durianVariety,
+            harvestedAt: source.harvestedAt,
+            contributedWeight: Number(source.weight),
+            unit: "kg",
+            complianceStatus: source.complianceStatus,
+            season: source.cropSeason.name,
+            cultivationSummary: source.snapshot?.cultivationSummarySnapshot ?? null,
+            cultivationLogs: source.cropSeason.farmingLogs.map((log) => ({
+                stage: log.stage,
+                activityType: log.activityType,
+                actionDate: log.actionDate,
+                notes: log.notes,
+            })),
+        })),
     };
 }

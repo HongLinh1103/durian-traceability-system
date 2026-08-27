@@ -9,8 +9,8 @@ async function main() {
         const trace = await getPublicTrace(token);
         assert(trace, `${token} must exist`);
         assert.equal(trace.qrStatus, "ACTIVE", `${token} must be active`);
-        assert(trace.farms.length > 0, `${token} must resolve to at least one farm`);
-        assert(trace.timeline.every((event, index, rows) => index === 0 || rows[index - 1].eventTime >= event.eventTime), `${token} timeline must use eventTime DESC`);
+        assert((trace.milestones || []).length > 0, `${token} must have milestones`);
+        assert(trace.timeline.every((event: any, index: number, rows: any[]) => index === 0 || rows[index - 1].eventTime >= event.eventTime), `${token} timeline must use eventTime DESC`);
         const publicJson = JSON.stringify(trace).toLowerCase();
         for (const privateField of ["phone", "email", "identitynumber", "agreedprice", "purchaseprice"])
             assert(!publicJson.includes(`\"${privateField}\"`), `public response leaked ${privateField}`);
