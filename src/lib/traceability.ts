@@ -549,9 +549,9 @@ export async function getPublicTrace(publicToken: string) {
         fields: [
             { label: "Vụ mùa", value: seasonNames },
             { label: "Vườn", value: farmNames, highlight: true },
-            { label: "Mã số vùng sản xuất", value: regionCodes },
+            { label: "Mã số vùng sản xuất", value: regionCodes, highlight: true },
             { label: "Địa phương", value: farmLocations },
-            { label: "Giống sầu riêng", value: varieties, highlight: true },
+            { label: "Giống", value: varieties, highlight: true },
         ],
     };
     rawMilestones.push(milestoneSeason);
@@ -577,11 +577,11 @@ export async function getPublicTrace(publicToken: string) {
         badgeText: "QC: Đạt",
         badgeVariant: "emerald",
         fields: [
-            { label: "Lô thu hoạch", value: harvestLotCodes, highlight: true },
-            { label: "Vườn", value: farmNames },
-            { label: "Giống sầu riêng", value: varieties },
-            { label: "Khối lượng thực tế", value: `${totalHarvestWeight.toLocaleString("vi-VN")} kg`, highlight: true },
-            { label: "Kết quả trước thu hoạch", value: "Đạt tiêu chuẩn an toàn & kiểm tra tuân thủ" },
+            { label: "Vườn", value: farmNames, highlight: true },
+            { label: "Lô", value: harvestLotCodes, highlight: true },
+            { label: "Khối lượng", value: `${totalHarvestWeight.toLocaleString("vi-VN")} kg`, highlight: true },
+            { label: "Giống", value: varieties },
+            { label: "Kiểm tra trước thu hoạch", value: "Đạt" },
         ],
     };
     rawMilestones.push(milestoneHarvest);
@@ -611,19 +611,18 @@ export async function getPublicTrace(publicToken: string) {
             id: "milestone-collector",
             stepNumber: 3,
             type: "COLLECTOR_RECEIPT",
-            title: "VỰA THU MUA TIẾP NHẬN",
+            title: "VỰA THU MUA",
             subtitle: "Tiếp nhận nông sản từ vườn, kiểm định chất lượng & phân loại quả tươi",
             date: receivedDate,
             dateText: formatVnDate(receivedDate),
             badgeText: "QC: Đạt",
             badgeVariant: "blue",
             fields: [
-                { label: "Đơn vị", value: collectorName, highlight: true },
+                { label: "Vựa", value: collectorName, highlight: true },
                 { label: "Địa chỉ", value: collectorAddress },
-                { label: "Mã lô thu mua", value: collectionLotCode, highlight: true },
-                { label: "Khối lượng tiếp nhận", value: `${collectionWeight.toLocaleString("vi-VN")} kg` },
-                { label: "Kết quả QC", value: "Đạt tiêu chuẩn thu mua & phân loại" },
-                { label: "Nguồn thu hoạch", value: harvestLotCodes },
+                { label: "Lô thu mua", value: collectionLotCode, highlight: true },
+                { label: "Khối lượng", value: `${collectionWeight.toLocaleString("vi-VN")} kg` },
+                { label: "QC", value: "Đạt" },
             ],
         };
         rawMilestones.push(milestoneCollector);
@@ -641,18 +640,18 @@ export async function getPublicTrace(publicToken: string) {
             id: "milestone-proc-receipt",
             stepNumber: 3,
             type: "PROCESSING_RECEIPT",
-            title: "CƠ SỞ CHẾ BIẾN TIẾP NHẬN",
+            title: "CƠ SỞ TIẾP NHẬN",
             subtitle: "Tiếp nhận nông sản trực tiếp từ nhà vườn để đưa vào dây chuyền",
             date: receiptDate,
             dateText: formatVnDate(receiptDate),
             badgeText: "QC: Đạt",
             badgeVariant: "blue",
             fields: [
-                { label: "Đơn vị", value: procName, highlight: true },
+                { label: "Cơ sở", value: procName, highlight: true },
                 { label: "Địa chỉ", value: procAddress },
-                { label: "Mã lô nguyên liệu", value: rawLotCode, highlight: true },
-                { label: "Khối lượng thực nhận", value: `${rawWeight.toLocaleString("vi-VN")} kg` },
-                { label: "QC nguyên liệu", value: "Đạt tiêu chuẩn nguyên liệu chế biến" },
+                { label: "Lô nguyên liệu", value: rawLotCode, highlight: true },
+                { label: "Khối lượng", value: `${rawWeight.toLocaleString("vi-VN")} kg` },
+                { label: "QC", value: "Đạt" },
             ],
         };
         rawMilestones.push(milestoneProcReceipt);
@@ -685,7 +684,7 @@ export async function getPublicTrace(publicToken: string) {
             id: "milestone-processing",
             stepNumber: 4,
             type: "PROCESSING_PACKAGING",
-            title: isFrozenPulp ? "CHẾ BIẾN & ĐÓNG GÓI" : "CƠ SỞ ĐÓNG GÓI",
+            title: isFrozenPulp ? "CHẾ BIẾN & ĐÓNG GÓI" : "CHẾ BIẾN & ĐÓNG GÓI",
             subtitle: isFrozenPulp
                 ? "Bóc múi chọn lọc, cấp đông sâu IQF và đóng khay hút chân không vô trùng"
                 : "Phân loại trái, làm sạch bằng khí nén & xử lý bề mặt, đóng thùng carton chuẩn GACC",
@@ -694,13 +693,10 @@ export async function getPublicTrace(publicToken: string) {
             badgeText: "QC: Đạt",
             badgeVariant: "purple",
             fields: [
-                { label: isFrozenPulp ? "Cơ sở chế biến" : "Cơ sở đóng gói", value: facilityName, highlight: true },
+                { label: "Cơ sở", value: facilityName, highlight: true },
                 { label: "Địa chỉ", value: facilityAddress },
-                ...(isFrozenPulp ? [{ label: "Mã lô chế biến", value: batchCode }] : []),
-                { label: isFrozenPulp ? "Mã lô thành phẩm" : "Mã lô đóng gói", value: finishedLotCode, highlight: true },
-                { label: "Sản phẩm", value: finishedProductName, highlight: true },
-                { label: "Khối lượng", value: `${finishedWeight.toLocaleString("vi-VN")} kg${fpl?.packaging ? ` (${fpl.packaging})` : ""}` },
-                { label: "QC kiểm soát", value: isFrozenPulp ? "Đạt chuẩn an toàn VSTP & cấp đông sâu IQF" : "Đạt chuẩn xuất khẩu Loại A & kiểm dịch thực vật" },
+                { label: isFrozenPulp ? "Lô thành phẩm" : "Lô thành phẩm", value: finishedLotCode, highlight: true },
+                { label: "QC", value: "Đạt" },
             ],
             substeps: isFrozenPulp
                 ? [
@@ -759,13 +755,11 @@ export async function getPublicTrace(publicToken: string) {
             badgeVariant: "indigo",
             fields: [
                 { label: "Thị trường", value: country, highlight: true },
-                { label: "Loại sản phẩm", value: trace.commercialLot.productName },
-                { label: "Mã lô xuất khẩu", value: trace.commercialLot.lotCode, highlight: true },
-                { label: "Khối lượng xuất", value: `${Number(trace.commercialLot.quantity).toLocaleString("vi-VN")} ${trace.commercialLot.unit}` },
-                { label: "Đơn vị xuất", value: exporterName },
-                ...(port ? [{ label: "Cảng / Cửa khẩu xuất", value: port }] : []),
+                ...(port ? [{ label: "Cửa khẩu", value: port }] : []),
+                { label: "Lô xuất khẩu", value: trace.commercialLot.lotCode, highlight: true },
+                ...(exporterName ? [{ label: "Đơn vị xuất", value: exporterName }] : []),
                 ...(container ? [{ label: "Container", value: container }] : []),
-                ...(seal ? [{ label: "Niêm phong Seal", value: seal }] : []),
+                ...(seal ? [{ label: "Seal niêm phong", value: seal }] : []),
             ],
         };
         rawMilestones.push(milestoneExport);

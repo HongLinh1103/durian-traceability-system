@@ -20,7 +20,11 @@ import {
     ShieldCheck,
     ArrowDownUp,
     ExternalLink,
-    Lock
+    Lock,
+    GitCommit,
+    Layers,
+    ArrowDown,
+    ArrowUp
 } from "lucide-react";
 import { TraceMilestone } from "@/lib/traceability";
 
@@ -125,44 +129,45 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
     const getMilestoneIcon = (type: TraceMilestone["type"]) => {
         switch (type) {
             case "SEASON":
-                return <Sprout className="h-5 w-5 text-emerald-600" />;
+                return <Sprout className="h-4 w-4 text-white" />;
             case "HARVEST":
-                return <Scissors className="h-5 w-5 text-emerald-600" />;
+                return <Scissors className="h-4 w-4 text-white" />;
             case "COLLECTOR_RECEIPT":
-                return <Building2 className="h-5 w-5 text-blue-600" />;
+                return <Building2 className="h-4 w-4 text-white" />;
             case "PROCESSING_RECEIPT":
-                return <Factory className="h-5 w-5 text-blue-600" />;
+                return <Factory className="h-4 w-4 text-white" />;
             case "PROCESSING_PACKAGING":
-                return <Snowflake className="h-5 w-5 text-purple-600" />;
+                return <Snowflake className="h-4 w-4 text-white" />;
             case "EXPORT":
-                return <Ship className="h-5 w-5 text-indigo-600" />;
+                return <Ship className="h-4 w-4 text-white" />;
             case "DISTRIBUTION":
             default:
-                return <Truck className="h-5 w-5 text-emerald-600" />;
+                return <Truck className="h-4 w-4 text-white" />;
         }
     };
 
-    const getBadgeStyle = (variant: TraceMilestone["badgeVariant"]) => {
-        switch (variant) {
-            case "purple":
-                return "bg-purple-100 text-purple-800 border-purple-200";
-            case "blue":
-                return "bg-blue-100 text-blue-800 border-blue-200";
-            case "indigo":
-                return "bg-indigo-100 text-indigo-800 border-indigo-200";
-            case "amber":
-                return "bg-amber-100 text-amber-800 border-amber-200";
-            case "emerald":
+    const getNodeColorClass = (type: TraceMilestone["type"]) => {
+        switch (type) {
+            case "EXPORT":
+                return "bg-indigo-700 ring-indigo-100";
+            case "PROCESSING_PACKAGING":
+                return "bg-purple-700 ring-purple-100";
+            case "COLLECTOR_RECEIPT":
+            case "PROCESSING_RECEIPT":
+                return "bg-blue-700 ring-blue-100";
+            case "HARVEST":
+                return "bg-emerald-700 ring-emerald-100";
+            case "SEASON":
             default:
-                return "bg-emerald-100 text-emerald-800 border-emerald-200";
+                return "bg-emerald-800 ring-emerald-100";
         }
     };
 
     return (
         <main className="min-h-screen bg-gradient-to-b from-emerald-50/70 via-slate-50 to-white px-4 py-6 text-slate-900 sm:py-10">
-            <div className="mx-auto max-w-4xl space-y-6">
+            <div className="mx-auto max-w-3xl space-y-6">
                 {/* 1. HEADER: PRODUCT & QR BADGE */}
-                <header className="rounded-3xl border border-emerald-200/80 bg-white p-6 shadow-sm sm:p-8 space-y-5">
+                <header className="rounded-3xl border border-emerald-200/80 bg-white p-6 shadow-sm sm:p-8 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
                         <div className="flex items-center gap-2">
                             <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-700 text-white font-black text-xs shadow-xs">
@@ -203,10 +208,10 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                     </div>
 
                     <div>
-                        <h1 className="text-2xl font-black text-slate-900 sm:text-4xl">
+                        <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">
                             {trace.commercialLot.productName}
                         </h1>
-                        <p className="mt-2 text-sm text-slate-500 font-medium">
+                        <p className="mt-1.5 text-xs sm:text-sm text-slate-500 font-medium">
                             Lô xuất bán / thương mại:{" "}
                             <b className="font-mono text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
                                 {trace.commercialLot.lotCode}
@@ -216,7 +221,7 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
 
                     {!active && (
                         <div
-                            className={`rounded-2xl p-4 text-sm font-semibold flex items-center gap-3 border ${
+                            className={`rounded-2xl p-4 text-xs font-semibold flex items-center gap-3 border ${
                                 trace.qrStatus === "REVOKED"
                                     ? "bg-red-50 text-red-800 border-red-200"
                                     : "bg-amber-50 text-amber-900 border-amber-200"
@@ -230,47 +235,19 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                             </span>
                         </div>
                     )}
-
-                    {/* Quick Info Grid */}
-                    <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-5 sm:grid-cols-4 text-xs">
-                        <div className="space-y-1">
-                            <span className="text-slate-400 font-bold uppercase tracking-wider block">Mã định danh QR</span>
-                            <span className="font-mono font-bold text-slate-800 block truncate">{trace.code}</span>
-                        </div>
-                        <div className="space-y-1">
-                            <span className="text-slate-400 font-bold uppercase tracking-wider block">Đơn vị phát hành</span>
-                            <span className="font-bold text-slate-800 block truncate">{trace.issuer}</span>
-                        </div>
-                        <div className="space-y-1">
-                            <span className="text-slate-400 font-bold uppercase tracking-wider block">Khối lượng lô</span>
-                            <span className="font-black text-emerald-800 block">
-                                {trace.commercialLot.quantity.toLocaleString("vi-VN")} {trace.commercialLot.unit}
-                            </span>
-                        </div>
-                        <div className="space-y-1">
-                            <span className="text-slate-400 font-bold uppercase tracking-wider block">Điểm đến / Thị trường</span>
-                            <span className="font-bold text-slate-800 block truncate">
-                                {trace.destination?.country || trace.destination?.name || "Chưa xác định"}
-                            </span>
-                        </div>
-                    </div>
                 </header>
 
-                {/* 2. TIMELINE: 4-5 CHÍNH MỐC THEO HÀNH TRÌNH THẬT */}
-                <section className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8 space-y-6">
+                {/* 2. DÂY CHUYỀN HÀNH TRÌNH SẢN PHẨM (PIPELINE SUPPLY CHAIN) */}
+                <section className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-sm space-y-6">
+                    {/* Title & Direction Switch */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 shadow-2xs">
-                                <PackageCheck className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <h2 className="text-xl font-black text-slate-900 uppercase tracking-wide">
-                                    Hành Trình Sản Phẩm
-                                </h2>
-                                <p className="text-xs text-slate-500">
-                                    Minh bạch {trace.milestones.length} mốc chính từ nông trại đến người tiêu dùng
-                                </p>
-                            </div>
+                        <div>
+                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-wide">
+                                HÀNH TRÌNH SẢN PHẨM
+                            </h2>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                Dây chuyền truy xuất nguồn gốc liên tục từ vùng sản xuất đến điểm tiêu thụ
+                            </p>
                         </div>
 
                         {/* Toggle Sort Order Button */}
@@ -280,121 +257,103 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition self-start sm:self-auto"
                         >
                             <ArrowDownUp className="h-3.5 w-3.5 text-emerald-700" />
-                            <span>{sortNewestFirst ? "Mới nhất trước (Đang xem)" : "Cũ nhất trước (Đang xem)"}</span>
+                            <span>{sortNewestFirst ? "Mới nhất trước" : "Cũ nhất trước"}</span>
                         </button>
                     </div>
 
-                    {/* Milestone Cards List */}
-                    <div className="relative space-y-6">
+                    {/* DÂY CHUYỀN LIÊN TỤC (CONTINUOUS CHAIN TRACK) */}
+                    <div className="relative pl-7 sm:pl-9 space-y-8 border-l-2 border-emerald-600/80 ml-4 sm:ml-5 py-2">
                         {displayedMilestones.map((milestone, idx) => {
                             const isProcessing = milestone.type === "PROCESSING_PACKAGING";
+                            const isLast = idx === displayedMilestones.length - 1;
 
                             return (
-                                <div
-                                    key={milestone.id}
-                                    className="relative rounded-3xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/40 p-5 sm:p-6 shadow-2xs transition hover:shadow-md space-y-4"
-                                >
-                                    {/* Card Header */}
-                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 border-b border-slate-100 pb-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 border border-slate-200">
-                                                {getMilestoneIcon(milestone.type)}
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-mono text-xs font-bold text-slate-400">
-                                                        #{sortNewestFirst ? trace.milestones.length - idx : idx + 1}
-                                                    </span>
-                                                    <h3 className="text-base font-black uppercase text-slate-900 tracking-wide">
-                                                        {milestone.title}
-                                                    </h3>
-                                                </div>
-                                                {milestone.subtitle && (
-                                                    <p className="text-xs text-slate-500 mt-0.5">
-                                                        {milestone.subtitle}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
+                                <div key={milestone.id} className="relative group">
+                                    {/* Circular Node on the Chain */}
+                                    <div
+                                        className={`absolute -left-[43px] sm:-left-[51px] top-0 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full shadow-md ring-4 ${getNodeColorClass(
+                                            milestone.type
+                                        )} transition group-hover:scale-110`}
+                                    >
+                                        {getMilestoneIcon(milestone.type)}
+                                    </div>
 
-                                        <div className="flex items-center gap-2 self-start sm:self-auto">
-                                            <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-xl flex items-center gap-1">
-                                                <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                                    {/* Milestone Content */}
+                                    <div className="space-y-2">
+                                        {/* Milestone Header Line: Title + Date */}
+                                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                            <h3 className="text-base sm:text-lg font-black uppercase tracking-wide text-slate-900">
+                                                {milestone.title}
+                                            </h3>
+                                            <span className="font-mono text-xs sm:text-sm font-bold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
                                                 {milestone.dateText}
                                             </span>
-                                            <span
-                                                className={`rounded-full px-2.5 py-1 text-xs font-black border ${getBadgeStyle(
-                                                    milestone.badgeVariant
-                                                )}`}
-                                            >
-                                                {milestone.badgeText}
-                                            </span>
                                         </div>
-                                    </div>
 
-                                    {/* Card Details Table */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                        {milestone.fields.map((field, fIdx) => (
-                                            <div key={fIdx} className="flex justify-between sm:justify-start gap-2 py-0.5">
-                                                <span className="text-slate-500 font-medium w-40 shrink-0">
-                                                    {field.label}:
-                                                </span>
-                                                <span
-                                                    className={`break-words text-right sm:text-left ${
-                                                        field.highlight
-                                                            ? "font-black text-slate-900 text-[13px]"
-                                                            : "font-bold text-slate-800"
-                                                    }`}
-                                                >
-                                                    {field.value}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Optional Substeps for Processing */}
-                                    {isProcessing && milestone.substeps && milestone.substeps.length > 0 && (
-                                        <div className="pt-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => setExpandedProcessing(!expandedProcessing)}
-                                                className="flex items-center gap-1.5 text-xs font-bold text-purple-700 hover:text-purple-900 transition"
-                                            >
-                                                <span>
-                                                    {expandedProcessing
-                                                        ? "Thu gọn quy trình chi tiết"
-                                                        : `Xem chi tiết quy trình chế biến & đóng gói (${milestone.substeps.length} bước)`}
-                                                </span>
-                                                {expandedProcessing ? (
-                                                    <ChevronUp className="h-3.5 w-3.5" />
-                                                ) : (
-                                                    <ChevronDown className="h-3.5 w-3.5" />
-                                                )}
-                                            </button>
-
-                                            {expandedProcessing && (
-                                                <div className="mt-3 rounded-2xl bg-purple-50/50 p-4 border border-purple-100 space-y-2 text-xs">
-                                                    <p className="font-bold text-purple-900 uppercase text-[11px] tracking-wider mb-2">
-                                                        Quy trình kiểm soát chất lượng mẻ chế biến:
-                                                    </p>
-                                                    {milestone.substeps.map((step, sIdx) => (
-                                                        <div
-                                                            key={sIdx}
-                                                            className="flex items-center justify-between py-1 border-b border-purple-100/60 last:border-0"
-                                                        >
-                                                            <span className="font-medium text-slate-800">
-                                                                {step.name}
-                                                            </span>
-                                                            <span className="font-bold text-emerald-700 flex items-center gap-1">
-                                                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                                                {step.status}
-                                                            </span>
-                                                        </div>
-                                                    ))}
+                                        {/* Milestone Fields List (Formatted concisely as requested) */}
+                                        <div className="space-y-1.5 text-xs sm:text-sm pl-0.5">
+                                            {milestone.fields.map((field, fIdx) => (
+                                                <div key={fIdx} className="flex items-start gap-2">
+                                                    <span className="text-slate-500 font-medium shrink-0 min-w-[120px] sm:min-w-[150px]">
+                                                        {field.label}:
+                                                    </span>
+                                                    <span
+                                                        className={`break-words ${
+                                                            field.highlight
+                                                                ? "font-black text-slate-900"
+                                                                : "font-semibold text-slate-800"
+                                                        }`}
+                                                    >
+                                                        {field.value}
+                                                    </span>
                                                 </div>
-                                            )}
+                                            ))}
                                         </div>
-                                    )}
+
+                                        {/* Expandable Substeps for Processing */}
+                                        {isProcessing && milestone.substeps && milestone.substeps.length > 0 && (
+                                            <div className="pt-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setExpandedProcessing(!expandedProcessing)}
+                                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 transition"
+                                                >
+                                                    <span>
+                                                        {expandedProcessing
+                                                            ? "Thu gọn quy trình"
+                                                            : `Xem quy trình chế biến / đóng gói (${milestone.substeps.length} bước)`}
+                                                    </span>
+                                                    {expandedProcessing ? (
+                                                        <ChevronUp className="h-3.5 w-3.5" />
+                                                    ) : (
+                                                        <ChevronDown className="h-3.5 w-3.5" />
+                                                    )}
+                                                </button>
+
+                                                {expandedProcessing && (
+                                                    <div className="mt-2.5 rounded-2xl bg-slate-50 p-4 border border-slate-200 space-y-2 text-xs">
+                                                        <p className="font-bold text-slate-800 uppercase text-[11px] tracking-wider mb-2">
+                                                            Quy trình kiểm soát chất lượng mẻ:
+                                                        </p>
+                                                        {milestone.substeps.map((step, sIdx) => (
+                                                            <div
+                                                                key={sIdx}
+                                                                className="flex items-center justify-between py-1 border-b border-slate-200/60 last:border-0"
+                                                            >
+                                                                <span className="font-medium text-slate-800">
+                                                                    {step.name}
+                                                                </span>
+                                                                <span className="font-bold text-emerald-700 flex items-center gap-1">
+                                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                                    {step.status}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })}
@@ -402,13 +361,13 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                 </section>
 
                 {/* 3. QUÁ TRÌNH CANH TÁC TẠI VƯỜN (ACCORDION) */}
-                <section className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8 space-y-5">
-                    <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 shadow-2xs">
-                            <Sprout className="h-6 w-6" />
+                <section className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm space-y-4">
+                    <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                            <Sprout className="h-5 w-5" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-wide">
+                            <h2 className="text-lg font-black text-slate-900 uppercase tracking-wide">
                                 Quá Trình Canh Tác Nông Trại
                             </h2>
                             <p className="text-xs text-slate-500">
@@ -501,7 +460,7 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                 </section>
 
                 {/* 4. CAM KẾT BẢO MẬT & MINH BẠCH */}
-                <footer className="rounded-3xl border border-emerald-100 bg-emerald-50/50 p-5 text-center text-xs text-slate-600 space-y-2">
+                <footer className="rounded-3xl border border-emerald-100 bg-emerald-50/50 p-5 text-center text-xs text-slate-600 space-y-1.5">
                     <div className="flex items-center justify-center gap-1.5 font-bold text-emerald-800 text-sm">
                         <Lock className="h-4 w-4 text-emerald-700" />
                         <span>Chính Sách Bảo Mật & Minh Bạch Chuỗi Cung Ứng TriViet</span>
