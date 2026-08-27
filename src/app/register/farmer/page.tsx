@@ -237,7 +237,7 @@ export default function RegisterPage() {
                                                     <Field label="Mã vùng trồng" error={error?.growingRegionCode?.message}>
                                                         <Input placeholder="Ví dụ: MSVT-DN-TRIAN-001" {...form.register(`farms.${index}.growingRegionCode`)} />
                                                     </Field>
-                                                    <div className="space-y-2">
+                                                    <div className="space-y-2 md:col-span-2">
                                                         <Label>Giống sầu riêng</Label>
                                                         <div className="space-y-2">
                                                             {values.farms[index].durianVarieties.map((_, varietyIndex) => (
@@ -271,10 +271,28 @@ export default function RegisterPage() {
                                                         </Button>
                                                         {error?.durianVarieties?.message && <p className="text-xs font-medium text-red-600">{String(error.durianVarieties.message)}</p>}
                                                     </div>
-                                                    <Field label="Vĩ độ" error={error?.latitude?.message}><Input type="number" step="any" {...form.register(`farms.${index}.latitude`)} /></Field>
-                                                    <Field label="Kinh độ" error={error?.longitude?.message}><Input type="number" step="any" {...form.register(`farms.${index}.longitude`)} /></Field>
-                                                    <div className="md:col-span-2"><Button type="button" variant="outline" onClick={() => getCurrentLocation(index)} disabled={locating === index}>{locating === index ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LocateFixed className="mr-2 h-4 w-4" />}Lấy vị trí hiện tại</Button></div>
-                                                    <Field label="Ghi chú"><textarea className="min-h-24 w-full rounded-2xl border border-slate-200 p-3 text-sm" {...form.register(`farms.${index}.notes`)} /></Field>
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:col-span-2">
+                                                        <Field label="Vĩ độ" error={error?.latitude?.message}>
+                                                            <Input type="number" step="any" placeholder="Ví dụ: 11.023456" {...form.register(`farms.${index}.latitude`)} />
+                                                        </Field>
+                                                        <Field label="Kinh độ" error={error?.longitude?.message}>
+                                                            <Input type="number" step="any" placeholder="Ví dụ: 107.123456" {...form.register(`farms.${index}.longitude`)} />
+                                                        </Field>
+                                                    </div>
+
+                                                    <div className="md:col-span-2">
+                                                        <Button type="button" variant="outline" onClick={() => getCurrentLocation(index)} disabled={locating === index}>
+                                                            {locating === index ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LocateFixed className="mr-2 h-4 w-4" />}
+                                                            Lấy vị trí hiện tại (GPS)
+                                                        </Button>
+                                                    </div>
+
+                                                    <div className="md:col-span-2">
+                                                        <Field label="Ghi chú">
+                                                            <textarea className="min-h-24 w-full rounded-2xl border border-slate-200 p-3 text-sm" placeholder="Ghi chú thêm về địa hình, hệ thống tưới hoặc lịch sử canh tác của vườn..." {...form.register(`farms.${index}.notes`)} />
+                                                        </Field>
+                                                    </div>
                                                 </div>
                                             </section>
                                         );
