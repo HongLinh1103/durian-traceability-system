@@ -42,6 +42,28 @@ const inputSchema = z
         paymentMethod: z.string().trim().optional(),
         dispatchedAt: z.coerce.date().optional(),
         note: z.string().trim().max(500).optional(),
+        // Export specific fields (Nghị quyết 36/2026/NQ-CP & GACC Standard)
+        isExport: z.boolean().optional().default(false),
+        destinationCountry: z.string().trim().optional(),
+        portOfLoading: z.string().trim().optional(),
+        portOfDestination: z.string().trim().optional(),
+        transportMethod: z.string().trim().optional(),
+        containerNumber: z.string().trim().optional(),
+        sealNumber: z.string().trim().optional(),
+        vehicleReference: z.string().trim().optional(),
+        customsDeclarationNumber: z.string().trim().optional(),
+        phytosanitaryCertificateNumber: z.string().trim().optional(),
+        exportStageStatus: z
+            .enum([
+                "DRAFT",
+                "PENDING_PHYTOSANITARY",
+                "PHYTOSANITARY_PASSED",
+                "CUSTOMS_DECLARING",
+                "CUSTOMS_CLEARED",
+                "DISPATCHED",
+            ])
+            .optional()
+            .default("DISPATCHED"),
     })
     .refine((value) => value.destinationId || value.destination || value.buyerName, {
         message: "Cần chọn hoặc nhập điểm đến / bên mua",
@@ -74,25 +96,48 @@ export async function GET() {
             owner: { select: { name: true, type: true } },
             farmerOwner: { select: { fullName: true } },
             paymentRecords: { orderBy: { paymentDate: "desc" } },
+            shipmentItems: {
+                include: {
+                    shipment: {
+                        include: {
+                            exportInfo: true,
+                        },
+                    },
+                },
+            },
         },
         orderBy: { createdAt: "desc" },
     });
     const data = await Promise.all(
-        rows.map(async (row) => ({
-            ...row,
-            owner: row.owner ?? { name: row.farmerOwner?.fullName ?? "Hộ sản xuất", type: "FARMER" },
-            quantity: Number(row.quantity),
-            remainingQuantity: Number(row.remainingQuantity),
-            stockBeforeDispatch: row.stockBeforeDispatch ? Number(row.stockBeforeDispatch) : null,
-            unitPrice: row.unitPrice ? Number(row.unitPrice) : null,
-            subtotal: row.subtotal ? Number(row.subtotal) : null,
-            discount: row.discount ? Number(row.discount) : 0,
-            totalAmount: row.totalAmount ? Number(row.totalAmount) : null,
-            paidAmount: row.paidAmount ? Number(row.paidAmount) : 0,
-            debtAmount: row.debtAmount ? Number(row.debtAmount) : 0,
-            paymentRecords: row.paymentRecords.map((p) => ({ ...p, amount: Number(p.amount) })),
-            validation: await validateTraceability(row.id),
-        }))
+        rows.map(async (row) => {
+            const shipment = row.shipmentItems[0]?.shipment ?? null;
+            return {
+                ...row,
+                owner: row.owner ?? { name: row.farmerOwner?.fullName ?? "Hộ sản xuất", type: "FARMER" },
+                quantity: Number(row.quantity),
+                remainingQuantity: Number(row.remainingQuantity),
+                stockBeforeDispatch: row.stockBeforeDispatch ? Number(row.stockBeforeDispatch) : null,
+                unitPrice: row.unitPrice ? Number(row.unitPrice) : null,
+                subtotal: row.subtotal ? Number(row.subtotal) : null,
+                discount: row.discount ? Number(row.discount) : 0,
+                totalAmount: row.totalAmount ? Number(row.totalAmount) : null,
+                paidAmount: row.paidAmount ? Number(row.paidAmount) : 0,
+                debtAmount: row.debtAmount ? Number(row.debtAmount) : 0,
+                paymentRecords: row.paymentRecords.map((p) => ({ ...p, amount: Number(p.amount) })),
+                exportInfo: shipment?.exportInfo ?? null,
+                shipment: shipment
+                    ? {
+                          shipmentCode: shipment.shipmentCode,
+                          status: shipment.status,
+                          dispatchAt: shipment.dispatchAt,
+                          vehicleReference: shipment.vehicleReference,
+                          containerNumber: shipment.containerNumber,
+                          sealNumber: shipment.sealNumber,
+                      }
+                    : null,
+                validation: await validateTraceability(row.id),
+            };
+        })
     );
     return NextResponse.json({ success: true, data });
 }
@@ -104,7 +149,7 @@ export async function POST(request: Request) {
     const parsed = inputSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success)
         return NextResponse.json(
-            { success: false, error: "Dữ liệu lô thương mại / xuất bán không hợp lệ", details: parsed.error.flatten() },
+            { success: false, error: "Dữ liệu lô xuất bán / xuất khẩu không hợp lệ", details: parsed.error.flatten() },
             { status: 400 }
         );
     const value = parsed.data;
@@ -158,7 +203,10 @@ export async function POST(request: Request) {
             ? Number((source as { currentWeight: unknown }).currentWeight)
             : Number((source as { remainingWeight: unknown }).remainingWeight);
     if (value.quantity > available)
-        return NextResponse.json({ success: false, error: `Khối lượng xuất (${value.quantity} kg) vượt quá lượng nguồn còn khả dụng (${available} kg)` }, { status: 400 });
+        return NextResponse.json(
+            { success: false, error: `Khối lượng xuất (${value.quantity} kg) vượt quá lượng nguồn còn khả dụng (${available} kg)` },
+            { status: 400 }
+        );
     const relation =
         value.sourceType === "HARVEST_LOT"
             ? { sourceHarvestLotId: value.sourceId }
@@ -166,7 +214,7 @@ export async function POST(request: Request) {
             ? { sourceCollectionLotId: value.sourceId }
             : { sourceFinishedProductLotId: value.sourceId };
 
-    // Calculate financial figures accurately
+    // Financial calculations
     const unitPrice = value.unitPrice ?? 0;
     const subtotal = value.subtotal ?? (unitPrice > 0 ? value.quantity * unitPrice : 0);
     const discount = value.discount ?? 0;
@@ -180,49 +228,79 @@ export async function POST(request: Request) {
         else paymentStatus = "UNPAID";
     }
 
-    const buyerName = value.buyerName || value.destination?.name || "Khách hàng";
+    const isExportMode =
+        value.isExport ||
+        value.destination?.type === "EXPORT" ||
+        value.lotCode.startsWith("EXP-") ||
+        value.lotCode.startsWith("CM-EXP-");
+
+    const exportCountry = value.destinationCountry || value.destination?.country || (isExportMode ? "Trung Quốc" : null);
+
+    const buyerName = value.buyerName || value.destination?.name || (isExportMode ? `Thị trường ${exportCountry}` : "Khách hàng");
     const buyerPhone = value.buyerPhone || value.destination?.contactPhone || null;
-    const buyerAddress = value.buyerAddress || value.destination?.address || null;
+    const buyerAddress = value.buyerAddress || value.destination?.address || (isExportMode ? exportCountry || "Trung Quốc" : null);
 
     try {
         const lot = await prisma.$transaction(async (tx) => {
-            const allocation =
-                value.sourceType === "HARVEST_LOT"
-                    ? await tx.harvestLot.updateMany({
-                          where: { id: value.sourceId, remainingWeight: { gte: value.quantity } },
-                          data: {
-                              remainingWeight: { decrement: value.quantity },
-                              status: available === value.quantity ? "USED" : "PARTIALLY_USED",
-                          },
-                      })
-                    : value.sourceType === "COLLECTION_LOT"
-                    ? await tx.collectionLot.updateMany({
-                          where: { id: value.sourceId, currentWeight: { gte: value.quantity } },
-                          data: {
-                              currentWeight: { decrement: value.quantity },
-                              status: available === value.quantity ? "USED" : "PARTIALLY_USED",
-                          },
-                      })
-                    : await tx.finishedProductLot.updateMany({
-                          where: { id: value.sourceId, remainingWeight: { gte: value.quantity } },
-                          data: {
-                              remainingWeight: { decrement: value.quantity },
-                              status: available === value.quantity ? "DISTRIBUTED" : "PARTIALLY_DISTRIBUTED",
-                          },
-                      });
-            if (allocation.count !== 1)
-                throw new Error("Lô nguồn vừa được phân bổ bởi giao dịch khác; vui lòng tải lại");
+            if (value.sourceType === "HARVEST_LOT") {
+                await tx.harvestLot.updateMany({
+                    where: { id: value.sourceId, remainingWeight: { gte: value.quantity } },
+                    data: {
+                        remainingWeight: { decrement: value.quantity },
+                        status: available === value.quantity ? "USED" : "PARTIALLY_USED",
+                    },
+                });
+            } else if (value.sourceType === "COLLECTION_LOT") {
+                await tx.collectionLot.updateMany({
+                    where: { id: value.sourceId, currentWeight: { gte: value.quantity } },
+                    data: {
+                        currentWeight: { decrement: value.quantity },
+                        status: available === value.quantity ? "USED" : "PARTIALLY_USED",
+                    },
+                });
+            } else {
+                await tx.finishedProductLot.updateMany({
+                    where: { id: value.sourceId, remainingWeight: { gte: value.quantity } },
+                    data: {
+                        remainingWeight: { decrement: value.quantity },
+                        status: available === value.quantity ? "DISTRIBUTED" : "PARTIALLY_DISTRIBUTED",
+                    },
+                });
+            }
 
             let destinationId = value.destinationId;
-            if (!destinationId && value.destination) {
-                const address = value.destination.address?.trim() || value.destination.name;
-                destinationId = (
-                    await tx.distributionDestination.upsert({
-                        where: { name_address: { name: value.destination.name, address } },
-                        update: {},
-                        create: { ...value.destination, address },
-                    })
-                ).id;
+            if (!destinationId && (value.destination || buyerName)) {
+                const destType = isExportMode ? "EXPORT" : value.destination?.type ?? "RETAIL";
+                const destName = value.destination?.name ?? buyerName;
+                const destAddress = value.destination?.address ?? buyerAddress ?? "Việt Nam";
+
+                const destination = await tx.distributionDestination.upsert({
+                    where: {
+                        name_address: {
+                            name: destName,
+                            address: destAddress,
+                        },
+                    },
+                    update: {
+                        type: destType,
+                        country: exportCountry || value.destination?.country || null,
+                        province: value.destination?.province,
+                        district: value.destination?.district,
+                        contactName: value.destination?.contactName,
+                        contactPhone: value.destination?.contactPhone || buyerPhone,
+                    },
+                    create: {
+                        type: destType,
+                        name: destName,
+                        address: destAddress,
+                        country: exportCountry || value.destination?.country || null,
+                        province: value.destination?.province,
+                        district: value.destination?.district,
+                        contactName: value.destination?.contactName,
+                        contactPhone: value.destination?.contactPhone || buyerPhone,
+                    },
+                });
+                destinationId = destination.id;
             }
 
             const created = await tx.commercialLot.create({
@@ -262,7 +340,53 @@ export async function POST(request: Request) {
                 },
             });
 
-            // If money was paid, record in PartnerPaymentRecord
+            // If export mode, create Shipment and ExportShipmentInfo
+            if (isExportMode && destinationId) {
+                const shipmentCode = `SHIP-${created.lotCode}`;
+                const shipment = await tx.shipment.create({
+                    data: {
+                        shipmentCode,
+                        senderType: user.role === "PROCESSING_FACILITY" ? "PROCESSING_FACILITY" : user.role === "COLLECTOR" ? "COLLECTOR" : "FARMER",
+                        senderId: facility?.id,
+                        farmerSenderId: user.role === "FARMER" ? user.id : null,
+                        destinationId,
+                        dispatchAt: value.dispatchedAt || new Date(),
+                        dispatchedWeight: value.quantity,
+                        vehicleReference: value.vehicleReference,
+                        containerNumber: value.containerNumber,
+                        sealNumber: value.sealNumber,
+                        status: value.exportStageStatus === "DISPATCHED" ? "DISPATCHED" : "DRAFT",
+                        note: `Lô xuất khẩu sang ${exportCountry || "Trung Quốc"}`,
+                    },
+                });
+
+                await tx.exportShipmentInfo.create({
+                    data: {
+                        shipmentId: shipment.id,
+                        destinationCountry: exportCountry || "Trung Quốc",
+                        exporterName: facility?.name || user.fullName || "Cơ sở xuất khẩu",
+                        buyerName,
+                        portOfLoading: value.portOfLoading || "Cửa khẩu Quốc tế Hữu Nghị (Lạng Sơn)",
+                        portOfDestination: value.portOfDestination,
+                        customsDeclarationNumber: value.customsDeclarationNumber,
+                        phytosanitaryCertificateNumber: value.phytosanitaryCertificateNumber,
+                        containerNumber: value.containerNumber,
+                        sealNumber: value.sealNumber,
+                        exportDate: value.dispatchedAt || new Date(),
+                    },
+                });
+
+                await tx.shipmentItem.create({
+                    data: {
+                        shipmentId: shipment.id,
+                        commercialLotId: created.id,
+                        quantity: value.quantity,
+                        weight: value.quantity,
+                    },
+                });
+            }
+
+            // If money was received, record in PartnerPaymentRecord
             if (facility && paidAmount > 0) {
                 await tx.partnerPaymentRecord.create({
                     data: {
@@ -284,7 +408,7 @@ export async function POST(request: Request) {
                     sourceId: value.sourceId,
                     targetType: "COMMERCIAL_LOT",
                     targetId: created.id,
-                    relationType: user.role === "FARMER" ? "SOLD_DIRECTLY_AS" : "PACKAGED_INTO",
+                    relationType: isExportMode ? "PACKAGED_INTO" : user.role === "FARMER" ? "SOLD_DIRECTLY_AS" : "PACKAGED_INTO",
                     quantity: value.quantity,
                     unit: value.unit,
                 },
@@ -295,17 +419,22 @@ export async function POST(request: Request) {
                     commercialLotId: created.id,
                     entityType: "COMMERCIAL_LOT",
                     entityId: created.id,
-                    eventType: user.role === "FARMER" ? "DIRECT_SALE_PREPARED" : "COMMERCIAL_LOT_CREATED",
+                    eventType: isExportMode ? "EXPORT_DISPATCHED" : user.role === "FARMER" ? "DIRECT_SALE_PREPARED" : "COMMERCIAL_LOT_CREATED",
                     eventTime: new Date(),
                     actorId: user.id,
                     actorRole: user.role,
                     organizationType: user.role,
                     organizationId: facility?.id ?? user.id,
-                    title: user.role === "FARMER" ? "Chuẩn bị bán trực tiếp" : "Xuất bán lô hàng",
-                    description: `${created.lotCode} · Bên mua: ${buyerName} · Khối lượng: ${value.quantity} ${value.unit}${
+                    title: isExportMode ? "Tạo lô hàng xuất khẩu" : user.role === "FARMER" ? "Chuẩn bị bán trực tiếp" : "Xuất bán lô hàng",
+                    description: `${created.lotCode} · ${isExportMode ? `Thị trường: ${exportCountry || "Trung Quốc"}` : `Bên mua: ${buyerName}`} · Khối lượng: ${value.quantity} ${value.unit}${
                         unitPrice > 0 ? ` · Đơn giá: ${unitPrice.toLocaleString("vi-VN")} đ/${value.unit}` : ""
                     }`,
                     metadata: {
+                        isExport: isExportMode,
+                        destinationCountry: exportCountry,
+                        portOfLoading: value.portOfLoading,
+                        containerNumber: value.containerNumber,
+                        sealNumber: value.sealNumber,
                         buyerName,
                         quantity: value.quantity,
                         unitPrice,
@@ -347,10 +476,11 @@ export async function POST(request: Request) {
             },
             { status: 201 }
         );
-    } catch (error) {
+    } catch (error: any) {
+        console.error("Lỗi khi tạo lô xuất bán / xuất khẩu:", error);
         return NextResponse.json(
-            { success: false, error: error instanceof Error ? error.message : "Không thể tạo lô xuất bán" },
-            { status: 400 }
+            { success: false, error: error.message || "Không thể tạo lô thương mại / xuất bán" },
+            { status: 500 }
         );
     }
 }

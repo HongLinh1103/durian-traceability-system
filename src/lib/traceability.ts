@@ -665,7 +665,8 @@ export async function getPublicTrace(publicToken: string) {
         fpl ||
         trace.commercialLot.ownerType === "PROCESSING_FACILITY" ||
         trace.commercialLot.productName.toLowerCase().includes("tách múi") ||
-        trace.commercialLot.productName.toLowerCase().includes("cấp đông")
+        trace.commercialLot.productName.toLowerCase().includes("cấp đông") ||
+        trace.commercialLot.lotCode.startsWith("EXP-")
     );
 
     if (hasProcessing) {
@@ -678,32 +679,44 @@ export async function getPublicTrace(publicToken: string) {
         const finishedWeight = Number(fpl?.netWeight ?? fpl?.quantity ?? fpl?.processingBatch?.totalOutputWeight ?? trace.commercialLot.quantity);
         const manufacturedDate = fpl?.manufacturedAt || fpl?.processingBatch?.completedAt || new Date();
 
+        const isFrozenPulp = finishedProductName.toLowerCase().includes("tách múi") || finishedProductName.toLowerCase().includes("cấp đông");
+
         const milestoneProcessing: TraceMilestone = {
             id: "milestone-processing",
             stepNumber: 4,
             type: "PROCESSING_PACKAGING",
-            title: "CHẾ BIẾN & ĐÓNG GÓI",
-            subtitle: "Bóc múi chọn lọc, cấp đông nhanh và đóng khay hút chân không vô trùng",
+            title: isFrozenPulp ? "CHẾ BIẾN & ĐÓNG GÓI" : "CƠ SỞ ĐÓNG GÓI",
+            subtitle: isFrozenPulp
+                ? "Bóc múi chọn lọc, cấp đông sâu IQF và đóng khay hút chân không vô trùng"
+                : "Phân loại trái, làm sạch bằng khí nén & xử lý bề mặt, đóng thùng carton chuẩn GACC",
             date: manufacturedDate,
             dateText: formatVnDate(manufacturedDate),
             badgeText: "QC: Đạt",
             badgeVariant: "purple",
             fields: [
-                { label: "Cơ sở chế biến", value: facilityName, highlight: true },
+                { label: isFrozenPulp ? "Cơ sở chế biến" : "Cơ sở đóng gói", value: facilityName, highlight: true },
                 { label: "Địa chỉ", value: facilityAddress },
-                { label: "Mã lô chế biến", value: batchCode },
-                { label: "Mã lô thành phẩm", value: finishedLotCode, highlight: true },
+                ...(isFrozenPulp ? [{ label: "Mã lô chế biến", value: batchCode }] : []),
+                { label: isFrozenPulp ? "Mã lô thành phẩm" : "Mã lô đóng gói", value: finishedLotCode, highlight: true },
                 { label: "Sản phẩm", value: finishedProductName, highlight: true },
-                { label: "Khối lượng thành phẩm", value: `${finishedWeight.toLocaleString("vi-VN")} kg${fpl?.packaging ? ` (${fpl.packaging})` : ""}` },
-                { label: "QC thành phẩm", value: "Đạt chuẩn an toàn VSTP & cấp đông sâu" },
+                { label: "Khối lượng", value: `${finishedWeight.toLocaleString("vi-VN")} kg${fpl?.packaging ? ` (${fpl.packaging})` : ""}` },
+                { label: "QC kiểm soát", value: isFrozenPulp ? "Đạt chuẩn an toàn VSTP & cấp đông sâu IQF" : "Đạt chuẩn xuất khẩu Loại A & kiểm dịch thực vật" },
             ],
-            substeps: [
-                { name: "1. Tiếp nhận & Khử trùng vỏ quả tươi", status: "Đạt tiêu chuẩn" },
-                { name: "2. Tách vỏ & Bóc múi chọn lọc múi loại A", status: "Đạt tiêu chuẩn" },
-                { name: "3. Cấp đông sâu (-35°C đến -40°C)", status: "Đạt chuẩn công nghệ IQF" },
-                { name: "4. Đóng khay hút chân không & dán nhãn", status: "Hoàn tất" },
-                { name: "5. Lưu kho bảo quản lạnh (-18°C)", status: "Đang lưu kho an toàn" },
-            ],
+            substeps: isFrozenPulp
+                ? [
+                      { name: "1. Tiếp nhận & Khử trùng vỏ quả tươi", status: "Đạt tiêu chuẩn" },
+                      { name: "2. Tách vỏ & Bóc múi chọn lọc múi loại A", status: "Đạt tiêu chuẩn" },
+                      { name: "3. Cấp đông sâu IQF (-35°C đến -40°C)", status: "Đạt chuẩn công nghệ" },
+                      { name: "4. Đóng khay hút chân không & dán tem", status: "Hoàn tất" },
+                      { name: "5. Lưu kho bảo quản lạnh (-18°C)", status: "Đang lưu kho an toàn" },
+                  ]
+                : [
+                      { name: "1. Tiếp nhận quả tươi & QC đầu vào", status: "Đạt tiêu chuẩn" },
+                      { name: "2. Phân loại sầu riêng đạt tiêu chuẩn xuất khẩu Loại A", status: "Đạt tiêu chuẩn" },
+                      { name: "3. Làm sạch bằng khí nén & rửa xử lý bề mặt vỏ", status: "Đạt tiêu chuẩn" },
+                      { name: "4. Dán tem truy xuất & Đóng thùng carton chuẩn xuất khẩu", status: "Hoàn tất" },
+                      { name: "5. Lưu kho mát bảo quản 13-15°C chờ xuất", status: "Đang lưu kho an toàn" },
+                  ],
         };
         rawMilestones.push(milestoneProcessing);
     }
@@ -718,6 +731,8 @@ export async function getPublicTrace(publicToken: string) {
         dest?.type === "EXPORT" ||
         shipment?.exportInfo !== null ||
         Boolean(dest?.country) ||
+        trace.commercialLot.lotCode.startsWith("EXP-") ||
+        trace.commercialLot.lotCode.startsWith("CM-EXP-") ||
         destNameLower.includes("xuất khẩu") ||
         destNameLower.includes("trung quốc") ||
         destNameLower.includes("china") ||
@@ -726,18 +741,18 @@ export async function getPublicTrace(publicToken: string) {
     const dispatchDate = trace.commercialLot.dispatchedAt || shipment?.dispatchAt || trace.commercialLot.createdAt;
 
     if (isExport) {
-        const country = dest?.country || shipment?.exportInfo?.destinationCountry || dest?.name || "Trung Quốc";
+        const country = dest?.country || shipment?.exportInfo?.destinationCountry || (destNameLower.includes("trung quốc") ? "Trung Quốc" : dest?.name || "Trung Quốc");
         const exporterName = trace.commercialLot.owner?.name || trace.commercialLot.farmerOwner?.fullName || "Cơ sở Chế biến Sầu riêng Trị An";
-        const port = shipment?.exportInfo?.portOfLoading || "Cảng Cát Lái, TP. Hồ Chí Minh";
-        const container = shipment?.exportInfo?.containerNumber;
-        const seal = shipment?.exportInfo?.sealNumber;
+        const port = shipment?.exportInfo?.portOfLoading || "Cửa khẩu Quốc tế Hữu Nghị (Lạng Sơn)";
+        const container = shipment?.exportInfo?.containerNumber || shipment?.containerNumber;
+        const seal = shipment?.exportInfo?.sealNumber || shipment?.sealNumber;
 
         const milestoneExport: TraceMilestone = {
             id: "milestone-export",
             stepNumber: 5,
             type: "EXPORT",
-            title: "XUẤT KHẨU",
-            subtitle: "Kiểm dịch thực vật và vận chuyển xuất khẩu chính ngạch sang thị trường quốc tế",
+            title: "ĐÃ XUẤT KHẨU",
+            subtitle: "Hoàn tất kiểm dịch thực vật & vận chuyển xuất khẩu chính ngạch sang thị trường quốc tế",
             date: dispatchDate,
             dateText: formatVnDate(dispatchDate),
             badgeText: "Xuất khẩu",
@@ -746,7 +761,7 @@ export async function getPublicTrace(publicToken: string) {
                 { label: "Thị trường", value: country, highlight: true },
                 { label: "Loại sản phẩm", value: trace.commercialLot.productName },
                 { label: "Mã lô xuất khẩu", value: trace.commercialLot.lotCode, highlight: true },
-                { label: "Khối lượng", value: `${Number(trace.commercialLot.quantity).toLocaleString("vi-VN")} ${trace.commercialLot.unit}` },
+                { label: "Khối lượng xuất", value: `${Number(trace.commercialLot.quantity).toLocaleString("vi-VN")} ${trace.commercialLot.unit}` },
                 { label: "Đơn vị xuất", value: exporterName },
                 ...(port ? [{ label: "Cảng / Cửa khẩu xuất", value: port }] : []),
                 ...(container ? [{ label: "Container", value: container }] : []),

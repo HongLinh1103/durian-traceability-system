@@ -1,34 +1,49 @@
 "use client";
 
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
-import QRCode from "qrcode";
-import { 
-    CheckCircle2, 
-    ExternalLink, 
-    QrCode, 
-    ShieldAlert, 
-    Printer, 
-    Download, 
-    FileText, 
-    Calculator,
+import {
+    CheckCircle2,
+    Clock,
+    QrCode,
+    Sparkles,
+    Building2,
+    Store,
+    ShoppingBag,
+    HelpCircle,
+    Printer,
+    FileText,
     ArrowRight,
-    Sparkles
+    Search,
+    DollarSign,
+    Scale,
+    Layers,
+    ShieldAlert,
+    AlertCircle,
+    X,
+    ExternalLink,
+    Ship,
+    Truck,
+    Globe,
+    CheckCircle,
+    Flag
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { TraceValidation } from "@/lib/traceability";
 import { SalesDispatchSlip, SalesDispatchData } from "@/components/partner/sales-dispatch-slip";
+
+type IssuerRole = "FARMER" | "COLLECTOR" | "PROCESSING_FACILITY";
 
 type Lot = {
     id: string;
     lotCode: string;
-    ownerType?: string;
+    ownerType: string;
     productName: string;
     quantity: number;
-    remainingQuantity?: number;
-    unit: string;
+    remainingQuantity: number;
     stockBeforeDispatch?: number | null;
+    unit: string;
+    status: string;
     buyerName?: string | null;
     buyerPhone?: string | null;
     buyerAddress?: string | null;
@@ -38,13 +53,26 @@ type Lot = {
     totalAmount?: number | null;
     paidAmount?: number | null;
     debtAmount?: number | null;
-    paymentStatus?: string | null;
+    paymentStatus?: "PAID" | "PARTIAL" | "UNPAID" | string | null;
     paymentMethod?: string | null;
     dispatchedAt?: string | Date | null;
-    owner: { name: string };
-    destination: { name: string; type?: string; address?: string } | null;
-    traceabilityCode: { id: string; publicToken: string; code?: string; status: string } | null;
-    validation: { traceCompleteness: number; canIssueQr: boolean; missingRequirements: string[] };
+    note?: string | null;
+    destination?: {
+        name: string;
+        type: string;
+        address?: string | null;
+        country?: string | null;
+    } | null;
+    traceabilityCode?: {
+        id: string;
+        code: string;
+        publicToken: string;
+        status: string;
+    } | null;
+    owner?: {
+        name: string;
+    } | null;
+    validation?: TraceValidation;
 };
 
 type SourceOption = {
@@ -56,76 +84,17 @@ type SourceOption = {
     totalQuantity?: number;
     remainingQuantity?: number;
     farmCount?: number;
-    qcStatus?: "PASSED" | "PENDING" | "FAILED";
+    qcStatus?: "PASSED" | "PENDING" | "REJECTED";
 };
 
 type DestinationOption = {
     id: string;
     name: string;
-    address?: string;
-    type?: string;
+    address?: string | null;
+    type: string;
     contactName?: string | null;
     contactPhone?: string | null;
 };
-
-type IssuerRole = "FARMER" | "COLLECTOR" | "PROCESSING_FACILITY";
-
-function QrPreview({ token }: { token: string }) {
-    const [src, setSrc] = useState("");
-    useEffect(() => {
-        void QRCode.toDataURL(`${window.location.origin}/trace/${token}`, {
-            width: 180,
-            margin: 1,
-            errorCorrectionLevel: "M",
-        }).then(setSrc);
-    }, [token]);
-
-    function printQr() {
-        const popup = window.open("", "_blank", "width=520,height=620");
-        if (popup) {
-            popup.document.write(`
-                <title>${token}</title>
-                <main style="font-family:sans-serif;text-align:center;padding:40px">
-                    <h2 style="color:#1b5e20;">TriViet Traceability</h2>
-                    <img width="260" src="${src}"/>
-                    <p style="font-size:18px;font-weight:bold;margin:12px 0 4px;">${token}</p>
-                    <p style="color:#555;font-size:12px;">${window.location.origin}/trace/${token}</p>
-                </main>
-            `);
-            popup.document.close();
-            popup.onload = () => popup.print();
-        }
-    }
-
-    return src ? (
-        <div className="flex items-center gap-2">
-            <Image
-                unoptimized
-                src={src}
-                width={80}
-                height={80}
-                alt={`QR truy xuất ${token}`}
-                className="h-20 w-20 rounded-xl border bg-white p-1 shadow-sm shrink-0"
-            />
-            <div className="flex flex-col gap-1">
-                <a
-                    download={`${token}.png`}
-                    href={src}
-                    className="inline-flex items-center gap-1 rounded-lg border bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
-                >
-                    <Download className="h-3 w-3" /> Tải QR
-                </a>
-                <button
-                    type="button"
-                    onClick={printQr}
-                    className="inline-flex items-center gap-1 rounded-lg border bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
-                >
-                    <Printer className="h-3 w-3" /> In QR
-                </button>
-            </div>
-        </div>
-    ) : null;
-}
 
 export function TraceabilityManager({
     initialLots,
@@ -149,14 +118,25 @@ export function TraceabilityManager({
     const [busy, setBusy] = useState<string | null>(null);
     const [message, setMessage] = useState("");
     const [issuerFilter, setIssuerFilter] = useState("ALL");
-    const [saleMode, setSaleMode] = useState(
-        role === "PROCESSING_FACILITY" ? "DOMESTIC" : role === "COLLECTOR" ? "MARKET" : "DIRECT"
+    
+    // Mode of Dispatch: DOMESTIC vs EXPORT
+    const [dispatchMode, setDispatchMode] = useState<"DOMESTIC" | "EXPORT">(
+        role === "PROCESSING_FACILITY" ? "EXPORT" : "DOMESTIC"
     );
+
     const [selectedSourceId, setSelectedSourceId] = useState(initialSourceId || "");
     const [destinationName, setDestinationName] = useState("");
     const [destinationAddress, setDestinationAddress] = useState("");
+    const [destinationCountry, setDestinationCountry] = useState("Trung Quốc");
+    const [portOfLoading, setPortOfLoading] = useState("Cửa khẩu Quốc tế Hữu Nghị (Lạng Sơn) - Đường bộ");
+    const [transportMethod, setTransportMethod] = useState("Đường bộ (Xe container lạnh)");
+    const [containerNumber, setContainerNumber] = useState("");
+    const [sealNumber, setSealNumber] = useState("");
+    const [vehicleReference, setVehicleReference] = useState("");
+    const [exportStageStatus, setExportStageStatus] = useState("DISPATCHED");
+
     const [destinationType, setDestinationType] = useState(
-        role === "PROCESSING_FACILITY" ? "DOMESTIC" : role === "COLLECTOR" ? "MARKET" : "RETAIL"
+        dispatchMode === "EXPORT" ? "EXPORT" : role === "COLLECTOR" ? "MARKET" : "RETAIL"
     );
     const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -177,16 +157,23 @@ export function TraceabilityManager({
     const [issuingQr, setIssuingQr] = useState(false);
 
     useEffect(() => {
-        if (saleMode === "EXPORT") setDestinationType("EXPORT");
-        else if (saleMode === "DISTRIBUTOR") setDestinationType("DISTRIBUTOR");
-        else if (saleMode === "MARKET" || saleMode === "WHOLESALE_MARKET") setDestinationType("MARKET");
-        else setDestinationType("RETAIL");
-    }, [saleMode]);
+        if (dispatchMode === "EXPORT") {
+            setDestinationType("EXPORT");
+            if (!destinationName || destinationName === "Công ty ABC" || destinationName === "Chợ đầu mối Nông sản Thủ Đức") {
+                setDestinationName("Thị trường Trung Quốc");
+            }
+        } else {
+            setDestinationType(role === "COLLECTOR" ? "MARKET" : "RETAIL");
+            if (destinationName === "Thị trường Trung Quốc") {
+                setDestinationName("");
+            }
+        }
+    }, [dispatchMode, role]);
 
     const defaultSuggestions = useMemo(() => {
-        if (saleMode === "EXPORT") {
+        if (dispatchMode === "EXPORT") {
             return [
-                "Thị trường Trung Quốc",
+                "Thị trường Trung Quốc (GACC)",
                 "Thị trường Hoa Kỳ (Mỹ)",
                 "Thị trường Nhật Bản",
                 "Thị trường Hàn Quốc",
@@ -208,7 +195,7 @@ export function TraceabilityManager({
             "Siêu thị MM Mega Market",
             "Đại lý phân phối nông sản",
         ];
-    }, [saleMode]);
+    }, [dispatchMode]);
 
     const allSuggestions = useMemo(() => {
         const dbList = destinations.map((d) => ({
@@ -227,13 +214,13 @@ export function TraceabilityManager({
                 id: "",
                 name,
                 address: "",
-                type: saleMode === "EXPORT" ? "EXPORT" : "RETAIL",
+                type: dispatchMode === "EXPORT" ? "EXPORT" : "RETAIL",
                 contactName: "",
                 contactPhone: "",
                 isSaved: false,
             }));
         return [...dbList, ...defaults];
-    }, [destinations, defaultSuggestions, saleMode]);
+    }, [destinations, defaultSuggestions, dispatchMode]);
 
     const filteredSuggestions = useMemo(() => {
         if (!destinationName.trim()) return allSuggestions.slice(0, 8);
@@ -257,7 +244,13 @@ export function TraceabilityManager({
 
     const selectedSource = sourceList.find((source) => source.id === selectedSourceId);
     const dateCode = new Date().toISOString().slice(0, 10).replaceAll("-", "");
-    const prefix = role === "COLLECTOR" ? "CM-COL" : role === "PROCESSING_FACILITY" ? "TP" : "CM-FAR";
+    const prefix = dispatchMode === "EXPORT" 
+        ? "EXP" 
+        : role === "COLLECTOR" 
+        ? "CM-COL" 
+        : role === "PROCESSING_FACILITY" 
+        ? "TP" 
+        : "CM-FAR";
     const nextSequence =
         Math.max(
             0,
@@ -326,16 +319,17 @@ export function TraceabilityManager({
         setMessage("");
 
         const formData = new FormData(e.currentTarget);
-        const selected = sources.find((source) => source.id === formData.get("sourceId"));
+        const selected = sourceList.find((source) => source.id === formData.get("sourceId"));
         const destName = destinationName.trim();
         if (!destName) {
-            setMessage("Vui lòng nhập bên mua / điểm đến");
+            setMessage("Vui lòng nhập bên mua / thị trường đến");
             setBusy(null);
             return;
         }
 
-        const destAddress = destinationAddress.trim();
-        const destType = destinationType;
+        const isExport = dispatchMode === "EXPORT";
+        const destAddress = destinationAddress.trim() || (isExport ? destinationCountry : "");
+        const destType = isExport ? "EXPORT" : destinationType;
         const contactName = String(formData.get("contactName") || "").trim();
         const contactPhone = buyerPhone.trim();
 
@@ -343,7 +337,12 @@ export function TraceabilityManager({
         const destinationId = matched && (!destAddress || destAddress === matched.address) ? matched.id : undefined;
 
         const note = [
-            formData.get("plannedDate") && `Ngày dự kiến: ${formData.get("plannedDate")}`,
+            formData.get("plannedDate") && `Ngày xuất: ${formData.get("plannedDate")}`,
+            isExport && `Thị trường: ${destinationCountry}`,
+            isExport && portOfLoading && `Cửa khẩu/Cảng: ${portOfLoading}`,
+            isExport && containerNumber && `Container: ${containerNumber}`,
+            isExport && sealNumber && `Seal: ${sealNumber}`,
+            isExport && vehicleReference && `Biển số xe: ${vehicleReference}`,
             formData.get("note"),
         ]
             .filter(Boolean)
@@ -360,6 +359,7 @@ export function TraceabilityManager({
                       type: destType,
                       name: destName,
                       address: destAddress || destName,
+                      country: isExport ? destinationCountry : undefined,
                       contactName: contactName || undefined,
                       contactPhone: contactPhone || undefined,
                   },
@@ -382,6 +382,15 @@ export function TraceabilityManager({
                 ? new Date(String(formData.get("plannedDate")))
                 : new Date(),
             note,
+            // Export fields
+            isExport,
+            destinationCountry: isExport ? destinationCountry : undefined,
+            portOfLoading: isExport ? portOfLoading : undefined,
+            transportMethod: isExport ? transportMethod : undefined,
+            containerNumber: isExport ? containerNumber || undefined : undefined,
+            sealNumber: isExport ? sealNumber || undefined : undefined,
+            vehicleReference: isExport ? vehicleReference || undefined : undefined,
+            exportStageStatus: isExport ? exportStageStatus : undefined,
         };
 
         const response = await fetch("/api/traceability/commercial-lots", {
@@ -453,6 +462,13 @@ export function TraceabilityManager({
             note: normalizedLot.note,
             ownerName: normalizedLot.owner?.name,
             ownerType: role,
+            isExport,
+            destinationCountry: isExport ? destinationCountry : undefined,
+            portOfLoading: isExport ? portOfLoading : undefined,
+            transportMethod: isExport ? transportMethod : undefined,
+            containerNumber: isExport ? containerNumber : undefined,
+            sealNumber: isExport ? sealNumber : undefined,
+            vehicleReference: isExport ? vehicleReference : undefined,
             traceabilityCode: null,
         });
 
@@ -464,6 +480,9 @@ export function TraceabilityManager({
         setDestinationName("");
         setDestinationAddress("");
         setBuyerPhone("");
+        setContainerNumber("");
+        setSealNumber("");
+        setVehicleReference("");
         setBusy(null);
     }
 
@@ -472,269 +491,423 @@ export function TraceabilityManager({
             {/* Sales Dispatch & QR Creation Form */}
             {!admin && !readOnly && (
                 <form onSubmit={createLot} className="space-y-6 rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b pb-4">
+                    {/* Header & Mode Switcher */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-5">
                         <div>
                             <div className="flex items-center gap-2">
-                                <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">
-                                    1
+                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-700 text-white font-black text-sm shadow-xs">
+                                    {dispatchMode === "EXPORT" ? <Ship className="h-4 w-4" /> : <Truck className="h-4 w-4" />}
                                 </span>
                                 <h2 className="text-xl font-black text-slate-900">
-                                    {role === "PROCESSING_FACILITY"
-                                        ? "Xuất Bán Lô Thành Phẩm & Tạo QR"
-                                        : "Xuất Bán Lô Sầu Riêng & Tạo QR"}
+                                    {dispatchMode === "EXPORT"
+                                        ? "Tạo Lô Hàng Xuất Khẩu & Phát Hành QR (GACC)"
+                                        : "Xuất Bán Lô Hàng Trong Nước & Phát Hành QR"}
                                 </h2>
                             </div>
                             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                                Lập phiếu xuất bán hàng, ghi nhận giá xuất & tài chính, trừ tồn kho và chuyển sang phát hành mã QR truy xuất.
+                                {dispatchMode === "EXPORT"
+                                    ? "Lập hồ sơ lô sầu riêng xuất khẩu chính ngạch sang Trung Quốc / Quốc tế, đối soát mã số vùng trồng (MSVT) & mã cơ sở đóng gói (MSCSĐG)."
+                                    : "Lập phiếu xuất bán sầu riêng cho siêu thị, chợ đầu mối, đại lý nội địa, ghi nhận giá xuất và tạo mã QR truy xuất."}
                             </p>
                         </div>
-                        <div className="text-xs bg-emerald-50 text-emerald-800 font-bold px-3 py-1.5 rounded-xl border border-emerald-200 self-start sm:self-auto flex items-center gap-1.5">
-                            <Sparkles className="h-4 w-4 text-emerald-600" />
-                            Quy trình: Xuất lô bán ➔ Ghi nhận tài chính ➔ Tạo QR
-                        </div>
-                    </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {/* 1. Chọn Lô Nguồn */}
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                                1. {role === "FARMER" ? "Lô thu hoạch" : role === "COLLECTOR" ? "Lô thu mua tươi" : "Lô thành phẩm"} <span className="text-rose-500">*</span>
-                            </label>
-                            <select
-                                required
-                                name="sourceId"
-                                value={selectedSourceId}
-                                onChange={(event) => setSelectedSourceId(event.target.value)}
-                                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white font-medium focus:border-emerald-500 focus:outline-none"
+                        {/* Mode Selector Radio Group */}
+                        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200 self-start sm:self-auto">
+                            <button
+                                type="button"
+                                onClick={() => setDispatchMode("DOMESTIC")}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                                    dispatchMode === "DOMESTIC"
+                                        ? "bg-white text-emerald-800 shadow-xs border border-slate-200"
+                                        : "text-slate-600 hover:text-slate-900"
+                                }`}
                             >
-                                <option value="">-- Chọn lô nguồn hàng --</option>
-                                {sourceList.map((source) => (
-                                    <option key={source.id} value={source.id}>
-                                        {source.code} · {source.label} (Còn {source.remainingQuantity?.toLocaleString("vi-VN")} kg)
-                                    </option>
-                                ))}
-                            </select>
-                            {selectedSource && (
-                                <p className="text-xs text-emerald-700 font-medium">
-                                    Tồn kho khả dụng: <b>{selectedSource.remainingQuantity?.toLocaleString("vi-VN")} kg</b>
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Mã phiếu / Mã lô xuất */}
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                                Mã lô xuất bán <span className="text-rose-500">*</span>
-                            </label>
-                            <input
-                                required
-                                name="lotCode"
-                                defaultValue={generatedLotCode}
-                                placeholder="Ví dụ: TP-20260827-001"
-                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono font-bold text-slate-800 text-sm"
-                            />
-                        </div>
-
-                        {/* Tên sản phẩm */}
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                                Tên sản phẩm <span className="text-rose-500">*</span>
-                            </label>
-                            <input
-                                required
-                                name="productName"
-                                defaultValue={
-                                    role === "COLLECTOR" || role === "PROCESSING_FACILITY"
-                                        ? selectedSource?.productName ?? ""
-                                        : ""
-                                }
-                                placeholder="Sầu riêng Ri6 tách múi cấp đông..."
-                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800"
-                            />
+                                <Store className="h-3.5 w-3.5 text-emerald-600" />
+                                🇻🇳 Bán trong nước
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setDispatchMode("EXPORT")}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                                    dispatchMode === "EXPORT"
+                                        ? "bg-indigo-700 text-white shadow-xs"
+                                        : "text-slate-600 hover:text-slate-900"
+                                }`}
+                            >
+                                <Globe className="h-3.5 w-3.5" />
+                                🌏 Xuất khẩu chính ngạch
+                            </button>
                         </div>
                     </div>
 
-                    {/* Customer & Destination */}
-                    <div className="border-t border-slate-100 pt-4 space-y-3">
-                        <p className="text-xs font-black uppercase text-slate-500">2. Thông tin bên mua & Điểm đến giao nhận</p>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                            {/* Bên mua */}
-                            <div className="relative">
-                                <label className="block text-xs font-bold text-slate-700 mb-1">
-                                    Bên mua (Tên công ty / Khách hàng) <span className="text-rose-500">*</span>
+                    {/* Section 1: Chọn Nguồn Hàng */}
+                    <div className="space-y-3">
+                        <p className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-slate-200 text-slate-700 text-[11px] font-black">1</span>
+                            Nguồn hàng & Định danh lô
+                        </p>
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            {/* 1. Chọn Lô Nguồn */}
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                                    Lô nguồn gốc <span className="text-rose-500">*</span>
                                 </label>
-                                <input
+                                <select
                                     required
-                                    name="destinationName"
-                                    value={destinationName}
-                                    onChange={(event) => {
-                                        setDestinationName(event.target.value);
-                                        setShowSuggestions(true);
-                                    }}
-                                    onFocus={() => setShowSuggestions(true)}
-                                    onBlur={() => {
-                                        setTimeout(() => setShowSuggestions(false), 250);
-                                    }}
-                                    placeholder="VD: Công ty ABC, Siêu thị Co.opmart..."
-                                    autoComplete="off"
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold focus:border-emerald-500 focus:outline-none"
-                                />
-                                {showSuggestions && filteredSuggestions.length > 0 && (
-                                    <div className="absolute left-0 right-0 z-30 mt-1 max-h-56 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
-                                        <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                            Gợi ý khách hàng / điểm đến
-                                        </div>
-                                        {filteredSuggestions.map((item, idx) => (
-                                            <button
-                                                key={idx}
-                                                type="button"
-                                                onMouseDown={(e) => {
-                                                    e.preventDefault();
-                                                    selectSuggestion(item);
-                                                }}
-                                                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition hover:bg-emerald-50 hover:text-emerald-900"
-                                            >
-                                                <span className="font-semibold text-slate-800">{item.name}</span>
-                                                <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">
-                                                    {item.address || "Điểm đến"}
-                                                </span>
-                                            </button>
-                                        ))}
-                                    </div>
+                                    name="sourceId"
+                                    value={selectedSourceId}
+                                    onChange={(event) => setSelectedSourceId(event.target.value)}
+                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white font-medium focus:border-emerald-500 focus:outline-none"
+                                >
+                                    <option value="">-- Chọn lô nguồn hàng --</option>
+                                    {sourceList.map((source) => (
+                                        <option key={source.id} value={source.id}>
+                                            {source.code} · {source.label} (Còn {source.remainingQuantity?.toLocaleString("vi-VN")} kg)
+                                        </option>
+                                    ))}
+                                </select>
+                                {selectedSource && (
+                                    <p className="text-xs text-emerald-700 font-medium">
+                                        Tồn kho khả dụng: <b>{selectedSource.remainingQuantity?.toLocaleString("vi-VN")} kg</b>
+                                    </p>
                                 )}
                             </div>
 
-                            {/* Số điện thoại bên mua */}
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">
-                                    Số điện thoại bên mua
+                            {/* Mã phiếu / Mã lô xuất */}
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                                    {dispatchMode === "EXPORT" ? "Mã lô xuất khẩu" : "Mã lô xuất bán"} <span className="text-rose-500">*</span>
                                 </label>
                                 <input
-                                    name="contactPhone"
-                                    value={buyerPhone}
-                                    onChange={(e) => setBuyerPhone(e.target.value)}
-                                    placeholder="0912 345 678"
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                    required
+                                    name="lotCode"
+                                    defaultValue={generatedLotCode}
+                                    placeholder={dispatchMode === "EXPORT" ? "EXP-20260828-001" : "TP-20260828-001"}
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono font-bold text-slate-800 text-sm"
                                 />
                             </div>
 
-                            {/* Địa chỉ giao nhận */}
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">
-                                    Địa chỉ giao nhận
+                            {/* Tên sản phẩm */}
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                                    Tên sản phẩm <span className="text-rose-500">*</span>
                                 </label>
                                 <input
-                                    name="destinationAddress"
-                                    value={destinationAddress}
-                                    onChange={(event) => setDestinationAddress(event.target.value)}
-                                    placeholder="Địa chỉ chi tiết (Tỉnh/Thành, Cảng...)"
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                    required
+                                    name="productName"
+                                    defaultValue={
+                                        selectedSource?.productName ||
+                                        (dispatchMode === "EXPORT"
+                                            ? role === "PROCESSING_FACILITY"
+                                                ? "Sầu riêng Ri6 tách múi cấp đông IQF"
+                                                : "Sầu riêng tươi Ri6 (Nguyên quả xuất khẩu)"
+                                            : "Sầu riêng tươi")
+                                    }
+                                    placeholder="Sầu riêng Ri6 tươi / Cấp đông..."
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    {/* 3. Khối lượng xuất & Thông tin Tài chính (Mẫu phiếu xuất bán) */}
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 space-y-4">
-                        <div className="flex items-center justify-between border-b border-emerald-200/70 pb-3">
-                            <div className="flex items-center gap-2">
-                                <Calculator className="h-5 w-5 text-emerald-700" />
-                                <h3 className="text-sm font-black uppercase tracking-wider text-emerald-900">
-                                    3. Khối Lượng Xuất & Hạch Toán Tài Chính
-                                </h3>
-                            </div>
-                            <span className="text-xs text-emerald-800 font-bold">
-                                Tự động tính toán & ghi nhận tài chính
-                            </span>
-                        </div>
+                    {/* Section 2: Thông Tin Điểm Đến Hoặc Thị Trường Xuất Khẩu */}
+                    <div className="border-t border-slate-100 pt-4 space-y-3">
+                        <p className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-slate-200 text-slate-700 text-[11px] font-black">2</span>
+                            {dispatchMode === "EXPORT" ? "Hồ sơ xuất khẩu & Logistics quốc tế" : "Bên mua & Điểm đến giao nhận nội địa"}
+                        </p>
 
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {dispatchMode === "EXPORT" ? (
+                            /* EXPORT SPECIFIC FIELDS */
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 bg-indigo-50/40 p-4 rounded-2xl border border-indigo-100">
+                                {/* Thị trường xuất khẩu */}
+                                <div>
+                                    <label className="block text-xs font-bold text-indigo-950 mb-1">
+                                        Thị trường nhập khẩu <span className="text-rose-500">*</span>
+                                    </label>
+                                    <select
+                                        value={destinationCountry}
+                                        onChange={(e) => {
+                                            setDestinationCountry(e.target.value);
+                                            setDestinationName(`Thị trường ${e.target.value}`);
+                                        }}
+                                        className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-950 focus:outline-none"
+                                    >
+                                        <option value="Trung Quốc">Trung Quốc (GACC Nghị định thư)</option>
+                                        <option value="Hoa Kỳ (Mỹ)">Hoa Kỳ (Mỹ - USDA)</option>
+                                        <option value="Nhật Bản">Nhật Bản (MAFF)</option>
+                                        <option value="Hàn Quốc">Hàn Quốc</option>
+                                        <option value="Châu Âu (EU)">Châu Âu (EU)</option>
+                                        <option value="Úc (Australia)">Úc (Australia)</option>
+                                        <option value="Đài Loan">Đài Loan</option>
+                                        <option value="Singapore">Singapore</option>
+                                    </select>
+                                </div>
+
+                                {/* Cửa khẩu / Cảng xuất */}
+                                <div>
+                                    <label className="block text-xs font-bold text-indigo-950 mb-1">
+                                        Cửa khẩu / Cảng xuất hàng <span className="text-rose-500">*</span>
+                                    </label>
+                                    <select
+                                        value={portOfLoading}
+                                        onChange={(e) => setPortOfLoading(e.target.value)}
+                                        className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none"
+                                    >
+                                        <option value="Cửa khẩu Quốc tế Hữu Nghị (Lạng Sơn) - Đường bộ">Cửa khẩu QT Hữu Nghị (Lạng Sơn) - Đường bộ</option>
+                                        <option value="Cửa khẩu Tân Thanh (Lạng Sơn) - Đường bộ">Cửa khẩu Tân Thanh (Lạng Sơn) - Đường bộ</option>
+                                        <option value="Cửa khẩu Quốc tế Móng Cái (Quảng Ninh) - Đường bộ">Cửa khẩu QT Móng Cái (Quảng Ninh) - Đường bộ</option>
+                                        <option value="Cửa khẩu Quốc tế Kim Thành (Lào Cai) - Đường bộ">Cửa khẩu QT Kim Thành (Lào Cai) - Đường bộ</option>
+                                        <option value="Cảng Cát Lái (TP. Hồ Chí Minh) - Đường biển">Cảng Cát Lái (TP. Hồ Chí Minh) - Đường biển</option>
+                                        <option value="Cảng Hải Phòng - Đường biển">Cảng Hải Phòng - Đường biển</option>
+                                        <option value="Cảng Đà Nẵng - Đường biển">Cảng Đà Nẵng - Đường biển</option>
+                                        <option value="Sân bay Quốc tế Tân Sơn Nhất - Hàng không">Sân bay QT Tân Sơn Nhất - Hàng không</option>
+                                    </select>
+                                </div>
+
+                                {/* Phương thức vận chuyển */}
+                                <div>
+                                    <label className="block text-xs font-bold text-indigo-950 mb-1">
+                                        Phương thức vận chuyển
+                                    </label>
+                                    <select
+                                        value={transportMethod}
+                                        onChange={(e) => setTransportMethod(e.target.value)}
+                                        className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none"
+                                    >
+                                        <option value="Đường bộ (Xe container lạnh)">Đường bộ (Xe container lạnh)</option>
+                                        <option value="Đường biển (Container lạnh)">Đường biển (Container lạnh)</option>
+                                        <option value="Đường hàng không">Đường hàng không</option>
+                                    </select>
+                                </div>
+
+                                {/* Số Container */}
+                                <div>
+                                    <label className="block text-xs font-bold text-indigo-950 mb-1">
+                                        Số Container (nếu có)
+                                    </label>
+                                    <input
+                                        value={containerNumber}
+                                        onChange={(e) => setContainerNumber(e.target.value)}
+                                        placeholder="VD: CONT-TEST-001"
+                                        className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-mono font-bold"
+                                    />
+                                </div>
+
+                                {/* Số Seal */}
+                                <div>
+                                    <label className="block text-xs font-bold text-indigo-950 mb-1">
+                                        Số Niêm phong Seal (nếu có)
+                                    </label>
+                                    <input
+                                        value={sealNumber}
+                                        onChange={(e) => setSealNumber(e.target.value)}
+                                        placeholder="VD: SEAL-TEST-001"
+                                        className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-mono font-bold"
+                                    />
+                                </div>
+
+                                {/* Biển số xe */}
+                                <div>
+                                    <label className="block text-xs font-bold text-indigo-950 mb-1">
+                                        Biển số phương tiện (xe lạnh)
+                                    </label>
+                                    <input
+                                        value={vehicleReference}
+                                        onChange={(e) => setVehicleReference(e.target.value)}
+                                        placeholder="VD: 51H-123.45"
+                                        className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-mono font-bold"
+                                    />
+                                </div>
+
+                                {/* Tiến độ hồ sơ xuất khẩu (Giai đoạn 6) */}
+                                <div className="sm:col-span-2 lg:col-span-3 pt-2 border-t border-indigo-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                    <label className="text-xs font-bold text-indigo-950">
+                                        Giai đoạn kiểm dịch & thông quan (Nghị quyết 36/2026/NQ-CP):
+                                    </label>
+                                    <select
+                                        value={exportStageStatus}
+                                        onChange={(e) => setExportStageStatus(e.target.value)}
+                                        className="rounded-xl border border-indigo-300 bg-white px-3 py-1.5 text-xs font-bold text-indigo-900 focus:outline-none"
+                                    >
+                                        <option value="DISPATCHED">1. Đã xuất hàng qua cửa khẩu/cảng (Hoàn tất)</option>
+                                        <option value="CUSTOMS_CLEARED">2. Đã thông quan hải quan</option>
+                                        <option value="CUSTOMS_DECLARING">3. Chờ thông quan hải quan</option>
+                                        <option value="PHYTOSANITARY_PASSED">4. Kiểm dịch thực vật đạt</option>
+                                        <option value="PENDING_PHYTOSANITARY">5. Chờ kiểm dịch thực vật</option>
+                                        <option value="DRAFT">6. Chuẩn bị lô xuất khẩu (Nháp)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        ) : (
+                            /* DOMESTIC SPECIFIC FIELDS */
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                {/* Bên mua */}
+                                <div className="relative">
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                                        Bên mua (Tên công ty / Khách hàng) <span className="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        required
+                                        name="destinationName"
+                                        value={destinationName}
+                                        onChange={(event) => {
+                                            setDestinationName(event.target.value);
+                                            setShowSuggestions(true);
+                                        }}
+                                        onFocus={() => setShowSuggestions(true)}
+                                        onBlur={() => setTimeout(() => setShowSuggestions(false), 250)}
+                                        placeholder="VD: Công ty ABC, Siêu thị Co.opmart..."
+                                        autoComplete="off"
+                                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold focus:border-emerald-500 focus:outline-none"
+                                    />
+                                    {showSuggestions && filteredSuggestions.length > 0 && (
+                                        <div className="absolute left-0 right-0 z-30 mt-1 max-h-56 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                                            <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                                Gợi ý khách hàng / điểm đến
+                                            </div>
+                                            {filteredSuggestions.map((item, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    type="button"
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        selectSuggestion(item);
+                                                    }}
+                                                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition hover:bg-emerald-50 hover:text-emerald-900"
+                                                >
+                                                    <span className="font-semibold text-slate-800">{item.name}</span>
+                                                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">
+                                                        {item.address || "Điểm đến"}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Địa chỉ giao nhận */}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                                        Địa chỉ giao nhận
+                                    </label>
+                                    <input
+                                        name="destinationAddress"
+                                        value={destinationAddress}
+                                        onChange={(event) => setDestinationAddress(event.target.value)}
+                                        placeholder="Số nhà, đường, quận/huyện, tỉnh thành..."
+                                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium focus:border-emerald-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                {/* Số điện thoại */}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                                        Số điện thoại người nhận
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        value={buyerPhone}
+                                        onChange={(event) => setBuyerPhone(event.target.value)}
+                                        placeholder="VD: 0987654321"
+                                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium focus:border-emerald-500 focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Section 3: Khối Lượng & Doanh Thu / Công Nợ Tài Chính */}
+                    <div className="border-t border-slate-100 pt-4 space-y-3">
+                        <p className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-slate-200 text-slate-700 text-[11px] font-black">3</span>
+                            Khối lượng xuất & Tài chính công nợ
+                        </p>
+
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             {/* Khối lượng xuất */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-800 mb-1">
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
                                     Khối lượng xuất (kg) <span className="text-rose-500">*</span>
                                 </label>
-                                <Input
+                                <input
                                     required
                                     type="number"
-                                    min="0.01"
                                     step="0.01"
-                                    max={selectedSource?.remainingQuantity}
+                                    min="0.1"
+                                    max={selectedSource?.remainingQuantity ?? undefined}
                                     value={quantityInput}
                                     onChange={(e) => setQuantityInput(e.target.value)}
                                     placeholder="VD: 1000"
-                                    className="rounded-xl font-bold text-slate-900 bg-white"
+                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-black text-emerald-800 focus:border-emerald-500 focus:outline-none"
                                 />
-                                <span className="mt-1 block text-[11px] text-slate-500 font-medium">
-                                    {selectedSource?.remainingQuantity != null
-                                        ? `Tồn kho: ${selectedSource.remainingQuantity.toLocaleString("vi-VN")} kg`
-                                        : "Vui lòng chọn lô nguồn"}
-                                </span>
                             </div>
 
                             {/* Đơn giá */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-800 mb-1">
-                                    Đơn giá xuất bán (đ/kg) <span className="text-rose-500">*</span>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Đơn giá xuất (đ/kg)
                                 </label>
-                                <Input
+                                <input
                                     type="text"
-                                    value={unitPriceInput}
-                                    onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, "");
-                                        setUnitPriceInput(val ? Number(val).toLocaleString("vi-VN") : "");
-                                    }}
+                                    value={unitPriceInput ? Number(unitPriceInput.replace(/\D/g, "")).toLocaleString("vi-VN") : ""}
+                                    onChange={(e) => setUnitPriceInput(e.target.value.replace(/\D/g, ""))}
                                     placeholder="VD: 145.000"
-                                    className="rounded-xl font-bold text-slate-900 bg-white"
+                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold focus:border-emerald-500 focus:outline-none"
                                 />
-                                <span className="mt-1 block text-[11px] text-slate-500 font-medium">
-                                    Thành tiền: <b>{calcSubtotal.toLocaleString("vi-VN")} đ</b>
-                                </span>
                             </div>
 
                             {/* Chiết khấu */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-800 mb-1">
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
                                     Chiết khấu / Giảm giá (đ)
                                 </label>
-                                <Input
+                                <input
                                     type="text"
-                                    value={discountInput}
-                                    onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, "");
-                                        setDiscountInput(val ? Number(val).toLocaleString("vi-VN") : "");
-                                    }}
+                                    value={discountInput ? Number(discountInput.replace(/\D/g, "")).toLocaleString("vi-VN") : ""}
+                                    onChange={(e) => setDiscountInput(e.target.value.replace(/\D/g, ""))}
                                     placeholder="VD: 5.000.000"
-                                    className="rounded-xl font-medium text-slate-900 bg-white"
+                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold focus:border-emerald-500 focus:outline-none"
                                 />
-                                <span className="mt-1 block text-[11px] text-emerald-800 font-bold">
-                                    TỔNG PHẢI THU: <b>{calcTotalAmount.toLocaleString("vi-VN")} đ</b>
-                                </span>
                             </div>
 
-                            {/* Đã nhận / Thanh toán */}
+                            {/* Tổng tiền */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-800 mb-1">
-                                    Số tiền đã nhận (đ)
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Tổng giá trị hợp đồng
                                 </label>
-                                <Input
-                                    type="text"
-                                    value={paidAmountInput}
-                                    onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, "");
-                                        setPaidAmountInput(val ? Number(val).toLocaleString("vi-VN") : "");
-                                    }}
-                                    placeholder="VD: 80.000.000"
-                                    className="rounded-xl font-bold text-emerald-700 bg-white"
-                                />
-                                <span className="mt-1 block text-[11px] text-rose-600 font-bold">
-                                    Còn nợ: <b>{calcDebtAmount.toLocaleString("vi-VN")} đ</b>
-                                </span>
+                                <div className="w-full rounded-xl border border-slate-200 bg-emerald-50/70 px-3 py-2 text-sm font-black text-emerald-900">
+                                    {calcTotalAmount > 0 ? `${calcTotalAmount.toLocaleString("vi-VN")} đ` : "0 đ"}
+                                </div>
                             </div>
                         </div>
 
-                        {/* Phương thức & Ghi chú */}
-                        <div className="grid gap-3 sm:grid-cols-3 border-t border-emerald-200/50 pt-3">
+                        {/* Thanh toán & Công nợ */}
+                        <div className="grid gap-3 sm:grid-cols-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Số tiền đã nhận thanh toán (đ)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={paidAmountInput ? Number(paidAmountInput.replace(/\D/g, "")).toLocaleString("vi-VN") : ""}
+                                    onChange={(e) => setPaidAmountInput(e.target.value.replace(/\D/g, ""))}
+                                    placeholder="VD: 80.000.000"
+                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-emerald-700 focus:border-emerald-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Còn phải thu (Công nợ)
+                                </label>
+                                <div className={`w-full rounded-xl border bg-white px-3 py-2 text-sm font-black ${
+                                    calcDebtAmount > 0 ? "border-rose-200 text-rose-600" : "border-emerald-200 text-emerald-700"
+                                }`}>
+                                    {calcDebtAmount > 0 ? `${calcDebtAmount.toLocaleString("vi-VN")} đ` : "0 đ (Đã trả đủ)"}
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">
                                     Phương thức thanh toán
@@ -742,153 +915,120 @@ export function TraceabilityManager({
                                 <select
                                     value={paymentMethod}
                                     onChange={(e) => setPaymentMethod(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white font-medium"
+                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium focus:outline-none"
                                 >
-                                    <option value="Chuyển khoản">Chuyển khoản ngân hàng</option>
+                                    <option value="Chuyển khoản">Chuyển khoản ngân hàng (T/T)</option>
+                                    <option value="Tín dụng thư (L/C)">Tín dụng thư chứng từ (L/C)</option>
                                     <option value="Tiền mặt">Tiền mặt</option>
-                                    <option value="Công nợ">Ghi nhận công nợ (Chưa thu)</option>
-                                    <option value="Ví điện tử">Ví điện tử / QR Pay</option>
                                 </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">
-                                    Ngày xuất bán
-                                </label>
-                                <input
-                                    name="plannedDate"
-                                    type="date"
-                                    defaultValue={new Date().toISOString().split("T")[0]}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white font-medium"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">
-                                    Ghi chú đơn hàng
-                                </label>
-                                <input
-                                    name="note"
-                                    placeholder="Ghi chú thêm về lô hàng, số hóa đơn..."
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white"
-                                />
                             </div>
                         </div>
                     </div>
 
-                    {/* Action button */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t pt-4">
-                        <div className="text-xs text-slate-500">
-                            Sau khi bấm xuất bán, hệ thống tự động lưu phiếu và chuyển sang bước <b>Tạo mã QR</b> truy xuất nguồn gốc.
+                    {message && (
+                        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700 flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            {message}
                         </div>
+                    )}
+
+                    {/* Submit Button */}
+                    <div className="flex items-center justify-end gap-3 pt-2">
                         <Button
                             type="submit"
                             disabled={busy === "create"}
-                            className="w-full sm:w-auto bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-2xl px-6 py-2.5 shadow-md flex items-center justify-center gap-2"
+                            className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-2xl px-6 py-2.5 shadow-sm text-sm gap-2"
                         >
                             <FileText className="h-4 w-4" />
-                            {busy === "create" ? "Đang xử lý xuất bán..." : "Xác nhận Xuất Bán & Chuyển Sang Tạo QR"}
-                            <ArrowRight className="h-4 w-4 ml-1" />
+                            {busy === "create" ? "Đang xử lý..." : "Xác nhận xuất lô & Chuyển sang Tạo QR"}
                         </Button>
                     </div>
                 </form>
             )}
 
-            {message && <p className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">{message}</p>}
-
-            {/* List of Dispatched Lots & QR Issuance */}
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
+            {/* List of Dispatched Lots */}
+            <section className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
-                        <h3 className="text-lg font-black text-slate-900">
-                            Danh Sách Lô Đã Xuất Bán & Mã QR Truy Xuất
+                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-wide">
+                            Danh Sách Lô Hàng Đã Xuất Bán / Xuất Khẩu
                         </h3>
                         <p className="text-xs text-slate-500">
-                            Mỗi lô xuất bán được quản lý đầy đủ giá bán, tài chính và mã QR truy xuất cho khách hàng
+                            Theo dõi mã lô, doanh thu, công nợ và trạng thái mã QR truy xuất
                         </p>
                     </div>
-                    {admin && (
-                        <select
-                            value={issuerFilter}
-                            onChange={(event) => setIssuerFilter(event.target.value)}
-                            className="rounded-xl border bg-white px-3 py-1.5 text-xs font-bold"
-                        >
-                            <option value="ALL">Tất cả đơn vị</option>
-                            <option value="FARMER">Nông dân</option>
-                            <option value="COLLECTOR">Vựa thu mua</option>
-                            <option value="PROCESSING_FACILITY">Cơ sở chế biến</option>
-                        </select>
-                    )}
+                    <div className="text-xs text-slate-500 font-semibold">
+                        Tổng cộng: <b>{lots.length}</b> lô hàng
+                    </div>
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {visibleLots.map((lot) => {
-                        const total = Number(lot.totalAmount || (lot.unitPrice ? Number(lot.unitPrice) * Number(lot.quantity) - Number(lot.discount || 0) : 0));
-                        const paid = Number(lot.paidAmount || 0);
-                        const debt = Number(lot.debtAmount || Math.max(0, total - paid));
+                        const isExp = lot.lotCode.startsWith("EXP-") || lot.lotCode.startsWith("CM-EXP-") || lot.destination?.type === "EXPORT";
+                        const qr = lot.traceabilityCode;
 
                         return (
-                            <article key={lot.id} className="rounded-3xl border bg-white p-5 shadow-sm space-y-4 hover:shadow-md transition">
-                                <div className="flex items-start justify-between gap-3 border-b pb-3">
-                                    <div>
-                                        <span className="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                            {lot.lotCode}
-                                        </span>
-                                        <h2 className="mt-2 text-base font-black text-slate-900">{lot.productName}</h2>
-                                        <p className="text-xs text-slate-500 mt-0.5">
-                                            {lot.owner?.name || "Đơn vị"} · Xuất: <b className="text-slate-800">{lot.quantity.toLocaleString("vi-VN")} {lot.unit}</b>
-                                        </p>
+                            <article
+                                key={lot.id}
+                                className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs transition hover:shadow-md space-y-4"
+                            >
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                                            isExp ? "bg-indigo-50 text-indigo-700" : "bg-emerald-50 text-emerald-700"
+                                        }`}>
+                                            {isExp ? <Ship className="h-5 w-5" /> : <Truck className="h-5 w-5" />}
+                                        </div>
+                                        <div>
+                                            <span className="font-mono text-xs font-black uppercase text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
+                                                {lot.lotCode}
+                                            </span>
+                                            <p className="text-[11px] text-slate-400 mt-0.5">
+                                                {lot.dispatchedAt ? new Date(lot.dispatchedAt).toLocaleDateString("vi-VN") : "—"}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <span
-                                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                                            lot.validation?.canIssueQr ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"
-                                        }`}
-                                    >
-                                        Đầy đủ {lot.validation?.traceCompleteness ?? 100}%
-                                    </span>
+
+                                    {/* QR Status badge */}
+                                    {qr ? (
+                                        <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-black text-emerald-800 flex items-center gap-1 border border-emerald-200">
+                                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                                            Đã có QR
+                                        </span>
+                                    ) : (
+                                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800 flex items-center gap-1 border border-amber-200">
+                                            <Clock className="h-3.5 w-3.5 text-amber-600" />
+                                            Chờ tạo QR
+                                        </span>
+                                    )}
                                 </div>
 
-                                {/* Financial & Buyer Info */}
-                                <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                <div>
+                                    <h4 className="text-sm font-black text-slate-900 line-clamp-1">{lot.productName}</h4>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Điểm đến: <b>{lot.buyerName || lot.destination?.name || "Chưa xác định"}</b>
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-50 p-3 text-xs border border-slate-100">
                                     <div>
-                                        <span className="text-slate-400 block">Bên mua:</span>
-                                        <span className="font-bold text-slate-800 truncate block">
-                                            {lot.buyerName || lot.destination?.name || "Chưa xác định"}
-                                        </span>
+                                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Khối lượng:</span>
+                                        <span className="font-black text-slate-900">{lot.quantity.toLocaleString("vi-VN")} {lot.unit}</span>
                                     </div>
                                     <div>
-                                        <span className="text-slate-400 block">Tổng tiền:</span>
-                                        <span className="font-black text-slate-900">
-                                            {total > 0 ? `${total.toLocaleString("vi-VN")} đ` : "—"}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-400 block">Đã thanh toán:</span>
-                                        <span className="font-semibold text-emerald-700">
-                                            {paid > 0 ? `${paid.toLocaleString("vi-VN")} đ` : "0 đ"}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-400 block">Còn nợ:</span>
-                                        <span className={`font-bold ${debt > 0 ? "text-rose-600" : "text-emerald-700"}`}>
-                                            {debt > 0 ? `${debt.toLocaleString("vi-VN")} đ` : "0 đ (Đã tất toán)"}
+                                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Tổng tiền:</span>
+                                        <span className="font-bold text-emerald-700">
+                                            {lot.totalAmount ? `${lot.totalAmount.toLocaleString("vi-VN")} đ` : "Thỏa thuận"}
                                         </span>
                                     </div>
                                 </div>
 
-                                {!lot.validation?.canIssueQr && (
-                                    <div className="flex gap-2 rounded-2xl bg-amber-50 p-3 text-xs text-amber-900">
-                                        <ShieldAlert className="h-4 w-4 shrink-0" />
-                                        <span>{lot.validation?.missingRequirements?.join("; ") || "Chưa hoàn thiện liên kết truy xuất"}</span>
-                                    </div>
-                                )}
-
-                                {/* Bottom Actions & QR */}
-                                <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-                                    <div className="flex items-center gap-1.5">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setSelectedSlipData({
+                                {/* Card Actions */}
+                                <div className="border-t pt-3 flex items-center justify-between gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setSelectedSlipData({
                                                 id: lot.id,
                                                 lotCode: lot.lotCode,
                                                 productName: lot.productName,
@@ -907,59 +1047,55 @@ export function TraceabilityManager({
                                                 paymentStatus: lot.paymentStatus,
                                                 paymentMethod: lot.paymentMethod,
                                                 dispatchedAt: lot.dispatchedAt,
+                                                note: lot.note,
                                                 ownerName: lot.owner?.name,
-                                                ownerType: role,
-                                                traceabilityCode: lot.traceabilityCode ? {
-                                                    id: lot.traceabilityCode.id,
-                                                    code: lot.traceabilityCode.code || lot.traceabilityCode.publicToken,
-                                                    publicToken: lot.traceabilityCode.publicToken,
-                                                    status: lot.traceabilityCode.status,
-                                                } : null,
-                                            })}
-                                            className="rounded-xl text-xs h-8 px-2.5 font-bold flex items-center gap-1 bg-slate-50 hover:bg-slate-100"
-                                        >
-                                            <FileText className="h-3.5 w-3.5" />
-                                            Xem phiếu xuất
-                                        </Button>
-                                    </div>
+                                                ownerType: lot.ownerType,
+                                                isExport: isExp,
+                                                destinationCountry: lot.destination?.country || (isExp ? "Trung Quốc" : undefined),
+                                                traceabilityCode: lot.traceabilityCode,
+                                            })
+                                        }
+                                        className="text-xs font-bold text-slate-700 hover:text-emerald-700 flex items-center gap-1"
+                                    >
+                                        <FileText className="h-3.5 w-3.5" />
+                                        Xem phiếu xuất
+                                    </button>
 
-                                    <div className="flex items-center gap-2">
-                                        {lot.traceabilityCode ? (
-                                            <>
-                                                <QrPreview token={lot.traceabilityCode.publicToken} />
-                                                <Button asChild variant="outline" size="sm" className="rounded-xl text-xs h-8">
-                                                    <Link target="_blank" href={`/trace/${lot.traceabilityCode.publicToken}`}>
-                                                        Trang QR <ExternalLink className="ml-1 h-3 w-3" />
-                                                    </Link>
-                                                </Button>
-                                            </>
-                                        ) : (
-                                            !admin && (
-                                                <Button
-                                                    disabled={!lot.validation?.canIssueQr || busy === lot.id}
-                                                    onClick={() => issue(lot.id)}
-                                                    size="sm"
-                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs h-8 flex items-center gap-1 shadow-sm"
-                                                >
-                                                    <QrCode className="h-3.5 w-3.5" />
-                                                    {busy === lot.id ? "Đang tạo QR..." : "Tạo mã QR"}
-                                                </Button>
-                                            )
-                                        )}
-                                    </div>
+                                    {qr ? (
+                                        <Link
+                                            href={`/trace/${qr.publicToken || qr.code}`}
+                                            target="_blank"
+                                            className="inline-flex items-center gap-1 rounded-xl bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
+                                        >
+                                            <QrCode className="h-3.5 w-3.5" />
+                                            Xem mã QR
+                                        </Link>
+                                    ) : (
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            disabled={busy === lot.id}
+                                            onClick={() => issue(lot.id)}
+                                            className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs h-7 gap-1"
+                                        >
+                                            <QrCode className="h-3 w-3" />
+                                            {busy === lot.id ? "Đang tạo..." : "Tạo QR"}
+                                        </Button>
+                                    )}
                                 </div>
                             </article>
                         );
                     })}
-                    {!lots.length && (
-                        <p className="rounded-3xl border border-dashed bg-white p-10 text-center text-slate-500 lg:col-span-2">
-                            Chưa có lô bán hoặc lô xuất hàng nào. Hãy lập phiếu xuất bán ở trên để bắt đầu.
-                        </p>
+
+                    {!visibleLots.length && (
+                        <div className="col-span-full rounded-3xl border border-dashed bg-white p-12 text-center text-slate-400">
+                            Chưa có lô hàng xuất bán / xuất khẩu nào được ghi nhận.
+                        </div>
                     )}
                 </div>
-            </div>
+            </section>
 
-            {/* Modal: Sales Dispatch Slip */}
+            {/* Sales Dispatch Slip Modal */}
             {selectedSlipData && (
                 <SalesDispatchSlip
                     data={selectedSlipData}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import QRCode from "qrcode";
 import { 
     Printer, 
@@ -15,7 +14,11 @@ import {
     AlertCircle,
     X,
     FileText,
-    ExternalLink
+    ExternalLink,
+    Ship,
+    Truck,
+    Globe,
+    Package
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -41,6 +44,15 @@ export type SalesDispatchData = {
     note?: string | null;
     ownerName?: string | null;
     ownerType?: string | null;
+    // Export fields (Nghị quyết 36/2026/NQ-CP & GACC Standard)
+    isExport?: boolean;
+    destinationCountry?: string | null;
+    portOfLoading?: string | null;
+    transportMethod?: string | null;
+    containerNumber?: string | null;
+    sealNumber?: string | null;
+    vehicleReference?: string | null;
+    exportStageStatus?: string | null;
     traceabilityCode?: {
         id: string;
         code: string;
@@ -86,8 +98,19 @@ export function SalesDispatchSlip({
         }
     }, [token]);
 
+    const isExport = Boolean(
+        data.isExport ||
+        data.lotCode?.startsWith("EXP-") ||
+        data.lotCode?.startsWith("CM-EXP-") ||
+        data.destinationCountry === "Trung Quốc" ||
+        data.buyerName?.toLowerCase().includes("trung quốc")
+    );
     const isProcessingFacility = data.ownerType === "PROCESSING_FACILITY" || data.lotCode?.startsWith("TP-") || data.lotCode?.startsWith("CM-FAC");
-    const slipTitle = isProcessingFacility ? "XUẤT BÁN LÔ THÀNH PHẨM" : "XUẤT BÁN LÔ SẦU RIÊNG";
+    const slipTitle = isExport
+        ? "PHIẾU XUẤT HÀNG XUẤT KHẨU"
+        : isProcessingFacility
+        ? "XUẤT BÁN LÔ THÀNH PHẨM"
+        : "XUẤT BÁN LÔ SẦU RIÊNG";
 
     const unit = data.unit || "kg";
     const quantity = Number(data.quantity || 0);
@@ -178,18 +201,32 @@ export function SalesDispatchSlip({
                         <td class="label">Tồn kho trước xuất:</td>
                         <td class="val">${stockBefore.toLocaleString("vi-VN")} ${unit}</td>
                     </tr>
+                    ${isExport ? `
+                    <tr>
+                        <td class="label">Thị trường xuất khẩu:</td>
+                        <td class="val"><b>${data.destinationCountry || "Trung Quốc"}</b></td>
+                    </tr>
+                    <tr>
+                        <td class="label">Cửa khẩu / Cảng xuất:</td>
+                        <td class="val">${data.portOfLoading || "Cửa khẩu Quốc tế Hữu Nghị (Lạng Sơn)"}</td>
+                    </tr>
+                    ${data.containerNumber ? `<tr><td class="label">Số Container:</td><td class="val"><b>${data.containerNumber}</b></td></tr>` : ''}
+                    ${data.sealNumber ? `<tr><td class="label">Số Niêm phong Seal:</td><td class="val"><b>${data.sealNumber}</b></td></tr>` : ''}
+                    ${data.vehicleReference ? `<tr><td class="label">Biển số phương tiện:</td><td class="val">${data.vehicleReference}</td></tr>` : ''}
+                    ` : `
                     <tr>
                         <td class="label">Bên mua (Khách hàng):</td>
                         <td class="val"><b>${data.buyerName || "Chưa có thông tin"}</b></td>
                     </tr>
                     ${data.buyerPhone ? `<tr><td class="label">Số điện thoại bên mua:</td><td class="val">${data.buyerPhone}</td></tr>` : ''}
                     ${data.buyerAddress ? `<tr><td class="label">Địa chỉ giao nhận:</td><td class="val">${data.buyerAddress}</td></tr>` : ''}
+                    `}
                     <tr>
-                        <td class="label">Khối lượng xuất bán:</td>
+                        <td class="label">Khối lượng xuất ${isExport ? "khẩu" : "bán"}:</td>
                         <td class="val"><b style="font-size: 14px;">${quantity.toLocaleString("vi-VN")} ${unit}</b></td>
                     </tr>
                     <tr>
-                        <td class="label">Đơn giá xuất bán:</td>
+                        <td class="label">Đơn giá:</td>
                         <td class="val">${unitPrice > 0 ? `${unitPrice.toLocaleString("vi-VN")} đ/${unit}` : "Thỏa thuận"}</td>
                     </tr>
                     <tr>
@@ -237,7 +274,7 @@ export function SalesDispatchSlip({
                         <div>(Ký, ghi rõ họ tên)</div>
                     </div>
                     <div class="sig-block">
-                        <div class="sig-title">Đại diện bên mua</div>
+                        <div class="sig-title">${isExport ? "Đại diện đơn vị xuất" : "Đại diện bên mua"}</div>
                         <div>(Ký, ghi rõ họ tên)</div>
                     </div>
                 </div>
@@ -251,253 +288,201 @@ export function SalesDispatchSlip({
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl border border-slate-200">
-                {/* Header */}
-                <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-gradient-to-r from-emerald-700 to-teal-800 px-6 py-4 text-white">
-                    <div className="flex items-center gap-2.5">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 text-white backdrop-blur-sm">
-                            <FileText className="h-5 w-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs overflow-y-auto">
+            <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden my-8 border border-slate-200">
+                {/* Modal Header */}
+                <div className={`p-6 text-white flex items-center justify-between ${
+                    isExport ? "bg-gradient-to-r from-indigo-800 to-blue-900" : "bg-gradient-to-r from-emerald-800 to-teal-900"
+                }`}>
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md">
+                            {isExport ? <Ship className="h-6 w-6 text-indigo-200" /> : <FileText className="h-6 w-6 text-emerald-200" />}
                         </div>
                         <div>
-                            <h2 className="text-lg font-black tracking-tight">{slipTitle}</h2>
-                            <p className="text-xs text-emerald-100 font-medium">Phiếu xuất lô bán & Ghi nhận tài chính</p>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-md">
+                                    {isExport ? "HỒ SƠ XUẤT KHẨU GACC" : "PHIẾU XUẤT KHO THƯƠNG MẠI"}
+                                </span>
+                                <span className="text-xs font-mono font-bold text-white/80">#{data.lotCode}</span>
+                            </div>
+                            <h2 className="text-xl font-black mt-0.5 tracking-tight">{slipTitle}</h2>
                         </div>
                     </div>
                     {onClose && (
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-full p-1.5 text-white/80 hover:bg-white/20 hover:text-white transition"
+                            className="rounded-xl p-2 text-white/80 hover:bg-white/10 hover:text-white transition"
                         >
                             <X className="h-5 w-5" />
                         </button>
                     )}
                 </div>
 
-                <div className="p-6 space-y-6">
-                    {/* Top Alert Banner based on payment status */}
-                    <div className={`flex items-center justify-between rounded-2xl p-4 border ${
-                        data.paymentStatus === "PAID"
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-                            : data.paymentStatus === "PARTIAL"
-                            ? "bg-amber-50 border-amber-200 text-amber-900"
-                            : "bg-rose-50 border-rose-200 text-rose-900"
-                    }`}>
-                        <div className="flex items-center gap-2.5">
-                            {data.paymentStatus === "PAID" ? (
-                                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                            ) : data.paymentStatus === "PARTIAL" ? (
-                                <Clock className="h-5 w-5 text-amber-600 shrink-0" />
-                            ) : (
-                                <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
-                            )}
+                {/* Modal Content */}
+                <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+                    {/* General Lot Info */}
+                    <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100 space-y-3">
+                        <div className="grid grid-cols-2 gap-4 text-xs">
                             <div>
-                                <p className="text-xs uppercase tracking-wider font-bold opacity-75">Trạng thái thanh toán</p>
-                                <p className="text-sm font-black">{paymentStatusText}</p>
+                                <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Đơn vị xuất:</span>
+                                <span className="font-bold text-slate-800 text-sm block truncate">
+                                    {data.ownerName || "Cơ sở xuất hàng"}
+                                </span>
+                            </div>
+                            <div>
+                                <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Ngày xuất:</span>
+                                <span className="font-bold text-slate-800 text-sm block flex items-center gap-1">
+                                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                                    {formattedDate}
+                                </span>
+                            </div>
+                            <div className="col-span-2 border-t pt-2">
+                                <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Sản phẩm:</span>
+                                <span className="font-black text-slate-900 text-base block">{data.productName}</span>
                             </div>
                         </div>
-                        <div className="text-right">
-                            <p className="text-xs opacity-75">Phương thức</p>
-                            <p className="text-sm font-bold">{paymentMethodText}</p>
-                        </div>
+
+                        {/* Export specific details */}
+                        {isExport && (
+                            <div className="grid grid-cols-2 gap-3 pt-2 border-t text-xs bg-indigo-50/60 p-3 rounded-xl border-indigo-100">
+                                <div>
+                                    <span className="text-indigo-600 font-bold uppercase tracking-wider block text-[10px]">Thị trường:</span>
+                                    <span className="font-black text-indigo-950 text-sm block">
+                                        {data.destinationCountry || "Trung Quốc"}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-indigo-600 font-bold uppercase tracking-wider block text-[10px]">Cửa khẩu / Cảng:</span>
+                                    <span className="font-bold text-indigo-900 block truncate">
+                                        {data.portOfLoading || "Cửa khẩu Hữu Nghị"}
+                                    </span>
+                                </div>
+                                {data.containerNumber && (
+                                    <div>
+                                        <span className="text-indigo-600 font-bold uppercase tracking-wider block text-[10px]">Container:</span>
+                                        <span className="font-mono font-bold text-slate-800">{data.containerNumber}</span>
+                                    </div>
+                                )}
+                                {data.sealNumber && (
+                                    <div>
+                                        <span className="text-indigo-600 font-bold uppercase tracking-wider block text-[10px]">Seal:</span>
+                                        <span className="font-mono font-bold text-slate-800">{data.sealNumber}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    {/* Main Receipt Format */}
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 space-y-4 font-mono text-xs sm:text-sm">
-                        <div className="border-b border-dashed border-slate-300 pb-3 text-center">
-                            <p className="text-base font-black text-slate-900 tracking-wider uppercase font-sans">
-                                {slipTitle}
-                            </p>
-                            <p className="text-xs text-slate-500 font-sans mt-0.5">
-                                Đơn vị: {data.ownerName || "Vựa / Cơ sở đóng gói"} · Ngày: {formattedDate}
-                            </p>
+                    {/* Quantity & Finance Breakdown */}
+                    <div className="rounded-2xl border border-slate-200 overflow-hidden text-xs">
+                        <div className="bg-slate-100 px-4 py-2 font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+                            Chi tiết khối lượng & Thanh toán tài chính
                         </div>
-
-                        <div className="space-y-2.5 text-slate-700">
-                            <div className="flex justify-between items-center py-0.5">
-                                <span className="text-slate-500 font-sans">Lô xuất bán:</span>
-                                <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                    {data.lotCode}
+                        <div className="divide-y divide-slate-100 p-4 space-y-2 text-slate-700">
+                            <div className="flex justify-between py-1">
+                                <span className="text-slate-500">Tồn kho trước xuất:</span>
+                                <span className="font-bold text-slate-800">{stockBefore.toLocaleString("vi-VN")} {unit}</span>
+                            </div>
+                            <div className="flex justify-between py-1">
+                                <span className="text-slate-500">Khối lượng xuất:</span>
+                                <span className="font-black text-emerald-800 text-sm">{quantity.toLocaleString("vi-VN")} {unit}</span>
+                            </div>
+                            <div className="flex justify-between py-1">
+                                <span className="text-slate-500">Đơn giá xuất:</span>
+                                <span className="font-bold text-slate-800">
+                                    {unitPrice > 0 ? `${unitPrice.toLocaleString("vi-VN")} đ/${unit}` : "Thỏa thuận"}
                                 </span>
                             </div>
-                            <div className="flex justify-between items-center py-0.5">
-                                <span className="text-slate-500 font-sans">Sản phẩm:</span>
-                                <span className="font-bold text-slate-900 text-right">{data.productName}</span>
+                            <div className="flex justify-between py-1">
+                                <span className="text-slate-500">Thành tiền:</span>
+                                <span className="font-bold text-slate-800">{subtotal > 0 ? `${subtotal.toLocaleString("vi-VN")} đ` : "—"}</span>
                             </div>
-                            <div className="flex justify-between items-center py-0.5">
-                                <span className="text-slate-500 font-sans">Tồn kho trước xuất:</span>
-                                <span className="text-slate-600">{stockBefore.toLocaleString("vi-VN")} {unit}</span>
+                            <div className="flex justify-between py-1">
+                                <span className="text-slate-500">Chiết khấu:</span>
+                                <span className="font-bold text-slate-800">{discount > 0 ? `${discount.toLocaleString("vi-VN")} đ` : "0 đ"}</span>
                             </div>
-                            <div className="flex justify-between items-center py-0.5 border-t border-slate-200 pt-2">
-                                <span className="text-slate-500 font-sans">Bên mua:</span>
-                                <span className="font-bold text-emerald-800 text-right">{data.buyerName || "Công ty ABC"}</span>
+                            <div className="flex justify-between py-2 bg-emerald-50 px-3 rounded-xl border border-emerald-100">
+                                <span className="font-black text-emerald-900 text-sm">TỔNG PHẢI THU:</span>
+                                <span className="font-black text-emerald-900 text-base">{totalAmount > 0 ? `${totalAmount.toLocaleString("vi-VN")} đ` : "—"}</span>
                             </div>
-                            {data.buyerPhone && (
-                                <div className="flex justify-between items-center py-0.5">
-                                    <span className="text-slate-500 font-sans">Số điện thoại:</span>
-                                    <span>{data.buyerPhone}</span>
-                                </div>
-                            )}
-                            {data.buyerAddress && (
-                                <div className="flex justify-between items-center py-0.5">
-                                    <span className="text-slate-500 font-sans">Địa chỉ:</span>
-                                    <span className="text-right text-xs max-w-[280px]">{data.buyerAddress}</span>
-                                </div>
-                            )}
-                            <div className="flex justify-between items-center py-0.5 border-t border-slate-200 pt-2">
-                                <span className="text-slate-500 font-sans">Khối lượng xuất:</span>
-                                <span className="font-black text-slate-900 text-base">{quantity.toLocaleString("vi-VN")} {unit}</span>
+                            <div className="flex justify-between py-1 pt-2">
+                                <span className="text-slate-500">Đã thanh toán ({data.paymentMethod || "CK"}):</span>
+                                <span className="font-bold text-emerald-700">{paidAmount.toLocaleString("vi-VN")} đ</span>
                             </div>
-                            <div className="flex justify-between items-center py-0.5">
-                                <span className="text-slate-500 font-sans">Đơn giá xuất bán:</span>
-                                <span>{unitPrice > 0 ? `${unitPrice.toLocaleString("vi-VN")} đ/${unit}` : "—"}</span>
-                            </div>
-                            <div className="flex justify-between items-center py-0.5 border-t border-dashed border-slate-300 pt-2">
-                                <span className="text-slate-500 font-sans">Thành tiền:</span>
-                                <span>{subtotal > 0 ? `${subtotal.toLocaleString("vi-VN")} đ` : "—"}</span>
-                            </div>
-                            <div className="flex justify-between items-center py-0.5">
-                                <span className="text-slate-500 font-sans">Chiết khấu:</span>
-                                <span className="text-rose-600">
-                                    {discount > 0 ? `- ${discount.toLocaleString("vi-VN")} đ` : "0 đ"}
+                            <div className="flex justify-between py-1">
+                                <span className="text-slate-500">Còn phải thu / Công nợ:</span>
+                                <span className={`font-black ${debtAmount > 0 ? "text-rose-600" : "text-emerald-700"}`}>
+                                    {debtAmount > 0 ? `${debtAmount.toLocaleString("vi-VN")} đ` : "0 đ (Đã thanh toán đủ)"}
                                 </span>
                             </div>
-                            <div className="flex justify-between items-center py-2 bg-emerald-100/70 -mx-2 px-2 rounded-xl border border-emerald-200">
-                                <span className="font-bold text-emerald-900 font-sans">TỔNG PHẢI THU:</span>
-                                <span className="font-black text-emerald-900 text-base">
-                                    {totalAmount > 0 ? `${totalAmount.toLocaleString("vi-VN")} đ` : "—"}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center py-0.5 pt-1">
-                                <span className="text-slate-500 font-sans">Đã nhận / Đã thanh toán:</span>
-                                <span className="font-bold text-emerald-700">
-                                    {paidAmount > 0 ? `${paidAmount.toLocaleString("vi-VN")} đ` : "0 đ"}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center py-0.5">
-                                <span className="text-slate-500 font-sans">Còn phải thu / Công nợ:</span>
-                                <span className={`font-bold ${debtAmount > 0 ? "text-rose-600" : "text-emerald-700"}`}>
-                                    {debtAmount > 0 ? `${debtAmount.toLocaleString("vi-VN")} đ` : "0 đ"}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center py-0.5">
-                                <span className="text-slate-500 font-sans">Phương thức thanh toán:</span>
-                                <span className="font-medium text-slate-800">{paymentMethodText}</span>
-                            </div>
-                            {data.note && (
-                                <div className="border-t border-slate-200 pt-2 text-xs text-slate-500 italic font-sans">
-                                    Ghi chú: {data.note}
-                                </div>
-                            )}
                         </div>
                     </div>
 
                     {/* QR Code Section */}
-                    <div className="rounded-2xl border bg-white p-4 shadow-sm">
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                                {qrSrc ? (
-                                    <div className="relative h-20 w-20 rounded-xl border bg-white p-1 shadow-sm shrink-0">
-                                        <Image
-                                            unoptimized
-                                            src={qrSrc}
-                                            width={80}
-                                            height={80}
-                                            alt={`QR ${token}`}
-                                            className="h-full w-full object-contain"
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-slate-100 text-slate-400 shrink-0">
-                                        <QrCode className="h-8 w-8" />
-                                    </div>
-                                )}
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="font-bold text-slate-900 text-sm">Mã QR Truy xuất nguồn gốc</h4>
-                                        {token ? (
-                                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
-                                                Đã phát hành
-                                            </span>
-                                        ) : (
-                                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
-                                                Chưa tạo QR
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="text-xs text-slate-500 mt-1">
-                                        {token
-                                            ? `Mã: ${token} · Quét để xem hành trình từ vườn đến xuất bán`
-                                            : "Sau khi xuất bán, chuyển sang tạo QR để khách hàng tra cứu nguồn gốc"}
-                                    </p>
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 text-center space-y-3">
+                        {token && qrSrc ? (
+                            <div className="flex flex-col items-center">
+                                <div className="p-2 bg-white rounded-2xl shadow-sm border border-emerald-200">
+                                    <img src={qrSrc} alt="QR Code" width={160} height={160} className="rounded-lg" />
                                 </div>
+                                <span className="font-mono text-xs font-black text-emerald-900 mt-2">
+                                    Mã QR: {token}
+                                </span>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                    Quét để xem Timeline truy xuất nguồn gốc công khai
+                                </p>
+                                <a
+                                    href={`/trace/${token}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900 underline"
+                                >
+                                    Mở trang truy xuất công khai <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
                             </div>
-
-                            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
-                                {token ? (
-                                    <>
-                                        <a
-                                            href={`/trace/${token}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-flex items-center gap-1 rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-                                        >
-                                            <ExternalLink className="h-3.5 w-3.5" />
-                                            Xem trang
-                                        </a>
-                                        {qrSrc && (
-                                            <a
-                                                download={`QR-${data.lotCode}.png`}
-                                                href={qrSrc}
-                                                className="inline-flex items-center gap-1 rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-                                            >
-                                                <Download className="h-3.5 w-3.5" />
-                                                Tải QR
-                                            </a>
-                                        )}
-                                    </>
-                                ) : onIssueQr ? (
+                        ) : (
+                            <div className="py-3 space-y-2">
+                                <p className="text-xs font-bold text-slate-600">
+                                    Lô hàng đã ghi nhận xuất bán thành công. Bạn có thể phát hành mã QR truy xuất ngay bây giờ.
+                                </p>
+                                {onIssueQr && (
                                     <Button
                                         type="button"
                                         onClick={() => onIssueQr(data.id)}
                                         disabled={issuingQr}
-                                        className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs px-4 py-2 flex items-center gap-1.5"
+                                        className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs gap-2"
                                     >
                                         <QrCode className="h-4 w-4" />
-                                        {issuingQr ? "Đang tạo QR..." : "Tạo mã QR truy xuất ngay"}
+                                        {issuingQr ? "Đang tạo mã QR..." : "Tạo & Phát hành Mã QR ngay"}
                                     </Button>
-                                ) : null}
+                                )}
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Footer actions */}
-                <div className="sticky bottom-0 flex items-center justify-between border-t bg-slate-50 px-6 py-4 rounded-b-3xl">
-                    <div className="text-xs text-slate-500 font-medium">
-                        Phiếu xuất hợp lệ kèm chữ ký và mã QR truy xuất nguồn gốc.
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {onClose && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onClose}
-                                className="rounded-xl text-xs"
-                            >
-                                Đóng
-                            </Button>
-                        )}
+                {/* Modal Footer */}
+                <div className="p-4 bg-slate-50 border-t flex items-center justify-between">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handlePrint}
+                        className="rounded-xl text-xs font-bold gap-2"
+                    >
+                        <Printer className="h-4 w-4 text-slate-600" />
+                        In phiếu xuất hàng
+                    </Button>
+
+                    {onClose && (
                         <Button
                             type="button"
-                            onClick={handlePrint}
-                            className="bg-slate-900 hover:bg-black text-white font-bold rounded-xl text-xs px-4 flex items-center gap-1.5 shadow-sm"
+                            onClick={onClose}
+                            className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold px-5"
                         >
-                            <Printer className="h-4 w-4" />
-                            In Phiếu Xuất Bán
+                            Đóng
                         </Button>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>
