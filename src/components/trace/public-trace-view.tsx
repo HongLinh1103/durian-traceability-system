@@ -349,19 +349,19 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
         <main className="min-h-screen bg-gradient-to-b from-emerald-50/70 via-slate-50 to-white px-4 py-6 text-slate-900 sm:py-10">
             <div className="mx-auto max-w-3xl space-y-6">
                 {/* 1. HEADER: PRODUCT & QR BADGE */}
-                <header className="rounded-3xl border border-emerald-200/80 bg-white p-6 shadow-sm sm:p-8 space-y-4">
+                <header className="rounded-3xl border border-emerald-200/80 bg-white p-5 shadow-sm sm:p-8 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
                         <div className="flex items-center gap-2">
-                            <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-700 text-white font-black text-xs shadow-xs">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-700 text-white font-black text-xs shadow-xs shrink-0">
                                 TV
                             </span>
-                            <span className="text-xs font-black uppercase tracking-[0.16em] text-emerald-800">
-                                TRUY XUẤT NGUỒN GỐC NÔNG SẢN
+                            <span className="text-xs font-black uppercase tracking-[0.1em] text-emerald-800 whitespace-nowrap">
+                                TRUY XUẤT NGUỒN GỐC
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
                             <span
-                                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black border ${
+                                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black border whitespace-nowrap shrink-0 ${
                                     active
                                         ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                                         : trace.qrStatus === "REVOKED"
@@ -371,18 +371,18 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                             >
                                 {active ? (
                                     <>
-                                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                                        MÃ TRUY XUẤT HỢP LỆ
+                                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                                        <span className="whitespace-nowrap">MÃ TRUY XUẤT HỢP LỆ</span>
                                     </>
                                 ) : trace.qrStatus === "REVOKED" ? (
                                     <>
-                                        <AlertTriangle className="h-4 w-4 text-red-600" />
-                                        MÃ ĐÃ THU HỒI
+                                        <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                                        <span className="whitespace-nowrap">MÃ ĐÃ THU HỒI</span>
                                     </>
                                 ) : (
                                     <>
-                                        <AlertTriangle className="h-4 w-4 text-amber-600" />
-                                        MÃ ĐANG TẠM KHÓA
+                                        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                                        <span className="whitespace-nowrap">MÃ ĐANG TẠM KHÓA</span>
                                     </>
                                 )}
                             </span>
@@ -393,33 +393,33 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                         <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">
                             {trace.commercialLot.productName}
                         </h1>
-                        <p className="mt-1.5 text-xs sm:text-sm text-slate-500 font-medium">
-                            Lô xuất bán / thương mại:{" "}
-                            <b className="font-mono text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+                        <p className="mt-1.5 text-xs sm:text-sm text-slate-500 font-medium flex flex-wrap items-center gap-1.5">
+                            <span className="whitespace-nowrap">Lô xuất bán / thương mại:</span>
+                            <b className="font-mono text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200 whitespace-nowrap shrink-0 inline-block">
                                 {trace.commercialLot.lotCode}
                             </b>
                         </p>
                     </div>
 
                     {/* Quick Info Grid */}
-                    <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 sm:grid-cols-4 text-xs">
-                        <div className="space-y-1">
-                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Mã định danh QR</span>
-                            <span className="font-mono font-bold text-slate-800 block truncate">{trace.code}</span>
+                    <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 sm:grid-cols-4 text-xs">
+                        <div className="space-y-1 bg-slate-50/70 p-2.5 rounded-2xl border border-slate-100 sm:bg-transparent sm:p-0 sm:border-0">
+                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px] whitespace-nowrap">Mã định danh QR</span>
+                            <span className="font-mono font-bold text-slate-800 block truncate whitespace-nowrap" title={trace.code}>{trace.code}</span>
                         </div>
-                        <div className="space-y-1">
-                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Đơn vị phát hành</span>
-                            <span className="font-bold text-slate-800 block truncate">{trace.issuer}</span>
+                        <div className="space-y-1 bg-slate-50/70 p-2.5 rounded-2xl border border-slate-100 sm:bg-transparent sm:p-0 sm:border-0">
+                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px] whitespace-nowrap">Đơn vị phát hành</span>
+                            <span className="font-bold text-slate-800 block truncate whitespace-nowrap" title={trace.issuer}>{trace.issuer}</span>
                         </div>
-                        <div className="space-y-1">
-                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Khối lượng lô</span>
-                            <span className="font-black text-emerald-800 block">
+                        <div className="space-y-1 bg-slate-50/70 p-2.5 rounded-2xl border border-slate-100 sm:bg-transparent sm:p-0 sm:border-0">
+                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px] whitespace-nowrap">Khối lượng lô</span>
+                            <span className="font-black text-emerald-800 block whitespace-nowrap">
                                 {trace.commercialLot.quantity.toLocaleString("vi-VN")} {trace.commercialLot.unit}
                             </span>
                         </div>
-                        <div className="space-y-1">
-                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Điểm đến / Thị trường</span>
-                            <span className="font-bold text-slate-800 block truncate">
+                        <div className="space-y-1 bg-slate-50/70 p-2.5 rounded-2xl border border-slate-100 sm:bg-transparent sm:p-0 sm:border-0">
+                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px] whitespace-nowrap">Điểm đến / Thị trường</span>
+                            <span className="font-bold text-slate-800 block truncate whitespace-nowrap" title={trace.destination?.country || trace.destination?.name || trace.commercialLot.buyerName || ""}>
                                 {trace.destination?.country && !["việt nam", "vietnam", "vn"].includes(trace.destination.country.toLowerCase())
                                     ? trace.destination.country
                                     : trace.destination?.name || trace.commercialLot.buyerName || "Chợ đầu mối Nông sản Thủ Đức"}
@@ -429,46 +429,46 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
 
                     {/* QR Code Action Box */}
                     <div className="rounded-2xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-slate-50 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3.5 w-full sm:w-auto">
                             {qrDataUrl ? (
                                 <div className="rounded-2xl bg-white p-2 border border-emerald-200 shadow-xs shrink-0">
                                     <img
                                         src={qrDataUrl}
                                         alt={`QR - ${trace.commercialLot.lotCode}`}
-                                        className="h-20 w-20 sm:h-24 sm:w-24 object-contain rounded-lg"
+                                        className="h-20 w-20 sm:h-24 sm:w-24 object-contain rounded-lg shrink-0"
                                     />
                                 </div>
                             ) : (
                                 <div className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl bg-white text-emerald-700 border border-emerald-200 shrink-0">
-                                    <QrCode className="h-10 w-10 text-emerald-600" />
+                                    <QrCode className="h-10 w-10 text-emerald-600 shrink-0" />
                                 </div>
                             )}
-                            <div>
-                                <div className="flex items-center gap-1.5 text-xs font-black uppercase text-emerald-800 tracking-wide">
-                                    <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
-                                    Mã QR Định Danh Chính Hãng
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 text-xs font-black uppercase text-emerald-800 tracking-wide whitespace-nowrap">
+                                    <Sparkles className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                    <span className="whitespace-nowrap">Mã QR Định Danh</span>
                                 </div>
-                                <p className="text-xs text-slate-600 mt-1">
+                                <p className="text-xs text-slate-600 mt-1 line-clamp-2">
                                     Quét bằng Camera hoặc Zalo để xác thực nguồn gốc sầu riêng.
                                 </p>
                                 <div className="mt-1.5 flex items-center gap-2">
-                                    <span className="font-mono text-[11px] font-bold text-slate-700 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                                    <span className="font-mono text-[11px] font-bold text-slate-700 bg-white px-2 py-0.5 rounded-md border border-slate-200 whitespace-nowrap shrink-0 inline-block">
                                         Token: {trace.publicToken}
                                     </span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                        <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
                             <Button
                                 type="button"
                                 onClick={handleDownloadQr}
                                 disabled={!qrDataUrl}
                                 size="sm"
-                                className="flex-1 sm:flex-none rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs h-9 gap-1.5 shadow-xs"
+                                className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs h-9 px-2.5 sm:px-3.5 gap-1.5 shadow-xs whitespace-nowrap justify-center"
                             >
-                                <Download className="h-3.5 w-3.5" />
-                                Tải QR (PNG)
+                                <Download className="h-3.5 w-3.5 shrink-0" />
+                                <span className="whitespace-nowrap">Tải QR</span>
                             </Button>
 
                             <Button
@@ -476,10 +476,10 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                                 onClick={handlePrintQr}
                                 disabled={!qrDataUrl}
                                 size="sm"
-                                className="flex-1 sm:flex-none rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs h-9 gap-1.5 shadow-xs"
+                                className="rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs h-9 px-2.5 sm:px-3.5 gap-1.5 shadow-xs whitespace-nowrap justify-center"
                             >
-                                <Printer className="h-3.5 w-3.5" />
-                                In Tem QR
+                                <Printer className="h-3.5 w-3.5 shrink-0" />
+                                <span className="whitespace-nowrap">In Tem</span>
                             </Button>
 
                             <Button
@@ -487,10 +487,10 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                                 variant="outline"
                                 onClick={handleCopyUrl}
                                 size="sm"
-                                className="flex-1 sm:flex-none rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs h-9 gap-1.5"
+                                className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs h-9 px-2.5 sm:px-3.5 gap-1.5 whitespace-nowrap justify-center"
                             >
-                                {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-                                {copied ? "Đã chép!" : "Sao chép link"}
+                                {copied ? <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> : <Copy className="h-3.5 w-3.5 shrink-0" />}
+                                <span className="whitespace-nowrap">{copied ? "Đã chép" : "Sao chép"}</span>
                             </Button>
                         </div>
                     </div>
@@ -557,33 +557,43 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                                     {/* Milestone Content */}
                                     <div className="space-y-2">
                                         {/* Milestone Header Line: Title + Date */}
-                                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                                            <h3 className="text-base sm:text-lg font-black uppercase tracking-wide text-slate-900">
+                                        <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                            <h3 className="text-base sm:text-lg font-black uppercase tracking-wide text-slate-900 whitespace-nowrap">
                                                 {milestone.title}
                                             </h3>
-                                            <span className="font-mono text-xs sm:text-sm font-bold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
+                                            <span className="font-mono text-xs sm:text-sm font-bold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200 whitespace-nowrap shrink-0">
                                                 {milestone.dateText}
                                             </span>
                                         </div>
 
                                         {/* Milestone Fields List (Formatted concisely as requested) */}
                                         <div className="space-y-1.5 text-xs sm:text-sm pl-0.5">
-                                            {milestone.fields.map((field, fIdx) => (
-                                                <div key={fIdx} className="flex items-start gap-2">
-                                                    <span className="text-slate-500 font-medium shrink-0 min-w-[120px] sm:min-w-[150px]">
-                                                        {field.label}:
-                                                    </span>
-                                                    <span
-                                                        className={`break-words ${
-                                                            field.highlight
-                                                                ? "font-black text-slate-900"
-                                                                : "font-semibold text-slate-800"
-                                                        }`}
-                                                    >
-                                                        {field.value}
-                                                    </span>
-                                                </div>
-                                            ))}
+                                            {milestone.fields.map((field, fIdx) => {
+                                                const isQc = field.label.toUpperCase().includes("QC");
+                                                return (
+                                                    <div key={fIdx} className="flex items-baseline gap-2">
+                                                        <span className="text-slate-500 font-medium shrink-0 min-w-[95px] sm:min-w-[130px] whitespace-nowrap">
+                                                            {field.label}:
+                                                        </span>
+                                                        {isQc ? (
+                                                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-black text-emerald-800 border border-emerald-200 whitespace-nowrap shrink-0">
+                                                                <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
+                                                                <span className="whitespace-nowrap">{field.value}</span>
+                                                            </span>
+                                                        ) : (
+                                                            <span
+                                                                className={`break-words ${
+                                                                    field.highlight
+                                                                        ? "font-black text-slate-900"
+                                                                        : "font-semibold text-slate-800"
+                                                                }`}
+                                                            >
+                                                                {field.value}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
 
                                         {/* Expandable Substeps for Processing */}
@@ -592,36 +602,36 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                                                 <button
                                                     type="button"
                                                     onClick={() => setExpandedProcessing(!expandedProcessing)}
-                                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 transition"
+                                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 transition whitespace-nowrap"
                                                 >
-                                                    <span>
+                                                    <span className="whitespace-nowrap">
                                                         {expandedProcessing
                                                             ? "Thu gọn quy trình"
-                                                            : `Xem quy trình chế biến / đóng gói (${milestone.substeps.length} bước)`}
+                                                            : `Xem quy trình chế biến (${milestone.substeps.length} bước)`}
                                                     </span>
                                                     {expandedProcessing ? (
-                                                        <ChevronUp className="h-3.5 w-3.5" />
+                                                        <ChevronUp className="h-3.5 w-3.5 shrink-0" />
                                                     ) : (
-                                                        <ChevronDown className="h-3.5 w-3.5" />
+                                                        <ChevronDown className="h-3.5 w-3.5 shrink-0" />
                                                     )}
                                                 </button>
 
                                                 {expandedProcessing && (
                                                     <div className="mt-2.5 rounded-2xl bg-slate-50 p-4 border border-slate-200 space-y-2 text-xs">
-                                                        <p className="font-bold text-slate-800 uppercase text-[11px] tracking-wider mb-2">
+                                                        <p className="font-bold text-slate-800 uppercase text-[11px] tracking-wider mb-2 whitespace-nowrap">
                                                             Quy trình kiểm soát chất lượng mẻ:
                                                         </p>
                                                         {milestone.substeps.map((step, sIdx) => (
                                                             <div
                                                                 key={sIdx}
-                                                                className="flex items-center justify-between py-1 border-b border-slate-200/60 last:border-0"
+                                                                className="flex items-center justify-between py-1.5 border-b border-slate-200/60 last:border-0 gap-2"
                                                             >
                                                                 <span className="font-medium text-slate-800">
                                                                     {step.name}
                                                                 </span>
-                                                                <span className="font-bold text-emerald-700 flex items-center gap-1">
-                                                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                                                    {step.status}
+                                                                <span className="font-bold text-emerald-700 flex items-center gap-1 whitespace-nowrap shrink-0 text-xs">
+                                                                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                                                                    <span className="whitespace-nowrap">{step.status}</span>
                                                                 </span>
                                                             </div>
                                                         ))}
@@ -637,10 +647,10 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                 </section>
 
                 {/* 3. QUÁ TRÌNH CANH TÁC TẠI VƯỜN (ACCORDION) */}
-                <section className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm space-y-4">
+                <section className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-8 shadow-sm space-y-4">
                     <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-                            <Sprout className="h-5 w-5" />
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 shrink-0">
+                            <Sprout className="h-5 w-5 shrink-0" />
                         </div>
                         <div>
                             <h2 className="text-lg font-black text-slate-900 uppercase tracking-wide">
@@ -670,26 +680,26 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                                                 <h3 className="font-black text-slate-900 text-sm">
                                                     {farm.farmName}
                                                 </h3>
-                                                <span className="font-mono text-[11px] bg-slate-100 px-2 py-0.5 rounded text-slate-600">
+                                                <span className="font-mono text-[11px] bg-slate-100 px-2 py-0.5 rounded text-slate-600 whitespace-nowrap shrink-0">
                                                     {farm.farmCode}
                                                 </span>
                                             </div>
                                             <p className="text-xs text-slate-500 mt-1">
-                                                Vụ: <b>{farm.season}</b> · Giống: <b>{farm.variety}</b> ·{" "}
-                                                <b>{farm.cultivationLogs.length}</b> hoạt động đã ghi nhận
+                                                Vụ: <b className="whitespace-nowrap">{farm.season}</b> · Giống: <b className="whitespace-nowrap">{farm.variety}</b> ·{" "}
+                                                <b className="whitespace-nowrap">{farm.cultivationLogs.length}</b> hoạt động đã ghi nhận
                                             </p>
                                         </div>
 
-                                        <div className="flex items-center gap-2 self-start sm:self-auto">
-                                            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+                                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                                            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800 whitespace-nowrap shrink-0">
                                                 Đạt VietGAP
                                             </span>
-                                            <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
-                                                {isExpanded ? "Thu gọn" : "Xem nhật ký"}
+                                            <span className="text-xs font-bold text-emerald-700 flex items-center gap-1 whitespace-nowrap shrink-0">
+                                                <span className="whitespace-nowrap">{isExpanded ? "Thu gọn" : "Xem nhật ký"}</span>
                                                 {isExpanded ? (
-                                                    <ChevronUp className="h-4 w-4" />
+                                                    <ChevronUp className="h-4 w-4 shrink-0" />
                                                 ) : (
-                                                    <ChevronDown className="h-4 w-4" />
+                                                    <ChevronDown className="h-4 w-4 shrink-0" />
                                                 )}
                                             </span>
                                         </div>
@@ -697,20 +707,20 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
 
                                     {isExpanded && (
                                         <div className="mt-4 border-t border-slate-100 pt-4 space-y-2">
-                                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 whitespace-nowrap">
                                                 Lịch sử hoạt động canh tác tại vườn:
                                             </p>
                                             <div className="space-y-2">
                                                 {farm.cultivationLogs.map((log, lIdx) => (
                                                     <div
                                                         key={lIdx}
-                                                        className="grid grid-cols-[100px_1fr] gap-3 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100"
+                                                        className="grid grid-cols-[85px_1fr] sm:grid-cols-[100px_1fr] gap-2.5 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100"
                                                     >
-                                                        <time className="font-mono font-semibold text-slate-500">
+                                                        <time className="font-mono font-semibold text-slate-500 whitespace-nowrap shrink-0">
                                                             {new Date(log.actionDate).toLocaleDateString("vi-VN")}
                                                         </time>
                                                         <div>
-                                                            <b className="text-slate-900">
+                                                            <b className="text-slate-900 block">
                                                                 {activityLabels[log.activityType] || "Hoạt động canh tác"}
                                                             </b>
                                                             {log.notes && (
@@ -737,7 +747,7 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
 
                 {/* 4. CAM KẾT BẢO MẬT & MINH BẠCH */}
                 <footer className="rounded-3xl border border-emerald-100 bg-emerald-50/50 p-5 text-center text-xs text-slate-600 space-y-1.5">
-                    <div className="flex items-center justify-center gap-1.5 font-bold text-emerald-800 text-sm">
+                    <div className="flex items-center justify-center gap-1.5 font-bold text-emerald-800 text-sm whitespace-nowrap">
                         <Lock className="h-4 w-4 text-emerald-700" />
                         <span>Chính Sách Bảo Mật & Minh Bạch Chuỗi Cung Ứng TriViet</span>
                     </div>

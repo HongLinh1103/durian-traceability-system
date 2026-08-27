@@ -415,11 +415,11 @@ export function QrCodeViewerModal({ data, onClose }: QrCodeViewerModalProps) {
                             </div>
                         )}
 
-                        <div className="flex items-center justify-between">
-                            <span className="text-slate-500 font-medium">Trạng thái phát hành:</span>
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-black text-emerald-800">
-                                <ShieldCheck className="h-3 w-3 text-emerald-600" />
-                                Hợp lệ & Sẵn sàng quét
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-slate-500 font-medium whitespace-nowrap">Trạng thái phát hành:</span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-800 whitespace-nowrap shrink-0">
+                                <ShieldCheck className="h-3 w-3 text-emerald-600 shrink-0" />
+                                <span className="whitespace-nowrap">Hợp lệ & Sẵn sàng quét</span>
                             </span>
                         </div>
                     </div>

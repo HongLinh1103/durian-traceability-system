@@ -459,13 +459,13 @@ export function QrTraceScanner({
             {/* Header / Intro */}
             <div className="mb-6 flex flex-col gap-2 text-center sm:text-left">
                 <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-between">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400 backdrop-blur">
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Truy xuất nguồn gốc TriViet
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400 backdrop-blur whitespace-nowrap shrink-0">
+                        <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                        <span>Truy xuất nguồn gốc TriViet</span>
                     </span>
-                    <span className="hidden text-xs text-slate-400 sm:inline-flex sm:items-center sm:gap-1">
-                        <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                        Chứng nhận VietGAP & GACC
+                    <span className="hidden text-xs text-slate-400 sm:inline-flex sm:items-center sm:gap-1 whitespace-nowrap shrink-0">
+                        <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
+                        <span>Chứng nhận VietGAP & GACC</span>
                     </span>
                 </div>
                 <h2
@@ -485,42 +485,42 @@ export function QrTraceScanner({
                     type="button"
                     onClick={() => handleTabChange("camera")}
                     className={cn(
-                        "flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition-all sm:text-sm",
+                        "flex items-center justify-center gap-1.5 rounded-xl px-2.5 py-2.5 text-xs font-bold transition-all sm:text-sm whitespace-nowrap",
                         activeTab === "camera"
                             ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20"
                             : "text-slate-300 hover:bg-white/10 hover:text-white"
                     )}
                 >
                     <Camera className="h-4 w-4 shrink-0" />
-                    <span>Camera</span>
+                    <span className="whitespace-nowrap">Camera</span>
                 </button>
 
                 <button
                     type="button"
                     onClick={() => handleTabChange("upload")}
                     className={cn(
-                        "flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition-all sm:text-sm",
+                        "flex items-center justify-center gap-1.5 rounded-xl px-2.5 py-2.5 text-xs font-bold transition-all sm:text-sm whitespace-nowrap",
                         activeTab === "upload"
                             ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20"
                             : "text-slate-300 hover:bg-white/10 hover:text-white"
                     )}
                 >
                     <Upload className="h-4 w-4 shrink-0" />
-                    <span>Tải ảnh QR</span>
+                    <span className="whitespace-nowrap">Tải ảnh QR</span>
                 </button>
 
                 <button
                     type="button"
                     onClick={() => handleTabChange("manual")}
                     className={cn(
-                        "flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition-all sm:text-sm",
+                        "flex items-center justify-center gap-1.5 rounded-xl px-2.5 py-2.5 text-xs font-bold transition-all sm:text-sm whitespace-nowrap",
                         activeTab === "manual"
                             ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20"
                             : "text-slate-300 hover:bg-white/10 hover:text-white"
                     )}
                 >
                     <Keyboard className="h-4 w-4 shrink-0" />
-                    <span>Nhập mã</span>
+                    <span className="whitespace-nowrap">Nhập mã</span>
                 </button>
             </div>
 
