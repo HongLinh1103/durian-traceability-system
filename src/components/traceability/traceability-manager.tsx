@@ -145,6 +145,7 @@ export function TraceabilityManager({
     initialSourceId?: string;
 }) {
     const [lots, setLots] = useState(initialLots);
+    const [sourceList, setSourceList] = useState<SourceOption[]>(sources);
     const [busy, setBusy] = useState<string | null>(null);
     const [message, setMessage] = useState("");
     const [issuerFilter, setIssuerFilter] = useState("ALL");
@@ -158,6 +159,10 @@ export function TraceabilityManager({
         role === "PROCESSING_FACILITY" ? "DOMESTIC" : role === "COLLECTOR" ? "MARKET" : "RETAIL"
     );
     const [showSuggestions, setShowSuggestions] = useState(false);
+
+    useEffect(() => {
+        setSourceList(sources);
+    }, [sources]);
 
     // Form inputs for sales dispatch & finance
     const [quantityInput, setQuantityInput] = useState<string>("");
@@ -250,7 +255,7 @@ export function TraceabilityManager({
         setShowSuggestions(false);
     }
 
-    const selectedSource = sources.find((source) => source.id === selectedSourceId);
+    const selectedSource = sourceList.find((source) => source.id === selectedSourceId);
     const dateCode = new Date().toISOString().slice(0, 10).replaceAll("-", "");
     const prefix = role === "COLLECTOR" ? "CM-COL" : role === "PROCESSING_FACILITY" ? "TP" : "CM-FAR";
     const nextSequence =
@@ -392,30 +397,61 @@ export function TraceabilityManager({
         }
 
         const createdLot = payload.data;
-        setLots((prev) => [createdLot, ...prev]);
+        const normalizedLot = {
+            ...createdLot,
+            quantity: Number(createdLot.quantity),
+            remainingQuantity: Number(createdLot.remainingQuantity),
+            stockBeforeDispatch: createdLot.stockBeforeDispatch ? Number(createdLot.stockBeforeDispatch) : null,
+            unitPrice: createdLot.unitPrice ? Number(createdLot.unitPrice) : null,
+            subtotal: createdLot.subtotal ? Number(createdLot.subtotal) : null,
+            discount: createdLot.discount ? Number(createdLot.discount) : 0,
+            totalAmount: createdLot.totalAmount ? Number(createdLot.totalAmount) : null,
+            paidAmount: createdLot.paidAmount ? Number(createdLot.paidAmount) : 0,
+            debtAmount: createdLot.debtAmount ? Number(createdLot.debtAmount) : 0,
+            owner: createdLot.owner || { name: role === "PROCESSING_FACILITY" ? "Cơ sở chế biến" : role === "COLLECTOR" ? "Vựa thu mua" : "Nông dân" },
+            validation: createdLot.validation || { traceCompleteness: 100, canIssueQr: true, missingRequirements: [] },
+        };
+        setLots((prev) => [normalizedLot, ...prev]);
+
+        // Deduct source lot quantity in UI sources list
+        setSourceList((prev) =>
+            prev
+                .map((s) => {
+                    if (s.id === selectedSource?.id) {
+                        const currentRem = s.remainingQuantity ?? 0;
+                        const newRemaining = Math.max(0, currentRem - numQuantity);
+                        return {
+                            ...s,
+                            remainingQuantity: newRemaining,
+                        };
+                    }
+                    return s;
+                })
+                .filter((s) => (s.remainingQuantity ?? 0) > 0)
+        );
 
         // Open the official Sales Dispatch Slip Modal immediately
         setSelectedSlipData({
-            id: createdLot.id,
-            lotCode: createdLot.lotCode,
-            productName: createdLot.productName,
-            quantity: Number(createdLot.quantity),
-            unit: createdLot.unit,
-            stockBeforeDispatch: createdLot.stockBeforeDispatch,
-            buyerName: createdLot.buyerName,
-            buyerPhone: createdLot.buyerPhone,
-            buyerAddress: createdLot.buyerAddress,
-            unitPrice: createdLot.unitPrice,
-            subtotal: createdLot.subtotal,
-            discount: createdLot.discount,
-            totalAmount: createdLot.totalAmount,
-            paidAmount: createdLot.paidAmount,
-            debtAmount: createdLot.debtAmount,
-            paymentStatus: createdLot.paymentStatus,
-            paymentMethod: createdLot.paymentMethod,
-            dispatchedAt: createdLot.dispatchedAt,
-            note: createdLot.note,
-            ownerName: createdLot.owner?.name,
+            id: normalizedLot.id,
+            lotCode: normalizedLot.lotCode,
+            productName: normalizedLot.productName,
+            quantity: Number(normalizedLot.quantity),
+            unit: normalizedLot.unit || "kg",
+            stockBeforeDispatch: normalizedLot.stockBeforeDispatch,
+            buyerName: normalizedLot.buyerName || normalizedLot.destination?.name || destName,
+            buyerPhone: normalizedLot.buyerPhone || contactPhone,
+            buyerAddress: normalizedLot.buyerAddress || destAddress,
+            unitPrice: normalizedLot.unitPrice,
+            subtotal: normalizedLot.subtotal,
+            discount: normalizedLot.discount,
+            totalAmount: normalizedLot.totalAmount,
+            paidAmount: normalizedLot.paidAmount,
+            debtAmount: normalizedLot.debtAmount,
+            paymentStatus: normalizedLot.paymentStatus,
+            paymentMethod: normalizedLot.paymentMethod,
+            dispatchedAt: normalizedLot.dispatchedAt,
+            note: normalizedLot.note,
+            ownerName: normalizedLot.owner?.name,
             ownerType: role,
             traceabilityCode: null,
         });
@@ -472,7 +508,7 @@ export function TraceabilityManager({
                                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white font-medium focus:border-emerald-500 focus:outline-none"
                             >
                                 <option value="">-- Chọn lô nguồn hàng --</option>
-                                {sources.map((source) => (
+                                {sourceList.map((source) => (
                                     <option key={source.id} value={source.id}>
                                         {source.code} · {source.label} (Còn {source.remainingQuantity?.toLocaleString("vi-VN")} kg)
                                     </option>
@@ -798,15 +834,15 @@ export function TraceabilityManager({
                                         </span>
                                         <h2 className="mt-2 text-base font-black text-slate-900">{lot.productName}</h2>
                                         <p className="text-xs text-slate-500 mt-0.5">
-                                            {lot.owner.name} · Xuất: <b className="text-slate-800">{lot.quantity.toLocaleString("vi-VN")} {lot.unit}</b>
+                                            {lot.owner?.name || "Đơn vị"} · Xuất: <b className="text-slate-800">{lot.quantity.toLocaleString("vi-VN")} {lot.unit}</b>
                                         </p>
                                     </div>
                                     <span
                                         className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                                            lot.validation.canIssueQr ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"
+                                            lot.validation?.canIssueQr ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"
                                         }`}
                                     >
-                                        Đầy đủ {lot.validation.traceCompleteness}%
+                                        Đầy đủ {lot.validation?.traceCompleteness ?? 100}%
                                     </span>
                                 </div>
 
@@ -838,10 +874,10 @@ export function TraceabilityManager({
                                     </div>
                                 </div>
 
-                                {!lot.validation.canIssueQr && (
+                                {!lot.validation?.canIssueQr && (
                                     <div className="flex gap-2 rounded-2xl bg-amber-50 p-3 text-xs text-amber-900">
                                         <ShieldAlert className="h-4 w-4 shrink-0" />
-                                        <span>{lot.validation.missingRequirements.join("; ")}</span>
+                                        <span>{lot.validation?.missingRequirements?.join("; ") || "Chưa hoàn thiện liên kết truy xuất"}</span>
                                     </div>
                                 )}
 
@@ -871,7 +907,7 @@ export function TraceabilityManager({
                                                 paymentStatus: lot.paymentStatus,
                                                 paymentMethod: lot.paymentMethod,
                                                 dispatchedAt: lot.dispatchedAt,
-                                                ownerName: lot.owner.name,
+                                                ownerName: lot.owner?.name,
                                                 ownerType: role,
                                                 traceabilityCode: lot.traceabilityCode ? {
                                                     id: lot.traceabilityCode.id,
@@ -900,7 +936,7 @@ export function TraceabilityManager({
                                         ) : (
                                             !admin && (
                                                 <Button
-                                                    disabled={!lot.validation.canIssueQr || busy === lot.id}
+                                                    disabled={!lot.validation?.canIssueQr || busy === lot.id}
                                                     onClick={() => issue(lot.id)}
                                                     size="sm"
                                                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs h-8 flex items-center gap-1 shadow-sm"

@@ -65,12 +65,22 @@ export function SalesDispatchSlip({
     const token = data.traceabilityCode?.publicToken || data.traceabilityCode?.code;
 
     useEffect(() => {
-        if (token) {
-            void QRCode.toDataURL(`${window.location.origin}/trace/${token}`, {
-                width: 240,
-                margin: 1,
-                errorCorrectionLevel: "M",
-            }).then(setQrSrc);
+        if (token && typeof window !== "undefined") {
+            try {
+                void QRCode.toDataURL(`${window.location.origin}/trace/${token}`, {
+                    width: 240,
+                    margin: 1,
+                    errorCorrectionLevel: "M",
+                })
+                    .then(setQrSrc)
+                    .catch((err) => {
+                        console.error("QR Code generation error:", err);
+                        setQrSrc("");
+                    });
+            } catch (err) {
+                console.error("QR Code error:", err);
+                setQrSrc("");
+            }
         } else {
             setQrSrc("");
         }
@@ -98,11 +108,13 @@ export function SalesDispatchSlip({
     const paymentMethodText = data.paymentMethod || "Chuyển khoản";
 
     const dispatchDate = data.dispatchedAt ? new Date(data.dispatchedAt) : new Date();
-    const formattedDate = dispatchDate.toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    });
+    const formattedDate = !isNaN(dispatchDate.getTime())
+        ? dispatchDate.toLocaleDateString("vi-VN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+          })
+        : new Date().toLocaleDateString("vi-VN");
 
     function handlePrint() {
         const printWindow = window.open("", "_blank", "width=800,height=900");

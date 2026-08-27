@@ -7,7 +7,10 @@ import { TraceabilityManager } from "@/components/traceability/traceability-mana
 
 export const dynamic = "force-dynamic";
 
-export default async function Page() {
+export default async function Page(props: { searchParams?: Promise<{ sourceId?: string }> }) {
+    const searchParams = props.searchParams ? await props.searchParams : undefined;
+    const initialSourceId = searchParams?.sourceId;
+
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "COLLECTOR") redirect("/login");
     const facility = await prisma.partnerFacility.findUnique({ where: { ownerId: session.user.id } });
@@ -105,6 +108,7 @@ export default async function Page() {
                 initialLots={JSON.parse(JSON.stringify(lots))}
                 sources={sources}
                 destinations={destinations}
+                initialSourceId={initialSourceId}
             />
         </main>
     );

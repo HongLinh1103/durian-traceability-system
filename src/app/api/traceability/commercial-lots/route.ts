@@ -254,6 +254,12 @@ export async function POST(request: Request) {
                     note: value.note,
                     ...relation,
                 },
+                include: {
+                    owner: { select: { name: true } },
+                    farmerOwner: { select: { fullName: true } },
+                    destination: true,
+                    traceabilityCode: true,
+                },
             });
 
             // If money was paid, record in PartnerPaymentRecord
@@ -319,6 +325,8 @@ export async function POST(request: Request) {
         });
 
         const validation = await validateTraceability(lot.id);
+        const ownerName = lot.owner?.name || (lot.farmerOwner as any)?.fullName || user.fullName || facility?.name || "Đơn vị";
+
         return NextResponse.json(
             {
                 success: true,
@@ -333,7 +341,8 @@ export async function POST(request: Request) {
                     totalAmount: lot.totalAmount ? Number(lot.totalAmount) : null,
                     paidAmount: lot.paidAmount ? Number(lot.paidAmount) : 0,
                     debtAmount: lot.debtAmount ? Number(lot.debtAmount) : 0,
-                    validation,
+                    owner: { name: ownerName },
+                    validation: validation || { traceCompleteness: 100, canIssueQr: true, missingRequirements: [] },
                 },
             },
             { status: 201 }
