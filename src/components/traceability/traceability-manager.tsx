@@ -154,6 +154,7 @@ export function TraceabilityManager({
 
     // Modal state for viewing the sales dispatch slip
     const [selectedSlipData, setSelectedSlipData] = useState<SalesDispatchData | null>(null);
+    const [exportProgressLot, setExportProgressLot] = useState<Lot | null>(null);
     const [issuingQr, setIssuingQr] = useState(false);
 
     useEffect(() => {
@@ -1024,42 +1025,55 @@ export function TraceabilityManager({
                                 </div>
 
                                 {/* Card Actions */}
-                                <div className="border-t pt-3 flex items-center justify-between gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setSelectedSlipData({
-                                                id: lot.id,
-                                                lotCode: lot.lotCode,
-                                                productName: lot.productName,
-                                                quantity: lot.quantity,
-                                                unit: lot.unit,
-                                                stockBeforeDispatch: lot.stockBeforeDispatch,
-                                                buyerName: lot.buyerName || lot.destination?.name,
-                                                buyerPhone: lot.buyerPhone,
-                                                buyerAddress: lot.buyerAddress,
-                                                unitPrice: lot.unitPrice,
-                                                subtotal: lot.subtotal,
-                                                discount: lot.discount,
-                                                totalAmount: lot.totalAmount,
-                                                paidAmount: lot.paidAmount,
-                                                debtAmount: lot.debtAmount,
-                                                paymentStatus: lot.paymentStatus,
-                                                paymentMethod: lot.paymentMethod,
-                                                dispatchedAt: lot.dispatchedAt,
-                                                note: lot.note,
-                                                ownerName: lot.owner?.name,
-                                                ownerType: lot.ownerType,
-                                                isExport: isExp,
-                                                destinationCountry: lot.destination?.country || (isExp ? "Trung Quốc" : undefined),
-                                                traceabilityCode: lot.traceabilityCode,
-                                            })
-                                        }
-                                        className="text-xs font-bold text-slate-700 hover:text-emerald-700 flex items-center gap-1"
-                                    >
-                                        <FileText className="h-3.5 w-3.5" />
-                                        Xem phiếu xuất
-                                    </button>
+                                <div className="border-t pt-3 flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setSelectedSlipData({
+                                                    id: lot.id,
+                                                    lotCode: lot.lotCode,
+                                                    productName: lot.productName,
+                                                    quantity: lot.quantity,
+                                                    unit: lot.unit,
+                                                    stockBeforeDispatch: lot.stockBeforeDispatch,
+                                                    buyerName: lot.buyerName || lot.destination?.name,
+                                                    buyerPhone: lot.buyerPhone,
+                                                    buyerAddress: lot.buyerAddress,
+                                                    unitPrice: lot.unitPrice,
+                                                    subtotal: lot.subtotal,
+                                                    discount: lot.discount,
+                                                    totalAmount: lot.totalAmount,
+                                                    paidAmount: lot.paidAmount,
+                                                    debtAmount: lot.debtAmount,
+                                                    paymentStatus: lot.paymentStatus,
+                                                    paymentMethod: lot.paymentMethod,
+                                                    dispatchedAt: lot.dispatchedAt,
+                                                    note: lot.note,
+                                                    ownerName: lot.owner?.name,
+                                                    ownerType: lot.ownerType,
+                                                    isExport: isExp,
+                                                    destinationCountry: lot.destination?.country || (isExp ? "Trung Quốc" : undefined),
+                                                    traceabilityCode: lot.traceabilityCode,
+                                                })
+                                            }
+                                            className="text-xs font-bold text-slate-700 hover:text-emerald-700 flex items-center gap-1"
+                                        >
+                                            <FileText className="h-3.5 w-3.5" />
+                                            Phiếu xuất
+                                        </button>
+
+                                        {isExp && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setExportProgressLot(lot)}
+                                                className="text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200 flex items-center gap-1"
+                                            >
+                                                <Flag className="h-3 w-3" />
+                                                Tiến độ xuất
+                                            </button>
+                                        )}
+                                    </div>
 
                                     {qr ? (
                                         <Link
@@ -1104,6 +1118,237 @@ export function TraceabilityManager({
                     issuingQr={issuingQr}
                 />
             )}
+
+            {/* Export Progress Modal (Giai đoạn 6 - Kiểm dịch, Hải quan & Xuất hàng) */}
+            {exportProgressLot && (
+                <ExportProgressModal
+                    lot={exportProgressLot}
+                    onClose={() => setExportProgressLot(null)}
+                    onSaved={(updated) => {
+                        setLots((prev) =>
+                            prev.map((l) => (l.id === exportProgressLot.id ? { ...l, ...updated } : l))
+                        );
+                        setExportProgressLot(null);
+                    }}
+                />
+            )}
+        </div>
+    );
+}
+
+function ExportProgressModal({
+    lot,
+    onClose,
+    onSaved,
+}: {
+    lot: Lot;
+    onClose: () => void;
+    onSaved: (updated: Partial<Lot>) => void;
+}) {
+    const [stage, setStage] = useState<string>("PHYTOSANITARY_PASSED");
+    const [kdtvNumber, setKdtvNumber] = useState<string>("");
+    const [customsNumber, setCustomsNumber] = useState<string>("");
+    const [containerNum, setContainerNum] = useState<string>("");
+    const [sealNum, setSealNum] = useState<string>("");
+    const [vehicleRef, setVehicleRef] = useState<string>("");
+    const [port, setPort] = useState<string>("Cửa khẩu Quốc tế Hữu Nghị (Lạng Sơn)");
+    const [saving, setSaving] = useState(false);
+    const [msg, setMsg] = useState("");
+
+    const STAGES = [
+        { key: "DRAFT", label: "1. Chuẩn bị lô xuất", desc: "Đóng gói hoàn tất, chờ kiểm tra" },
+        { key: "PENDING_PHYTOSANITARY", label: "2. Chờ kiểm dịch", desc: "Gửi mẫu kiểm tra KDTV" },
+        { key: "PHYTOSANITARY_PASSED", label: "3. Kiểm dịch ĐẠT", desc: "Đã cấp GCN Kiểm dịch thực vật" },
+        { key: "CUSTOMS_DECLARING", label: "4. Chờ thông quan", desc: "Nộp hồ sơ tờ khai hải quan" },
+        { key: "CUSTOMS_CLEARED", label: "5. Đã thông quan", desc: "Hải quan đã phê duyệt xuất" },
+        { key: "DISPATCHED", label: "6. Đã xuất hàng", desc: "Đã qua cửa khẩu/cảng sang Trung Quốc" },
+    ];
+
+    async function handleSave(e: React.FormEvent) {
+        e.preventDefault();
+        setSaving(true);
+        setMsg("");
+
+        try {
+            const res = await fetch("/api/traceability/commercial-lots", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    commercialLotId: lot.id,
+                    exportStageStatus: stage,
+                    phytosanitaryCertificateNumber: kdtvNumber || undefined,
+                    customsDeclarationNumber: customsNumber || undefined,
+                    containerNumber: containerNum || undefined,
+                    sealNumber: sealNum || undefined,
+                    vehicleReference: vehicleRef || undefined,
+                    portOfLoading: port || undefined,
+                }),
+            });
+
+            const json = await res.json();
+            if (json.success) {
+                onSaved({ status: stage === "DISPATCHED" ? "DISPATCHED" : "DRAFT" });
+            } else {
+                setMsg(json.error || "Không thể cập nhật tiến độ");
+            }
+        } catch {
+            setMsg("Lỗi kết nối máy chủ");
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs overflow-y-auto">
+            <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden my-8 border border-slate-200">
+                <div className="bg-gradient-to-r from-indigo-950 via-indigo-900 to-slate-900 p-6 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md">
+                            <Ship className="h-6 w-6 text-indigo-300" />
+                        </div>
+                        <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-500/30 px-2 py-0.5 rounded text-indigo-200">
+                                GIAI ĐOẠN 6 · TIẾN ĐỘ XUẤT KHẨU & CHỨNG TỪ
+                            </span>
+                            <h3 className="text-lg font-black mt-0.5 tracking-tight text-white line-clamp-1">
+                                {lot.lotCode} · {lot.productName}
+                            </h3>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-xl p-2 text-white/80 hover:bg-white/10 hover:text-white transition"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSave} className="p-6 space-y-5 text-xs">
+                    {/* Stages Stepper */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-2">
+                            Tiến độ chu trình xuất khẩu (6 Giai đoạn):
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {STAGES.map((s) => (
+                                <button
+                                    key={s.key}
+                                    type="button"
+                                    onClick={() => setStage(s.key)}
+                                    className={`p-3 rounded-2xl border text-left transition ${
+                                        stage === s.key
+                                            ? "border-indigo-600 bg-indigo-50/80 font-bold text-indigo-950 shadow-xs ring-2 ring-indigo-500/20"
+                                            : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                                    }`}
+                                >
+                                    <div className="font-black text-xs">{s.label}</div>
+                                    <div className="text-[10px] text-slate-500 mt-0.5">{s.desc}</div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Documents & Transport details */}
+                    <div className="grid gap-3 sm:grid-cols-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                Số GCN Kiểm dịch thực vật (KDTV)
+                            </label>
+                            <input
+                                value={kdtvNumber}
+                                onChange={(e) => setKdtvNumber(e.target.value)}
+                                placeholder="VD: KDTV-2026-0828-01"
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                Số Tờ khai Hải quan xuất khẩu
+                            </label>
+                            <input
+                                value={customsNumber}
+                                onChange={(e) => setCustomsNumber(e.target.value)}
+                                placeholder="VD: TKHQ-105829103940"
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                Số Container
+                            </label>
+                            <input
+                                value={containerNum}
+                                onChange={(e) => setContainerNum(e.target.value)}
+                                placeholder="VD: TEMU-782910-4"
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                Số Seal niêm phong
+                            </label>
+                            <input
+                                value={sealNum}
+                                onChange={(e) => setSealNum(e.target.value)}
+                                placeholder="VD: VN-SEAL-89201"
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                Biển số xe vận chuyển
+                            </label>
+                            <input
+                                value={vehicleRef}
+                                onChange={(e) => setVehicleRef(e.target.value)}
+                                placeholder="VD: 51D-892.45 / 51R-123.45"
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                Cửa khẩu / Cảng xuất hàng
+                            </label>
+                            <input
+                                value={port}
+                                onChange={(e) => setPort(e.target.value)}
+                                placeholder="VD: Cửa khẩu Quốc tế Hữu Nghị (Lạng Sơn)"
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    {msg && (
+                        <div className="rounded-xl bg-rose-50 p-2.5 text-xs font-bold text-rose-700 border border-rose-200">
+                            {msg}
+                        </div>
+                    )}
+
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={onClose}
+                            className="rounded-xl text-xs font-bold"
+                        >
+                            Hủy bỏ
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={saving}
+                            className="bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold px-6 h-9"
+                        >
+                            {saving ? "Đang lưu..." : "Lưu tiến độ & Chứng từ"}
+                        </Button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }

@@ -484,3 +484,199 @@ export async function POST(request: Request) {
         );
     }
 }
+
+const updateExportSchema = z.object({
+    commercialLotId: z.string().min(1),
+    exportStageStatus: z
+        .enum([
+            "DRAFT",
+            "PENDING_PHYTOSANITARY",
+            "PHYTOSANITARY_PASSED",
+            "CUSTOMS_DECLARING",
+            "CUSTOMS_CLEARED",
+            "DISPATCHED",
+        ])
+        .optional(),
+    phytosanitaryCertificateNumber: z.string().trim().optional(),
+    customsDeclarationNumber: z.string().trim().optional(),
+    containerNumber: z.string().trim().optional(),
+    sealNumber: z.string().trim().optional(),
+    vehicleReference: z.string().trim().optional(),
+    portOfLoading: z.string().trim().optional(),
+    portOfDestination: z.string().trim().optional(),
+    note: z.string().trim().optional(),
+});
+
+export async function PATCH(request: Request) {
+    const user = await actor();
+    if (!user) return NextResponse.json({ success: false, error: "Không có quyền truy cập" }, { status: 403 });
+
+    const parsed = updateExportSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+        return NextResponse.json(
+            { success: false, error: "Dữ liệu cập nhật không hợp lệ", details: parsed.error.flatten() },
+            { status: 400 }
+        );
+    }
+
+    const {
+        commercialLotId,
+        exportStageStatus,
+        phytosanitaryCertificateNumber,
+        customsDeclarationNumber,
+        containerNumber,
+        sealNumber,
+        vehicleReference,
+        portOfLoading,
+        portOfDestination,
+        note,
+    } = parsed.data;
+
+    const lot = await prisma.commercialLot.findUnique({
+        where: { id: commercialLotId },
+        include: {
+            shipmentItems: {
+                include: {
+                    shipment: {
+                        include: { exportInfo: true },
+                    },
+                },
+            },
+            owner: true,
+            farmerOwner: true,
+            destination: true,
+        },
+    });
+
+    if (!lot) return NextResponse.json({ success: false, error: "Không tìm thấy lô hàng" }, { status: 404 });
+
+    let shipment = lot.shipmentItems[0]?.shipment;
+
+    const updatedShipment = await prisma.$transaction(async (tx) => {
+        if (!shipment && lot.destinationId) {
+            // Create shipment if missing
+            const shipmentCode = `SHIP-${lot.lotCode}`;
+            shipment = await tx.shipment.create({
+                data: {
+                    shipmentCode,
+                    senderType: user.role === "PROCESSING_FACILITY" ? "PROCESSING_FACILITY" : user.role === "COLLECTOR" ? "COLLECTOR" : "FARMER",
+                    senderId: lot.ownerId,
+                    farmerSenderId: lot.farmerOwnerId,
+                    destinationId: lot.destinationId,
+                    dispatchAt: lot.dispatchedAt || new Date(),
+                    dispatchedWeight: lot.quantity,
+                    vehicleReference,
+                    containerNumber,
+                    sealNumber,
+                    status: exportStageStatus === "DISPATCHED" ? "DISPATCHED" : "DRAFT",
+                    note: `Lô xuất khẩu sang ${lot.destination?.country || "Trung Quốc"}`,
+                },
+                include: { exportInfo: true },
+            });
+
+            await tx.exportShipmentInfo.create({
+                data: {
+                    shipmentId: shipment.id,
+                    destinationCountry: lot.destination?.country || "Trung Quốc",
+                    exporterName: lot.owner?.name || lot.farmerOwner?.fullName || user.fullName || "Cơ sở xuất khẩu",
+                    buyerName: lot.buyerName || "Đối tác",
+                    portOfLoading: portOfLoading || "Cửa khẩu Quốc tế Hữu Nghị (Lạng Sơn)",
+                    portOfDestination,
+                    customsDeclarationNumber,
+                    phytosanitaryCertificateNumber,
+                    containerNumber,
+                    sealNumber,
+                    exportDate: lot.dispatchedAt || new Date(),
+                },
+            });
+
+            await tx.shipmentItem.create({
+                data: {
+                    shipmentId: shipment.id,
+                    commercialLotId: lot.id,
+                    quantity: lot.quantity,
+                    weight: lot.quantity,
+                },
+            });
+        } else if (shipment) {
+            await tx.shipment.update({
+                where: { id: shipment.id },
+                data: {
+                    status: exportStageStatus === "DISPATCHED" ? "DISPATCHED" : "DRAFT",
+                    containerNumber: containerNumber !== undefined ? containerNumber : shipment.containerNumber,
+                    sealNumber: sealNumber !== undefined ? sealNumber : shipment.sealNumber,
+                    vehicleReference: vehicleReference !== undefined ? vehicleReference : shipment.vehicleReference,
+                    note: note || shipment.note,
+                },
+            });
+
+            if (shipment.exportInfo) {
+                await tx.exportShipmentInfo.update({
+                    where: { shipmentId: shipment.id },
+                    data: {
+                        phytosanitaryCertificateNumber:
+                            phytosanitaryCertificateNumber !== undefined
+                                ? phytosanitaryCertificateNumber
+                                : shipment.exportInfo.phytosanitaryCertificateNumber,
+                        customsDeclarationNumber:
+                            customsDeclarationNumber !== undefined
+                                ? customsDeclarationNumber
+                                : shipment.exportInfo.customsDeclarationNumber,
+                        containerNumber:
+                            containerNumber !== undefined ? containerNumber : shipment.exportInfo.containerNumber,
+                        sealNumber: sealNumber !== undefined ? sealNumber : shipment.exportInfo.sealNumber,
+                        portOfLoading:
+                            portOfLoading !== undefined ? portOfLoading : shipment.exportInfo.portOfLoading,
+                        portOfDestination:
+                            portOfDestination !== undefined
+                                ? portOfDestination
+                                : shipment.exportInfo.portOfDestination,
+                    },
+                });
+            }
+        }
+
+        const stageTitles: Record<string, string> = {
+            DRAFT: "1. Chuẩn bị lô xuất khẩu",
+            PENDING_PHYTOSANITARY: "2. Chờ kiểm dịch thực vật",
+            PHYTOSANITARY_PASSED: "3. Kiểm dịch thực vật ĐẠT",
+            CUSTOMS_DECLARING: "4. Chờ thông quan hải quan",
+            CUSTOMS_CLEARED: "5. Đã thông quan hải quan",
+            DISPATCHED: "6. Đã xuất hàng qua cửa khẩu/cảng",
+        };
+
+        await tx.traceEvent.create({
+            data: {
+                commercialLotId: lot.id,
+                entityType: "COMMERCIAL_LOT",
+                entityId: lot.id,
+                eventType: "EXPORT_STAGE_UPDATED",
+                eventTime: new Date(),
+                actorId: user.id,
+                actorRole: user.role,
+                title: stageTitles[exportStageStatus || "DISPATCHED"] || "Cập nhật tiến độ xuất khẩu",
+                description:
+                    [
+                        phytosanitaryCertificateNumber && `Số GCN KDTV: ${phytosanitaryCertificateNumber}`,
+                        customsDeclarationNumber && `Số tờ khai HQ: ${customsDeclarationNumber}`,
+                        containerNumber && `Container: ${containerNumber}`,
+                        sealNumber && `Seal: ${sealNumber}`,
+                    ]
+                        .filter(Boolean)
+                        .join(" · ") || "Cập nhật chứng từ xuất khẩu",
+                isPublic: true,
+                metadata: {
+                    exportStageStatus,
+                    phytosanitaryCertificateNumber,
+                    customsDeclarationNumber,
+                    containerNumber,
+                    sealNumber,
+                },
+            },
+        });
+
+        return shipment;
+    });
+
+    return NextResponse.json({ success: true, data: updatedShipment });
+}
