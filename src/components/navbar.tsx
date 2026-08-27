@@ -52,7 +52,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/admin/regions", label: "Vùng trồng", roles: ["ADMIN"] },
     { href: "/dashboard/admin/catalog", label: "Danh mục", roles: ["ADMIN"] },
     { href: "/dashboard/admin/traceability", label: "Truy xuất & QR", roles: ["ADMIN"] },
-    { href: "/dashboard/nursery", label: "Quản lý Trại giống", roles: ["STORE_OWNER", "ADMIN"] },
+    { href: "/dashboard/nursery", label: "Quản lý Trại giống", roles: ["ADMIN"] },
     { href: "/dashboard/store", label: "Tổng quan", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/products", label: "Sản phẩm", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/inventory", label: "Kho hàng", roles: ["STORE_OWNER"] },
@@ -107,10 +107,15 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
     const isStoreOwner = userRole === "STORE_OWNER";
     const isProcessingFacility = userRole === "PROCESSING_FACILITY";
     const isFarmer = userRole === "FARMER";
+    const isAdmin = userRole === "ADMIN";
     const visiblePublicLinks = (isCollector || isStoreOwner || isProcessingFacility || isFarmer)
         ? []
         : isAuthed
-            ? publicLinks.filter((l) => l.href !== "/")
+            ? publicLinks.filter((l) => {
+                if (l.href === "/") return false;
+                if (isAdmin && (l.href === "/collectors" || l.href === "/processing-facilities")) return false;
+                return true;
+            })
             : publicLinks;
 
     useEffect(() => {

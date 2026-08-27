@@ -385,8 +385,8 @@ export default function RegisterPage() {
                                                             form.setValue(`farms.${index}.boundary`, boundary, { shouldDirty: true });
                                                             form.setValue(`farms.${index}.mappedArea`, mappedAreaHa, { shouldDirty: true });
                                                             if (centerLat && centerLng) {
-                                                                form.setValue(`farms.${index}.latitude`, centerLat, { shouldValidate: true });
-                                                                form.setValue(`farms.${index}.longitude`, centerLng, { shouldValidate: true });
+                                                                form.setValue(`farms.${index}.latitude`, centerLat);
+                                                                form.setValue(`farms.${index}.longitude`, centerLng);
                                                                 form.setValue(`farms.${index}.centerLatitude`, centerLat);
                                                                 form.setValue(`farms.${index}.centerLongitude`, centerLng);
                                                             }

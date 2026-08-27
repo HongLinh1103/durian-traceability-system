@@ -13,11 +13,10 @@ import {
     Search,
     AlertTriangle,
     CheckCircle2,
-    HelpCircle,
-    Trash2,
+    Undo2,
     X,
     Loader2,
-    Sparkles
+    PlusCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +78,17 @@ export function FarmBoundaryMapPicker({
 
     const [isDrawing, setIsDrawing] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const isDrawingRef = useRef(isDrawing);
+    const isEditingRef = useRef(isEditing);
+
+    useEffect(() => {
+        isDrawingRef.current = isDrawing;
+        isEditingRef.current = isEditing;
+        if (mapContainerRef.current) {
+            mapContainerRef.current.style.cursor = isDrawing ? "crosshair" : "grab";
+        }
+    }, [isDrawing, isEditing]);
+
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [mapLayerType, setMapLayerType] = useState<"satellite" | "streets">("satellite");
     const [searchQuery, setSearchQuery] = useState("");
@@ -143,13 +153,14 @@ export function FarmBoundaryMapPicker({
             mapInstanceRef.current = map;
             setIsMapReady(true);
 
-            // Handle Map Clicks for drawing
+            // Handle Map Clicks for drawing - Allow adding multiple points continuously
             map.on("click", (e: any) => {
+                if (!isDrawingRef.current) return;
                 const { lat, lng } = e.latlng;
-                setPoints((prev) => {
-                    // If in drawing mode, add new vertex
-                    return [...prev, { lat: Number(lat.toFixed(7)), lng: Number(lng.toFixed(7)) }];
-                });
+                setPoints((prev) => [
+                    ...prev,
+                    { lat: Number(lat.toFixed(7)), lng: Number(lng.toFixed(7)) },
+                ]);
             });
         }
 
@@ -211,7 +222,7 @@ export function FarmBoundaryMapPicker({
                 dashArray: isDrawing ? "6, 6" : undefined,
             }).addTo(map);
             polygonLayerRef.current = polygon;
-        } else if (points.length === 2) {
+        } else if (points.length >= 2) {
             const polyline = L.polyline(latLngs, {
                 color: "#10b981",
                 weight: 3,
@@ -237,8 +248,8 @@ export function FarmBoundaryMapPicker({
                     justify-content: center;
                     font-size: 11px;
                     font-weight: 900;
-                    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
-                    cursor: grab;
+                    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.35);
+                    cursor: ${isEditing || isDrawing ? "grab" : "pointer"};
                 ">
                     ${idx + 1}
                 </div>
@@ -268,7 +279,16 @@ export function FarmBoundaryMapPicker({
                 });
             });
 
-            marker.bindTooltip(`Điểm ${idx + 1} (Kéo để chỉnh)`, {
+            // Click first point while drawing to close polygon
+            marker.on("click", (e: any) => {
+                if (isFirst && points.length >= 3 && isDrawingRef.current) {
+                    L.DomEvent.stopPropagation(e);
+                    setIsDrawing(false);
+                    setIsEditing(false);
+                }
+            });
+
+            marker.bindTooltip(`Góc ${idx + 1}${isFirst && points.length >= 3 && isDrawing ? " (Chạm để đóng polygon)" : " (Kéo để chỉnh)"}`, {
                 direction: "top",
                 offset: [0, -14],
             });
@@ -406,6 +426,10 @@ export function FarmBoundaryMapPicker({
         setIsEditing(false);
     };
 
+    const undoLastPoint = () => {
+        setPoints((prev) => prev.slice(0, -1));
+    };
+
     const clearPoints = () => {
         setPoints([]);
         setIsDrawing(true);
@@ -434,7 +458,7 @@ export function FarmBoundaryMapPicker({
                             Vị Trí & Ranh Giới Vườn Trực Quan
                         </h3>
                         <p className="text-xs text-slate-500">
-                            Chấm các góc vườn trên bản đồ vệ tinh để hệ thống đo đạc chính xác ranh giới
+                            Nhấn &quot;Vẽ ranh giới vườn&quot; rồi chạm/click lần lượt vào các góc vườn để đo đạc diện tích
                         </p>
                     </div>
                 </div>
@@ -512,21 +536,25 @@ export function FarmBoundaryMapPicker({
                 className={`relative rounded-2xl overflow-hidden border-2 border-emerald-500/40 shadow-inner bg-slate-900 transition-all ${
                     isFullScreen
                         ? "fixed inset-0 z-[9999] rounded-none border-0 h-screen w-screen"
-                        : "h-[360px] sm:h-[440px] w-full"
+                        : "h-[380px] sm:h-[460px] w-full"
                 }`}
             >
                 <div ref={mapContainerRef} className="w-full h-full" />
 
                 {/* Top Floating Guide & Points Count */}
                 <div className="absolute top-3 left-3 right-3 sm:right-auto z-[1000] flex flex-wrap items-center gap-2 pointer-events-none">
-                    <div className="rounded-xl bg-slate-950/80 backdrop-blur-md px-3 py-1.5 text-xs text-white border border-white/20 shadow-md pointer-events-auto flex items-center gap-2">
-                        <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <div className="rounded-xl bg-slate-950/85 backdrop-blur-md px-3.5 py-2 text-xs text-white border border-white/20 shadow-md pointer-events-auto flex items-center gap-2.5">
+                        <span className={`flex h-2.5 w-2.5 rounded-full ${isDrawing ? "bg-emerald-400 animate-ping" : "bg-emerald-500"}`} />
                         <span className="font-bold">
-                            {points.length === 0
-                                ? "Chạm vào bản đồ để đặt góc vườn đầu tiên"
-                                : points.length < 3
-                                ? `Đã đặt ${points.length} điểm (cần ít nhất 3 điểm)`
-                                : `Đã xác định ranh giới (${points.length} góc vườn)`}
+                            {isDrawing
+                                ? points.length === 0
+                                    ? "👉 Chạm/click lên bản đồ để đặt Điểm 1"
+                                    : points.length < 3
+                                    ? `👉 Đã chọn ${points.length} góc. Chạm tiếp để thêm góc khác...`
+                                    : `👉 Đã chọn ${points.length} góc. Chạm tiếp hoặc nhấn Hoàn tất.`
+                                : points.length >= 3
+                                ? `✅ Đã xác định ranh giới (${points.length} góc vườn)`
+                                : "Nhấn 'Vẽ ranh giới vườn' để bắt đầu chọn các góc"}
                         </span>
                     </div>
 
@@ -561,34 +589,37 @@ export function FarmBoundaryMapPicker({
                             </div>
                         </div>
 
-                        {points.length >= 3 && (
+                        {points.length >= 3 && !isDrawing && (
                             <span className="rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-1 border border-emerald-300 shrink-0">
-                                Đã khép kín
+                                Đã khép kín ({points.length} góc)
                             </span>
                         )}
                     </div>
 
                     {/* Action Buttons on Map */}
-                    <div className="flex items-center gap-2 justify-end">
-                        {points.length === 0 ? (
-                            <Button
-                                type="button"
-                                onClick={startDrawing}
-                                className="flex-1 sm:flex-none rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs h-10 px-4 gap-1.5 shadow-lg"
-                            >
-                                <Pencil className="h-4 w-4" />
-                                Bắt đầu vẽ ranh giới
-                            </Button>
-                        ) : isDrawing ? (
+                    <div className="flex flex-wrap items-center gap-2 justify-end">
+                        {isDrawing ? (
                             <>
+                                {points.length > 0 && (
+                                    <Button
+                                        type="button"
+                                        onClick={undoLastPoint}
+                                        variant="outline"
+                                        className="flex-1 sm:flex-none rounded-xl bg-white/95 hover:bg-white text-slate-700 font-bold text-xs h-10 px-3 gap-1.5 shadow-md border-slate-300"
+                                        title="Xóa điểm vừa chọn"
+                                    >
+                                        <Undo2 className="h-3.5 w-3.5 text-amber-600" />
+                                        Xóa điểm cuối
+                                    </Button>
+                                )}
                                 <Button
                                     type="button"
                                     onClick={clearPoints}
                                     variant="outline"
-                                    className="flex-1 sm:flex-none rounded-xl bg-white/95 hover:bg-white text-slate-700 font-bold text-xs h-10 px-3.5 gap-1.5 shadow-md border-slate-300"
+                                    className="flex-1 sm:flex-none rounded-xl bg-white/95 hover:bg-white text-slate-700 font-bold text-xs h-10 px-3 gap-1.5 shadow-md border-slate-300"
                                 >
                                     <RotateCcw className="h-3.5 w-3.5" />
-                                    Vẽ lại
+                                    Vẽ lại từ đầu
                                 </Button>
                                 <Button
                                     type="button"
@@ -600,6 +631,15 @@ export function FarmBoundaryMapPicker({
                                     Hoàn tất ({points.length} điểm)
                                 </Button>
                             </>
+                        ) : points.length === 0 ? (
+                            <Button
+                                type="button"
+                                onClick={startDrawing}
+                                className="flex-1 sm:flex-none rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs h-10 px-4 gap-1.5 shadow-lg"
+                            >
+                                <Pencil className="h-4 w-4" />
+                                Vẽ ranh giới vườn
+                            </Button>
                         ) : (
                             <>
                                 <Button
@@ -613,11 +653,20 @@ export function FarmBoundaryMapPicker({
                                 </Button>
                                 <Button
                                     type="button"
+                                    onClick={startDrawing}
+                                    variant="outline"
+                                    className="flex-1 sm:flex-none rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs h-10 px-3.5 gap-1.5 shadow-sm border-emerald-300"
+                                >
+                                    <PlusCircle className="h-3.5 w-3.5 text-emerald-700" />
+                                    Thêm góc vườn
+                                </Button>
+                                <Button
+                                    type="button"
                                     onClick={() => setIsEditing(!isEditing)}
                                     className="flex-1 sm:flex-none rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs h-10 px-4 gap-1.5 shadow-lg"
                                 >
                                     <Pencil className="h-3.5 w-3.5" />
-                                    {isEditing ? "Lưu chỉnh sửa" : "Chỉnh sửa ranh giới"}
+                                    {isEditing ? "Lưu chỉnh sửa" : "Kéo chỉnh ranh giới"}
                                 </Button>
                             </>
                         )}
