@@ -13,7 +13,7 @@ export default async function Page() {
     const [rows, harvests, destinations] = await Promise.all([
         prisma.commercialLot.findMany({ where: { farmerOwnerId: session.user.id }, include: { farmerOwner: { select: { fullName: true } }, destination: true, traceabilityCode: true }, orderBy: { createdAt: "desc" } }),
         prisma.harvestLot.findMany({ where: { farm: { farmerId: session.user.id }, status: { in: ["FINALIZED", "PARTIALLY_USED"] }, complianceStatus: { not: "BLOCKED" }, remainingWeight: { gt: 0 } }, select: { id: true, lotCode: true, remainingWeight: true }, orderBy: { harvestedAt: "desc" } }),
-        prisma.distributionDestination.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+        prisma.distributionDestination.findMany({ select: { id: true, name: true, address: true, type: true, contactName: true, contactPhone: true }, orderBy: { name: "asc" } }),
     ]);
     const lots = await Promise.all(rows.map(async row => ({ ...row, owner: { name: row.farmerOwner?.fullName ?? "Hộ sản xuất" }, quantity: Number(row.quantity), remainingQuantity: Number(row.remainingQuantity), validation: await validateTraceability(row.id) })));
     const sources = harvests.map(row => ({ id: row.id, code: row.lotCode, type: "HARVEST_LOT" as const, label: `Còn ${Number(row.remainingWeight).toLocaleString("vi-VN")} kg` }));

@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { CheckCircle2, ExternalLink, QrCode, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Lot = { id: string; lotCode: string; ownerType?: string; productName: string; quantity: number; remainingQuantity?: number; unit: string; owner: { name: string }; destination: { name: string } | null; traceabilityCode: { id: string; publicToken: string; status: string } | null; validation: { traceCompleteness: number; canIssueQr: boolean; missingRequirements: string[] } };
 type SourceOption = { id: string; code: string; type: "HARVEST_LOT" | "COLLECTION_LOT" | "FINISHED_PRODUCT_LOT"; label: string; productName?: string; totalQuantity?: number; remainingQuantity?: number; farmCount?: number; qcStatus?: "PASSED" | "PENDING" | "FAILED" };
-type DestinationOption = { id: string; name: string };
+type DestinationOption = { id: string; name: string; address?: string; type?: string; contactName?: string | null; contactPhone?: string | null };
 type IssuerRole = "FARMER" | "COLLECTOR" | "PROCESSING_FACILITY";
 
 function QrPreview({ token }: { token: string }) {
@@ -26,7 +26,87 @@ export function TraceabilityManager({ initialLots, admin = false, readOnly = fal
     const [issuerFilter, setIssuerFilter] = useState("ALL");
     const [saleMode, setSaleMode] = useState(role === "PROCESSING_FACILITY" ? "DOMESTIC" : role === "COLLECTOR" ? "MARKET" : "DIRECT");
     const [selectedSourceId, setSelectedSourceId] = useState(initialSourceId || "");
-    const [destinationId, setDestinationId] = useState("");
+    const [destinationName, setDestinationName] = useState("");
+    const [destinationAddress, setDestinationAddress] = useState("");
+    const [destinationType, setDestinationType] = useState(
+        role === "PROCESSING_FACILITY" ? "DOMESTIC" : role === "COLLECTOR" ? "MARKET" : "RETAIL"
+    );
+    const [showSuggestions, setShowSuggestions] = useState(false);
+
+    useEffect(() => {
+        if (saleMode === "EXPORT") setDestinationType("EXPORT");
+        else if (saleMode === "DISTRIBUTOR") setDestinationType("DISTRIBUTOR");
+        else if (saleMode === "MARKET" || saleMode === "WHOLESALE_MARKET") setDestinationType("MARKET");
+        else setDestinationType("RETAIL");
+    }, [saleMode]);
+
+    const defaultSuggestions = useMemo(() => {
+        if (saleMode === "EXPORT") {
+            return [
+                "Thị trường Trung Quốc",
+                "Thị trường Hoa Kỳ (Mỹ)",
+                "Thị trường Nhật Bản",
+                "Thị trường Hàn Quốc",
+                "Thị trường EU (Châu Âu)",
+                "Thị trường Úc",
+                "Thị trường Đài Loan",
+                "Thị trường Singapore",
+            ];
+        }
+        return [
+            "Chợ đầu mối Nông sản Thủ Đức",
+            "Chợ đầu mối Hóc Môn",
+            "Chợ đầu mối Bình Điền",
+            "Hệ thống Siêu thị Co.opmart",
+            "Hệ thống Siêu thị WinMart",
+            "Chuỗi Cửa hàng Bách Hóa Xanh",
+            "Hệ thống Siêu thị GO! / Big C",
+            "Siêu thị MM Mega Market",
+            "Hệ thống Cửa hàng Nông sản An Toàn",
+            "Đại lý phân phối nông sản",
+        ];
+    }, [saleMode]);
+
+    const allSuggestions = useMemo(() => {
+        const dbList = destinations.map(d => ({
+            id: d.id,
+            name: d.name,
+            address: d.address || "",
+            type: d.type,
+            contactName: d.contactName || "",
+            contactPhone: d.contactPhone || "",
+            isSaved: true,
+        }));
+        const dbNames = new Set(destinations.map(d => d.name.trim().toLowerCase()));
+        const defaults = defaultSuggestions
+            .filter(name => !dbNames.has(name.trim().toLowerCase()))
+            .map(name => ({
+                id: "",
+                name,
+                address: "",
+                type: saleMode === "EXPORT" ? "EXPORT" : "RETAIL",
+                contactName: "",
+                contactPhone: "",
+                isSaved: false,
+            }));
+        return [...dbList, ...defaults];
+    }, [destinations, defaultSuggestions, saleMode]);
+
+    const filteredSuggestions = useMemo(() => {
+        if (!destinationName.trim()) return allSuggestions.slice(0, 8);
+        const query = destinationName.trim().toLowerCase();
+        return allSuggestions
+            .filter(s => s.name.toLowerCase().includes(query))
+            .slice(0, 8);
+    }, [allSuggestions, destinationName]);
+
+    function selectSuggestion(item: { name: string; address?: string; type?: string; contactName?: string; contactPhone?: string }) {
+        setDestinationName(item.name);
+        if (item.address) setDestinationAddress(item.address);
+        if (item.type) setDestinationType(item.type);
+        setShowSuggestions(false);
+    }
+
     const selectedSource = sources.find(source => source.id === selectedSourceId);
     const dateCode = new Date().toISOString().slice(0, 10).replaceAll("-", "");
     const prefix = role === "COLLECTOR" ? "CM-COL" : role === "PROCESSING_FACILITY" ? "CM-FAC" : "CM-FAR";
@@ -44,9 +124,42 @@ export function TraceabilityManager({ initialLots, admin = false, readOnly = fal
     async function createLot(formData: FormData) {
         setBusy("create"); setMessage("");
         const selected = sources.find(source => source.id === formData.get("sourceId"));
-        const destinationId = String(formData.get("destinationId") || "");
+        const destName = String(formData.get("destinationName") || "").trim();
+        if (!destName) {
+            setMessage("Vui lòng nhập điểm đến");
+            setBusy(null);
+            return;
+        }
+        const destAddress = String(formData.get("destinationAddress") || "").trim();
+        const destType = String(formData.get("destinationType") || destinationType);
+        const contactName = String(formData.get("contactName") || "").trim();
+        const contactPhone = String(formData.get("contactPhone") || "").trim();
+
+        const matched = destinations.find(d => d.name.trim().toLowerCase() === destName.toLowerCase());
+        const destinationId = (matched && (!destAddress || destAddress === matched.address)) ? matched.id : undefined;
+
         const note = [formData.get("plannedDate") && `Ngày dự kiến: ${formData.get("plannedDate")}`, formData.get("note")].filter(Boolean).join("\n");
-        const response = await fetch("/api/traceability/commercial-lots", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ lotCode: formData.get("lotCode"), sourceId: selected?.id, sourceType: selected?.type, destinationId: destinationId || undefined, destination: destinationId ? undefined : { type: formData.get("destinationType"), name: formData.get("destinationName"), address: formData.get("destinationAddress"), contactName: formData.get("contactName"), contactPhone: formData.get("contactPhone") }, productName: formData.get("productName"), quantity: formData.get("quantity"), unit: "kg", note }) });
+        const response = await fetch("/api/traceability/commercial-lots", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+                lotCode: formData.get("lotCode"),
+                sourceId: selected?.id,
+                sourceType: selected?.type,
+                destinationId: destinationId || undefined,
+                destination: destinationId ? undefined : {
+                    type: destType,
+                    name: destName,
+                    address: destAddress || destName,
+                    contactName: contactName || undefined,
+                    contactPhone: contactPhone || undefined,
+                },
+                productName: formData.get("productName"),
+                quantity: formData.get("quantity"),
+                unit: "kg",
+                note,
+            }),
+        });
         const payload = await response.json();
         if (!payload.success) {
             setMessage(payload.error || "Không thể tạo lô bán / xuất hàng");
@@ -93,10 +206,109 @@ export function TraceabilityManager({ initialLots, admin = false, readOnly = fal
                 <label className="text-sm font-bold">Tên sản phẩm<input required name="productName" value={role === "COLLECTOR" || role === "PROCESSING_FACILITY" ? selectedSource?.productName ?? "" : undefined} placeholder="Tên sản phẩm" className="mt-1 w-full rounded-xl border bg-slate-50 px-3 py-2 read-only:text-slate-700"/></label>
                 <label className="text-sm font-bold">Mã lô bán / xuất hàng<input required name="lotCode" defaultValue={generatedLotCode} placeholder="Ví dụ: CM-FAC-20260825-001" className="mt-1 w-full rounded-xl border bg-slate-50 px-3 py-2 font-mono text-slate-700"/></label>
                 <label className="text-sm font-bold">3. Hình thức bán / xuất<select value={saleMode} onChange={event => setSaleMode(event.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2">{role === "FARMER" ? <><option value="DIRECT">Bán trực tiếp</option><option value="RETAIL">Đưa đến điểm bán lẻ</option></> : role === "PROCESSING_FACILITY" ? <><option value="DOMESTIC">Bán trong nước</option><option value="EXPORT">Xuất khẩu</option></> : <><option value="MARKET">Bán đến chợ</option><option value="WHOLESALE_MARKET">Bán đến chợ đầu mối</option><option value="SUPERMARKET">Bán đến siêu thị</option><option value="RETAIL_STORE">Bán đến cửa hàng bán lẻ</option><option value="DISTRIBUTOR">Bán cho nhà phân phối</option></>}</select></label>
-                <label className="text-sm font-bold">Điểm đến<select name="destinationId" value={destinationId} onChange={event => setDestinationId(event.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2"><option value="">Nhập điểm đến mới</option>{destinations.map(destination => <option key={destination.id} value={destination.id}>{destination.name}</option>)}</select></label>
+                <div className="relative">
+                    <label className="block text-sm font-bold">
+                        Điểm đến
+                        <div className="relative mt-1">
+                            <input
+                                required
+                                name="destinationName"
+                                value={destinationName}
+                                onChange={event => {
+                                    setDestinationName(event.target.value);
+                                    setShowSuggestions(true);
+                                }}
+                                onFocus={() => setShowSuggestions(true)}
+                                onBlur={() => {
+                                    setTimeout(() => setShowSuggestions(false), 200);
+                                }}
+                                placeholder="Nhập điểm đến (ví dụ: Chợ đầu mối, Siêu thị, Xuất khẩu...)"
+                                autoComplete="off"
+                                className="w-full rounded-xl border px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                            />
+                            {destinationName && (
+                                <button
+                                    type="button"
+                                    onClick={() => setDestinationName("")}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
+                                >
+                                    ✕
+                                </button>
+                            )}
+                        </div>
+                    </label>
+                    {showSuggestions && filteredSuggestions.length > 0 && (
+                        <div className="absolute left-0 right-0 z-30 mt-1 max-h-60 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                            <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                                Gợi ý điểm đến
+                            </div>
+                            {filteredSuggestions.map((item, idx) => (
+                                <button
+                                    key={idx}
+                                    type="button"
+                                    onMouseDown={e => {
+                                        e.preventDefault();
+                                        selectSuggestion(item);
+                                    }}
+                                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition hover:bg-emerald-50 hover:text-emerald-900"
+                                >
+                                    <span className="font-semibold text-slate-800">{item.name}</span>
+                                    {item.isSaved ? (
+                                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                                            Đã lưu
+                                        </span>
+                                    ) : (
+                                        <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                                            Gợi ý
+                                        </span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs sm:col-span-2 lg:col-span-3 -mt-2">
+                    <span className="font-medium text-slate-500">Gợi ý nhanh:</span>
+                    {allSuggestions.slice(0, 4).map((item, idx) => (
+                        <button
+                            key={idx}
+                            type="button"
+                            onClick={() => selectSuggestion(item)}
+                            className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700"
+                        >
+                            + {item.name}
+                        </button>
+                    ))}
+                </div>
             </div>
-            {(role === "COLLECTOR" || role === "PROCESSING_FACILITY") && selectedSource && <div className="grid grid-cols-2 gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm sm:grid-cols-3 lg:grid-cols-6"><div><span className="text-slate-500">Mã lô</span><b className="block font-mono">{selectedSource.code}</b></div><div><span className="text-slate-500">Sản phẩm</span><b className="block">{selectedSource.productName || selectedSource.label}</b></div><div><span className="text-slate-500">Tổng</span><b className="block">{selectedSource.totalQuantity?.toLocaleString("vi-VN")} kg</b></div><div><span className="text-slate-500">Còn khả dụng</span><b className="block text-emerald-800 font-bold">{selectedSource.remainingQuantity?.toLocaleString("vi-VN")} kg</b></div><div><span className="text-slate-500">{role === "PROCESSING_FACILITY" ? "Loại nguồn" : "Nguồn"}</span><b className="block">{role === "PROCESSING_FACILITY" ? "Thành phẩm xưởng" : `${selectedSource.farmCount} vườn`}</b></div><div><span className="text-slate-500">Trạng thái</span><b className="block text-emerald-700">Sẵn sàng xuất</b></div></div>}
-            {!destinationId && <div className="border-t pt-4"><p className="mb-3 text-xs font-black uppercase text-slate-500">4. Khai báo điểm đến mới</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><select name="destinationType" defaultValue={saleMode === "DISTRIBUTOR" ? "DISTRIBUTOR" : saleMode === "MARKET" || saleMode === "WHOLESALE_MARKET" ? "MARKET" : "RETAIL"} className="rounded-xl border px-3 py-2"><option value="MARKET">Chợ</option><option value="MARKET">Chợ đầu mối</option><option value="RETAIL">Siêu thị</option><option value="RETAIL">Cửa hàng bán lẻ</option><option value="DISTRIBUTOR">Nhà phân phối</option><option value="OTHER">Khác</option></select><input name="destinationName" placeholder="Tên điểm đến" className="rounded-xl border px-3 py-2"/><input name="destinationAddress" placeholder="Tỉnh/Thành, Quận/Huyện, Xã/Phường, địa chỉ" className="rounded-xl border px-3 py-2"/><input name="plannedDate" type="date" title="Ngày dự kiến xuất/giao hàng" className="rounded-xl border px-3 py-2"/><input name="contactName" placeholder="Người nhận (không bắt buộc)" className="rounded-xl border px-3 py-2"/><input name="contactPhone" placeholder="SĐT liên hệ (không bắt buộc)" className="rounded-xl border px-3 py-2"/><textarea name="note" placeholder="Yêu cầu giao hàng, quầy nhận, thời gian nhận hoặc lưu ý đặc biệt" className="min-h-20 rounded-xl border px-3 py-2 sm:col-span-2 lg:col-span-3"/></div></div>}
+            <div className="border-t pt-4">
+                <p className="mb-3 text-xs font-black uppercase text-slate-500">4. Thông tin chi tiết điểm đến & giao hàng (tùy chọn)</p>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <select
+                        name="destinationType"
+                        value={destinationType}
+                        onChange={event => setDestinationType(event.target.value)}
+                        className="rounded-xl border px-3 py-2 text-sm"
+                    >
+                        <option value="EXPORT">Xuất khẩu</option>
+                        <option value="MARKET">Chợ / Chợ đầu mối</option>
+                        <option value="RETAIL">Siêu thị / Cửa hàng bán lẻ</option>
+                        <option value="DISTRIBUTOR">Nhà phân phối / Doanh nghiệp</option>
+                        <option value="OTHER">Khác</option>
+                    </select>
+                    <input
+                        name="destinationAddress"
+                        value={destinationAddress}
+                        onChange={event => setDestinationAddress(event.target.value)}
+                        placeholder="Địa chỉ chi tiết (Tỉnh/Thành, Quốc gia...)"
+                        className="rounded-xl border px-3 py-2 text-sm"
+                    />
+                    <input name="plannedDate" type="date" title="Ngày dự kiến xuất/giao hàng" className="rounded-xl border px-3 py-2 text-sm"/>
+                    <input name="contactName" placeholder="Người nhận (không bắt buộc)" className="rounded-xl border px-3 py-2 text-sm"/>
+                    <input name="contactPhone" placeholder="SĐT liên hệ (không bắt buộc)" className="rounded-xl border px-3 py-2 text-sm"/>
+                    <textarea name="note" placeholder="Yêu cầu giao hàng, quầy nhận, thời gian nhận hoặc lưu ý đặc biệt" className="min-h-20 rounded-xl border px-3 py-2 text-sm sm:col-span-2 lg:col-span-3"/>
+                </div>
+            </div>
             <div className="flex justify-end border-t pt-5"><Button type="submit" className="min-w-44" disabled={busy === "create"}><QrCode className="mr-2 h-4 w-4" />{busy === "create" ? "Đang tạo mã QR..." : "Tạo mã QR"}</Button></div>
         </form>}
         {message && <p className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">{message}</p>}

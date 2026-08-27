@@ -48,7 +48,10 @@ export default async function Page({
                   orderBy: { createdAt: "desc" },
               })
             : [],
-        prisma.distributionDestination.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+        prisma.distributionDestination.findMany({
+            select: { id: true, name: true, address: true, type: true, contactName: true, contactPhone: true },
+            orderBy: { name: "asc" },
+        }),
     ]);
 
     const lots = await Promise.all(

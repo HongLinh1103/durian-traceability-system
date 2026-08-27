@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const inputSchema = z.object({
     lotCode: z.string().trim().min(3).max(60), sourceType: z.enum(["HARVEST_LOT", "COLLECTION_LOT", "FINISHED_PRODUCT_LOT"]), sourceId: z.string().min(1),
-    destinationId: z.string().min(1).optional(), destination: z.object({ type: z.enum(["RETAIL", "MARKET", "DISTRIBUTOR", "EXPORT", "OTHER"]), name: z.string().trim().min(2), address: z.string().trim().min(2), country: z.string().trim().optional(), province: z.string().trim().optional(), district: z.string().trim().optional(), contactName: z.string().trim().optional(), contactPhone: z.string().trim().optional() }).optional(),
+    destinationId: z.string().min(1).optional(), destination: z.object({ type: z.enum(["RETAIL", "MARKET", "DISTRIBUTOR", "EXPORT", "OTHER"]).default("RETAIL"), name: z.string().trim().min(2), address: z.string().trim().min(2).optional(), country: z.string().trim().optional(), province: z.string().trim().optional(), district: z.string().trim().optional(), contactName: z.string().trim().optional(), contactPhone: z.string().trim().optional() }).optional(),
     productName: z.string().trim().min(2).max(160), quantity: z.coerce.number().positive(), unit: z.string().trim().min(1).max(20).default("kg"), note: z.string().trim().max(500).optional(),
 }).refine(value => value.destinationId || value.destination, { message: "Cần chọn hoặc nhập điểm đến" });
 
@@ -70,7 +70,14 @@ export async function POST(request: Request) {
                     : await tx.finishedProductLot.updateMany({ where: { id: value.sourceId, remainingWeight: { gte: value.quantity } }, data: { remainingWeight: { decrement: value.quantity }, status: available === value.quantity ? "DISTRIBUTED" : "PARTIALLY_DISTRIBUTED" } });
             if (allocation.count !== 1) throw new Error("Lô nguồn vừa được phân bổ bởi giao dịch khác; vui lòng tải lại");
             let destinationId = value.destinationId;
-            if (!destinationId && value.destination) destinationId = (await tx.distributionDestination.upsert({ where: { name_address: { name: value.destination.name, address: value.destination.address } }, update: {}, create: value.destination })).id;
+            if (!destinationId && value.destination) {
+                const address = value.destination.address?.trim() || value.destination.name;
+                destinationId = (await tx.distributionDestination.upsert({
+                    where: { name_address: { name: value.destination.name, address } },
+                    update: {},
+                    create: { ...value.destination, address },
+                })).id;
+            }
             const created = await tx.commercialLot.create({ data: { lotCode: value.lotCode, ownerType, ownerId: facility?.id, farmerOwnerId: user.role === "FARMER" ? user.id : undefined, sourceType: value.sourceType, sourceId: value.sourceId, destinationId, productName: value.productName, quantity: value.quantity, remainingQuantity: value.quantity, unit: value.unit, note: value.note, ...relation } });
             await tx.lotRelation.create({ data: { sourceType: value.sourceType, sourceId: value.sourceId, targetType: "COMMERCIAL_LOT", targetId: created.id, relationType: user.role === "FARMER" ? "SOLD_DIRECTLY_AS" : "PACKAGED_INTO", quantity: value.quantity, unit: value.unit } });
             await tx.traceEvent.create({ data: { commercialLotId: created.id, entityType: "COMMERCIAL_LOT", entityId: created.id, eventType: user.role === "FARMER" ? "DIRECT_SALE_PREPARED" : "COMMERCIAL_LOT_CREATED", eventTime: new Date(), actorId: user.id, actorRole: user.role, organizationType: user.role, organizationId: facility?.id ?? user.id, title: user.role === "FARMER" ? "Chuẩn bị bán trực tiếp" : "Tạo lô thương mại", description: created.lotCode, isPublic: true } });
