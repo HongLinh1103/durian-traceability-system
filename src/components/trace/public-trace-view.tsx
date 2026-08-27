@@ -219,6 +219,32 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                         </p>
                     </div>
 
+                    {/* Quick Info Grid */}
+                    <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 sm:grid-cols-4 text-xs">
+                        <div className="space-y-1">
+                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Mã định danh QR</span>
+                            <span className="font-mono font-bold text-slate-800 block truncate">{trace.code}</span>
+                        </div>
+                        <div className="space-y-1">
+                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Đơn vị phát hành</span>
+                            <span className="font-bold text-slate-800 block truncate">{trace.issuer}</span>
+                        </div>
+                        <div className="space-y-1">
+                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Khối lượng lô</span>
+                            <span className="font-black text-emerald-800 block">
+                                {trace.commercialLot.quantity.toLocaleString("vi-VN")} {trace.commercialLot.unit}
+                            </span>
+                        </div>
+                        <div className="space-y-1">
+                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Điểm đến / Thị trường</span>
+                            <span className="font-bold text-slate-800 block truncate">
+                                {trace.destination?.country && !["việt nam", "vietnam", "vn"].includes(trace.destination.country.toLowerCase())
+                                    ? trace.destination.country
+                                    : trace.destination?.name || trace.commercialLot.buyerName || "Chợ đầu mối Nông sản Thủ Đức"}
+                            </span>
+                        </div>
+                    </div>
+
                     {!active && (
                         <div
                             className={`rounded-2xl p-4 text-xs font-semibold flex items-center gap-3 border ${

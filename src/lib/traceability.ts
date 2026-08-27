@@ -721,18 +721,33 @@ export async function getPublicTrace(publicToken: string) {
     // 5. MỐC: PHÂN PHỐI / XUẤT KHẨU
     // -------------------------------------------------------------------------
     const dest = trace.commercialLot.destination;
-    const destNameLower = (dest?.name || "").toLowerCase();
+    const destNameLower = (dest?.name || trace.commercialLot.buyerName || "").toLowerCase();
     const destCountryLower = (dest?.country || "").toLowerCase();
+    const isDomesticName =
+        destNameLower.includes("thủ đức") ||
+        destNameLower.includes("hóc môn") ||
+        destNameLower.includes("bình điền") ||
+        destNameLower.includes("chợ đầu mối") ||
+        destNameLower.includes("co.opmart") ||
+        destNameLower.includes("winmart") ||
+        destNameLower.includes("bách hóa xanh") ||
+        destNameLower.includes("siêu thị") ||
+        destCountryLower === "việt nam" ||
+        destCountryLower === "vietnam" ||
+        destCountryLower === "vn";
+
     const isExport =
-        dest?.type === "EXPORT" ||
-        shipment?.exportInfo !== null ||
-        Boolean(dest?.country) ||
-        trace.commercialLot.lotCode.startsWith("EXP-") ||
-        trace.commercialLot.lotCode.startsWith("CM-EXP-") ||
-        destNameLower.includes("xuất khẩu") ||
-        destNameLower.includes("trung quốc") ||
-        destNameLower.includes("china") ||
-        destCountryLower.includes("china");
+        !isDomesticName &&
+        (dest?.type === "EXPORT" ||
+            Boolean(shipment?.exportInfo) ||
+            trace.commercialLot.lotCode.startsWith("EXP-") ||
+            trace.commercialLot.lotCode.startsWith("CM-EXP-") ||
+            (Boolean(dest?.country) && !["việt nam", "vietnam", "vn"].includes(destCountryLower)) ||
+            (destNameLower.includes("xuất khẩu") && !destNameLower.includes("chợ")) ||
+            destNameLower.includes("trung quốc") ||
+            destNameLower.includes("china") ||
+            destCountryLower.includes("china") ||
+            destCountryLower.includes("trung quốc"));
 
     const dispatchDate = trace.commercialLot.dispatchedAt || shipment?.dispatchAt || trace.commercialLot.createdAt;
 
@@ -764,27 +779,26 @@ export async function getPublicTrace(publicToken: string) {
         };
         rawMilestones.push(milestoneExport);
     } else {
-        const buyerOrDestName = trace.commercialLot.buyerName || dest?.name || "Chợ đầu mối Thủ Đức";
+        const buyerOrDestName = trace.commercialLot.buyerName || dest?.name || "Chợ đầu mối Nông sản Thủ Đức";
         const destAddress = trace.commercialLot.buyerAddress || dest?.address || "TP. Hồ Chí Minh";
-        const formType = dest?.type === "MARKET" ? "Chợ đầu mối nông sản" : dest?.type === "DISTRIBUTOR" ? "Nhà phân phối" : "Phân phối trong nước";
+        const exporterName = trace.commercialLot.owner?.name || trace.commercialLot.farmerOwner?.fullName || "Vựa Sầu riêng Thành Phát";
 
         const milestoneDistribution: TraceMilestone = {
             id: "milestone-distribution",
             stepNumber: 5,
             type: "DISTRIBUTION",
             title: "PHÂN PHỐI",
-            subtitle: "Phân phối đến hệ thống siêu thị, chuỗi bán lẻ và chợ đầu mối",
+            subtitle: "Phân phối đến hệ thống siêu thị, chuỗi bán lẻ và chợ đầu mối trong nước",
             date: dispatchDate,
             dateText: formatVnDate(dispatchDate),
-            badgeText: "Đã xuất hàng",
+            badgeText: "Đã xuất bán",
             badgeVariant: "emerald",
             fields: [
-                { label: "Hình thức", value: formType },
                 { label: "Điểm đến", value: buyerOrDestName, highlight: true },
                 { label: "Địa chỉ", value: destAddress },
-                { label: "Mã lô xuất bán", value: trace.commercialLot.lotCode, highlight: true },
-                { label: "Khối lượng xuất", value: `${Number(trace.commercialLot.quantity).toLocaleString("vi-VN")} ${trace.commercialLot.unit}` },
-                { label: "Trạng thái", value: "Đã xuất hàng đến điểm phân phối" },
+                { label: "Lô xuất bán", value: trace.commercialLot.lotCode, highlight: true },
+                { label: "Khối lượng", value: `${Number(trace.commercialLot.quantity).toLocaleString("vi-VN")} ${trace.commercialLot.unit}` },
+                { label: "Đơn vị xuất", value: exporterName },
             ],
         };
         rawMilestones.push(milestoneDistribution);
