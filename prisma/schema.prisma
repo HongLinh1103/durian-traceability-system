@@ -1097,6 +1097,11 @@ model Farm {
   notes           String?
   latitude        Float?
   longitude       Float?
+  declaredArea    Float?
+  mappedArea      Float?
+  centerLatitude  Float?
+  centerLongitude Float?
+  boundary        Json?
   growingRegion   String?
   growingRegionId String?
   isActive        Boolean      @default(true)

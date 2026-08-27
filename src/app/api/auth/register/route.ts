@@ -113,10 +113,19 @@ export async function POST(request: Request) {
                                     ? farm.areaSize / 10_000
                                     : farm.areaSize,
                             areaUnit: farm.areaUnit,
+                            declaredArea:
+                                farm.declaredArea ??
+                                (farm.areaUnit === "SQUARE_METER"
+                                    ? farm.areaSize / 10_000
+                                    : farm.areaSize),
+                            mappedArea: farm.mappedArea ?? null,
                             totalTrees: farm.totalTrees,
                             durianVariety: farm.durianVarieties.join(", "),
-                            latitude: farm.latitude,
-                            longitude: farm.longitude,
+                            latitude: farm.latitude ?? farm.centerLatitude ?? null,
+                            longitude: farm.longitude ?? farm.centerLongitude ?? null,
+                            centerLatitude: farm.centerLatitude ?? farm.latitude ?? null,
+                            centerLongitude: farm.centerLongitude ?? farm.longitude ?? null,
+                            boundary: farm.boundary ? (farm.boundary as Prisma.InputJsonValue) : Prisma.JsonNull,
                             notes: farm.notes || null,
                             growingRegionId: resolvedRegions[index]!.id,
                             growingRegion: `${resolvedRegions[index]!.code} - ${resolvedRegions[index]!.name}`,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +16,11 @@ import {
     Plus,
     Send,
     Trash2,
+    MapPin,
+    Sprout,
+    Building2,
+    Scale,
+    Layers,
 } from "lucide-react";
 import { registerSchema, type RegisterInput } from "@/lib/zod-schema";
 import { Button } from "@/components/ui/button";
@@ -23,6 +29,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/PasswordInput";
 import { useToast } from "@/components/ui/toast";
+
+const FarmBoundaryMapPicker = dynamic(
+    () => import("@/components/farm/farm-boundary-map-picker").then((mod) => mod.FarmBoundaryMapPicker),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="h-[360px] w-full rounded-2xl bg-slate-900 flex flex-col items-center justify-center text-white gap-2 border border-emerald-500/30">
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+                <p className="text-xs text-slate-300 font-medium">Đang tải bản đồ vệ tinh & ranh giới vườn...</p>
+            </div>
+        ),
+    }
+);
 
 const steps = [
     "Thông tin tài khoản",
@@ -38,10 +57,15 @@ const emptyFarm = {
     detailedAddress: "",
     areaSize: 0,
     areaUnit: "HECTARE" as const,
+    declaredArea: 0,
+    mappedArea: undefined as number | undefined,
     totalTrees: 0,
     durianVarieties: [""],
-    latitude: undefined,
-    longitude: undefined,
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
+    centerLatitude: undefined as number | undefined,
+    centerLongitude: undefined as number | undefined,
+    boundary: undefined as [number, number][] | undefined,
     notes: "",
     growingRegionCode: "",
     growingRegionId: "",
@@ -214,103 +238,226 @@ export default function RegisterPage() {
                             )}
 
                             {step === 1 && (
-                                <div className="space-y-6">
+                                <div className="space-y-8">
                                     {fields.map((field, index) => {
                                         const error = form.formState.errors.farms?.[index];
                                         return (
-                                            <section key={field.id} className="rounded-2xl border border-slate-200 p-5">
-                                                <div className="mb-5 flex items-center justify-between">
-                                                    <h2 className="text-lg font-semibold">Vườn {index + 1}</h2>
-                                                    {fields.length > 1 && <Button type="button" variant="outline" size="sm" onClick={() => remove(index)}><Trash2 className="mr-2 h-4 w-4" />Xóa vườn</Button>}
-                                                </div>
-                                                <div className="grid gap-4 md:grid-cols-2">
-                                                    <Field label="Tên vườn" error={error?.farmName?.message}><Input {...form.register(`farms.${index}.farmName`)} /></Field>
-                                                    <Field label="Tỉnh hoặc thành phố" error={error?.province?.message}><Input {...form.register(`farms.${index}.province`)} /></Field>
-                                                    <Field label="Quận hoặc huyện" error={error?.district?.message}><Input {...form.register(`farms.${index}.district`)} /></Field>
-                                                    <Field label="Xã hoặc phường" error={error?.ward?.message}><Input {...form.register(`farms.${index}.ward`)} /></Field>
-                                                    <Field label="Địa chỉ chi tiết" error={error?.detailedAddress?.message}><Input {...form.register(`farms.${index}.detailedAddress`)} /></Field>
-                                                    <div className="grid grid-cols-[1fr_150px] gap-2">
-                                                        <Field label="Diện tích" error={error?.areaSize?.message}><Input type="number" min="0" step="0.01" {...form.register(`farms.${index}.areaSize`)} /></Field>
-                                                        <Field label="Đơn vị"><select className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm" {...form.register(`farms.${index}.areaUnit`)}><option value="HECTARE">Héc-ta</option><option value="SQUARE_METER">Mét vuông</option></select></Field>
-                                                    </div>
-                                                    <Field label="Tổng số cây" error={error?.totalTrees?.message}><Input type="number" min="0" {...form.register(`farms.${index}.totalTrees`)} /></Field>
-                                                    <Field label="Mã vùng trồng" error={error?.growingRegionCode?.message}>
-                                                        <Input placeholder="Ví dụ: MSVT-DN-TRIAN-001" {...form.register(`farms.${index}.growingRegionCode`)} />
-                                                    </Field>
-                                                    <div className="space-y-2 md:col-span-2">
-                                                        <Label>Giống sầu riêng</Label>
-                                                        <div className="space-y-2">
-                                                            {values.farms[index].durianVarieties.map((_, varietyIndex) => (
-                                                                <div key={varietyIndex} className="flex gap-2">
-                                                                    <Input
-                                                                        aria-label={`Giống sầu riêng ${varietyIndex + 1}`}
-                                                                        placeholder="Ví dụ: Ri6, Dona, Monthong..."
-                                                                        {...form.register(`farms.${index}.durianVarieties.${varietyIndex}`)}
-                                                                    />
-                                                                    {values.farms[index].durianVarieties.length > 1 && (
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="h-11 px-3"
-                                                                            title="Xóa giống này"
-                                                                            aria-label="Xóa giống này"
-                                                                            onClick={() => {
-                                                                                const nextVarieties = values.farms[index].durianVarieties.filter((_, currentIndex) => currentIndex !== varietyIndex);
-                                                                                form.setValue(`farms.${index}.durianVarieties`, nextVarieties, { shouldDirty: true, shouldValidate: true });
-                                                                            }}
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
-                                                            ))}
+                                            <section key={field.id} className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-sm space-y-6">
+                                                {/* Card Header */}
+                                                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-700 text-white font-black text-xs shadow-xs">
+                                                            {index + 1}
+                                                        </span>
+                                                        <div>
+                                                            <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase">
+                                                                {values.farms[index]?.farmName || `Vườn ${index + 1}`}
+                                                            </h2>
+                                                            <p className="text-xs text-slate-500">
+                                                                Khai báo thông tin cơ bản và vẽ ranh giới vườn trên bản đồ vệ tinh
+                                                            </p>
                                                         </div>
-                                                        <Button type="button" variant="outline" size="sm" onClick={() => form.setValue(`farms.${index}.durianVarieties`, [...values.farms[index].durianVarieties, ""], { shouldDirty: true, shouldValidate: true })}>
-                                                            <Plus className="mr-2 h-4 w-4" />Thêm giống sầu riêng khác
+                                                    </div>
+                                                    {fields.length > 1 && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => remove(index)}
+                                                            className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50 rounded-xl text-xs font-bold"
+                                                        >
+                                                            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                                                            Xóa vườn
                                                         </Button>
-                                                        {error?.durianVarieties?.message && <p className="text-xs font-medium text-red-600">{String(error.durianVarieties.message)}</p>}
+                                                    )}
+                                                </div>
+
+                                                {/* PHẦN 1: THÔNG TIN CƠ BẢN */}
+                                                <div className="space-y-4 rounded-2xl bg-slate-50/70 p-4 sm:p-5 border border-slate-200/80">
+                                                    <div className="flex items-center gap-2 border-b border-slate-200/60 pb-2.5">
+                                                        <Sprout className="h-4 w-4 text-emerald-700" />
+                                                        <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800">
+                                                            Thông Tin Cơ Bản Vườn
+                                                        </h3>
                                                     </div>
 
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:col-span-2">
-                                                        <Field label="Vĩ độ" error={error?.latitude?.message}>
-                                                            <Input type="number" step="any" placeholder="Ví dụ: 11.023456" {...form.register(`farms.${index}.latitude`)} />
+                                                    <div className="grid gap-4 md:grid-cols-2">
+                                                        <Field label="Tên vườn *" error={error?.farmName?.message}>
+                                                            <Input placeholder="Ví dụ: Vườn sầu riêng Minh Phát" {...form.register(`farms.${index}.farmName`)} />
                                                         </Field>
-                                                        <Field label="Kinh độ" error={error?.longitude?.message}>
-                                                            <Input type="number" step="any" placeholder="Ví dụ: 107.123456" {...form.register(`farms.${index}.longitude`)} />
+                                                        <Field label="Tỉnh hoặc thành phố *" error={error?.province?.message}>
+                                                            <Input placeholder="Ví dụ: Đồng Nai" {...form.register(`farms.${index}.province`)} />
                                                         </Field>
-                                                    </div>
+                                                        <Field label="Quận hoặc huyện *" error={error?.district?.message}>
+                                                            <Input placeholder="Ví dụ: Long Khánh" {...form.register(`farms.${index}.district`)} />
+                                                        </Field>
+                                                        <Field label="Xã hoặc phường *" error={error?.ward?.message}>
+                                                            <Input placeholder="Ví dụ: Bình Lộc" {...form.register(`farms.${index}.ward`)} />
+                                                        </Field>
+                                                        <Field label="Địa chỉ chi tiết *" error={error?.detailedAddress?.message}>
+                                                            <Input placeholder="Số nhà, ấp, tổ, đường..." {...form.register(`farms.${index}.detailedAddress`)} />
+                                                        </Field>
+                                                        <Field label="Mã vùng trồng *" error={error?.growingRegionCode?.message}>
+                                                            <Input placeholder="Ví dụ: MSVT-DN-TRIAN-001" {...form.register(`farms.${index}.growingRegionCode`)} />
+                                                        </Field>
 
-                                                    <div className="md:col-span-2">
-                                                        <Button type="button" variant="outline" onClick={() => getCurrentLocation(index)} disabled={locating === index}>
-                                                            {locating === index ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LocateFixed className="mr-2 h-4 w-4" />}
-                                                            Lấy vị trí hiện tại (GPS)
-                                                        </Button>
-                                                    </div>
+                                                        {/* Giống sầu riêng */}
+                                                        <div className="space-y-2 md:col-span-2">
+                                                            <Label>Giống sầu riêng *</Label>
+                                                            <div className="space-y-2">
+                                                                {values.farms[index].durianVarieties.map((_, varietyIndex) => (
+                                                                    <div key={varietyIndex} className="flex gap-2">
+                                                                        <Input
+                                                                            aria-label={`Giống sầu riêng ${varietyIndex + 1}`}
+                                                                            placeholder="Ví dụ: Ri6, Dona, Monthong..."
+                                                                            {...form.register(`farms.${index}.durianVarieties.${varietyIndex}`)}
+                                                                        />
+                                                                        {values.farms[index].durianVarieties.length > 1 && (
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                className="h-11 px-3"
+                                                                                title="Xóa giống này"
+                                                                                aria-label="Xóa giống này"
+                                                                                onClick={() => {
+                                                                                    const nextVarieties = values.farms[index].durianVarieties.filter((_, currentIndex) => currentIndex !== varietyIndex);
+                                                                                    form.setValue(`farms.${index}.durianVarieties`, nextVarieties, { shouldDirty: true, shouldValidate: true });
+                                                                                }}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <Button type="button" variant="outline" size="sm" onClick={() => form.setValue(`farms.${index}.durianVarieties`, [...values.farms[index].durianVarieties, ""], { shouldDirty: true, shouldValidate: true })}>
+                                                                <Plus className="mr-2 h-4 w-4" />Thêm giống sầu riêng khác
+                                                            </Button>
+                                                            {error?.durianVarieties?.message && <p className="text-xs font-medium text-red-600">{String(error.durianVarieties.message)}</p>}
+                                                        </div>
 
-                                                    <div className="md:col-span-2">
-                                                        <Field label="Ghi chú">
-                                                            <textarea className="min-h-24 w-full rounded-2xl border border-slate-200 p-3 text-sm" placeholder="Ghi chú thêm về địa hình, hệ thống tưới hoặc lịch sử canh tác của vườn..." {...form.register(`farms.${index}.notes`)} />
+                                                        {/* Số cây & Diện tích khai báo */}
+                                                        <Field label="Tổng số cây" error={error?.totalTrees?.message}>
+                                                            <Input type="number" min="0" placeholder="Ví dụ: 120" {...form.register(`farms.${index}.totalTrees`)} />
+                                                        </Field>
+
+                                                        <div className="grid grid-cols-[1fr_150px] gap-2">
+                                                            <Field label="Diện tích khai báo (Hồ sơ) *" error={error?.areaSize?.message}>
+                                                                <Input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    step="0.0001"
+                                                                    placeholder="Ví dụ: 1.6"
+                                                                    {...form.register(`farms.${index}.areaSize`, {
+                                                                        onChange: (e) => {
+                                                                            form.setValue(`farms.${index}.declaredArea`, parseFloat(e.target.value) || 0);
+                                                                        },
+                                                                    })}
+                                                                />
+                                                            </Field>
+                                                            <Field label="Đơn vị">
+                                                                <select className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm" {...form.register(`farms.${index}.areaUnit`)}>
+                                                                    <option value="HECTARE">Héc-ta (ha)</option>
+                                                                    <option value="SQUARE_METER">Mét vuông (m²)</option>
+                                                                </select>
+                                                            </Field>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* PHẦN 2: VỊ TRÍ & RANH GIỚI VƯỜN (BẢN ĐỒ) */}
+                                                <div className="space-y-4 rounded-2xl bg-white p-4 sm:p-5 border border-emerald-200/80 shadow-xs">
+                                                    <FarmBoundaryMapPicker
+                                                        declaredArea={values.farms[index]?.areaSize || 0}
+                                                        declaredUnit={values.farms[index]?.areaUnit || "HECTARE"}
+                                                        province={values.farms[index]?.province}
+                                                        district={values.farms[index]?.district}
+                                                        ward={values.farms[index]?.ward}
+                                                        detailedAddress={values.farms[index]?.detailedAddress}
+                                                        initialBoundary={values.farms[index]?.boundary as any}
+                                                        initialCenter={
+                                                            values.farms[index]?.latitude && values.farms[index]?.longitude
+                                                                ? { lat: values.farms[index].latitude!, lng: values.farms[index].longitude! }
+                                                                : null
+                                                        }
+                                                        onBoundaryChange={({ boundary, mappedAreaHa, mappedAreaM2, centerLat, centerLng }) => {
+                                                            form.setValue(`farms.${index}.boundary`, boundary, { shouldDirty: true });
+                                                            form.setValue(`farms.${index}.mappedArea`, mappedAreaHa, { shouldDirty: true });
+                                                            if (centerLat && centerLng) {
+                                                                form.setValue(`farms.${index}.latitude`, centerLat, { shouldValidate: true });
+                                                                form.setValue(`farms.${index}.longitude`, centerLng, { shouldValidate: true });
+                                                                form.setValue(`farms.${index}.centerLatitude`, centerLat);
+                                                                form.setValue(`farms.${index}.centerLongitude`, centerLng);
+                                                            }
+                                                        }}
+                                                    />
+
+                                                    {/* Ghi chú */}
+                                                    <div className="pt-2">
+                                                        <Field label="Ghi chú thêm về vườn">
+                                                            <textarea
+                                                                className="min-h-20 w-full rounded-2xl border border-slate-200 p-3 text-sm bg-slate-50/50 focus:bg-white"
+                                                                placeholder="Ghi chú thêm về địa hình, bờ bao, nguồn nước tưới hoặc thông tin đặc thù của vườn..."
+                                                                {...form.register(`farms.${index}.notes`)}
+                                                            />
                                                         </Field>
                                                     </div>
                                                 </div>
                                             </section>
                                         );
                                     })}
-                                    <Button type="button" variant="outline" onClick={() => append({ ...emptyFarm, durianVarieties: [...emptyFarm.durianVarieties] })}><Plus className="mr-2 h-4 w-4" />Thêm vườn khác</Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => append({ ...emptyFarm, durianVarieties: [...emptyFarm.durianVarieties] })}
+                                        className="w-full sm:w-auto rounded-2xl font-bold text-xs h-11 px-5 border-dashed border-slate-300 hover:border-emerald-500 hover:text-emerald-700"
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Thêm vườn sầu riêng khác
+                                    </Button>
                                 </div>
                             )}
 
                             {step === 2 && (
                                 <div className="space-y-5">
                                     <ReviewSection title="Thông tin tài khoản" onEdit={() => setStep(0)}>
-                                        <p><b>Họ tên:</b> {values.fullName}</p><p><b>Điện thoại:</b> {values.phone}</p>
+                                        <p><b>Họ tên:</b> {values.fullName}</p>
+                                        <p><b>Điện thoại:</b> {values.phone}</p>
                                         <p><b>Email:</b> {values.email || "Không cung cấp"}</p>
-                                        <p><b>Địa chỉ:</b> {values.detailedAddress}, {values.ward}, {values.district}, {values.province}</p>
+                                        <p><b>Địa chỉ cư trú:</b> {values.detailedAddress}, {values.ward}, {values.district}, {values.province}</p>
                                     </ReviewSection>
-                                    <ReviewSection title="Thông tin vườn trồng" onEdit={() => setStep(1)}>
-                                        {values.farms.map((farm, index) => <div key={index} className="border-b py-2 last:border-0"><b>{farm.farmName}</b><p>{farm.areaSize} {farm.areaUnit === "HECTARE" ? "ha" : "m²"} · {farm.totalTrees} cây · {farm.durianVarieties.join(", ")}</p><p><b>Mã vùng trồng:</b> {farm.growingRegionCode}</p><p>{farm.detailedAddress}, {farm.ward}, {farm.district}, {farm.province}</p></div>)}
+
+                                    <ReviewSection title="Thông tin vườn trồng & Ranh giới bản đồ" onEdit={() => setStep(1)}>
+                                        {values.farms.map((farm, index) => (
+                                            <div key={index} className="border-b py-3 last:border-0 space-y-1.5">
+                                                <div className="flex items-center justify-between">
+                                                    <b className="text-base text-slate-900">{farm.farmName}</b>
+                                                    {farm.mappedArea ? (
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2.5 py-0.5">
+                                                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                                            Đã vẽ ranh giới ({farm.mappedArea} ha)
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[11px] text-slate-400 font-medium">Chưa vẽ ranh giới</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-slate-600">
+                                                    <b>Diện tích khai báo (Hồ sơ):</b> {farm.areaSize} {farm.areaUnit === "HECTARE" ? "ha" : "m²"}
+                                                    {farm.mappedArea ? ` · Diện tích bản đồ: ${farm.mappedArea} ha` : ""}
+                                                    {` · ${farm.totalTrees} cây · Giống: ${farm.durianVarieties.filter(Boolean).join(", ")}`}
+                                                </p>
+                                                <p className="text-xs text-slate-600">
+                                                    <b>Mã vùng trồng:</b> {farm.growingRegionCode}
+                                                    {farm.latitude && farm.longitude ? ` · Tọa độ tâm GPS: ${farm.latitude}, ${farm.longitude}` : ""}
+                                                </p>
+                                                <p className="text-xs text-slate-500">
+                                                    <b>Địa chỉ vườn:</b> {farm.detailedAddress}, {farm.ward}, {farm.district}, {farm.province}
+                                                </p>
+                                            </div>
+                                        ))}
                                     </ReviewSection>
+
                                     <label className="flex cursor-pointer gap-3 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-950">
                                         <input type="checkbox" className="mt-1 h-4 w-4" {...form.register("confirmation")} />
                                         <span>Tôi xác nhận các thông tin trên là chính xác và đồng ý gửi hồ sơ để xét duyệt.</span>
