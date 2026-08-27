@@ -22,6 +22,7 @@ import {
     Package
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { QrCodeViewerModal, QrModalData } from "@/components/traceability/qr-code-viewer-modal";
 
 export type SalesDispatchData = {
     id: string;
@@ -75,6 +76,7 @@ export function SalesDispatchSlip({
 }) {
     const [mounted, setMounted] = useState<boolean>(false);
     const [qrSrc, setQrSrc] = useState<string>("");
+    const [showQrViewer, setShowQrViewer] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -492,11 +494,27 @@ export function SalesDispatchSlip({
 
                         <div>
                             {token ? (
-                                qrSrc ? (
-                                    <img src={qrSrc} alt="QR Code" className="h-16 w-16 rounded-xl border bg-white p-1 shadow-2xs" />
-                                ) : (
-                                    <span className="text-xs text-emerald-700 font-bold">Đã có QR</span>
-                                )
+                                <div className="flex items-center gap-2">
+                                    {qrSrc && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowQrViewer(true)}
+                                            className="group relative cursor-pointer"
+                                            title="Bấm để phóng to và Tải / In mã QR"
+                                        >
+                                            <img src={qrSrc} alt="QR Code" className="h-16 w-16 rounded-xl border bg-white p-1 shadow-2xs group-hover:scale-105 transition" />
+                                        </button>
+                                    )}
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() => setShowQrViewer(true)}
+                                        className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold px-3 h-8 gap-1.5 shadow-xs"
+                                    >
+                                        <QrCode className="h-3.5 w-3.5" />
+                                        Xem & In QR
+                                    </Button>
+                                </div>
                             ) : onIssueQr ? (
                                 <Button
                                     type="button"
@@ -535,6 +553,25 @@ export function SalesDispatchSlip({
                     )}
                 </div>
             </div>
+
+            {/* QR Code Viewer Modal */}
+            {showQrViewer && token && (
+                <QrCodeViewerModal
+                    data={{
+                        token,
+                        lotCode: data.lotCode,
+                        productName: data.productName,
+                        quantity: data.quantity,
+                        unit: data.unit,
+                        issuerName: data.ownerName,
+                        destinationName: data.buyerName || undefined,
+                        destinationCountry: data.destinationCountry,
+                        isExport: isExport,
+                        issuedAt: data.dispatchedAt,
+                    }}
+                    onClose={() => setShowQrViewer(false)}
+                />
+            )}
         </div>,
         document.body
     );

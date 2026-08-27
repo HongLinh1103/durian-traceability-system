@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { SalesDispatchSlip, SalesDispatchData } from "./sales-dispatch-slip";
 import { PartnerFinanceCharts, PartnerChartData } from "./partner-finance-charts";
 import { computePartnerChartData } from "@/lib/partner-finance-analytics";
+import { QrCodeViewerModal, QrModalData } from "@/components/traceability/qr-code-viewer-modal";
 
 export type FinanceData = {
     facility: {
@@ -171,6 +172,7 @@ export function PartnerFinanceManager({
     const [data, setData] = useState<FinanceData>(initialData);
     const [activeTab, setActiveTab] = useState<"ANALYTICS" | "SALES" | "EXPENSES" | "HISTORY">("ANALYTICS");
     const [selectedSaleForSlip, setSelectedSaleForSlip] = useState<SalesDispatchData | null>(null);
+    const [selectedQrData, setSelectedQrData] = useState<QrModalData | null>(null);
     const [issuingQr, setIssuingQr] = useState(false);
 
     // Debt collection modal
@@ -656,11 +658,27 @@ export function PartnerFinanceManager({
                                         )}
 
                                         {sale.traceabilityCode ? (
-                                            <Button asChild variant="outline" size="sm" className="rounded-xl text-xs h-8">
-                                                <Link target="_blank" href={`/trace/${sale.traceabilityCode.publicToken}`}>
-                                                    <QrCode className="mr-1 h-3.5 w-3.5 text-emerald-600" />
-                                                    Mã QR
-                                                </Link>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    setSelectedQrData({
+                                                        token: sale.traceabilityCode!.publicToken,
+                                                        lotCode: sale.lotCode,
+                                                        productName: sale.productName,
+                                                        quantity: sale.quantity,
+                                                        unit: sale.unit,
+                                                        issuerName: data.facility.name,
+                                                        destinationName: sale.buyerName || undefined,
+                                                        issuedAt: sale.dispatchedAt,
+                                                        status: sale.traceabilityCode!.status,
+                                                    })
+                                                }
+                                                className="rounded-xl text-xs h-8 border-emerald-200 text-emerald-800 hover:bg-emerald-50 font-bold gap-1"
+                                            >
+                                                <QrCode className="h-3.5 w-3.5 text-emerald-600" />
+                                                Mã QR
                                             </Button>
                                         ) : (
                                             <Button
@@ -1065,6 +1083,14 @@ export function PartnerFinanceManager({
                         </div>
                     </form>
                 </div>
+            )}
+
+            {/* QR Code Viewer Modal with Download & Print */}
+            {selectedQrData && (
+                <QrCodeViewerModal
+                    data={selectedQrData}
+                    onClose={() => setSelectedQrData(null)}
+                />
             )}
         </div>
     );

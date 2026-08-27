@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import QRCode from "qrcode";
 import {
     CheckCircle2,
     AlertTriangle,
@@ -24,8 +25,16 @@ import {
     GitCommit,
     Layers,
     ArrowDown,
-    ArrowUp
+    ArrowUp,
+    QrCode,
+    Download,
+    Printer,
+    Copy,
+    Check,
+    Share2,
+    Sparkles
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { TraceMilestone } from "@/lib/traceability";
 
 export type PublicTraceData = {
@@ -118,8 +127,181 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
     const [sortNewestFirst, setSortNewestFirst] = useState(true);
     const [expandedProcessing, setExpandedProcessing] = useState(false);
     const [expandedFarmIndex, setExpandedFarmIndex] = useState<number | null>(0);
+    const [qrDataUrl, setQrDataUrl] = useState<string>("");
+    const [copied, setCopied] = useState(false);
+    const [showQrCard, setShowQrCard] = useState(false);
 
     const active = trace.qrStatus === "ACTIVE";
+
+    useEffect(() => {
+        const fullUrl = typeof window !== "undefined"
+            ? window.location.href
+            : `https://triviet.vn/trace/${trace.publicToken}`;
+
+        QRCode.toDataURL(fullUrl, {
+            width: 512,
+            margin: 2,
+            color: {
+                dark: "#064e3b",
+                light: "#ffffff",
+            },
+            errorCorrectionLevel: "H",
+        })
+            .then((url) => setQrDataUrl(url))
+            .catch((err) => console.error("Error generating QR:", err));
+    }, [trace.publicToken]);
+
+    const handleCopyUrl = async () => {
+        try {
+            const url = typeof window !== "undefined" ? window.location.href : `https://triviet.vn/trace/${trace.publicToken}`;
+            await navigator.clipboard.writeText(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2500);
+        } catch (err) {
+            console.error("Failed to copy link:", err);
+        }
+    };
+
+    const handleDownloadQr = () => {
+        if (!qrDataUrl) return;
+        const link = document.createElement("a");
+        link.href = qrDataUrl;
+        link.download = `QR_${trace.commercialLot.lotCode}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handlePrintQr = () => {
+        const printWindow = window.open("", "_blank", "width=600,height=750");
+        if (!printWindow) {
+            alert("Vui lòng cho phép popup trình duyệt để in mã QR");
+            return;
+        }
+
+        const issuedDateStr = trace.issuedAt
+            ? new Date(trace.issuedAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })
+            : new Date().toLocaleDateString("vi-VN");
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>In Tem QR - ${trace.commercialLot.lotCode}</title>
+                <style>
+                    @page { size: A5 portrait; margin: 12mm; }
+                    body {
+                        font-family: Arial, sans-serif;
+                        color: #1e293b;
+                        background: #ffffff;
+                        margin: 0;
+                        padding: 0;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                    }
+                    .label-card {
+                        width: 100%;
+                        max-width: 440px;
+                        border: 2px solid #064e3b;
+                        border-radius: 16px;
+                        padding: 24px;
+                        text-align: center;
+                        box-sizing: border-box;
+                    }
+                    .header-logo {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        margin-bottom: 6px;
+                    }
+                    .logo-box {
+                        background: #064e3b;
+                        color: #ffffff;
+                        font-weight: 900;
+                        font-size: 14px;
+                        padding: 4px 8px;
+                        border-radius: 6px;
+                    }
+                    .header-title {
+                        font-size: 13px;
+                        font-weight: 800;
+                        color: #064e3b;
+                        text-transform: uppercase;
+                    }
+                    .main-title {
+                        font-size: 18px;
+                        font-weight: 900;
+                        color: #0f172a;
+                        margin: 4px 0;
+                        text-transform: uppercase;
+                    }
+                    .sub-title { font-size: 12px; color: #64748b; margin-bottom: 12px; }
+                    .qr-container {
+                        background: #fff;
+                        border: 1.5px solid #cbd5e1;
+                        border-radius: 14px;
+                        padding: 12px;
+                        display: inline-block;
+                        margin-bottom: 12px;
+                    }
+                    .qr-image { width: 220px; height: 220px; display: block; }
+                    .token-code {
+                        font-family: monospace;
+                        font-size: 12px;
+                        font-weight: bold;
+                        color: #064e3b;
+                        background: #f0fdf4;
+                        padding: 4px 10px;
+                        border-radius: 6px;
+                        display: inline-block;
+                        margin-bottom: 14px;
+                        border: 1px dashed #86efac;
+                    }
+                    .info-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        text-align: left;
+                        font-size: 12px;
+                        margin-bottom: 14px;
+                        border-top: 1px solid #e2e8f0;
+                        border-bottom: 1px solid #e2e8f0;
+                    }
+                    .info-table td { padding: 6px 4px; }
+                    .info-table td.label { color: #64748b; font-weight: 600; width: 40%; }
+                    .info-table td.val { color: #0f172a; font-weight: 700; }
+                    .footer-note { font-size: 11px; color: #064e3b; font-weight: 600; margin-top: 8px; }
+                </style>
+            </head>
+            <body>
+                <div class="label-card">
+                    <div class="header-logo">
+                        <span class="logo-box">TriViet</span>
+                        <span class="header-title">Hệ Thống Truy Xuất Nguồn Gốc</span>
+                    </div>
+                    <div class="main-title">${trace.commercialLot.productName}</div>
+                    <div class="sub-title">Mã lô: <b>${trace.commercialLot.lotCode}</b></div>
+                    <div class="qr-container">
+                        <img src="${qrDataUrl}" alt="Mã QR" class="qr-image" />
+                    </div>
+                    <div><span class="token-code">MÃ ĐỊNH DANH: ${trace.publicToken}</span></div>
+                    <table class="info-table">
+                        <tr><td class="label">Sản phẩm:</td><td class="val">${trace.commercialLot.productName}</td></tr>
+                        <tr><td class="label">Mã lô hàng:</td><td class="val">${trace.commercialLot.lotCode}</td></tr>
+                        <tr><td class="label">Khối lượng:</td><td class="val">${trace.commercialLot.quantity.toLocaleString("vi-VN")} ${trace.commercialLot.unit}</td></tr>
+                        <tr><td class="label">Đơn vị phát hành:</td><td class="val">${trace.issuer}</td></tr>
+                        <tr><td class="label">Ngày phát hành:</td><td class="val">${issuedDateStr}</td></tr>
+                    </table>
+                    <div class="footer-note">📱 Dùng camera điện thoại hoặc Zalo quét mã để xem toàn bộ nhật ký canh tác.</div>
+                </div>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        setTimeout(() => printWindow.print(), 300);
+    };
 
     // Sorted milestones based on user toggle preference
     const displayedMilestones = sortNewestFirst
@@ -242,6 +424,74 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                                     ? trace.destination.country
                                     : trace.destination?.name || trace.commercialLot.buyerName || "Chợ đầu mối Nông sản Thủ Đức"}
                             </span>
+                        </div>
+                    </div>
+
+                    {/* QR Code Action Box */}
+                    <div className="rounded-2xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-slate-50 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            {qrDataUrl ? (
+                                <div className="rounded-2xl bg-white p-2 border border-emerald-200 shadow-xs shrink-0">
+                                    <img
+                                        src={qrDataUrl}
+                                        alt={`QR - ${trace.commercialLot.lotCode}`}
+                                        className="h-20 w-20 sm:h-24 sm:w-24 object-contain rounded-lg"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl bg-white text-emerald-700 border border-emerald-200 shrink-0">
+                                    <QrCode className="h-10 w-10 text-emerald-600" />
+                                </div>
+                            )}
+                            <div>
+                                <div className="flex items-center gap-1.5 text-xs font-black uppercase text-emerald-800 tracking-wide">
+                                    <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                                    Mã QR Định Danh Chính Hãng
+                                </div>
+                                <p className="text-xs text-slate-600 mt-1">
+                                    Quét bằng Camera hoặc Zalo để xác thực nguồn gốc sầu riêng.
+                                </p>
+                                <div className="mt-1.5 flex items-center gap-2">
+                                    <span className="font-mono text-[11px] font-bold text-slate-700 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                                        Token: {trace.publicToken}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                            <Button
+                                type="button"
+                                onClick={handleDownloadQr}
+                                disabled={!qrDataUrl}
+                                size="sm"
+                                className="flex-1 sm:flex-none rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs h-9 gap-1.5 shadow-xs"
+                            >
+                                <Download className="h-3.5 w-3.5" />
+                                Tải QR (PNG)
+                            </Button>
+
+                            <Button
+                                type="button"
+                                onClick={handlePrintQr}
+                                disabled={!qrDataUrl}
+                                size="sm"
+                                className="flex-1 sm:flex-none rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs h-9 gap-1.5 shadow-xs"
+                            >
+                                <Printer className="h-3.5 w-3.5" />
+                                In Tem QR
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleCopyUrl}
+                                size="sm"
+                                className="flex-1 sm:flex-none rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs h-9 gap-1.5"
+                            >
+                                {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                                {copied ? "Đã chép!" : "Sao chép link"}
+                            </Button>
                         </div>
                     </div>
 

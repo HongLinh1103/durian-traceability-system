@@ -32,6 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { TraceValidation } from "@/lib/traceability";
 import { SalesDispatchSlip, SalesDispatchData } from "@/components/partner/sales-dispatch-slip";
+import { QrCodeViewerModal, QrModalData } from "@/components/traceability/qr-code-viewer-modal";
 
 type IssuerRole = "FARMER" | "COLLECTOR" | "PROCESSING_FACILITY";
 
@@ -153,9 +154,10 @@ export function TraceabilityManager({
     const [paymentMethod, setPaymentMethod] = useState<string>("Chuyển khoản");
     const [buyerPhone, setBuyerPhone] = useState<string>("");
 
-    // Modal state for viewing the sales dispatch slip
+    // Modal state for viewing the sales dispatch slip and QR viewer
     const [selectedSlipData, setSelectedSlipData] = useState<SalesDispatchData | null>(null);
     const [exportProgressLot, setExportProgressLot] = useState<Lot | null>(null);
+    const [selectedQrData, setSelectedQrData] = useState<QrModalData | null>(null);
     const [issuingQr, setIssuingQr] = useState(false);
 
     useEffect(() => {
@@ -1077,14 +1079,29 @@ export function TraceabilityManager({
                                     </div>
 
                                     {qr ? (
-                                        <Link
-                                            href={`/trace/${qr.publicToken || qr.code}`}
-                                            target="_blank"
-                                            className="inline-flex items-center gap-1 rounded-xl bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setSelectedQrData({
+                                                    token: qr.publicToken || qr.code,
+                                                    code: qr.code,
+                                                    lotCode: lot.lotCode,
+                                                    productName: lot.productName,
+                                                    quantity: lot.quantity,
+                                                    unit: lot.unit,
+                                                    issuerName: lot.owner?.name,
+                                                    destinationName: lot.buyerName || lot.destination?.name || undefined,
+                                                    destinationCountry: lot.destination?.country || (isExp ? "Trung Quốc" : undefined),
+                                                    isExport: isExp,
+                                                    issuedAt: lot.dispatchedAt,
+                                                    status: qr.status,
+                                                })
+                                            }
+                                            className="inline-flex items-center gap-1 rounded-xl bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition shadow-2xs cursor-pointer"
                                         >
                                             <QrCode className="h-3.5 w-3.5" />
                                             Xem mã QR
-                                        </Link>
+                                        </button>
                                     ) : (
                                         <Button
                                             type="button"
@@ -1131,6 +1148,14 @@ export function TraceabilityManager({
                         );
                         setExportProgressLot(null);
                     }}
+                />
+            )}
+
+            {/* QR Code Viewer Modal with Download & Print */}
+            {selectedQrData && (
+                <QrCodeViewerModal
+                    data={selectedQrData}
+                    onClose={() => setSelectedQrData(null)}
                 />
             )}
         </div>

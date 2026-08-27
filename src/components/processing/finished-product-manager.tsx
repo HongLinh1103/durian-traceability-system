@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getStatusBadgeVariant } from "@/lib/processing-facility";
+import { QrCodeViewerModal, QrModalData } from "@/components/traceability/qr-code-viewer-modal";
 
 export type FinishedProductLotItem = {
     id: string;
@@ -80,6 +81,7 @@ export function FinishedProductManager({
     const [viewLot, setViewLot] = useState<FinishedProductLotItem | null>(null);
     const [qcLot, setQcLot] = useState<FinishedProductLotItem | null>(null);
     const [warehouseInLot, setWarehouseInLot] = useState<FinishedProductLotItem | null>(null);
+    const [selectedQrData, setSelectedQrData] = useState<QrModalData | null>(null);
 
     const [busy, setBusy] = useState<string | null>(null);
     const [error, setError] = useState("");
@@ -395,15 +397,26 @@ export function FinishedProductManager({
                                                         </span>
                                                     </div>
                                                     {cm.traceabilityCode ? (
-                                                        <Link
-                                                            href={`/trace/${cm.traceabilityCode.publicToken}`}
-                                                            target="_blank"
-                                                            className="inline-flex items-center gap-1 font-bold text-brand-600 hover:underline"
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setSelectedQrData({
+                                                                    token: cm.traceabilityCode!.publicToken,
+                                                                    lotCode: cm.lotCode,
+                                                                    productName: lot.productName,
+                                                                    quantity: cm.quantity,
+                                                                    unit: cm.unit,
+                                                                    issuerName: "Cơ sở Chế biến Sầu riêng Trị An",
+                                                                    destinationName: cm.destinationName,
+                                                                    status: cm.traceabilityCode!.status,
+                                                                })
+                                                            }
+                                                            className="inline-flex items-center gap-1 font-bold text-xs bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 text-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
                                                         >
-                                                            <QrCode className="h-3.5 w-3.5" /> Quét QR <ExternalLink className="h-3 w-3" />
-                                                        </Link>
+                                                            <QrCode className="h-3.5 w-3.5 text-emerald-600" /> Xem mã QR
+                                                        </button>
                                                     ) : (
-                                                        <span className="text-amber-700">Chưa cấp QR</span>
+                                                        <span className="text-amber-700 text-xs">Chưa cấp QR</span>
                                                     )}
                                                 </div>
                                             ))}
@@ -498,6 +511,14 @@ export function FinishedProductManager({
 
             {/* MODAL: XEM CHI TIẾT & CÂY PHẢ HỆ TRUY XUẤT NGUỒN GỐC */}
             {viewLot && <FinishedLotDetailModal lot={viewLot} onClose={() => setViewLot(null)} />}
+
+            {/* MODAL: XEM MÃ QR & TẢI/IN QR */}
+            {selectedQrData && (
+                <QrCodeViewerModal
+                    data={selectedQrData}
+                    onClose={() => setSelectedQrData(null)}
+                />
+            )}
         </div>
     );
 }
