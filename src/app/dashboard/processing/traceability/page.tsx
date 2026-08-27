@@ -59,6 +59,13 @@ export default async function Page({
             ...row,
             quantity: Number(row.quantity),
             remainingQuantity: Number(row.remainingQuantity),
+            stockBeforeDispatch: row.stockBeforeDispatch ? Number(row.stockBeforeDispatch) : null,
+            unitPrice: row.unitPrice ? Number(row.unitPrice) : null,
+            subtotal: row.subtotal ? Number(row.subtotal) : null,
+            discount: row.discount ? Number(row.discount) : 0,
+            totalAmount: row.totalAmount ? Number(row.totalAmount) : null,
+            paidAmount: row.paidAmount ? Number(row.paidAmount) : 0,
+            debtAmount: row.debtAmount ? Number(row.debtAmount) : 0,
             validation: await validateTraceability(row.id),
         }))
     );
@@ -76,9 +83,11 @@ export default async function Page({
     return (
         <main className="mx-auto max-w-7xl space-y-5 px-4 py-7 sm:px-6">
             <header>
-                <p className="text-sm font-bold uppercase tracking-wide text-emerald-700">Truy xuất nguồn gốc</p>
-                <h1 className="mt-1 text-3xl font-black">Tạo QR</h1>
-                <p className="mt-2 text-slate-500">Tạo mã QR truy xuất cho thành phẩm bán trong nước hoặc xuất khẩu.</p>
+                <p className="text-sm font-bold uppercase tracking-wide text-emerald-700">Cơ Sở Chế Biến & Đóng Gói</p>
+                <h1 className="mt-1 text-3xl font-black text-slate-900">Xuất Bán Thành Phẩm & Tạo Mã QR</h1>
+                <p className="mt-2 text-slate-500">
+                    Lập phiếu xuất bán lô thành phẩm, ghi nhận giá bán - công nợ và phát hành mã QR truy xuất nguồn gốc.
+                </p>
             </header>
             <TraceabilityManager
                 role="PROCESSING_FACILITY"
@@ -90,4 +99,3 @@ export default async function Page({
         </main>
     );
 }
-

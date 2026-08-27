@@ -65,6 +65,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/processing/processing", label: "Chế biến", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/finished-products", label: "Thành phẩm", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/traceability", label: "Tạo QR", roles: ["PROCESSING_FACILITY"] },
+    { href: "/dashboard/processing/finance", label: "Tài chính", roles: ["PROCESSING_FACILITY"] },
 ];
 
 export function Navbar({ initialSession }: { initialSession: Session | null }) {

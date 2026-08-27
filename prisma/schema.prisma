@@ -159,6 +159,17 @@ enum StoreExpenseCategory {
   OTHER
 }
 
+enum PartnerExpenseCategory {
+  RAW_MATERIAL
+  PROCESSING_LABOR
+  PACKAGING
+  COLD_STORAGE_ELECTRICITY
+  LOGISTICS_TRANSPORT
+  EQUIPMENT_MAINTENANCE
+  FACTORY_OVERHEAD
+  OTHER
+}
+
 /// Trạng thái duyệt tài khoản sau onboarding.
 enum AccountStatus {
   PENDING
@@ -683,6 +694,8 @@ model PartnerFacility {
   finishedProductLots FinishedProductLot[]
   commercialLots      CommercialLot[]
   shipments           Shipment[]
+  expenses            PartnerExpense[]
+  paymentRecords      PartnerPaymentRecord[]
 
   @@index([type, status, deletedAt])
   @@index([province, status])
@@ -2045,6 +2058,19 @@ model CommercialLot {
   remainingQuantity          Decimal                  @default(0) @db.Decimal(14, 2)
   unit                       String                   @default("kg")
   status                     CommercialLotStatus      @default(DRAFT)
+  stockBeforeDispatch        Decimal?                 @db.Decimal(14, 2)
+  buyerName                  String?
+  buyerPhone                 String?
+  buyerAddress               String?
+  unitPrice                  Decimal?                 @db.Decimal(14, 2)
+  subtotal                   Decimal?                 @db.Decimal(14, 2)
+  discount                   Decimal?                 @default(0) @db.Decimal(14, 2)
+  totalAmount                Decimal?                 @db.Decimal(14, 2)
+  paidAmount                 Decimal?                 @default(0) @db.Decimal(14, 2)
+  debtAmount                 Decimal?                 @default(0) @db.Decimal(14, 2)
+  paymentStatus              OrderPaymentStatus       @default(UNPAID)
+  paymentMethod              String?
+  dispatchedAt               DateTime?                @default(now())
   note                       String?
   createdAt                  DateTime                 @default(now())
   updatedAt                  DateTime                 @updatedAt
@@ -2057,6 +2083,7 @@ model CommercialLot {
   traceabilityCode           TraceabilityCode?
   shipmentItems              ShipmentItem[]
   traceEvents                TraceEvent[]
+  paymentRecords             PartnerPaymentRecord[]
 
   @@index([ownerId, status])
   @@index([farmerOwnerId, status])
@@ -2215,4 +2242,55 @@ model TraceAuditLog {
   @@index([entityType, entityId, createdAt])
   @@index([actorId, createdAt])
   @@map("trace_audit_logs")
+}
+
+model PartnerExpense {
+  id                     String                 @id @default(cuid())
+  facilityId             String
+  category               PartnerExpenseCategory
+  title                  String
+  amount                 Decimal                @db.Decimal(14, 2)
+  paidAmount             Decimal?               @default(0) @db.Decimal(14, 2)
+  status                 ExpensePaymentStatus   @default(PAID)
+  expenseDate            DateTime               @default(now())
+  paymentMethod          String                 @default("CHUYEN_KHOAN")
+  recipient              String?
+  note                   String?
+  receiptImageUrl        String?
+  relatedHarvestRecordId String?
+  createdById            String?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+
+  facility               PartnerFacility        @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  payments               PartnerPaymentRecord[]
+
+  @@index([facilityId, expenseDate])
+  @@index([facilityId, category])
+  @@map("partner_expenses")
+}
+
+model PartnerPaymentRecord {
+  id              String          @id @default(cuid())
+  facilityId      String
+  commercialLotId String?
+  expenseId       String?
+  type            String          @default("RECEIPT")
+  amount          Decimal         @db.Decimal(14, 2)
+  paymentDate     DateTime        @default(now())
+  paymentMethod   String          @default("CHUYEN_KHOAN")
+  payerName       String?
+  receiverName    String?
+  referenceCode   String?
+  note            String?
+  createdAt       DateTime        @default(now())
+
+  facility        PartnerFacility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  commercialLot   CommercialLot?  @relation(fields: [commercialLotId], references: [id], onDelete: Cascade)
+  expense         PartnerExpense? @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@index([facilityId, paymentDate])
+  @@index([commercialLotId])
+  @@index([expenseId])
+  @@map("partner_payment_records")
 }

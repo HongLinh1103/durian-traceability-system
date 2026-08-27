@@ -454,9 +454,9 @@ export function FinishedProductManager({
                                     {isReady && (
                                         <Link
                                             href={`/dashboard/processing/traceability?source=${lot.id}`}
-                                            className="flex-1 inline-flex items-center justify-center rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-sm transition"
+                                            className="flex-1 inline-flex items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-sm transition"
                                         >
-                                            <QrCode className="mr-1.5 h-4 w-4" /> Tạo QR <ArrowRight className="ml-1.5 h-4 w-4" />
+                                            <QrCode className="mr-1.5 h-4 w-4" /> Xuất bán & Tạo QR <ArrowRight className="ml-1.5 h-4 w-4" />
                                         </Link>
                                     )}
                                 </div>
