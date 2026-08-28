@@ -156,10 +156,20 @@ export default function FarmingManagementPage() {
         setLoading(true);
         try {
             const response = await fetch("/api/admin/farming", { cache: "no-store" });
-            const payload = await response.json();
-            if (!response.ok) throw new Error(payload.message);
-            setFarms(payload.data);
-            setStats(payload.stats);
+            const text = await response.text();
+            let payload: any = {};
+            try {
+                payload = text ? JSON.parse(text) : {};
+            } catch {
+                throw new Error(`Phản hồi máy chủ không hợp lệ (mã trạng thái ${response.status})`);
+            }
+
+            if (!response.ok || !payload.success) {
+                throw new Error(payload.message || "Không thể tải dữ liệu canh tác");
+            }
+
+            setFarms(payload.data || []);
+            setStats(payload.stats || INITIAL_STATS);
         } catch (error) {
             toast({ title: "Không thể tải dữ liệu canh tác", description: error instanceof Error ? error.message : "Vui lòng thử lại.", variant: "destructive" });
         } finally {
@@ -176,10 +186,20 @@ export default function FarmingManagementPage() {
         setLogsLoading(true);
         try {
             const response = await fetch(`/api/admin/farming/${farm.id}`, { cache: "no-store" });
-            const payload = await response.json();
-            if (!response.ok) throw new Error(payload.message);
+            const text = await response.text();
+            let payload: any = {};
+            try {
+                payload = text ? JSON.parse(text) : {};
+            } catch {
+                throw new Error(`Phản hồi máy chủ không hợp lệ (mã trạng thái ${response.status})`);
+            }
+
+            if (!response.ok || !payload.success) {
+                throw new Error(payload.message || "Không thể tải chi tiết vườn.");
+            }
+
             setFarmDetail(payload.data);
-            setLogs(payload.data.farmingLogs);
+            setLogs(payload.data.farmingLogs || []);
         } catch (error) {
             toast({ title: "Không thể tải nhật ký", description: error instanceof Error ? error.message : "Vui lòng thử lại.", variant: "destructive" });
         } finally {
@@ -193,10 +213,23 @@ export default function FarmingManagementPage() {
             const response = await fetch(`/api/admin/farming/${farm.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ isActive: !farm.isActive }),
+                body: JSON.stringify({
+                    isActive: !farm.isActive,
+                    reason: farm.isActive ? "Admin tạm ngừng vườn" : "Admin kích hoạt lại vườn"
+                }),
             });
-            const payload = await response.json();
-            if (!response.ok) throw new Error(payload.message);
+            const text = await response.text();
+            let payload: any = {};
+            try {
+                payload = text ? JSON.parse(text) : {};
+            } catch {
+                throw new Error(`Phản hồi máy chủ không hợp lệ (mã trạng thái ${response.status})`);
+            }
+
+            if (!response.ok || !payload.success) {
+                throw new Error(payload.message || "Không thể cập nhật trạng thái vườn.");
+            }
+
             toast({ title: farm.isActive ? "Đã tạm ngừng vườn" : "Đã kích hoạt lại vườn", variant: "success" });
             await loadFarms();
         } catch (error) {
