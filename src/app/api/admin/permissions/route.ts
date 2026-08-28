@@ -53,6 +53,8 @@ export async function GET(request: Request) {
 
         const roleConfigs: Record<string, { moduleEnabled: Record<string, boolean>; permissions: string[]; stats: any }> = {};
 
+        const allRoles = [...SYSTEM_ROLES];
+
         // Try to load from database
         let dbAvailable = false;
         try {
@@ -70,13 +72,23 @@ export async function GET(request: Request) {
                     permissions,
                     stats,
                 };
+
+                // Add custom role to allRoles if not exists
+                if (!allRoles.some(r => r.key === item.roleKey)) {
+                    allRoles.push({
+                        key: item.roleKey,
+                        name: item.roleName || item.roleKey,
+                        description: item.roleDescription || `Vai trò ${item.roleName || item.roleKey} tùy chỉnh`,
+                        badgeColor: "bg-indigo-100 text-indigo-800 border-indigo-200",
+                    });
+                }
             }
         } catch (dbErr) {
             console.warn("[PermissionsAPI] Database offline, using in-memory store:", dbErr);
         }
 
         // Fill missing roles with default configurations
-        for (const role of SYSTEM_ROLES) {
+        for (const role of allRoles) {
             if (!roleConfigs[role.key]) {
                 const memConfig = memoryConfigStore.get(role.key) || DEFAULT_ROLE_PERMISSIONS[role.key] || {
                     moduleEnabled: {},
@@ -114,7 +126,7 @@ export async function GET(request: Request) {
         return NextResponse.json({
             success: true,
             data: {
-                roles: SYSTEM_ROLES,
+                roles: allRoles,
                 modules: PERMISSION_MODULES,
                 roleConfigs,
                 auditLogs,

@@ -79,6 +79,20 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
     },
 ];
 
+export function generateRoleKeyFromName(name: string): string {
+    const normalized = name
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "");
+    return normalized || `ROLE_${Date.now()}`;
+}
+
 // 2. Danh mục đầy đủ 10 phân hệ & ma trận chức năng x hành vi
 export const PERMISSION_MODULES: ModuleDef[] = [
     {

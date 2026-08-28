@@ -15,20 +15,27 @@ import {
     ChevronRight,
     Lock,
     CheckCircle2,
-    XCircle
+    XCircle,
+    PlusCircle,
+    UserPlus,
+    SlidersHorizontal,
+    Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     SYSTEM_ROLES,
     PERMISSION_MODULES,
     DEFAULT_ROLE_PERMISSIONS,
+    SystemRoleDef,
     ModuleDef,
     ActionType,
-    calculateRolePermissionStats
+    calculateRolePermissionStats,
+    generateRoleKeyFromName
 } from "@/lib/permissions-data";
 
 export function AdminPermissionManager() {
     // 1. Core States
+    const [rolesList, setRolesList] = useState<SystemRoleDef[]>(SYSTEM_ROLES);
     const [selectedRoleKey, setSelectedRoleKey] = useState<string>("COLLECTOR");
     const [roleConfigs, setRoleConfigs] = useState<Record<string, { moduleEnabled: Record<string, boolean>; permissions: string[] }>>({});
     const [savedRoleConfigs, setSavedRoleConfigs] = useState<Record<string, { moduleEnabled: Record<string, boolean>; permissions: string[] }>>({});
@@ -44,7 +51,14 @@ export function AdminPermissionManager() {
     const [confirmSaveDialogOpen, setConfirmSaveDialogOpen] = useState<boolean>(false);
     const [confirmResetDialogOpen, setConfirmResetDialogOpen] = useState<boolean>(false);
 
-    // 3. Audit Log States
+    // 3. New Role Modal States
+    const [createRoleModalOpen, setCreateRoleModalOpen] = useState<boolean>(false);
+    const [newRoleName, setNewRoleName] = useState<string>("");
+    const [newRoleDescription, setNewRoleDescription] = useState<string>("");
+    const [creatingRole, setCreatingRole] = useState<boolean>(false);
+    const [createRoleError, setCreateRoleError] = useState<string>("");
+
+    // 4. Audit Log States
     const [auditLogs, setAuditLogs] = useState<any[]>([]);
     const [historyFilterRole, setHistoryFilterRole] = useState<string>("");
 
@@ -55,6 +69,10 @@ export function AdminPermissionManager() {
             const res = await fetch("/api/admin/permissions");
             const json = await res.json();
             if (json.success && json.data) {
+                if (json.data.roles && json.data.roles.length > 0) {
+                    setRolesList(json.data.roles);
+                }
+
                 const configs: Record<string, { moduleEnabled: Record<string, boolean>; permissions: string[] }> = {};
                 for (const [key, val] of Object.entries(json.data.roleConfigs as Record<string, any>)) {
                     configs[key] = {
@@ -98,8 +116,13 @@ export function AdminPermissionManager() {
 
     // Current Role metadata
     const currentRole = useMemo(() => {
-        return SYSTEM_ROLES.find(r => r.key === selectedRoleKey) || SYSTEM_ROLES[0];
-    }, [selectedRoleKey]);
+        return rolesList.find(r => r.key === selectedRoleKey) || rolesList[0] || {
+            key: selectedRoleKey,
+            name: selectedRoleKey,
+            description: "",
+            badgeColor: "bg-emerald-100 text-emerald-800 border-emerald-200",
+        };
+    }, [rolesList, selectedRoleKey]);
 
     // Current Role active configuration
     const currentConfig = useMemo(() => {
@@ -152,15 +175,15 @@ export function AdminPermissionManager() {
         return changes;
     }, [currentConfig, currentSavedConfig]);
 
-    // Calculate real-time stats for all roles to display on role cards
+    // Calculate real-time stats for all roles
     const roleStatsMap = useMemo(() => {
         const stats: Record<string, { totalGranted: number; totalAvailable: number; perModuleStats: any }> = {};
-        for (const role of SYSTEM_ROLES) {
+        for (const role of rolesList) {
             const cfg = roleConfigs[role.key] || DEFAULT_ROLE_PERMISSIONS[role.key] || { moduleEnabled: {}, permissions: [] };
             stats[role.key] = calculateRolePermissionStats(role.key, cfg.permissions, cfg.moduleEnabled);
         }
         return stats;
-    }, [roleConfigs]);
+    }, [roleConfigs, rolesList]);
 
     // Auto expand accordion if search matches
     useEffect(() => {
@@ -334,6 +357,71 @@ export function AdminPermissionManager() {
         }
     }
 
+    // Create New Custom Role
+    async function handleCreateNewRole(e: React.FormEvent) {
+        e.preventDefault();
+        if (!newRoleName.trim()) {
+            setCreateRoleError("Vui lòng nhập tên vai trò");
+            return;
+        }
+
+        setCreatingRole(true);
+        setCreateRoleError("");
+
+        try {
+            const res = await fetch("/api/admin/permissions/roles", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    roleName: newRoleName.trim(),
+                    roleDescription: newRoleDescription.trim(),
+                }),
+            });
+
+            const json = await res.json();
+            if (json.success && json.data) {
+                const newRole = json.data.role;
+                const newConfig = json.data.config;
+
+                // Update roles list
+                setRolesList(prev => {
+                    if (prev.some(r => r.key === newRole.key)) return prev;
+                    return [...prev, newRole];
+                });
+
+                // Update configs
+                setRoleConfigs(prev => ({
+                    ...prev,
+                    [newRole.key]: {
+                        moduleEnabled: newConfig.moduleEnabled,
+                        permissions: newConfig.permissions,
+                    },
+                }));
+                setSavedRoleConfigs(prev => ({
+                    ...prev,
+                    [newRole.key]: {
+                        moduleEnabled: newConfig.moduleEnabled,
+                        permissions: newConfig.permissions,
+                    },
+                }));
+
+                // Auto-select the newly created role
+                setSelectedRoleKey(newRole.key);
+                setNewRoleName("");
+                setNewRoleDescription("");
+                setCreateRoleModalOpen(false);
+                void loadPermissions();
+            } else {
+                setCreateRoleError(json.message || "Không thể tạo vai trò mới");
+            }
+        } catch (err: any) {
+            console.error("Create role error:", err);
+            setCreateRoleError("Lỗi kết nối khi tạo vai trò");
+        } finally {
+            setCreatingRole(false);
+        }
+    }
+
     // Filtered modules based on search query
     const filteredModules = useMemo(() => {
         if (!searchQuery.trim()) return PERMISSION_MODULES;
@@ -399,9 +487,9 @@ export function AdminPermissionManager() {
                 </div>
             </div>
 
-            {/* SECTION 01: CHỌN VAI TRÒ (Role Selector Chips) */}
+            {/* SECTION 01: CHỌN VAI TRÒ CẤU HÌNH (Dropdown & Tạo thêm role mới) */}
             <section className="rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
+                <div className="flex items-center justify-between border-b pb-4">
                     <div className="flex items-center gap-2.5">
                         <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">
                             01
@@ -411,79 +499,59 @@ export function AdminPermissionManager() {
                                 Chọn vai trò cấu hình
                             </h2>
                             <p className="text-xs text-slate-500">
-                                Chọn một vai trò để tùy chỉnh cập nhật quyền theo từng phân hệ bên dưới
+                                Chọn vai trò từ danh sách hoặc tạo thêm vai trò mới để bắt đầu thiết lập quyền
                             </p>
                         </div>
                     </div>
+                </div>
 
-                    {/* Quick Search */}
-                    <div className="relative w-full sm:w-72">
-                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                {/* Dropdown Selector, Create Role Button & Search */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                    {/* Role Dropdown */}
+                    <div className="md:col-span-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <div className="relative flex-1">
+                            <select
+                                value={selectedRoleKey}
+                                onChange={(e) => handleSelectRole(e.target.value)}
+                                className="w-full appearance-none rounded-2xl border-2 border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50/70 px-4 py-2.5 text-xs font-black text-emerald-950 focus:border-emerald-600 focus:bg-white focus:outline-none h-11 pr-10 cursor-pointer transition shadow-2xs"
+                            >
+                                {rolesList.map((role) => {
+                                    const stats = roleStatsMap[role.key] || { totalGranted: 0, totalAvailable: 0 };
+                                    return (
+                                        <option key={role.key} value={role.key} className="bg-white text-slate-900 py-1 font-bold">
+                                            {role.name} ({role.key}) · Đã cấp {stats.totalGranted}/{stats.totalAvailable} quyền
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                            <ChevronDown className="pointer-events-none absolute right-3.5 top-3.5 h-4 w-4 text-emerald-700" />
+                        </div>
+
+                        {/* Button Tạo Thêm Role Mới */}
+                        <Button
+                            type="button"
+                            onClick={() => {
+                                setCreateRoleError("");
+                                setCreateRoleModalOpen(true);
+                            }}
+                            className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-2xl px-4 h-11 text-xs gap-1.5 shrink-0 shadow-sm"
+                        >
+                            <PlusCircle className="h-4 w-4" />
+                            Tạo thêm role mới
+                        </Button>
+                    </div>
+
+                    {/* Quick Search across features */}
+                    <div className="md:col-span-6 relative">
+                        <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
                         <input
                             type="search"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Tìm chức năng, phân hệ..."
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-9 pr-3 py-2 text-xs font-medium focus:border-emerald-500 focus:bg-white focus:outline-none h-9"
+                            placeholder="Tìm chức năng, phân hệ cần phân quyền..."
+                            className="w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-10 pr-3 py-2.5 text-xs font-medium focus:border-emerald-500 focus:bg-white focus:outline-none h-11"
                         />
                     </div>
-                </div>
-
-                {/* Horizontal Role Cards / Chips */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                    {SYSTEM_ROLES.map((role) => {
-                        const isSelected = role.key === selectedRoleKey;
-                        const stats = roleStatsMap[role.key] || { totalGranted: 0, totalAvailable: 0 };
-                        const percent = stats.totalAvailable > 0
-                            ? Math.round((stats.totalGranted / stats.totalAvailable) * 100)
-                            : 0;
-
-                        return (
-                            <button
-                                key={role.key}
-                                type="button"
-                                onClick={() => handleSelectRole(role.key)}
-                                className={`relative flex flex-col justify-between p-4 rounded-2xl text-left border transition text-xs group ${
-                                    isSelected
-                                        ? "border-emerald-600 bg-emerald-50/80 text-emerald-950 ring-2 ring-emerald-500/20 shadow-md"
-                                        : "border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50/80 text-slate-800"
-                                }`}
-                            >
-                                <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${role.badgeColor}`}>
-                                            {role.key}
-                                        </span>
-                                        {isSelected && (
-                                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-white">
-                                                <Check className="h-2.5 w-2.5" />
-                                            </span>
-                                        )}
-                                    </div>
-                                    <h3 className="font-black text-sm text-slate-900 pt-1 group-hover:text-emerald-800 transition">
-                                        {role.name}
-                                    </h3>
-                                </div>
-
-                                <div className="pt-3 space-y-1.5">
-                                    <div className="flex items-center justify-between text-[11px] font-bold">
-                                        <span className={isSelected ? "text-emerald-800" : "text-slate-600"}>
-                                            <b>{stats.totalGranted}</b> / {stats.totalAvailable} quyền
-                                        </span>
-                                        <span className="text-[10px] text-slate-400">{percent}%</span>
-                                    </div>
-                                    <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                                        <div
-                                            className={`h-full transition-all duration-300 ${
-                                                isSelected ? "bg-emerald-600" : "bg-slate-400"
-                                            }`}
-                                            style={{ width: `${percent}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            </button>
-                        );
-                    })}
                 </div>
             </section>
 
@@ -499,12 +567,12 @@ export function AdminPermissionManager() {
                             <span className="text-base font-black text-emerald-950">
                                 {currentRole.name.toUpperCase()}
                             </span>
-                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${currentRole.badgeColor}`}>
+                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${currentRole.badgeColor || "bg-emerald-100 text-emerald-800"}`}>
                                 {currentRole.key}
                             </span>
                         </div>
                         <p className="text-xs text-slate-600">
-                            {currentRole.description} · Đã cấp <b>{currentStats.totalGranted}</b> / {currentStats.totalAvailable} quyền
+                            {currentRole.description || `Vai trò ${currentRole.name}`} · Đã cấp <b>{currentStats.totalGranted}</b> / {currentStats.totalAvailable} quyền
                         </p>
                     </div>
 
@@ -780,6 +848,102 @@ export function AdminPermissionManager() {
                     })}
                 </div>
             </section>
+
+            {/* MODAL: TẠO THÊM ROLE MỚI */}
+            {createRoleModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs overflow-y-auto">
+                    <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden my-8 border border-slate-200">
+                        {/* Modal Header */}
+                        <div className="bg-gradient-to-r from-emerald-900 to-teal-950 p-6 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10">
+                                    <UserPlus className="h-5 w-5 text-emerald-300" />
+                                </div>
+                                <div>
+                                    <h3 className="font-black text-base text-white">
+                                        Tạo Vai Trò Người Dùng Mới
+                                    </h3>
+                                    <p className="text-xs text-emerald-200">
+                                        Nhập tên vai trò để khởi tạo và phân quyền
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setCreateRoleModalOpen(false)}
+                                className="rounded-xl p-2 text-white/80 hover:bg-white/10 hover:text-white transition"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body / Form */}
+                        <form onSubmit={handleCreateNewRole} className="p-6 space-y-4 text-xs">
+                            {createRoleError && (
+                                <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-rose-800 font-bold">
+                                    ❌ {createRoleError}
+                                </div>
+                            )}
+
+                            <div className="space-y-1">
+                                <label className="block font-bold text-slate-800 uppercase tracking-wide text-[11px]">
+                                    Tên vai trò mới <span className="text-rose-600">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newRoleName}
+                                    onChange={(e) => setNewRoleName(e.target.value)}
+                                    placeholder="Ví dụ: Kỹ sư nông nghiệp, Nhân viên QC..."
+                                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:outline-none h-10"
+                                    autoFocus
+                                    required
+                                />
+                                {newRoleName.trim() && (
+                                    <p className="text-[11px] text-slate-500 font-mono">
+                                        Mã định danh hệ thống (Role Key): <b className="text-emerald-800">{generateRoleKeyFromName(newRoleName)}</b>
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="block font-bold text-slate-800 uppercase tracking-wide text-[11px]">
+                                    Mô tả vai trò (Tùy chọn)
+                                </label>
+                                <textarea
+                                    value={newRoleDescription}
+                                    onChange={(e) => setNewRoleDescription(e.target.value)}
+                                    placeholder="Mô tả phạm vi trách nhiệm và công việc của vai trò này..."
+                                    rows={3}
+                                    className="w-full rounded-xl border border-slate-300 p-3 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none resize-none"
+                                />
+                            </div>
+
+                            <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-emerald-900 text-[11px] leading-relaxed">
+                                💡 Sau khi tạo, hệ thống sẽ tự động chọn vai trò mới này trong khung để bạn trực tiếp tích chọn các phân hệ và quyền cần cấp.
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setCreateRoleModalOpen(false)}
+                                    className="rounded-xl text-xs font-bold h-9 px-4 border-slate-200 text-slate-700"
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={creatingRole || !newRoleName.trim()}
+                                    className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold h-9 px-5 gap-1.5"
+                                >
+                                    {creatingRole ? "Đang tạo..." : "Tạo vai trò & Phân quyền"}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* STICKY SAVE BAR (Thanh Lưu Cố Định Ở Dưới) */}
             {unsavedChanges.length > 0 && (
@@ -1097,7 +1261,7 @@ export function AdminPermissionManager() {
                                     className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none"
                                 >
                                     <option value="">Tất cả vai trò</option>
-                                    {SYSTEM_ROLES.map(r => (
+                                    {rolesList.map(r => (
                                         <option key={r.key} value={r.key}>{r.name} ({r.key})</option>
                                     ))}
                                 </select>

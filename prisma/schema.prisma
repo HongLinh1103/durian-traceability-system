@@ -2356,14 +2356,16 @@ model ChinaPortSyncLog {
 }
 
 model RolePermissionConfig {
-  id             String   @id @default(cuid())
-  roleKey        String   @unique
-  moduleEnabled  Json     // Map of moduleKey -> boolean
-  permissions    String[] // Array of granted permission keys (e.g. "CULTIVATION_LOG_VIEW", etc.)
-  updatedById    String?
-  updatedByName  String?  @default("Admin")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id              String   @id @default(cuid())
+  roleKey         String   @unique
+  roleName        String?
+  roleDescription String?
+  moduleEnabled   Json     // Map of moduleKey -> boolean
+  permissions     String[] // Array of granted permission keys (e.g. "CULTIVATION_LOG_VIEW", etc.)
+  updatedById     String?
+  updatedByName   String?  @default("Admin")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([roleKey])
   @@map("role_permission_configs")
