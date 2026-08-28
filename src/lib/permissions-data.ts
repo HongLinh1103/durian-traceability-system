@@ -769,7 +769,7 @@ export function getAllSystemPermissionKeys(): string[] {
 export function calculateRolePermissionStats(
     roleKey: string,
     grantedPermissions: string[],
-    moduleEnabled: Record<string, boolean>
+    moduleEnabled?: Record<string, boolean>
 ) {
     let totalAvailable = 0;
     let totalGranted = 0;
@@ -778,13 +778,12 @@ export function calculateRolePermissionStats(
     for (const mod of PERMISSION_MODULES) {
         let modTotal = 0;
         let modGranted = 0;
-        const isEnabled = moduleEnabled[mod.id] ?? true;
 
         for (const feat of mod.features) {
             for (const act of Object.values(feat.actions)) {
                 if (act?.key) {
                     modTotal += 1;
-                    if (isEnabled && grantedPermissions.includes(act.key)) {
+                    if (grantedPermissions.includes(act.key)) {
                         modGranted += 1;
                     }
                 }
@@ -796,7 +795,7 @@ export function calculateRolePermissionStats(
         perModuleStats[mod.id] = {
             granted: modGranted,
             total: modTotal,
-            isEnabled,
+            isEnabled: true,
         };
     }
 

@@ -13,13 +13,10 @@ import {
     AlertTriangle,
     ChevronDown,
     ChevronRight,
-    Lock,
     CheckCircle2,
     XCircle,
     PlusCircle,
-    UserPlus,
-    SlidersHorizontal,
-    Sparkles
+    UserPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -141,22 +138,9 @@ export function AdminPermissionManager() {
 
     // Calculate changes count
     const unsavedChanges = useMemo(() => {
-        const changes: { type: "ADD" | "REMOVE" | "MODULE_TOGGLE"; key: string; label?: string }[] = [];
+        const changes: { type: "ADD" | "REMOVE"; key: string; label?: string }[] = [];
 
-        // Check moduleEnabled changes
-        for (const mod of PERMISSION_MODULES) {
-            const currentVal = currentConfig.moduleEnabled[mod.id] ?? true;
-            const savedVal = currentSavedConfig.moduleEnabled[mod.id] ?? true;
-            if (currentVal !== savedVal) {
-                changes.push({
-                    type: "MODULE_TOGGLE",
-                    key: mod.id,
-                    label: `Phân hệ ${mod.name}: ${currentVal ? "BẬT" : "TẮT"}`,
-                });
-            }
-        }
-
-        // Check added permissions
+        // Check added & removed permissions
         const currentPermsSet = new Set(currentConfig.permissions);
         const savedPermsSet = new Set(currentSavedConfig.permissions);
 
@@ -226,22 +210,6 @@ export function AdminPermissionManager() {
         }));
     }
 
-    // Toggle entire module on/off
-    function handleToggleModuleEnabled(moduleId: string, enabled: boolean) {
-        const nextModuleEnabled = {
-            ...currentConfig.moduleEnabled,
-            [moduleId]: enabled,
-        };
-
-        setRoleConfigs(prev => ({
-            ...prev,
-            [selectedRoleKey]: {
-                ...currentConfig,
-                moduleEnabled: nextModuleEnabled,
-            },
-        }));
-    }
-
     // Select all permissions in a module
     function handleSelectAllInModule(moduleDef: ModuleDef, selectAll: boolean) {
         const modulePermKeys: string[] = [];
@@ -266,10 +234,6 @@ export function AdminPermissionManager() {
             ...prev,
             [selectedRoleKey]: {
                 ...currentConfig,
-                moduleEnabled: {
-                    ...currentConfig.moduleEnabled,
-                    [moduleDef.id]: true, // ensure module is turned on when selecting all
-                },
                 permissions: nextPerms,
             },
         }));
@@ -461,7 +425,7 @@ export function AdminPermissionManager() {
                             Phân Quyền Hệ Thống
                         </h1>
                         <p className="text-xs sm:text-sm text-emerald-100/80 max-w-2xl">
-                            Quản lý quyền truy cập chức năng và quyền thao tác (Xem, Tạo, Sửa, Xóa, Xác nhận, Xuất) theo từng phân hệ cho từng vai trò người dùng.
+                            Tất cả phân hệ đều mở cho phép Admin tự do điều chỉnh và cấp các quyền thao tác (Xem, Tạo, Sửa, Xóa, Xác nhận, Xuất) cho từng vai trò.
                         </p>
                     </div>
 
@@ -604,16 +568,13 @@ export function AdminPermissionManager() {
                 <div className="space-y-3.5">
                     {filteredModules.map((mod) => {
                         const isExpanded = !!expandedModules[mod.id];
-                        const isModuleEnabled = currentConfig.moduleEnabled[mod.id] ?? true;
                         const modStats = currentStats.perModuleStats[mod.id] || { granted: 0, total: 0 };
 
                         return (
                             <div
                                 key={mod.id}
                                 className={`rounded-2xl border transition overflow-hidden ${
-                                    !isModuleEnabled
-                                        ? "border-slate-200 bg-slate-50/60 opacity-80"
-                                        : isExpanded
+                                    isExpanded
                                         ? "border-emerald-200 bg-white shadow-xs"
                                         : "border-slate-200 bg-white hover:border-slate-300"
                                 }`}
@@ -655,26 +616,11 @@ export function AdminPermissionManager() {
                                         </div>
                                     </div>
 
-                                    {/* Header Controls & Toggle */}
+                                    {/* Header Controls */}
                                     <div className="flex items-center gap-3 shrink-0 pl-10 sm:pl-0">
-                                        {/* Master Module Access Switch */}
-                                        <label className="flex items-center gap-2 cursor-pointer py-1 px-2.5 rounded-xl border border-slate-200 bg-white hover:bg-emerald-50/50 transition">
-                                            <input
-                                                type="checkbox"
-                                                checked={isModuleEnabled}
-                                                onChange={(e) => handleToggleModuleEnabled(mod.id, e.target.checked)}
-                                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
-                                            />
-                                            <span className="text-xs font-bold text-slate-800">
-                                                Cho phép truy cập phân hệ
-                                            </span>
-                                        </label>
-
                                         {/* Counter Badge */}
-                                        <span className={`text-xs font-black px-2.5 py-1 rounded-xl border ${
-                                            !isModuleEnabled
-                                                ? "bg-slate-100 text-slate-500 border-slate-200"
-                                                : modStats.granted > 0
+                                        <span className={`text-xs font-black px-3 py-1 rounded-xl border ${
+                                            modStats.granted > 0
                                                 ? "bg-emerald-100 text-emerald-900 border-emerald-200"
                                                 : "bg-slate-100 text-slate-600 border-slate-200"
                                         }`}>
@@ -686,16 +632,6 @@ export function AdminPermissionManager() {
                                 {/* Accordion Body */}
                                 {isExpanded && (
                                     <div className="border-t border-slate-100 p-4 sm:p-5 space-y-4 bg-slate-50/30">
-                                        {/* Module Disabled Notice */}
-                                        {!isModuleEnabled && (
-                                            <div className="rounded-xl border border-slate-200 bg-slate-100/90 p-3 text-xs text-slate-600 flex items-center gap-2">
-                                                <Lock className="h-4 w-4 text-slate-400 shrink-0" />
-                                                <span>
-                                                    Phân hệ <b>{mod.name}</b> đang bị <b>TẮT</b>. Toàn bộ tính năng và menu tương ứng sẽ bị ẩn khỏi vai trò {currentRole.name}.
-                                                </span>
-                                            </div>
-                                        )}
-
                                         {/* Module Toolbar: Select all / Deselect all */}
                                         <div className="flex items-center justify-between text-xs pt-1">
                                             <span className="font-bold text-slate-600">
@@ -705,18 +641,16 @@ export function AdminPermissionManager() {
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     type="button"
-                                                    disabled={!isModuleEnabled}
                                                     onClick={() => handleSelectAllInModule(mod, true)}
-                                                    className="font-bold text-emerald-700 hover:text-emerald-800 disabled:opacity-40 disabled:pointer-events-none hover:underline"
+                                                    className="font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
                                                 >
                                                     Chọn tất cả phân hệ
                                                 </button>
                                                 <span className="text-slate-300">|</span>
                                                 <button
                                                     type="button"
-                                                    disabled={!isModuleEnabled}
                                                     onClick={() => handleSelectAllInModule(mod, false)}
-                                                    className="font-bold text-slate-500 hover:text-rose-700 disabled:opacity-40 disabled:pointer-events-none hover:underline"
+                                                    className="font-bold text-slate-500 hover:text-rose-700 hover:underline"
                                                 >
                                                     Bỏ chọn tất cả
                                                 </button>
@@ -769,7 +703,7 @@ export function AdminPermissionManager() {
                                                                         );
                                                                     }
 
-                                                                    const isChecked = isModuleEnabled && currentConfig.permissions.includes(actionDef.key);
+                                                                    const isChecked = currentConfig.permissions.includes(actionDef.key);
 
                                                                     return (
                                                                         <td key={actionName} className="px-3 py-3 text-center">
@@ -777,10 +711,9 @@ export function AdminPermissionManager() {
                                                                                 <input
                                                                                     type="checkbox"
                                                                                     checked={isChecked}
-                                                                                    disabled={!isModuleEnabled}
                                                                                     onChange={() => handleTogglePermission(actionDef.key)}
                                                                                     title={`${actionDef.label} (${actionDef.key})`}
-                                                                                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                                                                                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4 cursor-pointer"
                                                                                 />
                                                                             </label>
                                                                         </td>
@@ -817,19 +750,18 @@ export function AdminPermissionManager() {
                                                                 const actionDef = feat.actions[actionName];
                                                                 if (!actionDef) return null;
 
-                                                                const isChecked = isModuleEnabled && currentConfig.permissions.includes(actionDef.key);
+                                                                const isChecked = currentConfig.permissions.includes(actionDef.key);
 
                                                                 return (
                                                                     <button
                                                                         key={actionName}
                                                                         type="button"
-                                                                        disabled={!isModuleEnabled}
                                                                         onClick={() => handleTogglePermission(actionDef.key)}
                                                                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition border ${
                                                                             isChecked
                                                                                 ? "bg-emerald-600 text-white border-emerald-600"
                                                                                 : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-                                                                        } disabled:opacity-40 disabled:pointer-events-none`}
+                                                                        }`}
                                                                     >
                                                                         {isChecked && <Check className="h-3 w-3" />}
                                                                         <span>{label}</span>
@@ -1115,9 +1047,6 @@ export function AdminPermissionManager() {
 
                                 <div className="space-y-2">
                                     {PERMISSION_MODULES.map((mod) => {
-                                        const isModuleEnabled = currentConfig.moduleEnabled[mod.id] ?? true;
-                                        if (!isModuleEnabled) return null;
-
                                         const accessibleFeatures = mod.features.filter(f => {
                                             return Object.values(f.actions).some(act =>
                                                 act && currentConfig.permissions.includes(act.key)
@@ -1175,31 +1104,30 @@ export function AdminPermissionManager() {
                                 </div>
                             </div>
 
-                            {/* Inaccessible / Blocked Modules */}
+                            {/* Inaccessible / No permissions Modules */}
                             <div className="space-y-3 pt-4 border-t border-slate-200">
                                 <div className="flex items-center gap-2">
                                     <XCircle className="h-4 w-4 text-slate-400" />
                                     <h4 className="font-black text-slate-700 uppercase tracking-wide text-xs">
-                                        Phân hệ bị ẩn / Khóa truy cập
+                                        Phân hệ chưa cấp quyền nào
                                     </h4>
                                 </div>
 
                                 <div className="space-y-1.5">
                                     {PERMISSION_MODULES.map((mod) => {
-                                        const isModuleEnabled = currentConfig.moduleEnabled[mod.id] ?? true;
-                                        if (isModuleEnabled) return null;
+                                        const hasAny = mod.features.some(f =>
+                                            Object.values(f.actions).some(act => act && currentConfig.permissions.includes(act.key))
+                                        );
+                                        if (hasAny) return null;
 
                                         return (
                                             <div
                                                 key={mod.id}
-                                                className="rounded-xl border border-slate-200 bg-slate-100/80 p-2.5 flex items-center justify-between text-slate-500 font-medium"
+                                                className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 flex items-center justify-between text-slate-500 font-medium"
                                             >
-                                                <div className="flex items-center gap-2">
-                                                    <Lock className="h-3.5 w-3.5 text-slate-400" />
-                                                    <span>{mod.name} — {mod.title}</span>
-                                                </div>
+                                                <span>{mod.name} — {mod.title}</span>
                                                 <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200">
-                                                    ĐÃ TẮT
+                                                    0 QUYỀN
                                                 </span>
                                             </div>
                                         );
