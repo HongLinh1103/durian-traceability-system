@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
     ShieldCheck,
-    Shield,
     Check,
     X,
     RotateCcw,
@@ -15,27 +14,15 @@ import {
     ChevronDown,
     ChevronRight,
     Lock,
-    Unlock,
-    Sparkles,
-    Sliders,
-    Layers,
-    UserCheck,
     CheckCircle2,
-    XCircle,
-    Info,
-    ArrowRight,
-    ExternalLink,
-    Filter,
-    RefreshCw
+    XCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     SYSTEM_ROLES,
     PERMISSION_MODULES,
     DEFAULT_ROLE_PERMISSIONS,
-    SystemRoleDef,
     ModuleDef,
-    FeatureDef,
     ActionType,
     calculateRolePermissionStats
 } from "@/lib/permissions-data";
@@ -81,11 +68,10 @@ export function AdminPermissionManager() {
                     setAuditLogs(json.data.auditLogs);
                 }
 
-                // Expand in-scope modules by default for initial role
-                const currentRole = SYSTEM_ROLES.find(r => r.key === "COLLECTOR") || SYSTEM_ROLES[0];
+                // Expand all modules by default for easy viewing and customization
                 const initialExpanded: Record<string, boolean> = {};
                 PERMISSION_MODULES.forEach(mod => {
-                    initialExpanded[mod.id] = currentRole.inScopeModules.includes(mod.id);
+                    initialExpanded[mod.id] = true;
                 });
                 setExpandedModules(initialExpanded);
             }
@@ -198,16 +184,6 @@ export function AdminPermissionManager() {
     function handleSelectRole(newRoleKey: string) {
         if (newRoleKey === selectedRoleKey) return;
         setSelectedRoleKey(newRoleKey);
-
-        // Auto collapse/expand based on role scope
-        const newRole = SYSTEM_ROLES.find(r => r.key === newRoleKey);
-        if (newRole) {
-            const newExpanded: Record<string, boolean> = {};
-            PERMISSION_MODULES.forEach(mod => {
-                newExpanded[mod.id] = newRole.inScopeModules.includes(mod.id);
-            });
-            setExpandedModules(newExpanded);
-        }
     }
 
     // Toggle Permission Checkbox
@@ -435,7 +411,7 @@ export function AdminPermissionManager() {
                                 Chọn vai trò cấu hình
                             </h2>
                             <p className="text-xs text-slate-500">
-                                Chọn một vai trò để kiểm tra và thiết lập ma trận quyền theo từng phân hệ bên dưới
+                                Chọn một vai trò để tùy chỉnh cập nhật quyền theo từng phân hệ bên dưới
                             </p>
                         </div>
                     </div>
@@ -561,11 +537,7 @@ export function AdminPermissionManager() {
                     {filteredModules.map((mod) => {
                         const isExpanded = !!expandedModules[mod.id];
                         const isModuleEnabled = currentConfig.moduleEnabled[mod.id] ?? true;
-                        const isInScope = currentRole.inScopeModules.includes(mod.id);
                         const modStats = currentStats.perModuleStats[mod.id] || { granted: 0, total: 0 };
-
-                        // Check if all permissions in this module are granted
-                        const isAllSelectedInMod = modStats.granted === modStats.total && modStats.total > 0;
 
                         return (
                             <div
@@ -573,8 +545,6 @@ export function AdminPermissionManager() {
                                 className={`rounded-2xl border transition overflow-hidden ${
                                     !isModuleEnabled
                                         ? "border-slate-200 bg-slate-50/60 opacity-80"
-                                        : !isInScope
-                                        ? "border-amber-200/80 bg-white"
                                         : isExpanded
                                         ? "border-emerald-200 bg-white shadow-xs"
                                         : "border-slate-200 bg-white hover:border-slate-300"
@@ -610,13 +580,6 @@ export function AdminPermissionManager() {
                                                 <span className="text-xs font-semibold text-slate-500">
                                                     — {mod.title}
                                                 </span>
-
-                                                {!isInScope && (
-                                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
-                                                        <AlertTriangle className="h-2.5 w-2.5" />
-                                                        Ngoài phạm vi mặc định
-                                                    </span>
-                                                )}
                                             </div>
                                             <p className="text-[11px] text-slate-500 line-clamp-1">
                                                 {mod.description}
@@ -655,21 +618,6 @@ export function AdminPermissionManager() {
                                 {/* Accordion Body */}
                                 {isExpanded && (
                                     <div className="border-t border-slate-100 p-4 sm:p-5 space-y-4 bg-slate-50/30">
-                                        {/* Out-of-scope Warning Banner */}
-                                        {!isInScope && (
-                                            <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-950 flex items-start gap-2.5">
-                                                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                                                <div>
-                                                    <p className="font-bold">
-                                                        Phân hệ này không thuộc phạm vi mặc định của vai trò {currentRole.name}.
-                                                    </p>
-                                                    <p className="text-[11px] text-amber-800 mt-0.5">
-                                                        Nếu bạn muốn cấp quyền chéo cho vai trò này, hãy giữ nguyên cấu hình và tích chọn các quyền cần thiết bên dưới.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
-
                                         {/* Module Disabled Notice */}
                                         {!isModuleEnabled && (
                                             <div className="rounded-xl border border-slate-200 bg-slate-100/90 p-3 text-xs text-slate-600 flex items-center gap-2">

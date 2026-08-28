@@ -37,7 +37,6 @@ export interface SystemRoleDef {
     name: string;          // e.g. "Nông dân"
     description: string;   // e.g. "Chủ vườn sầu riêng, ghi nhật ký, lập kế hoạch và thu hoạch"
     badgeColor: string;
-    inScopeModules: string[]; // List of module IDs that belong to the role's primary scope
 }
 
 // 1. Danh sách các vai trò có thể cấu hình phân quyền trong hệ thống
@@ -47,42 +46,36 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
         name: "Trưởng ban",
         description: "Quản lý vùng trồng, giám sát vườn nông dân, hồ sơ tiêu chuẩn và chuỗi liên kết",
         badgeColor: "bg-blue-100 text-blue-800 border-blue-200",
-        inScopeModules: ["CULTIVATION", "HARVEST", "TRACEABILITY", "SYSTEM_ADMIN"],
     },
     {
         key: "FARMER",
         name: "Nông dân",
         description: "Chủ vườn trồng, ghi nhật ký canh tác, mua sắm vật tư, đăng ký thu hoạch và theo dõi tài chính",
         badgeColor: "bg-emerald-100 text-emerald-800 border-emerald-200",
-        inScopeModules: ["CULTIVATION", "HARVEST", "FINANCE", "TRACEABILITY"],
     },
     {
         key: "COLLECTOR",
         name: "Vựa thu mua",
         description: "Tiếp nhận phiếu thu hoạch, cân nhận nông sản, kiểm tra chất lượng (QC) và tạo lô thu gom",
         badgeColor: "bg-amber-100 text-amber-800 border-amber-200",
-        inScopeModules: ["HARVEST", "PROCUREMENT", "INVENTORY", "FINANCE", "TRACEABILITY"],
     },
     {
         key: "PROCESSING_FACILITY",
         name: "Cơ sở chế biến",
         description: "Tiếp nhận nguyên liệu, quy trình bóc múi, cấp đông, đóng gói thành phẩm và phát hành mã QR",
         badgeColor: "bg-purple-100 text-purple-800 border-purple-200",
-        inScopeModules: ["PROCUREMENT", "PROCESSING", "INVENTORY", "FINANCE", "TRACEABILITY"],
     },
     {
         key: "STORE_OWNER",
         name: "Cửa hàng vật tư",
         description: "Bán lẻ phân bón, thuốc BVTV, quản lý tồn kho, xử lý đơn hàng nông dân và sổ thu chi",
         badgeColor: "bg-teal-100 text-teal-800 border-teal-200",
-        inScopeModules: ["STORE_MARKETPLACE", "INVENTORY", "FINANCE", "CULTIVATION"],
     },
     {
         key: "SEEDLING_FARM",
         name: "Trại giống",
         description: "Cung cấp giống sầu riêng chuẩn đầu dòng, giấy chứng nhận kiểm định và nhật ký vườn ươm",
         badgeColor: "bg-lime-100 text-lime-800 border-lime-200",
-        inScopeModules: ["SEEDLING_NURSERY", "CULTIVATION", "FINANCE", "TRACEABILITY"],
     },
 ];
 
