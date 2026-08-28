@@ -66,6 +66,66 @@ export default async function AdminDashboardPage() {
                     );
                 })}
             </section>
+
+            <section className="rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b pb-3">
+                    <h2 className="font-black text-slate-900 text-base uppercase tracking-wide">
+                        Truy cập nhanh chức năng quản trị
+                    </h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <Link
+                        href="/dashboard/admin/permissions"
+                        className="flex items-center gap-3 p-4 rounded-2xl border border-emerald-100 bg-emerald-50/50 hover:bg-emerald-100/70 hover:border-emerald-300 transition group"
+                    >
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+                            <BookOpenCheck className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h3 className="font-black text-sm text-slate-900 group-hover:text-emerald-900">
+                                Phân quyền hệ thống
+                            </h3>
+                            <p className="text-xs text-slate-500 line-clamp-1">
+                                Cấu hình ma trận quyền theo từng vai trò & phân hệ
+                            </p>
+                        </div>
+                    </Link>
+
+                    <Link
+                        href="/dashboard/admin/accounts"
+                        className="flex items-center gap-3 p-4 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 hover:border-slate-300 transition group"
+                    >
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+                            <Users className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h3 className="font-black text-sm text-slate-900 group-hover:text-blue-900">
+                                Quản lý tài khoản
+                            </h3>
+                            <p className="text-xs text-slate-500 line-clamp-1">
+                                Phê duyệt Onboarding và phân loại vai trò
+                            </p>
+                        </div>
+                    </Link>
+
+                    <Link
+                        href="/dashboard/admin/catalog"
+                        className="flex items-center gap-3 p-4 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 hover:border-slate-300 transition group"
+                    >
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-600 text-white shadow-sm">
+                            <MapPinned className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h3 className="font-black text-sm text-slate-900 group-hover:text-amber-900">
+                                Danh mục chuẩn GACC
+                            </h3>
+                            <p className="text-xs text-slate-500 line-clamp-1">
+                                Giống sầu riêng, phân bón và hóa chất cấm
+                            </p>
+                        </div>
+                    </Link>
+                </div>
+            </section>
         </main>
     );
 }

@@ -76,6 +76,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
+            { label: "Phân quyền", description: "Quản lý và cấu hình quyền hạn các vai trò", href: "/dashboard/admin/permissions", icon: Cog },
             { label: "Tài liệu", description: "Quản lý và đăng tài liệu mới", href: "/documents", icon: BookOpenCheck },
             { label: "Tin tức", description: "Quản lý và đăng tin tức mới", href: "/dashboard/admin/news", icon: Bell },
             { label: "Danh mục", description: "Quản lý cây giống, giai đoạn, công việc và danh mục cấm", href: "/dashboard/admin/catalog", icon: LibraryBig },

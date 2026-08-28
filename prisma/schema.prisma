@@ -2355,3 +2355,32 @@ model ChinaPortSyncLog {
   @@map("china_port_sync_logs")
 }
 
+model RolePermissionConfig {
+  id             String   @id @default(cuid())
+  roleKey        String   @unique
+  moduleEnabled  Json     // Map of moduleKey -> boolean
+  permissions    String[] // Array of granted permission keys (e.g. "CULTIVATION_LOG_VIEW", etc.)
+  updatedById    String?
+  updatedByName  String?  @default("Admin")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([roleKey])
+  @@map("role_permission_configs")
+}
+
+model PermissionAuditLog {
+  id             String   @id @default(cuid())
+  roleKey        String
+  actorId        String?
+  actorName      String   @default("Admin")
+  action         String   // "UPDATE_PERMISSIONS", "RESET_DEFAULT"
+  changes        Json     // Array of { type: "ADD" | "REMOVE", permissionKey: string, moduleKey?: string }
+  changeSummary  String?
+  createdAt      DateTime @default(now())
+
+  @@index([roleKey, createdAt])
+  @@map("permission_audit_logs")
+}
+
+
