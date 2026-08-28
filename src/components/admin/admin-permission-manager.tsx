@@ -519,7 +519,7 @@ export function AdminPermissionManager() {
                                     const stats = roleStatsMap[role.key] || { totalGranted: 0, totalAvailable: 0 };
                                     return (
                                         <option key={role.key} value={role.key} className="bg-white text-slate-900 py-1 font-bold">
-                                            {role.name} ({role.key}) · Đã cấp {stats.totalGranted}/{stats.totalAvailable} quyền
+                                            {role.name} · Đã cấp {stats.totalGranted}/{stats.totalAvailable} quyền
                                         </option>
                                     );
                                 })}
@@ -1262,7 +1262,7 @@ export function AdminPermissionManager() {
                                 >
                                     <option value="">Tất cả vai trò</option>
                                     {rolesList.map(r => (
-                                        <option key={r.key} value={r.key}>{r.name} ({r.key})</option>
+                                        <option key={r.key} value={r.key}>{r.name}</option>
                                     ))}
                                 </select>
                             </div>
