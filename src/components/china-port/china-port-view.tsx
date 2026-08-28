@@ -23,7 +23,12 @@ import {
     MapPin,
     ExternalLink,
     Sparkles,
-    Check
+    Check,
+    RefreshCw,
+    Mail,
+    Send,
+    BellRing,
+    Layers
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -75,18 +80,19 @@ export type ChinaPortRow = {
     [key: string]: any;
 };
 
+// Chuẩn hóa tên các cột dạng viết hoa rút gọn theo yêu cầu
 const DEFAULT_COLUMNS = [
-    { key: "country", label: "Quốc gia", visible: true },
-    { key: "product", label: "Sản phẩm", visible: true },
-    { key: "overseasOfficialRegNo", label: "Mã nước ngoài (MSVT/MSCSĐG)", visible: true },
-    { key: "chinaRegNo", label: "Mã Trung Quốc (GACC)", visible: true },
-    { key: "corpNameEn", label: "Doanh nghiệp / Vùng trồng (EN)", visible: true },
-    { key: "corpNameMo", label: "Tên địa phương", visible: false },
-    { key: "corpType", label: "Loại DN", visible: true },
-    { key: "validFrom", label: "Hiệu lực từ", visible: true },
-    { key: "validTo", label: "Hiệu lực đến", visible: true },
-    { key: "status", label: "Trạng thái", visible: true },
-    { key: "view", label: "Chi tiết", visible: true },
+    { key: "country", label: "QUỐC GIA", visible: true },
+    { key: "product", label: "SẢN PHẨM", visible: true },
+    { key: "overseasOfficialRegNo", label: "MÃ NƯỚC NGOÀI", visible: true },
+    { key: "chinaRegNo", label: "MÃ TRUNG QUỐC", visible: true },
+    { key: "corpNameEn", label: "DOANH NGHIỆP", visible: true },
+    { key: "corpNameMo", label: "TÊN ĐỊA PHƯƠNG", visible: false },
+    { key: "corpType", label: "LOẠI DN", visible: true },
+    { key: "validFrom", label: "HIỆU LỰC TỪ", visible: true },
+    { key: "validTo", label: "HIỆU LỰC ĐẾN", visible: true },
+    { key: "status", label: "TRẠNG THÁI", visible: true },
+    { key: "view", label: "CHI TIẾT", visible: true },
 ];
 
 const clean = (value: any) => String(value ?? "").replace(/\n+$/g, "").trim();
@@ -126,6 +132,14 @@ export function ChinaPortView() {
     // Detail Modal State
     const [selectedDetailRow, setSelectedDetailRow] = useState<ChinaPortRow | null>(null);
     const [exportingExcel, setExportingExcel] = useState<boolean>(false);
+
+    // Sync & Notification States
+    const [isSyncing, setIsSyncing] = useState<boolean>(false);
+    const [syncModalOpen, setSyncModalOpen] = useState<boolean>(false);
+    const [syncResult, setSyncResult] = useState<any>(null);
+    const [testingEmail, setTestingEmail] = useState<boolean>(false);
+    const [testEmailSuccessMsg, setTestEmailSuccessMsg] = useState<string>("");
+    const [testEmailRecipient, setTestEmailRecipient] = useState<string>("");
 
     // Load initial reference data
     useEffect(() => {
@@ -294,13 +308,12 @@ export function ChinaPortView() {
         }
     }
 
-    // Export to Excel XML/.xlsx pure client
+    // Xuất Excel / CSV
     async function handleExportExcel() {
         if (!filteredRows.length) return;
         setExportingExcel(true);
 
         try {
-            // Build CSV/Excel exportable table
             const visibleCols = columns.filter((c) => c.visible && c.key !== "view");
             const headers = visibleCols.map((c) => `"${c.label}"`).join(",");
             const csvRows = filteredRows.map((row) =>
@@ -331,36 +344,117 @@ export function ChinaPortView() {
         }
     }
 
+    // Kích hoạt đồng bộ dữ liệu Việt Nam & phát hiện bản ghi mới + thông báo Admin
+    async function handleSyncVietnamData() {
+        setIsSyncing(true);
+        setStatusMessage("Đang đồng bộ dữ liệu Việt Nam từ GACC...");
+        setTestEmailSuccessMsg("");
+
+        try {
+            const res = await fetch("/api/china-port/sync", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    sendEmail: true,
+                    pageSize: 1000,
+                }),
+            });
+
+            const json = await res.json();
+            if (json.code === 200 && json.data) {
+                setSyncResult(json.data);
+                setSyncModalOpen(true);
+                setStatusMessage(`Đã đồng bộ xong · ${json.data.newCount} bản ghi mới`);
+                // Làm mới danh sách tìm kiếm
+                void executeSearch(1);
+            } else {
+                alert(json.message || "Đồng bộ dữ liệu thất bại");
+                setStatusMessage("Đồng bộ thất bại");
+            }
+        } catch (err: any) {
+            console.error("Sync error:", err);
+            alert("Lỗi kết nối khi đồng bộ dữ liệu");
+            setStatusMessage("Lỗi đồng bộ dữ liệu");
+        } finally {
+            setIsSyncing(false);
+        }
+    }
+
+    // Gửi thử nghiệm email báo cáo Admin
+    async function handleSendTestEmail() {
+        setTestingEmail(true);
+        setTestEmailSuccessMsg("");
+
+        try {
+            const res = await fetch("/api/china-port/test-email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    recipient: testEmailRecipient.trim() || undefined,
+                    sampleCount: syncResult?.newRecords?.length || 3,
+                }),
+            });
+
+            const json = await res.json();
+            if (json.code === 200) {
+                setTestEmailSuccessMsg(json.message || "Đã gửi email thử nghiệm thành công!");
+            } else {
+                alert(json.message || "Không thể gửi email thử nghiệm");
+            }
+        } catch (err) {
+            alert("Lỗi khi gửi email thử nghiệm");
+        } finally {
+            setTestingEmail(false);
+        }
+    }
+
     return (
         <div className="space-y-6">
             {/* Header Banner */}
             <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 p-6 sm:p-8 text-white shadow-xl">
                 <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
-                <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
+                <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                    <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-0.5 text-xs font-black uppercase tracking-wider text-emerald-300 border border-emerald-400/30">
                                 <Globe className="h-3.5 w-3.5" />
                                 INT · DỮ LIỆU CHINA PORT (GACC)
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/20 px-3 py-0.5 text-xs font-bold text-teal-300 border border-teal-400/30">
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                TỰ ĐỘNG ĐỐI SOÁT & THÔNG BÁO ADMIN
                             </span>
                         </div>
                         <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
                             Danh Sách Doanh Nghiệp & Vùng Trồng Kiểm Dịch
                         </h1>
-                        <p className="text-xs sm:text-sm text-emerald-100/80 max-w-2xl">
-                            Tra cứu trực tiếp từ nguồn dữ liệu chính thức của Tổng cục Hải quan Trung Quốc (GACC - scintl.chinaport.gov.cn), lọc tức thời và đối soát mã số phục vụ xuất khẩu.
+                        <p className="text-xs sm:text-sm text-emerald-100/80 max-w-2xl leading-relaxed">
+                            Tra cứu trực tiếp từ nguồn dữ liệu chính thức của Tổng cục Hải quan Trung Quốc (GACC - scintl.chinaport.gov.cn), tự động đồng bộ và gom thông báo email khi phát hiện mã số kiểm dịch mới thuộc Việt Nam.
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-3 self-start sm:self-center rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-md border border-white/10">
-                        <span
-                            className={`h-3 w-3 rounded-full animate-pulse ${
-                                loading ? "bg-amber-400" : "bg-emerald-400"
-                            }`}
-                        />
-                        <div>
-                            <div className="text-xs font-black text-white">{statusMessage}</div>
-                            <div className="text-[10px] text-white/70 font-mono">scintl.chinaport.gov.cn</div>
+                    {/* Actions in Banner */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                            type="button"
+                            onClick={handleSyncVietnamData}
+                            disabled={isSyncing}
+                            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-2xl px-5 h-11 text-xs gap-2 shadow-lg hover:shadow-emerald-500/25 transition transform active:scale-95 shrink-0"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin text-slate-950" : ""}`} />
+                            {isSyncing ? "Đang đồng bộ VN..." : "Đồng bộ dữ liệu Việt Nam"}
+                        </Button>
+
+                        <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-2.5 backdrop-blur-md border border-white/10 shrink-0">
+                            <span
+                                className={`h-3 w-3 rounded-full ${
+                                    isSyncing || loading ? "bg-amber-400 animate-pulse" : "bg-emerald-400"
+                                }`}
+                            />
+                            <div>
+                                <div className="text-xs font-black text-white">{statusMessage}</div>
+                                <div className="text-[10px] text-white/70 font-mono">scintl.chinaport.gov.cn</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -635,7 +729,18 @@ export function ChinaPortView() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                            type="button"
+                            onClick={handleSyncVietnamData}
+                            disabled={isSyncing}
+                            variant="outline"
+                            className="rounded-xl text-xs font-bold gap-1.5 h-9 border-emerald-200 bg-emerald-50/50 text-emerald-800 hover:bg-emerald-100"
+                        >
+                            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin text-emerald-700" : "text-emerald-700"}`} />
+                            {isSyncing ? "Đang đồng bộ..." : "Đồng bộ VN & Báo Admin"}
+                        </Button>
+
                         <Button
                             type="button"
                             variant="outline"
@@ -679,7 +784,7 @@ export function ChinaPortView() {
                                         }}
                                         className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                                     />
-                                    <span className="truncate text-slate-800 font-medium">{col.label}</span>
+                                    <span className="truncate text-slate-800 font-bold">{col.label}</span>
                                 </label>
                             ))}
                         </div>
@@ -748,11 +853,19 @@ export function ChinaPortView() {
                             <tr>
                                 {columns
                                     .filter((c) => c.visible)
-                                    .map((col) => (
-                                        <th key={col.key} className="px-4 py-3 whitespace-nowrap">
-                                            {col.label}
-                                        </th>
-                                    ))}
+                                    .map((col) => {
+                                        const isDateField = col.key === "validFrom" || col.key === "validTo";
+                                        return (
+                                            <th
+                                                key={col.key}
+                                                className={`px-4 py-3 whitespace-nowrap ${
+                                                    isDateField ? "w-32 min-w-[130px] max-w-[130px] text-center" : ""
+                                                }`}
+                                            >
+                                                {col.label}
+                                            </th>
+                                        );
+                                    })}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -794,6 +907,18 @@ export function ChinaPortView() {
                                                             {isActive ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
                                                             {statusLabel(row.regState)}
                                                         </span>
+                                                    </td>
+                                                );
+                                            }
+
+                                            // Đảm bảo 2 cột "HIỆU LỰC TỪ" và "HIỆU LỰC ĐẾN" nằm trên 1 hàng và có độ rộng bằng nhau
+                                            if (col.key === "validFrom" || col.key === "validTo") {
+                                                return (
+                                                    <td
+                                                        key={col.key}
+                                                        className="px-4 py-3 text-slate-700 font-mono text-[11px] text-center whitespace-nowrap w-32 min-w-[130px] max-w-[130px]"
+                                                    >
+                                                        {fmtDate(row[col.key])}
                                                     </td>
                                                 );
                                             }
@@ -1003,6 +1128,214 @@ export function ChinaPortView() {
                                 className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold px-6"
                             >
                                 Đóng
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* SYNC & NOTIFICATION MODAL (KẾT QUẢ ĐỒNG BỘ & BÁO CÁO EMAIL ADMIN) */}
+            {syncModalOpen && syncResult && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs overflow-y-auto">
+                    <div className="relative w-full max-w-4xl rounded-3xl bg-white shadow-2xl overflow-hidden my-8 border border-slate-200">
+                        {/* Modal Header */}
+                        <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-950 p-6 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                                    <BellRing className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-md">
+                                        ĐỒNG BỘ DỮ LIỆU & THÔNG BÁO ADMIN
+                                    </span>
+                                    <h3 className="text-xl font-black mt-0.5 tracking-tight text-white">
+                                        Kết Quả Đối Soát China Port (GACC)
+                                    </h3>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSyncModalOpen(false)}
+                                className="rounded-xl p-2 text-white/80 hover:bg-white/10 hover:text-white transition"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto text-xs">
+                            {/* Summary Metrics */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
+                                    <span className="text-slate-500 font-bold block text-[11px] uppercase">Tổng dòng GACC tải về</span>
+                                    <span className="text-2xl font-black text-slate-900 mt-1 block">
+                                        {syncResult.totalFetched.toLocaleString("vi-VN")}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 font-medium">Quốc gia: Việt Nam (704)</span>
+                                </div>
+
+                                <div className={`rounded-2xl border p-4 text-center ${
+                                    syncResult.newCount > 0
+                                        ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+                                        : "border-slate-200 bg-slate-50 text-slate-800"
+                                }`}>
+                                    <span className="font-bold block text-[11px] uppercase">Bản ghi mới phát hiện</span>
+                                    <span className={`text-2xl font-black mt-1 block ${
+                                        syncResult.newCount > 0 ? "text-emerald-700" : "text-slate-600"
+                                    }`}>
+                                        {syncResult.newCount}
+                                    </span>
+                                    <span className="text-[10px] opacity-80 font-medium">
+                                        {syncResult.newCount > 0 ? "Đã gom vào 1 email thông báo" : "Không có bản ghi mới"}
+                                    </span>
+                                </div>
+
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
+                                    <span className="text-slate-500 font-bold block text-[11px] uppercase">Trạng thái Email Admin</span>
+                                    <div className="mt-1 flex items-center justify-center gap-1.5">
+                                        <Mail className="h-4 w-4 text-emerald-600" />
+                                        <span className="text-sm font-black text-emerald-800">
+                                            {syncResult.emailSent ? "Đã gửi thông báo" : "Chờ kích hoạt"}
+                                        </span>
+                                    </div>
+                                    <span className="text-[10px] text-slate-500 font-mono truncate block mt-0.5">
+                                        {syncResult.emailRecipients?.length > 0
+                                            ? syncResult.emailRecipients.join(", ")
+                                            : "Admin hệ thống"}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Email Details Banner */}
+                            <div className="rounded-2xl bg-emerald-50/80 border border-emerald-200 p-4 space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
+                                    <h4 className="font-black text-emerald-950 text-sm">
+                                        Cơ chế thông báo Email: 1 email tổng hợp duy nhất
+                                    </h4>
+                                </div>
+                                <p className="text-slate-700 text-xs leading-relaxed">
+                                    Tiêu đề email: <code className="font-bold bg-white px-2 py-0.5 rounded border border-emerald-200 text-emerald-900">[China Port] Có dữ liệu mới thuộc Việt Nam</code>
+                                    <br />
+                                    Nội dung: <i>Hệ thống vừa phát hiện {syncResult.newCount > 0 ? syncResult.newCount : "X"} bản ghi mới thuộc Quốc gia/Vùng: Việt Nam</i> kèm bảng dữ liệu chi tiết đầy đủ các cột chuẩn hóa.
+                                </p>
+                            </div>
+
+                            {/* Table of new records if any */}
+                            {syncResult.newRecords && syncResult.newRecords.length > 0 ? (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="font-black text-slate-900 uppercase tracking-wide text-xs">
+                                            Danh sách {syncResult.newRecords.length} bản ghi mới được phát hiện:
+                                        </h4>
+                                        <span className="bg-emerald-600 text-white font-black text-[10px] px-2 py-0.5 rounded-full">
+                                            MỚI PHÁT HIỆN
+                                        </span>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-200 overflow-hidden overflow-x-auto">
+                                        <table className="w-full text-left text-xs border-collapse">
+                                            <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[10px] border-b">
+                                                <tr>
+                                                    <th className="px-3 py-2.5 whitespace-nowrap">QUỐC GIA</th>
+                                                    <th className="px-3 py-2.5 whitespace-nowrap">SẢN PHẨM</th>
+                                                    <th className="px-3 py-2.5 whitespace-nowrap">MÃ NƯỚC NGOÀI</th>
+                                                    <th className="px-3 py-2.5 whitespace-nowrap">MÃ TRUNG QUỐC</th>
+                                                    <th className="px-3 py-2.5 whitespace-nowrap">DOANH NGHIỆP</th>
+                                                    <th className="px-3 py-2.5 whitespace-nowrap">LOẠI DN</th>
+                                                    <th className="px-3 py-2.5 text-center whitespace-nowrap w-28 min-w-[110px]">HIỆU LỰC TỪ</th>
+                                                    <th className="px-3 py-2.5 text-center whitespace-nowrap w-28 min-w-[110px]">HIỆU LỰC ĐẾN</th>
+                                                    <th className="px-3 py-2.5 text-center whitespace-nowrap">TRẠNG THÁI</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {syncResult.newRecords.map((r: any, idx: number) => (
+                                                    <tr key={r.chinaRegNo || idx} className="hover:bg-emerald-50/40">
+                                                        <td className="px-3 py-2 whitespace-nowrap text-slate-700">
+                                                            {r.countryNameEn}
+                                                        </td>
+                                                        <td className="px-3 py-2 font-semibold text-slate-900">
+                                                            {r.prodNameEn || r.prodNameCn}
+                                                        </td>
+                                                        <td className="px-3 py-2 font-mono font-bold text-emerald-800 whitespace-nowrap">
+                                                            {r.overseasOfficialRegNo || "—"}
+                                                        </td>
+                                                        <td className="px-3 py-2 font-mono font-bold text-indigo-900 whitespace-nowrap">
+                                                            {r.chinaRegNo}
+                                                        </td>
+                                                        <td className="px-3 py-2 font-medium text-slate-800 max-w-xs truncate" title={r.corpNameEn}>
+                                                            {r.corpNameEn || "—"}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-slate-600 whitespace-nowrap">
+                                                            {r.corpTypeNameEn || r.corpTypeNameCn || "—"}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-slate-700 font-mono text-[11px] text-center whitespace-nowrap w-28 min-w-[110px]">
+                                                            {fmtDate(r.validFrom)}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-slate-700 font-mono text-[11px] text-center whitespace-nowrap w-28 min-w-[110px]">
+                                                            {fmtDate(r.validTo)}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-center whitespace-nowrap">
+                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                                {statusLabel(r.regState)}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
+                                    Tất cả {syncResult.totalFetched} bản ghi từ China Port đã được đồng bộ trước đó. Chưa có thêm bản ghi mới nào trong chu kỳ này.
+                                </div>
+                            )}
+
+                            {/* Test Email Section */}
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                                        <Send className="h-3.5 w-3.5 text-emerald-600" />
+                                        Gửi thử nghiệm Email báo cáo đối soát đến Admin:
+                                    </h4>
+                                </div>
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <input
+                                        type="email"
+                                        value={testEmailRecipient}
+                                        onChange={(e) => setTestEmailRecipient(e.target.value)}
+                                        placeholder="Nhập email nhận (hoặc để trống để gửi tới Admin hệ thống)"
+                                        className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-emerald-500 focus:outline-none h-9"
+                                    />
+                                    <Button
+                                        type="button"
+                                        onClick={handleSendTestEmail}
+                                        disabled={testingEmail}
+                                        className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold px-4 h-9 gap-1.5 shrink-0"
+                                    >
+                                        <Mail className="h-3.5 w-3.5" />
+                                        {testingEmail ? "Đang gửi email..." : "Gửi thử email báo cáo"}
+                                    </Button>
+                                </div>
+                                {testEmailSuccessMsg && (
+                                    <p className="text-xs font-bold text-emerald-700 bg-emerald-100/70 px-3 py-1.5 rounded-lg">
+                                        ✅ {testEmailSuccessMsg}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 bg-slate-50 border-t flex items-center justify-between">
+                            <span className="text-[11px] text-slate-500">
+                                Thời gian đồng bộ: {new Date(syncResult.syncedAt).toLocaleString("vi-VN")}
+                            </span>
+                            <Button
+                                type="button"
+                                onClick={() => setSyncModalOpen(false)}
+                                className="bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold px-6 h-9"
+                            >
+                                Đóng & Xem danh sách
                             </Button>
                         </div>
                     </div>

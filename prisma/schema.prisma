@@ -2299,3 +2299,59 @@ model PartnerPaymentRecord {
   @@index([expenseId])
   @@map("partner_payment_records")
 }
+
+model ChinaPortRecord {
+  id                    String   @id @default(cuid())
+  countryCode           String   @default("704")
+  countryIso            String?  @default("VNM")
+  countryNameEn         String?
+  countryNameCn         String?
+  provinceCode          String?
+  provinceNameEn        String?
+  provinceNameCn        String?
+  prodTypeCode          String?
+  prodTypeNameEn        String?
+  prodTypeNameCn        String?
+  prodCategoryCode      String?
+  prodCategoryNameEn    String?
+  prodCategoryNameCn    String?
+  corpTypeCode          String?
+  corpTypeNameCn        String?
+  corpTypeNameEn        String?
+  prodNameEn            String?
+  prodNameCn            String?
+  prodNameLa            String?
+  chinaRegNo            String   @unique
+  overseasOfficialRegNo String?
+  corpNameEn            String?
+  corpNameMo            String?
+  corpAddrNameEn        String?
+  corpAddrNameMo        String?
+  validFrom             String?
+  validTo               String?
+  regState              String?
+  firstSyncedAt         DateTime @default(now())
+  lastSyncedAt          DateTime @updatedAt
+
+  @@index([countryCode, regState])
+  @@index([overseasOfficialRegNo])
+  @@index([chinaRegNo])
+  @@map("china_port_records")
+}
+
+model ChinaPortSyncLog {
+  id              String   @id @default(cuid())
+  countryCode     String   @default("704")
+  totalFetched    Int      @default(0)
+  newRecordsCount Int      @default(0)
+  updatedCount    Int      @default(0)
+  status          String   @default("SUCCESS")
+  emailSent       Boolean  @default(false)
+  emailRecipient  String?
+  errorMessage    String?
+  syncedAt        DateTime @default(now())
+
+  @@index([countryCode, syncedAt])
+  @@map("china_port_sync_logs")
+}
+
