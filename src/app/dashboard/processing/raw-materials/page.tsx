@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PartnerHarvests } from "@/components/partner-harvests";
+import { RawMaterialClassificationManager } from "@/components/processing/raw-material-classification-manager";
 
 export default async function Page({ searchParams }: { searchParams?: { filter?: string } }) {
     const session = await getServerSession(authOptions);
@@ -84,6 +85,9 @@ export default async function Page({ searchParams }: { searchParams?: { filter?:
                 targetProduct: bi.processingBatch.targetProduct,
                 status: bi.processingBatch.status,
             })),
+            direction: row.direction,
+            freshExportWeight: Number(row.freshExportWeight),
+            processingWeight: Number(row.processingWeight),
         };
     });
 
@@ -98,5 +102,6 @@ export default async function Page({ searchParams }: { searchParams?: { filter?:
         <section className="rounded-3xl border bg-white p-5 shadow-sm">
             <PartnerHarvests initial={JSON.parse(JSON.stringify(incomingHarvests))} rawLots={JSON.parse(JSON.stringify(rawLots))} mode="PROCESSING_FACILITY" initialTab={searchParams?.filter === "action-required" ? "action-required" : "all"} />
         </section>
+        <RawMaterialClassificationManager initialLots={rawLots.filter((lot) => ["AVAILABLE", "PARTIALLY_USED"].includes(lot.status)).map((lot) => ({ id: lot.id, code: lot.code, farmName: lot.farmName, sourceCode: lot.sourceCode, currentWeight: lot.currentWeight, direction: lot.direction, freshExportWeight: lot.freshExportWeight, processingWeight: lot.processingWeight }))} />
     </main>;
 }

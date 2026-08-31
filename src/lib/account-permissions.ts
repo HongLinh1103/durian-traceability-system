@@ -39,9 +39,10 @@ export const ACCOUNT_PERMISSIONS_BY_ROLE: Record<string, AccountPermission[]> = 
     ],
     PROCESSING_FACILITY: [
         { key: "PROCESSING_DASHBOARD", label: "Tổng quan cơ sở chế biến", path: "/dashboard/processing" },
-        { key: "PROCESSING_RAW_MATERIALS", label: "Nguyên liệu", path: "/dashboard/processing/raw-materials" },
-        { key: "PROCESSING_BATCHES", label: "Chế biến", path: "/dashboard/processing/processing" },
+        { key: "PROCESSING_RAW_MATERIALS", label: "Tiếp nhận & Phân loại", path: "/dashboard/processing/raw-materials" },
+        { key: "PROCESSING_BATCHES", label: "Bốc múi / Chế biến", path: "/dashboard/processing/processing" },
         { key: "PROCESSING_PRODUCTS", label: "Thành phẩm", path: "/dashboard/processing/finished-products" },
+        { key: "PROCESSING_SHIPMENTS", label: "Xuất hàng", path: "/dashboard/processing/shipments" },
         { key: "PROCESSING_TRACEABILITY", label: "Tạo mã QR truy xuất", path: "/dashboard/processing/traceability" },
         { key: "PROCESSING_FINANCE", label: "Tài chính", path: "/dashboard/processing/finance" },
         { key: "CHINA_PORT", label: "China Port", path: "/china-port" }, ...shared,

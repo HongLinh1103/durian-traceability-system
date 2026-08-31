@@ -51,6 +51,7 @@ const inputSchema = z
         containerNumber: z.string().trim().optional(),
         sealNumber: z.string().trim().optional(),
         vehicleReference: z.string().trim().optional(),
+        boxCount: z.coerce.number().int().positive().optional(),
         customsDeclarationNumber: z.string().trim().optional(),
         phytosanitaryCertificateNumber: z.string().trim().optional(),
         exportStageStatus: z
@@ -355,6 +356,7 @@ export async function POST(request: Request) {
                         vehicleReference: value.vehicleReference,
                         containerNumber: value.containerNumber,
                         sealNumber: value.sealNumber,
+                        boxCount: value.boxCount,
                         status: value.exportStageStatus === "DISPATCHED" ? "DISPATCHED" : "DRAFT",
                         note: `Lô xuất khẩu sang ${exportCountry || "Trung Quốc"}`,
                     },

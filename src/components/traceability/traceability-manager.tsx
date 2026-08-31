@@ -135,6 +135,7 @@ export function TraceabilityManager({
     const [containerNumber, setContainerNumber] = useState("");
     const [sealNumber, setSealNumber] = useState("");
     const [vehicleReference, setVehicleReference] = useState("");
+    const [boxCount, setBoxCount] = useState("");
     const [exportStageStatus, setExportStageStatus] = useState("DISPATCHED");
 
     const [destinationType, setDestinationType] = useState(
@@ -394,6 +395,7 @@ export function TraceabilityManager({
             containerNumber: isExport ? containerNumber || undefined : undefined,
             sealNumber: isExport ? sealNumber || undefined : undefined,
             vehicleReference: isExport ? vehicleReference || undefined : undefined,
+            boxCount: isExport && boxCount ? Number(boxCount) : undefined,
             exportStageStatus: isExport ? exportStageStatus : undefined,
         };
 
@@ -720,6 +722,18 @@ export function TraceabilityManager({
                                         value={vehicleReference}
                                         onChange={(e) => setVehicleReference(e.target.value)}
                                         placeholder="VD: 51H-123.45"
+                                        className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-mono font-bold"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-indigo-950 mb-1">Số thùng</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={boxCount}
+                                        onChange={(e) => setBoxCount(e.target.value)}
+                                        placeholder="VD: 1200"
                                         className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-mono font-bold"
                                     />
                                 </div>

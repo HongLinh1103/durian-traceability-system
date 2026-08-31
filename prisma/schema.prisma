@@ -316,6 +316,18 @@ enum RawMaterialLotStatus {
   USED
 }
 
+enum RawMaterialDirection {
+  UNCLASSIFIED
+  FRESH_EXPORT
+  PROCESSING
+  SPLIT
+}
+
+enum FinishedProductBranch {
+  FRESH_PACKED
+  PROCESSED
+}
+
 enum ProcessingBatchStatus {
   DRAFT
   PREPARING
@@ -1918,6 +1930,11 @@ model RawMaterialLot {
   currentWeight        Decimal                @db.Decimal(14, 2)
   warehouseLocation    String?
   status               RawMaterialLotStatus   @default(PENDING_QC)
+  direction            RawMaterialDirection   @default(UNCLASSIFIED)
+  freshExportWeight    Decimal                 @default(0) @db.Decimal(14, 2)
+  processingWeight     Decimal                 @default(0) @db.Decimal(14, 2)
+  classifiedAt         DateTime?
+  classifiedById       String?
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
   facility             PartnerFacility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
@@ -2022,6 +2039,7 @@ model FinishedProductLot {
   facilityId        String
   productName       String
   productType       String
+  branch            FinishedProductBranch @default(PROCESSED)
   quantity          Decimal                  @db.Decimal(14, 2)
   netWeight         Decimal                  @db.Decimal(14, 2)
   remainingWeight   Decimal                  @db.Decimal(14, 2)
@@ -2143,6 +2161,7 @@ model Shipment {
   vehicleReference  String?
   containerNumber   String?
   sealNumber        String?
+  boxCount          Int?
   trackingReference String?
   status            ShipmentStatus          @default(DRAFT)
   note              String?
@@ -2399,4 +2418,3 @@ model PermissionAuditLog {
   @@index([roleKey, createdAt])
   @@map("permission_audit_logs")
 }
-

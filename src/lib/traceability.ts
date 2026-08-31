@@ -591,6 +591,7 @@ export async function getPublicTrace(publicToken: string) {
     // -------------------------------------------------------------------------
     const fpl = trace.commercialLot.sourceFinishedProductLot;
     const rawReceipt = fpl?.processingBatch?.inputs[0]?.rawMaterialLot?.rawMaterialReceipt;
+    const classifiedRawLot = fpl?.processingBatch?.inputs[0]?.rawMaterialLot;
     const hasCollectionLot = Boolean(
         trace.commercialLot.sourceCollectionLot ||
         rawReceipt?.sourceCollectionLot ||
@@ -611,7 +612,7 @@ export async function getPublicTrace(publicToken: string) {
             id: "milestone-collector",
             stepNumber: 3,
             type: "COLLECTOR_RECEIPT",
-            title: "VỰA THU MUA",
+            title: "THU MUA / TIẾP NHẬN & PHÂN LOẠI",
             subtitle: "Tiếp nhận nông sản từ vườn, kiểm định chất lượng & phân loại quả tươi",
             date: receivedDate,
             dateText: formatVnDate(receivedDate),
@@ -623,6 +624,10 @@ export async function getPublicTrace(publicToken: string) {
                 { label: "Lô thu mua", value: collectionLotCode, highlight: true },
                 { label: "Khối lượng", value: `${collectionWeight.toLocaleString("vi-VN")} kg` },
                 { label: "QC", value: "Đạt" },
+                ...(classifiedRawLot ? [
+                    { label: "Trái tươi xuất khẩu", value: `${Number(classifiedRawLot.freshExportWeight).toLocaleString("vi-VN")} kg` },
+                    { label: "Chuyển chế biến", value: `${Number(classifiedRawLot.processingWeight).toLocaleString("vi-VN")} kg` },
+                ] : []),
             ],
         };
         rawMilestones.push(milestoneCollector);
@@ -640,7 +645,7 @@ export async function getPublicTrace(publicToken: string) {
             id: "milestone-proc-receipt",
             stepNumber: 3,
             type: "PROCESSING_RECEIPT",
-            title: "CƠ SỞ TIẾP NHẬN",
+            title: "TIẾP NHẬN & PHÂN LOẠI",
             subtitle: "Tiếp nhận nông sản trực tiếp từ nhà vườn để đưa vào dây chuyền",
             date: receiptDate,
             dateText: formatVnDate(receiptDate),
@@ -652,6 +657,8 @@ export async function getPublicTrace(publicToken: string) {
                 { label: "Lô nguyên liệu", value: rawLotCode, highlight: true },
                 { label: "Khối lượng", value: `${rawWeight.toLocaleString("vi-VN")} kg` },
                 { label: "QC", value: "Đạt" },
+                { label: "Trái tươi xuất khẩu", value: `${Number(classifiedRawLot?.freshExportWeight || 0).toLocaleString("vi-VN")} kg` },
+                { label: "Chuyển chế biến", value: `${Number(classifiedRawLot?.processingWeight || 0).toLocaleString("vi-VN")} kg` },
             ],
         };
         rawMilestones.push(milestoneProcReceipt);
@@ -684,10 +691,8 @@ export async function getPublicTrace(publicToken: string) {
             id: "milestone-processing",
             stepNumber: 4,
             type: "PROCESSING_PACKAGING",
-            title: isFrozenPulp ? "CHẾ BIẾN & ĐÓNG GÓI" : "CHẾ BIẾN & ĐÓNG GÓI",
-            subtitle: isFrozenPulp
-                ? "Bóc múi chọn lọc, cấp đông sâu IQF và đóng khay hút chân không vô trùng"
-                : "Phân loại trái, làm sạch bằng khí nén & xử lý bề mặt, đóng thùng carton chuẩn GACC",
+            title: "CƠ SỞ CHẾ BIẾN – ĐÓNG GÓI",
+            subtitle: isFrozenPulp ? "Nhánh bốc múi / chế biến" : "Nhánh trái tươi đóng gói",
             date: manufacturedDate,
             dateText: formatVnDate(manufacturedDate),
             badgeText: "QC: Đạt",
@@ -695,24 +700,12 @@ export async function getPublicTrace(publicToken: string) {
             fields: [
                 { label: "Cơ sở", value: facilityName, highlight: true },
                 { label: "Địa chỉ", value: facilityAddress },
-                { label: isFrozenPulp ? "Lô thành phẩm" : "Lô thành phẩm", value: finishedLotCode, highlight: true },
+                { label: "Mã mẻ / đóng gói", value: batchCode },
+                { label: "Lô thành phẩm", value: finishedLotCode, highlight: true },
+                { label: "Sản phẩm", value: finishedProductName },
+                { label: "Khối lượng", value: `${finishedWeight.toLocaleString("vi-VN")} kg` },
                 { label: "QC", value: "Đạt" },
             ],
-            substeps: isFrozenPulp
-                ? [
-                      { name: "1. Tiếp nhận & Khử trùng vỏ quả tươi", status: "Đạt tiêu chuẩn" },
-                      { name: "2. Tách vỏ & Bóc múi chọn lọc múi loại A", status: "Đạt tiêu chuẩn" },
-                      { name: "3. Cấp đông sâu IQF (-35°C đến -40°C)", status: "Đạt chuẩn công nghệ" },
-                      { name: "4. Đóng khay hút chân không & dán tem", status: "Hoàn tất" },
-                      { name: "5. Lưu kho bảo quản lạnh (-18°C)", status: "Đang lưu kho an toàn" },
-                  ]
-                : [
-                      { name: "1. Tiếp nhận quả tươi & QC đầu vào", status: "Đạt tiêu chuẩn" },
-                      { name: "2. Phân loại sầu riêng đạt tiêu chuẩn xuất khẩu Loại A", status: "Đạt tiêu chuẩn" },
-                      { name: "3. Làm sạch bằng khí nén & rửa xử lý bề mặt vỏ", status: "Đạt tiêu chuẩn" },
-                      { name: "4. Dán tem truy xuất & Đóng thùng carton chuẩn xuất khẩu", status: "Hoàn tất" },
-                      { name: "5. Lưu kho mát bảo quản 13-15°C chờ xuất", status: "Đang lưu kho an toàn" },
-                  ],
         };
         rawMilestones.push(milestoneProcessing);
     }
@@ -757,6 +750,7 @@ export async function getPublicTrace(publicToken: string) {
         const port = shipment?.exportInfo?.portOfLoading || "Cửa khẩu Quốc tế Hữu Nghị (Lạng Sơn)";
         const container = shipment?.exportInfo?.containerNumber || shipment?.containerNumber;
         const seal = shipment?.exportInfo?.sealNumber || shipment?.sealNumber;
+        const vehicle = shipment?.vehicleReference;
 
         const milestoneExport: TraceMilestone = {
             id: "milestone-export",
@@ -775,6 +769,9 @@ export async function getPublicTrace(publicToken: string) {
                 ...(exporterName ? [{ label: "Đơn vị xuất", value: exporterName }] : []),
                 ...(container ? [{ label: "Container", value: container }] : []),
                 ...(seal ? [{ label: "Seal niêm phong", value: seal }] : []),
+                ...(vehicle ? [{ label: "Biển số xe", value: vehicle }] : []),
+                ...(shipment?.boxCount ? [{ label: "Số thùng", value: shipment.boxCount.toLocaleString("vi-VN") }] : []),
+                { label: "Khối lượng", value: `${(Number(shipment?.dispatchedWeight || trace.commercialLot.quantity) / 1000).toLocaleString("vi-VN")} tấn` },
             ],
         };
         rawMilestones.push(milestoneExport);
@@ -807,6 +804,7 @@ export async function getPublicTrace(publicToken: string) {
     // Filter non-null and assign step numbers (1 .. N)
     const validMilestones = rawMilestones
         .filter((m): m is TraceMilestone => Boolean(m))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .map((m, index) => ({
             ...m,
             stepNumber: index + 1,
@@ -844,6 +842,11 @@ export async function getPublicTrace(publicToken: string) {
                   status: shipment.status,
                   dispatchAt: shipment.dispatchAt,
                   receivedAt: shipment.receivedAt,
+                  vehicleReference: shipment.vehicleReference,
+                  containerNumber: shipment.containerNumber,
+                  sealNumber: shipment.sealNumber,
+                  boxCount: shipment.boxCount,
+                  dispatchedWeight: Number(shipment.dispatchedWeight),
                   exportInfo: shipment.exportInfo,
               }
             : null,

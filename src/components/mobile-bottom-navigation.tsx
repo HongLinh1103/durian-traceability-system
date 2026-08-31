@@ -20,6 +20,7 @@ import {
     MapPinned,
     NotebookPen,
     Package,
+    PackageCheck,
     Plus,
     QrCode,
     ShoppingBag,
@@ -115,6 +116,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Cá nhân", href: "/account", icon: UserRound, matches: ["/account"] },
         ],
         actions: [
+            { label: "Xuất hàng", description: "Tạo lô xuất khẩu và thông tin container", href: "/dashboard/processing/shipments", icon: Package },
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Tạo QR", description: "Tạo mã QR truy xuất nguồn gốc cho lô hàng", href: "/dashboard/partner/traceability", icon: QrCode },
             { label: "Tài chính", description: "Báo cáo doanh thu và chi phí thu mua", href: "/dashboard/partner/finance", icon: CircleDollarSign },
@@ -129,6 +131,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Thành phẩm", href: "/dashboard/processing/finished-products", icon: Package, matches: ["/dashboard/processing/finished-products"] },
         ],
         actions: [
+            { label: "Trái tươi", description: "Lô trái tươi đã đóng gói", href: "/dashboard/processing/finished-products?branch=fresh", icon: PackageCheck },
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Tạo QR", description: "Phát hành mã QR truy xuất cho lô thành phẩm", href: "/dashboard/processing/traceability", icon: QrCode },
             { label: "Tài chính", description: "Báo cáo doanh thu, chi phí và hiệu quả chế biến", href: "/dashboard/processing/finance", icon: CircleDollarSign },
