@@ -59,15 +59,10 @@ function LoginForm() {
     const [accountCategory, setAccountCategory] = useState<"COLLECTOR" | "PROCESSING" | "NURSERY" | "OTHERS">("COLLECTOR");
 
     const resolveDestination = useCallback((role?: string) => {
-        if (role === "PROCESSING_FACILITY") {
-            return "/dashboard/processing";
-        }
-        if (role === "COLLECTOR") {
-            return "/dashboard/partner";
-        }
         if (
             callbackUrl &&
             callbackUrl.startsWith("/") &&
+            callbackUrl !== "/" &&
             !callbackUrl.startsWith("/login") &&
             !callbackUrl.startsWith("/register")
         ) {

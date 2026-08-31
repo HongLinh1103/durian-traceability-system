@@ -126,14 +126,13 @@ const navigationByRole: Record<string, RoleNavigation> = {
     PROCESSING_FACILITY: {
         items: [
             { label: "Tổng quan", href: "/dashboard/processing", icon: Home },
-            { label: "Nguyên liệu", href: "/dashboard/processing/raw-materials", icon: Boxes, badgeKey: "processingIncoming", matches: ["/dashboard/processing/raw-materials"] },
+            { label: "Tiếp nhận", href: "/dashboard/processing/raw-materials", icon: Boxes, badgeKey: "processingIncoming", matches: ["/dashboard/processing/raw-materials"] },
             { label: "Chế biến", href: "/dashboard/processing/processing", icon: Factory, matches: ["/dashboard/processing/processing"] },
-            { label: "Thành phẩm", href: "/dashboard/processing/finished-products", icon: Package, matches: ["/dashboard/processing/finished-products"] },
+            { label: "Xuất hàng", href: "/dashboard/processing/shipments", icon: Package, matches: ["/dashboard/processing/shipments"] },
         ],
         actions: [
-            { label: "Trái tươi", description: "Lô trái tươi đã đóng gói", href: "/dashboard/processing/finished-products?branch=fresh", icon: PackageCheck },
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
-            { label: "Tạo QR", description: "Phát hành mã QR truy xuất cho lô thành phẩm", href: "/dashboard/processing/traceability", icon: QrCode },
+            { label: "Tạo QR", description: "Phát hành mã QR truy xuất nguồn gốc", href: "/dashboard/processing/traceability", icon: QrCode },
             { label: "Tài chính", description: "Báo cáo doanh thu, chi phí và hiệu quả chế biến", href: "/dashboard/processing/finance", icon: CircleDollarSign },
             { label: "Cá nhân", description: "Quản lý thông tin tài khoản và đổi mật khẩu", href: "/account", icon: UserRound },
         ],

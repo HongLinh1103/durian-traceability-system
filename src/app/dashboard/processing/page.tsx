@@ -5,6 +5,8 @@ import { AlertTriangle, Boxes, Factory, PackageCheck, Truck, QrCode } from "luci
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export default async function Page() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") redirect("/login");
@@ -123,7 +125,7 @@ export default async function Page() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <Link href="/dashboard/processing/raw-materials?filter=action-required" className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white">Xem nguyên liệu</Link>
-                        <Link href="/dashboard/processing/finished-products" className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">Xem thành phẩm</Link>
+                        <Link href="/dashboard/processing/shipments" className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">Xem xuất hàng</Link>
                     </div>
                 </div>
                 <ul className="mt-4 grid gap-3 sm:grid-cols-2">
