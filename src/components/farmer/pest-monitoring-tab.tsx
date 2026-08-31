@@ -654,19 +654,19 @@ export function PestMonitoringTab({
 
                     {/* MỤC 1: DANH SÁCH BẪY */}
                     <div className="space-y-3 pt-2">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                <Crosshair className="h-5 w-5 text-brand-600" />
-                                Danh sách bẫy:
+                                <Crosshair className="h-5 w-5 text-brand-600 shrink-0" />
+                                <span>Danh sách bẫy:</span>
                             </h3>
                             <Button
                                 type="button"
                                 size="sm"
                                 onClick={() => setShowAddTrapModal(true)}
-                                className="h-8 rounded-xl bg-brand-600 text-xs font-bold text-white hover:bg-brand-700 shadow-soft"
+                                className="h-8 shrink-0 whitespace-nowrap rounded-xl bg-brand-600 px-3 text-xs font-bold text-white hover:bg-brand-700 shadow-soft"
                             >
-                                <Plus className="mr-1 h-3.5 w-3.5" />
-                                Thêm bẫy
+                                <Plus className="mr-1 h-3.5 w-3.5 shrink-0" />
+                                <span>Thêm bẫy</span>
                             </Button>
                         </div>
 
@@ -722,19 +722,19 @@ export function PestMonitoringTab({
 
                     {/* MỤC 2: BẢNG THEO DÕI CHI TIẾT */}
                     <div className="space-y-3 pt-2">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                <Activity className="h-5 w-5 text-blue-600" />
-                                Bảng Theo dõi chi tiết:
+                                <Activity className="h-5 w-5 text-blue-600 shrink-0" />
+                                <span>Bảng Theo dõi chi tiết:</span>
                             </h3>
                             <Button
                                 type="button"
                                 size="sm"
                                 onClick={() => setShowAddInspectionModal(true)}
-                                className="h-8 rounded-xl bg-blue-600 text-xs font-bold text-white hover:bg-blue-700 shadow-soft"
+                                className="h-8 shrink-0 whitespace-nowrap rounded-xl bg-blue-600 px-3 text-xs font-bold text-white hover:bg-blue-700 shadow-soft"
                             >
-                                <Plus className="mr-1 h-3.5 w-3.5" />
-                                Ghi nhận điều tra
+                                <Plus className="mr-1 h-3.5 w-3.5 shrink-0" />
+                                <span>Ghi nhận điều tra</span>
                             </Button>
                         </div>
 
@@ -795,19 +795,19 @@ export function PestMonitoringTab({
 
                     {/* MỤC 3: CÁC BIỆN PHÁP XỬ LÝ ĐÃ THỰC HIỆN */}
                     <div className="space-y-3 pt-2">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                <ShieldAlert className="h-5 w-5 text-purple-600" />
-                                Các biện pháp xử lý đã thực hiện:
+                                <ShieldAlert className="h-5 w-5 text-purple-600 shrink-0" />
+                                <span>Các biện pháp xử lý đã thực hiện:</span>
                             </h3>
                             <Button
                                 type="button"
                                 size="sm"
                                 onClick={() => setShowAddTreatmentModal(true)}
-                                className="h-8 rounded-xl bg-purple-600 text-xs font-bold text-white hover:bg-purple-700 shadow-soft"
+                                className="h-8 shrink-0 whitespace-nowrap rounded-xl bg-purple-600 px-3 text-xs font-bold text-white hover:bg-purple-700 shadow-soft"
                             >
-                                <Plus className="mr-1 h-3.5 w-3.5" />
-                                Ghi nhận xử lý
+                                <Plus className="mr-1 h-3.5 w-3.5 shrink-0" />
+                                <span>Ghi nhận xử lý</span>
                             </Button>
                         </div>
 
