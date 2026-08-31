@@ -2,100 +2,65 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { validateTraceability } from "@/lib/traceability";
-import { TraceabilityManager } from "@/components/traceability/traceability-manager";
+import { ProcessingQrGeneratorView, TraceableShipmentOption } from "@/components/processing/processing-qr-generator-view";
 
 export const dynamic = "force-dynamic";
 
-export default async function Page({
-    searchParams,
-}: {
-    searchParams?: Promise<{ source?: string; sourceId?: string }> | { source?: string; sourceId?: string };
-}) {
+export default async function Page() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") redirect("/login");
-
-    const resolvedParams = searchParams instanceof Promise ? await searchParams : searchParams;
-    const initialSourceId = resolvedParams?.source || resolvedParams?.sourceId || "";
 
     const facility = await prisma.partnerFacility.findFirst({
         where: { ownerId: session.user.id, type: "PROCESSING_FACILITY", deletedAt: null },
     });
 
-    const [rows, sourceRows, destinations] = await Promise.all([
-        facility
-            ? prisma.commercialLot.findMany({
-                  where: { ownerId: facility.id },
-                  include: { owner: { select: { name: true } }, destination: true, traceabilityCode: true },
-                  orderBy: { createdAt: "desc" },
-              })
-            : [],
-        facility
-            ? prisma.finishedProductLot.findMany({
-                  where: {
-                      facilityId: facility.id,
-                      status: { in: ["READY_FOR_DISTRIBUTION", "PARTIALLY_DISTRIBUTED"] },
-                      remainingWeight: { gt: 0 },
+    const commercialLots = facility
+        ? await prisma.commercialLot.findMany({
+              where: { ownerId: facility.id },
+              include: {
+                  traceabilityCode: true,
+                  destination: true,
+                  shipmentItems: {
+                      include: {
+                          shipment: {
+                              include: { exportInfo: true },
+                          },
+                      },
                   },
-                  select: {
-                      id: true,
-                      lotCode: true,
-                      productName: true,
-                      productType: true,
-                      netWeight: true,
-                      remainingWeight: true,
-                  },
-                  orderBy: { createdAt: "desc" },
-              })
-            : [],
-        prisma.distributionDestination.findMany({
-            select: { id: true, name: true, address: true, type: true, contactName: true, contactPhone: true },
-            orderBy: { name: "asc" },
-        }),
-    ]);
+              },
+              orderBy: { createdAt: "desc" },
+          })
+        : [];
 
-    const lots = await Promise.all(
-        rows.map(async (row) => ({
-            ...row,
-            quantity: Number(row.quantity),
-            remainingQuantity: Number(row.remainingQuantity),
-            stockBeforeDispatch: row.stockBeforeDispatch ? Number(row.stockBeforeDispatch) : null,
-            unitPrice: row.unitPrice ? Number(row.unitPrice) : null,
-            subtotal: row.subtotal ? Number(row.subtotal) : null,
-            discount: row.discount ? Number(row.discount) : 0,
-            totalAmount: row.totalAmount ? Number(row.totalAmount) : null,
-            paidAmount: row.paidAmount ? Number(row.paidAmount) : 0,
-            debtAmount: row.debtAmount ? Number(row.debtAmount) : 0,
-            validation: await validateTraceability(row.id),
-        }))
-    );
+    const shipmentOptions: TraceableShipmentOption[] = commercialLots.map((lot) => {
+        const item = lot.shipmentItems?.[0];
+        const shipment = item?.shipment;
+        const exportInfo = shipment?.exportInfo;
 
-    const sources = sourceRows.map((row) => ({
-        id: row.id,
-        code: row.lotCode,
-        type: "FINISHED_PRODUCT_LOT" as const,
-        label: `${row.productName} (Còn ${Number(row.remainingWeight).toLocaleString("vi-VN")} kg)`,
-        productName: row.productName,
-        totalQuantity: Number(row.netWeight),
-        remainingQuantity: Number(row.remainingWeight),
-    }));
+        return {
+            commercialLotId: lot.id,
+            shipmentCode: shipment?.shipmentCode || lot.lotCode,
+            productName: lot.productName,
+            containerNumber: shipment?.containerNumber || exportInfo?.containerNumber || undefined,
+            sealNumber: shipment?.sealNumber || exportInfo?.sealNumber || undefined,
+            truckPlate: shipment?.vehicleReference || undefined,
+            weight: Number(lot.quantity || 0),
+            boxCount: shipment?.boxCount || undefined,
+            destinationCountry: exportInfo?.destinationCountry || lot.destination?.country || "Trung Quốc",
+            portOfLoading: exportInfo?.portOfLoading || undefined,
+            portOfDestination: exportInfo?.portOfDestination || lot.destination?.name || undefined,
+            facilityName: facility?.name || "Cơ sở chế biến",
+            rawLotCode: "NVL-001",
+            farmName: "Vườn sầu riêng Minh Phát",
+            isIssued: Boolean(lot.traceabilityCode && lot.traceabilityCode.status === "ACTIVE"),
+            qrPublicToken: lot.traceabilityCode?.publicToken || undefined,
+            issuedAt: lot.traceabilityCode?.issuedAt || undefined,
+        };
+    });
 
     return (
-        <main className="mx-auto max-w-7xl space-y-5 px-4 py-7 sm:px-6">
-            <header>
-                <p className="text-sm font-bold uppercase tracking-wide text-emerald-700">Cơ Sở Chế Biến & Đóng Gói</p>
-                <h1 className="mt-1 text-3xl font-black text-slate-900">Xuất Bán Thành Phẩm & Tạo Mã QR</h1>
-                <p className="mt-2 text-slate-500">
-                    Lập phiếu xuất bán lô thành phẩm, ghi nhận giá bán - công nợ và phát hành mã QR truy xuất nguồn gốc.
-                </p>
-            </header>
-            <TraceabilityManager
-                role="PROCESSING_FACILITY"
-                initialLots={JSON.parse(JSON.stringify(lots))}
-                sources={sources}
-                destinations={destinations}
-                initialSourceId={initialSourceId}
-            />
+        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+            <ProcessingQrGeneratorView shipments={shipmentOptions} />
         </main>
     );
 }
