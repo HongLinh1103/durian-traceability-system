@@ -11,7 +11,7 @@ export const ACCOUNT_PERMISSIONS_BY_ROLE: Record<string, AccountPermission[]> = 
     FARMER: [
         { key: "FARMER_DASHBOARD", label: "Tổng quan nông hộ", path: "/dashboard/farmer" },
         { key: "FARMER_JOURNAL", label: "Nhật ký canh tác", path: "/dashboard/farmer/journal" },
-        { key: "FARMER_STATISTICS", label: "Thống kê canh tác", path: "/dashboard/farmer/statistics" },
+        { key: "FARMER_STATISTICS", label: "Tài chính & Thống kê", path: "/dashboard/farmer/statistics" },
         { key: "FARMER_PLANS", label: "Kế hoạch canh tác", path: "/dashboard/farmer/plans" },
         { key: "FARMER_HARVESTS", label: "Phiếu thu hoạch", path: "/dashboard/farmer/harvests" },
         { key: "FARMER_TRACEABILITY", label: "Tạo mã QR truy xuất", path: "/dashboard/farmer/traceability" },
