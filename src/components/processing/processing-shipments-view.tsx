@@ -89,7 +89,7 @@ export function ProcessingShipmentsView({
     // Form fields
     const [shipmentCode, setShipmentCode] = useState("");
     const [selectedFinishedLotId, setSelectedFinishedLotId] = useState("");
-    const [productName, setProductName] = useState("Sầu riêng tươi xuất khẩu");
+    const [productName, setProductName] = useState("");
     const [weightInput, setWeightInput] = useState<number | string>("");
     const [boxCountInput, setBoxCountInput] = useState<number | string>("");
     const [truckPlate, setTruckPlate] = useState("");
@@ -102,19 +102,20 @@ export function ProcessingShipmentsView({
     const [portOfLoading, setPortOfLoading] = useState("Cửa khẩu Quốc tế Hữu Nghị");
     const [exportNote, setExportNote] = useState("");
 
-    // Selected lot details for live preview
+    // Selected lot details for live preview - ONLY when user explicitly selects a lot
     const selectedLot = useMemo(() => {
-        return availableFinishedLots.find((l) => l.id === selectedFinishedLotId) || availableFinishedLots[0] || null;
+        if (!selectedFinishedLotId) return null;
+        return availableFinishedLots.find((l) => l.id === selectedFinishedLotId) || null;
     }, [availableFinishedLots, selectedFinishedLotId]);
 
     // Validation for live QR generation
     const isFormReadyForQr = useMemo(() => {
-        const hasLot = Boolean(selectedFinishedLotId);
+        const hasLot = Boolean(selectedFinishedLotId && selectedLot);
         const hasWeight = Number(weightInput) > 0;
         const hasContainer = Boolean(containerNumber.trim());
         const hasDestination = Boolean(portOfDestination.trim() || destinationCountry.trim());
         return hasLot && hasWeight && hasContainer && hasDestination;
-    }, [selectedFinishedLotId, weightInput, containerNumber, portOfDestination, destinationCountry]);
+    }, [selectedFinishedLotId, selectedLot, weightInput, containerNumber, portOfDestination, destinationCountry]);
 
     // Live Trace URL for form preview
     const liveTraceUrl = useMemo(() => {
@@ -154,18 +155,11 @@ export function ProcessingShipmentsView({
         const todayStr = new Date().toISOString().slice(0, 10).replaceAll("-", "");
         const rand = Math.floor(100 + Math.random() * 900);
         setShipmentCode(`EXP-${todayStr}-${rand}`);
-        if (availableFinishedLots.length > 0) {
-            const first = availableFinishedLots[0];
-            setSelectedFinishedLotId(first.id);
-            setProductName(first.productName || "Sầu riêng tươi xuất khẩu");
-            setWeightInput(first.remainingWeight);
-            setBoxCountInput(Math.max(1, Math.round(first.remainingWeight / 18)));
-        } else {
-            setSelectedFinishedLotId("");
-            setProductName("Sầu riêng tươi xuất khẩu");
-            setWeightInput("");
-            setBoxCountInput("");
-        }
+        // Do NOT pre-select any lot; let user select explicitly
+        setSelectedFinishedLotId("");
+        setProductName("");
+        setWeightInput("");
+        setBoxCountInput("");
         setTruckPlate("51D-999.88");
         setContainerNumber("TEMU-882910-2");
         setSealNumber("SL-VN-88219");
@@ -180,12 +174,12 @@ export function ProcessingShipmentsView({
 
     const handleCreateShipment = async () => {
         const w = Number(weightInput);
-        if (!w || w <= 0) {
-            toast({ title: "Khối lượng không hợp lệ", description: "Vui lòng nhập khối lượng lô xuất.", variant: "destructive" });
+        if (!selectedFinishedLotId || !selectedLot) {
+            toast({ title: "Chưa chọn lô thành phẩm", description: "Vui lòng chọn một lô thành phẩm từ danh sách để liên kết nguồn gốc.", variant: "destructive" });
             return;
         }
-        if (!selectedFinishedLotId) {
-            toast({ title: "Chưa chọn lô thành phẩm", description: "Vui lòng chọn một lô thành phẩm nguồn.", variant: "destructive" });
+        if (!w || w <= 0) {
+            toast({ title: "Khối lượng không hợp lệ", description: "Vui lòng nhập khối lượng lô xuất.", variant: "destructive" });
             return;
         }
 
@@ -197,7 +191,7 @@ export function ProcessingShipmentsView({
                 body: JSON.stringify({
                     shipmentCode,
                     finishedProductLotId: selectedFinishedLotId,
-                    productName,
+                    productName: productName || selectedLot.productName,
                     weight: w,
                     boxCount: Number(boxCountInput) || undefined,
                     truckPlate,
@@ -223,7 +217,7 @@ export function ProcessingShipmentsView({
             const newRow: ShipmentItemRow = {
                 id: created.id,
                 shipmentCode: created.shipmentCode,
-                productName,
+                productName: productName || selectedLot.productName,
                 containerNumber,
                 sealNumber,
                 truckPlate,
@@ -237,9 +231,9 @@ export function ProcessingShipmentsView({
                 status: "DISPATCHED",
                 hasQrCode: true,
                 qrPublicToken: token,
-                farmName: selectedLot?.farmName || "Vườn sầu riêng liên kết",
-                regionCode: selectedLot?.regionCode || "MSVT-VN-DL",
-                rawLotCode: selectedLot?.rawLotCode || "NVL-001",
+                farmName: selectedLot.farmName || "Vườn sầu riêng liên kết",
+                regionCode: selectedLot.regionCode || "MSVT-VN-DL",
+                rawLotCode: selectedLot.rawLotCode || "NVL-001",
                 facilityName,
             };
 
@@ -463,7 +457,7 @@ export function ProcessingShipmentsView({
                             {filteredShipments.length === 0 && (
                                 <tr>
                                     <td colSpan={9} className="py-12 text-center text-xs text-slate-400">
-                                        Không tìm thấy lô xuất hàng nào. Bấm <b>"Tạo lô xuất hàng"</b> để bắt đầu.
+                                        Chưa có dữ liệu lô xuất hàng nào. Bấm <b>"Tạo lô xuất hàng"</b> để bắt đầu xuất lô và phát hành QR.
                                     </td>
                                 </tr>
                             )}
@@ -506,7 +500,9 @@ export function ProcessingShipmentsView({
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-700 mb-1">Lô thành phẩm đủ điều kiện xuất</label>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                                            Lô thành phẩm đủ điều kiện xuất <span className="text-rose-500">*</span>
+                                        </label>
                                         <select
                                             value={selectedFinishedLotId}
                                             onChange={(e) => {
@@ -517,17 +513,22 @@ export function ProcessingShipmentsView({
                                                     setProductName(found.productName);
                                                     setWeightInput(found.remainingWeight);
                                                     setBoxCountInput(Math.max(1, Math.round(found.remainingWeight / 18)));
+                                                } else {
+                                                    setProductName("");
+                                                    setWeightInput("");
+                                                    setBoxCountInput("");
                                                 }
                                             }}
                                             className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-900 focus:border-emerald-500 focus:outline-none"
                                         >
+                                            <option value="">-- Chọn lô thành phẩm để xuất hàng --</option>
                                             {availableFinishedLots.map((lot) => (
                                                 <option key={lot.id} value={lot.id}>
                                                     {lot.lotCode} — {lot.productName} ({lot.remainingWeight.toLocaleString("vi-VN")} kg) {lot.farmName ? `· ${lot.farmName}` : ""}
                                                 </option>
                                             ))}
                                             {availableFinishedLots.length === 0 && (
-                                                <option value="">Không có lô sẵn sàng</option>
+                                                <option value="" disabled>Không có lô thành phẩm sẵn sàng trong kho</option>
                                             )}
                                         </select>
                                     </div>
@@ -537,6 +538,7 @@ export function ProcessingShipmentsView({
                                             type="text"
                                             value={productName}
                                             onChange={(e) => setProductName(e.target.value)}
+                                            placeholder={selectedLot ? selectedLot.productName : "Chọn lô thành phẩm để lấy tên sản phẩm..."}
                                             className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
                                         />
                                     </div>
@@ -551,6 +553,7 @@ export function ProcessingShipmentsView({
                                                     const w = Number(e.target.value);
                                                     if (w > 0) setBoxCountInput(Math.max(1, Math.round(w / 18)));
                                                 }}
+                                                placeholder={selectedLot ? String(selectedLot.remainingWeight) : "0"}
                                                 className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
                                             />
                                         </div>
@@ -560,6 +563,7 @@ export function ProcessingShipmentsView({
                                                 type="number"
                                                 value={boxCountInput}
                                                 onChange={(e) => setBoxCountInput(e.target.value)}
+                                                placeholder="0"
                                                 className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
                                             />
                                         </div>
@@ -676,60 +680,97 @@ export function ProcessingShipmentsView({
                                 </div>
                             </div>
 
-                            {/* PHẦN 4: KHU VỰC QR TRUY XUẤT (LIVE PREVIEW & ĐỒNG THỜI PHÁT HÀNH) */}
-                            <div className={`rounded-2xl border-2 p-4 space-y-3 transition ${isFormReadyForQr ? "border-emerald-400 bg-emerald-50/40" : "border-slate-300 bg-slate-50/60"}`}>
+                            {/* PHẦN 4: KHU VỰC QR TRUY XUẤT (LIVE PREVIEW & LIÊN KẾT NGUỒN GỐC) */}
+                            <div className={`rounded-2xl border-2 p-4 space-y-3 transition ${selectedLot && isFormReadyForQr ? "border-emerald-400 bg-emerald-50/40" : "border-slate-300 bg-slate-50/60"}`}>
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                                         <QrCode className="h-4 w-4 text-emerald-600" />
                                         4. KHU VỰC QR TRUY XUẤT NGUỒN GỐC
                                     </h3>
-                                    {isFormReadyForQr ? (
+                                    {selectedLot && isFormReadyForQr ? (
                                         <span className="rounded-full bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 flex items-center gap-1">
                                             <CheckCircle2 className="h-3 w-3" /> Đủ thông tin · Sẵn sàng phát hành
                                         </span>
+                                    ) : !selectedLot ? (
+                                        <span className="rounded-full bg-amber-100 border border-amber-300 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
+                                            Chưa chọn lô thành phẩm
+                                        </span>
                                     ) : (
                                         <span className="rounded-full bg-amber-100 border border-amber-300 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
-                                            Chưa phát hành (Cần chọn lô & nhập thông tin)
+                                            Chưa đủ thông tin vận chuyển / điểm đến
                                         </span>
                                     )}
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3 items-center">
                                     {/* Cột trái: QR Code Preview */}
-                                    <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-3 text-center">
-                                        <img
-                                            src={liveQrImage}
-                                            alt={`QR Preview ${shipmentCode}`}
-                                            className="h-32 w-32 rounded-lg object-contain"
-                                        />
-                                        <span className="mt-2 font-mono text-[11px] font-black text-slate-900">{shipmentCode}</span>
-                                        <span className="text-[10px] text-slate-400">Tem truy xuất điện tử</span>
+                                    <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-3 text-center min-h-[160px]">
+                                        {selectedLot ? (
+                                            <>
+                                                <img
+                                                    src={liveQrImage}
+                                                    alt={`QR Preview ${shipmentCode}`}
+                                                    className="h-32 w-32 rounded-lg object-contain"
+                                                />
+                                                <span className="mt-2 font-mono text-[11px] font-black text-slate-900">{shipmentCode}</span>
+                                                <span className="text-[10px] text-slate-400">Tem truy xuất điện tử</span>
+                                            </>
+                                        ) : (
+                                            <div className="py-4 space-y-2 text-slate-400">
+                                                <QrCode className="h-16 w-16 mx-auto opacity-30" />
+                                                <span className="block font-mono text-[11px] font-bold text-slate-400">Chưa phát hành</span>
+                                                <span className="block text-[10px] text-slate-400">Chọn lô thành phẩm để xem mã QR</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Cột phải: Chuỗi truy xuất liên kết */}
                                     <div className="md:col-span-2 space-y-2 text-xs">
                                         <div className="grid grid-cols-2 gap-2">
                                             <div className="rounded-xl bg-white p-2.5 border border-slate-200">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Trees className="h-3 w-3 text-emerald-600" /> Farm / Vùng trồng</p>
-                                                <p className="font-bold text-slate-900 mt-0.5">{selectedLot?.farmName || "Vườn sầu riêng liên kết"}</p>
-                                                <p className="text-[10px] text-emerald-700 font-semibold">{selectedLot?.regionCode || "MSVT-VN-DL-0089"}</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                                                    <Trees className="h-3 w-3 text-emerald-600" /> Farm / Vùng trồng
+                                                </p>
+                                                {selectedLot ? (
+                                                    <>
+                                                        <p className="font-bold text-slate-900 mt-0.5">{selectedLot.farmName || "Vườn liên kết"}</p>
+                                                        <p className="text-[10px] text-emerald-700 font-semibold">{selectedLot.regionCode || "MSVT-VN-DL-0089"}</p>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <p className="font-semibold text-slate-400 mt-0.5">— (Chưa chọn lô thành phẩm)</p>
+                                                        <p className="text-[10px] text-slate-400">—</p>
+                                                    </>
+                                                )}
                                             </div>
 
                                             <div className="rounded-xl bg-white p-2.5 border border-slate-200">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Building2 className="h-3 w-3 text-emerald-600" /> Cơ sở chế biến & đóng gói</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                                                    <Building2 className="h-3 w-3 text-emerald-600" /> Cơ sở chế biến & đóng gói
+                                                </p>
                                                 <p className="font-bold text-slate-900 mt-0.5">{facilityName}</p>
                                                 <p className="text-[10px] text-slate-500">Mã CS: CS-TV-001</p>
                                             </div>
                                         </div>
 
                                         <div className="rounded-xl bg-white p-2.5 border border-slate-200 space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase">Tóm tắt lô xuất</p>
-                                            <p className="font-medium text-slate-800">
-                                                Container: <span className="font-mono font-bold text-slate-900">{containerNumber || "TEMU-..."}</span> · Seal: <span className="font-mono font-bold text-slate-900">{sealNumber || "SL-..."}</span> · Xe: <span className="font-mono font-bold text-slate-900">{truckPlate || "51D-..."}</span>
-                                            </p>
-                                            <p className="text-[11px] text-emerald-700 font-bold">
-                                                {isFormReadyForQr ? "✅ Chuỗi truy xuất hợp lệ: Farm ➔ Tiếp nhận ➔ Đóng gói ➔ Xuất khẩu." : "⚠️ Vui lòng điền đủ container và đích xuất để phát hành QR."}
-                                            </p>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase">Tóm tắt chuỗi truy xuất nguồn gốc</p>
+                                            {selectedLot ? (
+                                                <>
+                                                    <p className="font-medium text-slate-800">
+                                                        Lô nguồn: <span className="font-mono font-bold text-slate-900">{selectedLot.lotCode}</span> ({selectedLot.productName}) · Xe: <span className="font-mono font-bold text-slate-900">{truckPlate || "—"}</span>
+                                                    </p>
+                                                    <p className="text-[11px] text-emerald-700 font-bold">
+                                                        {isFormReadyForQr
+                                                            ? `✅ Chuỗi truy xuất hợp lệ: ${selectedLot.farmName || "Farm"} ➔ Tiếp nhận & Phân loại ➔ Đóng gói ➔ Xuất khẩu.`
+                                                            : "⚠️ Vui lòng điền đủ khối lượng xuất, container và điểm đến."}
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                <p className="text-[11px] text-amber-700 font-bold">
+                                                    ⚠️ Chưa liên kết nguồn gốc. Vui lòng chọn lô thành phẩm từ kho ở Phần 1 để hệ thống kết nối chuỗi dữ liệu vườn / Farm.
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -749,7 +790,7 @@ export function ProcessingShipmentsView({
                             <Button
                                 type="button"
                                 onClick={handleCreateShipment}
-                                disabled={submitting || !isFormReadyForQr}
+                                disabled={submitting || !selectedLot || !isFormReadyForQr}
                                 className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft disabled:opacity-50"
                             >
                                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Tạo lô & Phát hành QR"}

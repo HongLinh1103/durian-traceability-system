@@ -149,6 +149,43 @@ export default async function Page() {
                 rawLotCode: raw?.lotCode || "NVL-001",
             };
         });
+
+        // If no available finished lots in database, provide available lots ready for export from Processing
+        if (availableLots.length === 0) {
+            availableLots = [
+                {
+                    id: "demo-fp-001",
+                    lotCode: "FP-FRESH-20260830-001",
+                    productName: "Sầu riêng tươi xuất khẩu",
+                    remainingWeight: 3100,
+                    packaging: "Thùng 5-6 trái / 18kg",
+                    farmName: "Hợp tác xã Sầu riêng Tân Phú",
+                    regionCode: "MSVT-VN-DN-0115",
+                    rawLotCode: "TH-20260829-002",
+                },
+                {
+                    id: "demo-fp-002",
+                    lotCode: "FP-FRESH-20260831-002",
+                    productName: "Sầu riêng tươi xuất khẩu",
+                    remainingWeight: 2200,
+                    packaging: "Thùng 5-6 trái / 18kg",
+                    farmName: "Nông trại Sầu riêng Hoàng Anh",
+                    regionCode: "MSVT-VN-TG-0042",
+                    rawLotCode: "TH-20260830-004",
+                },
+                {
+                    id: "demo-pb-001",
+                    lotCode: "PB-20260830-001",
+                    productName: "Cơm sầu riêng bóc múi",
+                    remainingWeight: 326,
+                    packaging: "Khay hút chân không 500g",
+                    farmName: "Hợp tác xã Sầu riêng Tân Phú",
+                    regionCode: "MSVT-VN-DN-0115",
+                    rawLotCode: "TH-20260829-002",
+                },
+            ];
+        }
+        // Note: shipments array stays as queried (empty [] if no shipments created yet)
     } catch (err) {
         console.error("Error loading processing shipments page:", err);
     }

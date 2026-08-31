@@ -162,6 +162,82 @@ export default async function Page() {
                 });
             });
         }
+
+        // If no records in database, provide realistic demo records for both tabs
+        if (freshItems.length === 0 && processedItems.length === 0) {
+            const now = new Date();
+            const d1 = new Date(now.getTime() - 4 * 3600000);
+            const d2 = new Date(now.getTime() - 20 * 3600000);
+            const d3 = new Date(now.getTime() - 44 * 3600000);
+
+            freshItems = [
+                {
+                    id: "demo-fp-001",
+                    code: "FP-FRESH-20260830-001",
+                    sourceRawCode: "TH-20260829-002",
+                    rawLotId: "demo-raw-003",
+                    farmName: "Hợp tác xã Sầu riêng Tân Phú",
+                    inputWeight: 3100,
+                    outputWeight: 3100,
+                    packagingDate: d3,
+                    boxCount: 172,
+                    packagingSpec: "Thùng 5-6 trái / 18kg",
+                    status: "READY_FOR_EXPORT",
+                },
+                {
+                    id: "demo-fp-002",
+                    code: "FP-FRESH-20260831-002",
+                    sourceRawCode: "TH-20260830-004",
+                    rawLotId: "demo-raw-002",
+                    farmName: "Nông trại Sầu riêng Hoàng Anh",
+                    inputWeight: 2200,
+                    outputWeight: 2200,
+                    packagingDate: d2,
+                    boxCount: 122,
+                    packagingSpec: "Thùng 5-6 trái / 18kg",
+                    status: "READY_FOR_EXPORT",
+                },
+                {
+                    id: "demo-pk-003",
+                    code: "PK-TH-20260831-005",
+                    sourceRawCode: "TH-20260831-001",
+                    rawLotId: "demo-harvest-001",
+                    farmName: "Vườn sầu riêng Minh Phát",
+                    inputWeight: 1800,
+                    outputWeight: 1800,
+                    packagingDate: d1,
+                    boxCount: 100,
+                    packagingSpec: "Thùng 5-6 trái / 18kg",
+                    status: "PENDING_PACKAGING",
+                },
+            ];
+
+            processedItems = [
+                {
+                    id: "demo-pb-001",
+                    code: "PB-20260830-001",
+                    sourceRawCode: "TH-20260829-002",
+                    rawLotId: "demo-raw-003",
+                    farmName: "Hợp tác xã Sầu riêng Tân Phú",
+                    method: "Bóc múi / Tách múi",
+                    inputWeight: 1020,
+                    outputProduct: "Cơm sầu riêng bóc múi (Khay 500g)",
+                    outputWeight: 326,
+                    status: "COMPLETED",
+                },
+                {
+                    id: "demo-proc-002",
+                    code: "PROC-TH-20260830-004",
+                    sourceRawCode: "TH-20260830-004",
+                    rawLotId: "demo-raw-002",
+                    farmName: "Nông trại Sầu riêng Hoàng Anh",
+                    method: "Đông lạnh (IQF)",
+                    inputWeight: 750,
+                    outputProduct: "Sầu riêng cấp đông IQF",
+                    status: "PENDING",
+                },
+            ];
+        }
     } catch (err) {
         console.error("Error loading processing production page:", err);
     }
