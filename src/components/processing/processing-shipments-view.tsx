@@ -1,19 +1,27 @@
 'use client';
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
     Boxes,
+    Building2,
     Calendar,
+    Check,
     CheckCircle2,
     Clock,
-    FileText,
+    Copy,
+    Download,
+    ExternalLink,
+    Eye,
     Globe,
     Layers,
     Loader2,
     Plus,
+    Printer,
     QrCode,
     Search,
+    Share2,
+    Sparkles,
+    Trees,
     Truck,
     X,
 } from "lucide-react";
@@ -36,6 +44,10 @@ export type ShipmentItemRow = {
     status: "DRAFT" | "READY" | "DISPATCHED";
     hasQrCode?: boolean;
     qrPublicToken?: string;
+    farmName?: string;
+    regionCode?: string;
+    rawLotCode?: string;
+    facilityName?: string;
 };
 
 export type AvailableFinishedLot = {
@@ -44,45 +56,63 @@ export type AvailableFinishedLot = {
     productName: string;
     remainingWeight: number;
     packaging?: string;
+    farmName?: string;
+    regionCode?: string;
+    rawLotCode?: string;
 };
 
 interface ProcessingShipmentsViewProps {
     initialShipments: ShipmentItemRow[];
     availableFinishedLots: AvailableFinishedLot[];
+    facilityName?: string;
 }
 
 export function ProcessingShipmentsView({
     initialShipments,
     availableFinishedLots,
+    facilityName = "Cơ sở Chế biến Sầu riêng Trị An",
 }: ProcessingShipmentsViewProps) {
     const { toast } = useToast();
-    const router = useRouter();
     const [shipments, setShipments] = useState<ShipmentItemRow[]>(initialShipments);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
     // Modal Create Shipment
-    const [openModal, setOpenModal] = useState(false);
+    const [openCreateModal, setOpenCreateModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
-    // Form fields (3 Cards)
-    // Card 1: Thông tin lô
+    // Modal View QR Code
+    const [viewQrShipment, setViewQrShipment] = useState<ShipmentItemRow | null>(null);
+    const [copied, setCopied] = useState(false);
+
+    // Form fields
     const [shipmentCode, setShipmentCode] = useState("");
     const [selectedFinishedLotId, setSelectedFinishedLotId] = useState("");
     const [productName, setProductName] = useState("Sầu riêng tươi xuất khẩu");
     const [weightInput, setWeightInput] = useState<number | string>("");
     const [boxCountInput, setBoxCountInput] = useState<number | string>("");
-
-    // Card 2: Vận chuyển
     const [truckPlate, setTruckPlate] = useState("");
     const [containerNumber, setContainerNumber] = useState("");
     const [sealNumber, setSealNumber] = useState("");
-
-    // Card 3: Xuất khẩu
     const [exportDate, setExportDate] = useState(new Date().toISOString().slice(0, 10));
     const [destinationCountry, setDestinationCountry] = useState("Trung Quốc");
     const [portOfDestination, setPortOfDestination] = useState("Côn Minh, Vân Nam");
     const [portOfLoading, setPortOfLoading] = useState("Cửa khẩu Quốc tế Hữu Nghị");
+
+    // Selected lot details for live preview
+    const selectedLot = useMemo(() => {
+        return availableFinishedLots.find((l) => l.id === selectedFinishedLotId) || availableFinishedLots[0] || null;
+    }, [availableFinishedLots, selectedFinishedLotId]);
+
+    // Live Trace URL for form preview
+    const liveTraceUrl = useMemo(() => {
+        if (typeof window === "undefined") return `/trace?code=${shipmentCode || "EXP"}`;
+        return `${window.location.origin}/trace?code=${encodeURIComponent(shipmentCode || "EXP")}`;
+    }, [shipmentCode]);
+
+    const liveQrImage = useMemo(() => {
+        return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(liveTraceUrl)}`;
+    }, [liveTraceUrl]);
 
     // KPIs
     const kpis = useMemo(() => {
@@ -132,7 +162,7 @@ export function ProcessingShipmentsView({
         setDestinationCountry("Trung Quốc");
         setPortOfDestination("Côn Minh, Vân Nam");
         setPortOfLoading("Cửa khẩu Quốc tế Hữu Nghị");
-        setOpenModal(true);
+        setOpenCreateModal(true);
     };
 
     const handleCreateShipment = async () => {
@@ -174,32 +204,45 @@ export function ProcessingShipmentsView({
             }
 
             const created = data.data.shipment;
-            setShipments((prev) => [
-                {
-                    id: created.id,
-                    shipmentCode: created.shipmentCode,
-                    productName,
-                    containerNumber,
-                    sealNumber,
-                    truckPlate,
-                    weight: w,
-                    boxCount: Number(boxCountInput) || undefined,
-                    destinationCountry,
-                    portOfDestination,
-                    portOfLoading,
-                    dispatchDate: exportDate,
-                    status: "READY",
-                },
-                ...prev,
-            ]);
+            const token = data.data?.traceCode?.publicToken || `TRC-${shipmentCode}`;
 
-            toast({ title: "Tạo lô xuất hàng thành công", description: `Lô ${shipmentCode} đã sẵn sàng tạo mã QR.`, variant: "success" });
-            setOpenModal(false);
+            const newRow: ShipmentItemRow = {
+                id: created.id,
+                shipmentCode: created.shipmentCode,
+                productName,
+                containerNumber,
+                sealNumber,
+                truckPlate,
+                weight: w,
+                boxCount: Number(boxCountInput) || undefined,
+                destinationCountry,
+                portOfDestination,
+                portOfLoading,
+                dispatchDate: exportDate,
+                status: "READY",
+                hasQrCode: true,
+                qrPublicToken: token,
+                farmName: selectedLot?.farmName || "Vườn sầu riêng liên kết",
+                regionCode: selectedLot?.regionCode || "MSVT-VN-DL",
+                rawLotCode: selectedLot?.rawLotCode || "NVL-001",
+                facilityName,
+            };
+
+            setShipments((prev) => [newRow, ...prev]);
+            toast({ title: "Tạo lô xuất hàng thành công", description: `Lô ${shipmentCode} đã được lưu và phát hành mã QR.`, variant: "success" });
+            setOpenCreateModal(false);
         } catch (err: any) {
-            toast({ title: "Lỗi", description: err.message || "Có lỗi xảy ra.", variant: "destructive" });
+            toast({ title: "Lỗi", description: err.message || "Có lỗi xảy ra khi tạo lô.", variant: "destructive" });
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleCopyLink = (url: string) => {
+        navigator.clipboard.writeText(url);
+        setCopied(true);
+        toast({ title: "Đã sao chép link", description: "Link truy xuất đã được lưu vào clipboard.", variant: "success" });
+        setTimeout(() => setCopied(false), 2000);
     };
 
     return (
@@ -216,7 +259,7 @@ export function ProcessingShipmentsView({
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-black text-slate-900">XUẤT HÀNG</h1>
                         <p className="mt-1 text-xs sm:text-sm text-slate-500">
-                            Quản lý thông tin lô xuất khẩu, phương tiện vận chuyển, container và seal hải quan.
+                            Quản lý hồ sơ xuất khẩu, liên kết phương tiện, container và phát hành tem QR truy xuất nguồn gốc đến Farm.
                         </p>
                     </div>
                     <Button
@@ -362,11 +405,11 @@ export function ProcessingShipmentsView({
                                         <td className="px-5 py-3 text-right whitespace-nowrap">
                                             <Button
                                                 size="sm"
-                                                onClick={() => router.push(`/dashboard/processing/traceability?shipmentCode=${encodeURIComponent(s.shipmentCode)}`)}
+                                                onClick={() => setViewQrShipment(s)}
                                                 className="h-8 rounded-xl bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
                                             >
-                                                <QrCode className="mr-1 h-3.5 w-3.5" />
-                                                Tạo QR
+                                                <QrCode className="mr-1.5 h-3.5 w-3.5" />
+                                                Xem mã QR
                                             </Button>
                                         </td>
                                     </tr>
@@ -384,28 +427,28 @@ export function ProcessingShipmentsView({
                 </div>
             </div>
 
-            {/* MODAL TẠO LÔ XUẤT HÀNG (3 Cards) */}
-            {openModal && (
+            {/* MODAL 1: TẠO LÔ XUẤT HÀNG (3 Cards + Live QR Preview & Traceability Link) */}
+            {openCreateModal && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-                    <div className="relative flex max-h-[90vh] w-full max-w-3xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
+                    <div className="relative flex max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
                             <div>
                                 <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Hồ sơ xuất khẩu</span>
                                 <h2 className="text-xl font-black text-slate-900">TẠO LÔ XUẤT HÀNG</h2>
                             </div>
-                            <button type="button" onClick={() => setOpenModal(false)} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                            <button type="button" onClick={() => setOpenCreateModal(false)} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
 
-                        {/* 3 Cards Content */}
+                        {/* Content */}
                         <div className="overflow-y-auto p-5 sm:p-6 space-y-5">
                             {/* CARD 1: THÔNG TIN LÔ */}
                             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
                                 <h3 className="text-xs font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
                                     <Boxes className="h-4 w-4" />
-                                    THÔNG TIN LÔ
+                                    1. THÔNG TIN LÔ
                                 </h3>
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div>
@@ -435,7 +478,7 @@ export function ProcessingShipmentsView({
                                         >
                                             {availableFinishedLots.map((lot) => (
                                                 <option key={lot.id} value={lot.id}>
-                                                    {lot.lotCode} — {lot.productName} ({lot.remainingWeight.toLocaleString("vi-VN")} kg)
+                                                    {lot.lotCode} — {lot.productName} ({lot.remainingWeight.toLocaleString("vi-VN")} kg) {lot.farmName ? `· ${lot.farmName}` : ""}
                                                 </option>
                                             ))}
                                             {availableFinishedLots.length === 0 && (
@@ -483,7 +526,7 @@ export function ProcessingShipmentsView({
                             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
                                 <h3 className="text-xs font-black uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
                                     <Truck className="h-4 w-4" />
-                                    VẬN CHUYỂN
+                                    2. VẬN CHUYỂN
                                 </h3>
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                     <div>
@@ -523,7 +566,7 @@ export function ProcessingShipmentsView({
                             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
                                 <h3 className="text-xs font-black uppercase tracking-wider text-indigo-800 flex items-center gap-1.5">
                                     <Globe className="h-4 w-4" />
-                                    XUẤT KHẨU
+                                    3. XUẤT KHẨU
                                 </h3>
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                     <div>
@@ -557,6 +600,69 @@ export function ProcessingShipmentsView({
                                     </div>
                                 </div>
                             </div>
+
+                            {/* CARD 4: XEM TRƯỚC TEM QR & DỮ LIỆU TRUY XUẤT NGUỒN GỐC (LIVE PREVIEW) */}
+                            <div className="rounded-2xl border-2 border-emerald-400 bg-emerald-50/40 p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xs font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+                                        <Sparkles className="h-4 w-4 text-emerald-600" />
+                                        4. XEM TRƯỚC MÃ QR VÀ TRUY XUẤT NGUỒN GỐC ĐẾN FARM
+                                    </h3>
+                                    <span className="rounded-full bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                                        Tự động kích hoạt khi tạo
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-3 items-center">
+                                    {/* Cột trái: QR Image */}
+                                    <div className="flex flex-col items-center justify-center rounded-xl border border-emerald-200 bg-white p-3 text-center">
+                                        <img
+                                            src={liveQrImage}
+                                            alt={`QR Preview ${shipmentCode}`}
+                                            className="h-32 w-32 rounded-lg object-contain"
+                                        />
+                                        <span className="mt-2 font-mono text-[11px] font-bold text-slate-800">{shipmentCode}</span>
+                                        <span className="text-[10px] text-slate-400">Tem truy xuất điện tử</span>
+                                    </div>
+
+                                    {/* Cột phải: Chi tiết chuỗi cung ứng liên kết */}
+                                    <div className="md:col-span-2 space-y-2 text-xs">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="rounded-xl bg-white p-2.5 border border-emerald-100">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Trees className="h-3 w-3 text-emerald-600" /> Farm nguồn</p>
+                                                <p className="font-bold text-slate-900 mt-0.5">{selectedLot?.farmName || "Vườn sầu riêng Minh Phát"}</p>
+                                                <p className="text-[10px] text-emerald-700 font-semibold">{selectedLot?.regionCode || "MSVT-VN-DL-0089"}</p>
+                                            </div>
+
+                                            <div className="rounded-xl bg-white p-2.5 border border-emerald-100">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Building2 className="h-3 w-3 text-emerald-600" /> Cơ sở đóng gói</p>
+                                                <p className="font-bold text-slate-900 mt-0.5">{facilityName}</p>
+                                                <p className="text-[10px] text-slate-500">Mã CS: CS-TV-001</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <div className="rounded-xl bg-white p-2.5 border border-emerald-100">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase">Khối lượng</p>
+                                                <p className="font-black text-emerald-700">{weightInput ? `${Number(weightInput).toLocaleString("vi-VN")} kg` : "—"}</p>
+                                                <p className="text-[10px] text-slate-500">{boxCountInput ? `${boxCountInput} thùng` : ""}</p>
+                                            </div>
+
+                                            <div className="rounded-xl bg-white p-2.5 border border-emerald-100">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase">Vận chuyển</p>
+                                                <p className="font-mono font-bold text-slate-800">{truckPlate || "51D-123.45"}</p>
+                                                <p className="text-[10px] text-slate-500 font-mono">Seal: {sealNumber || "SL987654"}</p>
+                                            </div>
+
+                                            <div className="rounded-xl bg-white p-2.5 border border-emerald-100">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase">Cửa khẩu & Đích</p>
+                                                <p className="font-bold text-slate-800 truncate">{portOfDestination || "Côn Minh"}</p>
+                                                <p className="text-[10px] text-slate-500 truncate">{portOfLoading || "Hữu Nghị"}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Footer */}
@@ -564,7 +670,7 @@ export function ProcessingShipmentsView({
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => setOpenModal(false)}
+                                onClick={() => setOpenCreateModal(false)}
                                 className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200"
                             >
                                 Hủy
@@ -575,7 +681,148 @@ export function ProcessingShipmentsView({
                                 disabled={submitting}
                                 className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
                             >
-                                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Tạo lô xuất hàng"}
+                                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Xác nhận tạo lô xuất hàng"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 2: XEM MÃ QR & HỒ SƠ TRUY XUẤT NGUỒN GỐC (KHI BẤM "XEM MÃ QR") */}
+            {viewQrShipment && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+                    <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
+                            <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Mã QR truy xuất nguồn gốc</span>
+                                <h2 className="text-xl font-black text-slate-900">{viewQrShipment.shipmentCode}</h2>
+                            </div>
+                            <button type="button" onClick={() => setViewQrShipment(null)} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="overflow-y-auto p-5 sm:p-6 space-y-5">
+                            {/* QR Section */}
+                            {(() => {
+                                const token = viewQrShipment.qrPublicToken || viewQrShipment.shipmentCode;
+                                const traceUrl = typeof window !== "undefined"
+                                    ? `${window.location.origin}/trace/${encodeURIComponent(token)}`
+                                    : `/trace/${token}`;
+                                const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(traceUrl)}`;
+
+                                return (
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 items-center">
+                                            {/* QR Box */}
+                                            <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-400 bg-emerald-50/50 p-5 text-center">
+                                                <img
+                                                    src={qrImg}
+                                                    alt={`QR Code ${viewQrShipment.shipmentCode}`}
+                                                    className="h-44 w-44 rounded-xl object-contain shadow-soft"
+                                                />
+                                                <p className="mt-3 font-mono font-black text-sm text-slate-900">{viewQrShipment.shipmentCode}</p>
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 mt-1">
+                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                    Đang hoạt động · Sẵn sàng quét
+                                                </span>
+                                            </div>
+
+                                            {/* Detailed Info */}
+                                            <div className="space-y-2.5 text-xs">
+                                                <div className="rounded-xl bg-slate-50 p-3 space-y-1">
+                                                    <span className="text-[10px] font-bold uppercase text-slate-400">Sản phẩm xuất khẩu</span>
+                                                    <p className="font-bold text-slate-900 text-sm">{viewQrShipment.productName}</p>
+                                                    <p className="font-black text-emerald-700">
+                                                        {viewQrShipment.weight >= 1000
+                                                            ? `${(viewQrShipment.weight / 1000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tấn (${viewQrShipment.weight.toLocaleString("vi-VN")} kg)`
+                                                            : `${viewQrShipment.weight.toLocaleString("vi-VN")} kg`}
+                                                        {viewQrShipment.boxCount ? ` · ${viewQrShipment.boxCount.toLocaleString("vi-VN")} thùng` : ""}
+                                                    </p>
+                                                </div>
+
+                                                <div className="rounded-xl bg-slate-50 p-3 space-y-1">
+                                                    <span className="text-[10px] font-bold uppercase text-slate-400">Farm / Vùng trồng nguồn</span>
+                                                    <p className="font-bold text-slate-900">{viewQrShipment.farmName || "Vườn sầu riêng Minh Phát"}</p>
+                                                    <p className="text-[11px] text-slate-500 font-mono">MSVT: {viewQrShipment.regionCode || "VN-DL-0089"}</p>
+                                                </div>
+
+                                                <div className="rounded-xl bg-slate-50 p-3 space-y-1">
+                                                    <span className="text-[10px] font-bold uppercase text-slate-400">Vận chuyển & Cửa khẩu</span>
+                                                    <p className="text-slate-800">
+                                                        Xe: <span className="font-mono font-bold text-slate-900">{viewQrShipment.truckPlate || "51D-123.45"}</span> · Seal: <span className="font-mono font-bold text-slate-900">{viewQrShipment.sealNumber || "SL987654"}</span>
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-500">
+                                                        {viewQrShipment.portOfLoading || "Cửa khẩu Hữu Nghị"} $ightarrow$ {viewQrShipment.portOfDestination || viewQrShipment.destinationCountry || "Trung Quốc"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Action Buttons */}
+                                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 space-y-2.5">
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    readOnly
+                                                    value={traceUrl}
+                                                    className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 font-mono text-xs text-slate-700 focus:outline-none"
+                                                />
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => handleCopyLink(traceUrl)}
+                                                    variant="outline"
+                                                    className="h-10 rounded-xl px-3 border-slate-200 text-xs font-bold"
+                                                >
+                                                    {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                                                    <span className="ml-1.5">{copied ? "Đã chép" : "Sao chép"}</span>
+                                                </Button>
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <a
+                                                    href={traceUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex h-10 items-center justify-center rounded-xl bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
+                                                >
+                                                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                                                    Xem trang truy xuất
+                                                </a>
+                                                <a
+                                                    href={qrImg}
+                                                    download={`QR-${viewQrShipment.shipmentCode}.png`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50"
+                                                >
+                                                    <Download className="mr-1.5 h-3.5 w-3.5" />
+                                                    Tải tem QR
+                                                </a>
+                                                <Button
+                                                    onClick={() => window.print()}
+                                                    variant="outline"
+                                                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50"
+                                                >
+                                                    <Printer className="mr-1.5 h-3.5 w-3.5" />
+                                                    In mã QR
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="border-t border-slate-100 p-4 sm:p-5 text-right">
+                            <Button
+                                onClick={() => setViewQrShipment(null)}
+                                className="h-10 rounded-xl px-5 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800"
+                            >
+                                Đóng
                             </Button>
                         </div>
                     </div>

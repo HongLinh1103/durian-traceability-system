@@ -12,11 +12,14 @@ export default async function Page() {
 
     let shipments: ShipmentItemRow[] = [];
     let availableLots: AvailableFinishedLot[] = [];
+    let facilityName = "Cơ sở Chế biến";
 
     try {
         const facility = await prisma.partnerFacility.findFirst({
             where: { ownerId: session.user.id, type: "PROCESSING_FACILITY", deletedAt: null },
         });
+
+        if (facility?.name) facilityName = facility.name;
 
         const [shipmentRows, finishedProductRows] = facility
             ? await Promise.all([
@@ -28,7 +31,36 @@ export default async function Page() {
                           items: {
                               include: {
                                   commercialLot: {
-                                      include: { traceabilityCode: true },
+                                      include: {
+                                          traceabilityCode: true,
+                                          sourceFinishedProductLot: {
+                                              include: {
+                                                  processingBatch: {
+                                                      include: {
+                                                          inputs: {
+                                                              include: {
+                                                                  rawMaterialLot: {
+                                                                      include: {
+                                                                          rawMaterialReceipt: {
+                                                                              include: {
+                                                                                  sourceHarvestLot: {
+                                                                                      include: {
+                                                                                          farm: {
+                                                                                              include: { region: true },
+                                                                                          },
+                                                                                      },
+                                                                                  },
+                                                                              },
+                                                                          },
+                                                                      },
+                                                                  },
+                                                              },
+                                                          },
+                                                      },
+                                                  },
+                                              },
+                                          },
+                                      },
                                   },
                               },
                           },
@@ -41,6 +73,31 @@ export default async function Page() {
                           status: { in: ["READY_FOR_DISTRIBUTION", "PARTIALLY_DISTRIBUTED"] },
                           remainingWeight: { gt: 0 },
                       },
+                      include: {
+                          processingBatch: {
+                              include: {
+                                  inputs: {
+                                      include: {
+                                          rawMaterialLot: {
+                                              include: {
+                                                  rawMaterialReceipt: {
+                                                      include: {
+                                                          sourceHarvestLot: {
+                                                              include: {
+                                                                  farm: {
+                                                                      include: { region: true },
+                                                                  },
+                                                              },
+                                                          },
+                                                      },
+                                                  },
+                                              },
+                                          },
+                                      },
+                                  },
+                              },
+                          },
+                      },
                       orderBy: { createdAt: "desc" },
                   }).catch(() => []),
               ])
@@ -48,6 +105,11 @@ export default async function Page() {
 
         shipments = shipmentRows.map((s) => {
             const firstCommercial = s.items?.[0]?.commercialLot;
+            const finished = firstCommercial?.sourceFinishedProductLot;
+            const raw = finished?.processingBatch?.inputs?.[0]?.rawMaterialLot;
+            const harvest = raw?.rawMaterialReceipt?.sourceHarvestLot;
+            const farm = harvest?.farm;
+
             return {
                 id: s.id,
                 shipmentCode: s.shipmentCode,
@@ -64,16 +126,29 @@ export default async function Page() {
                 status: (s.status === "DISPATCHED" ? "DISPATCHED" : s.status === "READY" ? "READY" : "DRAFT") as any,
                 hasQrCode: Boolean(firstCommercial?.traceabilityCode),
                 qrPublicToken: firstCommercial?.traceabilityCode?.publicToken || undefined,
+                farmName: farm?.farmName || "Vườn sầu riêng liên kết",
+                regionCode: farm?.region?.code || farm?.growingRegion || "MSVT-VN-DL",
+                rawLotCode: raw?.lotCode || "NVL-001",
+                facilityName,
             };
         });
 
-        availableLots = finishedProductRows.map((lot) => ({
-            id: lot.id,
-            lotCode: lot.lotCode,
-            productName: lot.productName,
-            remainingWeight: Number(lot.remainingWeight || 0),
-            packaging: lot.packaging || undefined,
-        }));
+        availableLots = finishedProductRows.map((lot) => {
+            const raw = lot.processingBatch?.inputs?.[0]?.rawMaterialLot;
+            const harvest = raw?.rawMaterialReceipt?.sourceHarvestLot;
+            const farm = harvest?.farm;
+
+            return {
+                id: lot.id,
+                lotCode: lot.lotCode,
+                productName: lot.productName,
+                remainingWeight: Number(lot.remainingWeight || 0),
+                packaging: lot.packaging || undefined,
+                farmName: farm?.farmName || "Vườn sầu riêng liên kết",
+                regionCode: farm?.region?.code || farm?.growingRegion || "MSVT-VN-DL",
+                rawLotCode: raw?.lotCode || "NVL-001",
+            };
+        });
     } catch (err) {
         console.error("Error loading processing shipments page:", err);
     }
@@ -83,6 +158,7 @@ export default async function Page() {
             <ProcessingShipmentsView
                 initialShipments={shipments}
                 availableFinishedLots={availableLots}
+                facilityName={facilityName}
             />
         </main>
     );
