@@ -2,14 +2,21 @@
 
 import { useMemo, useState } from "react";
 import {
+    AlertCircle,
     Boxes,
     Calendar,
     CheckCircle2,
     Clock,
+    FileText,
+    HelpCircle,
+    Info,
     Layers,
     Loader2,
+    Scale,
     Search,
     SlidersHorizontal,
+    Trees,
+    Truck,
     X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,19 +24,29 @@ import { useToast } from "@/components/ui/toast";
 
 export type RawMaterialItem = {
     id: string;
+    harvestId?: string;
+    rawLotId?: string;
     code: string;
-    sourceCode?: string;
+    receiptCode?: string;
     farmName: string;
+    regionCode?: string;
+    farmerName?: string;
+    farmerPhone?: string;
     variety: string;
-    supplierName?: string;
+    harvestDate: string | Date;
+    declaredWeight: number; // Nông dân khai báo
+    expectedPricePerKg?: number;
+    actualReceivedWeight: number; // Cơ sở thực nhận
+    weightDifference: number; // Chênh lệch (thực nhận - khai báo)
     receivedAt?: string | Date | null;
-    actualReceivedWeight: number;
-    currentWeight: number;
-    status: "PENDING_RECEIPT" | "PENDING_QC" | "AVAILABLE" | "PARTIALLY_USED" | "USED" | "REJECTED";
+    vehiclePlate?: string;
+    condition?: string;
+    note?: string;
+    status: "WAITING_RECEIPT" | "RECEIVED" | "WAITING_CLASSIFICATION" | "CLASSIFIED";
     direction: "UNCLASSIFIED" | "FRESH_EXPORT" | "PROCESSING" | "SPLIT";
     freshExportWeight?: number;
     processingWeight?: number;
-    qualityResult?: string | null;
+    rejectedWeight?: number;
 };
 
 export function ProcessingRawMaterialsView({ initialItems }: { initialItems: RawMaterialItem[] }) {
@@ -39,206 +56,863 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
     const [dateFilter, setDateFilter] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
     const [varietyFilter, setVarietyFilter] = useState<string>("ALL");
-    const [selectedItem, setSelectedItem] = useState<RawMaterialItem | null>(null);
-    const [directionMode, setDirectionMode] = useState<"FRESH_EXPORT" | "PROCESSING" | "SPLIT">("FRESH_EXPORT");
+
+    // Modal 1: TIẾP NHẬN HÀNG
+    const [receivingItem, setReceivingItem] = useState<RawMaterialItem | null>(null);
+    const [actualWeightInput, setActualWeightInput] = useState<number | string>("");
+    const [unitPriceInput, setUnitPriceInput] = useState<number | string>("");
+    const [receivedAtInput, setReceivedAtInput] = useState<string>("");
+    const [truckPlateInput, setTruckPlateInput] = useState<string>("");
+    const [conditionInput, setConditionInput] = useState<string>("Đạt chuẩn tươi mới, gai xanh cứng, cuống tươi");
+    const [receiveNoteInput, setReceiveNoteInput] = useState<string>("");
+    const [submittingReceive, setSubmittingReceive] = useState(false);
+
+    // Modal 2: PHÂN LOẠI LÔ
+    const [classifyingItem, setClassifyingItem] = useState<RawMaterialItem | null>(null);
     const [freshWeightInput, setFreshWeightInput] = useState<number | string>("");
     const [procWeightInput, setProcWeightInput] = useState<number | string>("");
-    const [noteInput, setNoteInput] = useState("");
-    const [submitting, setSubmitting] = useState(false);
+    const [rejectWeightInput, setRejectWeightInput] = useState<number | string>("");
+    const [classifyNoteInput, setClassifyNoteInput] = useState("");
+    const [submittingClassify, setSubmittingClassify] = useState(false);
 
+    // KPIs
     const kpis = useMemo(() => {
-        const waitingReceipt = items.filter((i) => i.status === "PENDING_RECEIPT").length;
-        const waitingClassification = items.filter((i) => ["PENDING_QC", "AVAILABLE"].includes(i.status) && i.direction === "UNCLASSIFIED").length;
-        const classified = items.filter((i) => i.direction !== "UNCLASSIFIED").length;
+        const waitingReceipt = items.filter((i) => i.status === "WAITING_RECEIPT").length;
+        const waitingClassification = items.filter((i) => i.status === "WAITING_CLASSIFICATION" || (i.status === "RECEIVED" && i.direction === "UNCLASSIFIED")).length;
+        const classified = items.filter((i) => i.status === "CLASSIFIED" || i.direction !== "UNCLASSIFIED").length;
         const todayStr = new Date().toISOString().slice(0, 10);
         const todayWeight = items
             .filter((i) => {
                 if (!i.receivedAt) return false;
-                try { return new Date(i.receivedAt).toISOString().slice(0, 10) === todayStr; } catch { return false; }
+                try {
+                    return new Date(i.receivedAt).toISOString().slice(0, 10) === todayStr;
+                } catch {
+                    return false;
+                }
             })
             .reduce((sum, i) => sum + (i.actualReceivedWeight || 0), 0);
+
         return { waitingReceipt, waitingClassification, classified, todayWeight };
     }, [items]);
 
+    // Filter items
     const filteredItems = useMemo(() => {
         return items.filter((item) => {
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase().trim();
-                const matchCode = item.code.toLowerCase().includes(q) || (item.sourceCode && item.sourceCode.toLowerCase().includes(q));
-                const matchFarm = item.farmName.toLowerCase().includes(q) || (item.supplierName && item.supplierName.toLowerCase().includes(q));
+                const matchCode = item.code.toLowerCase().includes(q) || (item.receiptCode && item.receiptCode.toLowerCase().includes(q));
+                const matchFarm = item.farmName.toLowerCase().includes(q) || (item.farmerName && item.farmerName.toLowerCase().includes(q)) || (item.regionCode && item.regionCode.toLowerCase().includes(q));
                 const matchVariety = item.variety.toLowerCase().includes(q);
                 if (!matchCode && !matchFarm && !matchVariety) return false;
             }
             if (dateFilter) {
-                if (!item.receivedAt) return false;
-                try { if (new Date(item.receivedAt).toISOString().slice(0, 10) !== dateFilter) return false; } catch { return false; }
+                const dateToCheck = item.receivedAt || item.harvestDate;
+                if (!dateToCheck) return false;
+                try {
+                    if (new Date(dateToCheck).toISOString().slice(0, 10) !== dateFilter) return false;
+                } catch {
+                    return false;
+                }
             }
             if (statusFilter !== "ALL") {
-                if (statusFilter === "PENDING_RECEIPT" && item.status !== "PENDING_RECEIPT") return false;
-                if (statusFilter === "WAITING_CLASSIFICATION" && !(["PENDING_QC", "AVAILABLE"].includes(item.status) && item.direction === "UNCLASSIFIED")) return false;
-                if (statusFilter === "CLASSIFIED" && item.direction === "UNCLASSIFIED") return false;
-                if (statusFilter === "REJECTED" && item.status !== "REJECTED") return false;
+                if (statusFilter === "WAITING_RECEIPT" && item.status !== "WAITING_RECEIPT") return false;
+                if (statusFilter === "WAITING_CLASSIFICATION" && item.status !== "WAITING_CLASSIFICATION" && !(item.status === "RECEIVED" && item.direction === "UNCLASSIFIED")) return false;
+                if (statusFilter === "CLASSIFIED" && item.status !== "CLASSIFIED" && item.direction === "UNCLASSIFIED") return false;
             }
             if (varietyFilter !== "ALL") {
-                if (varietyFilter === "Ri6" && !item.variety.toLowerCase().includes("ri6")) return false;
-                if (varietyFilter === "Monthong" && !item.variety.toLowerCase().includes("monthong") && !item.variety.toLowerCase().includes("dona")) return false;
-                if (varietyFilter === "Khác" && (item.variety.toLowerCase().includes("ri6") || item.variety.toLowerCase().includes("monthong") || item.variety.toLowerCase().includes("dona"))) return false;
+                const v = item.variety.toLowerCase();
+                if (varietyFilter === "Ri6" && !v.includes("ri6")) return false;
+                if (varietyFilter === "Monthong" && !v.includes("monthong") && !v.includes("dona")) return false;
+                if (varietyFilter === "Khác" && (v.includes("ri6") || v.includes("monthong") || v.includes("dona"))) return false;
             }
             return true;
         });
     }, [items, searchQuery, dateFilter, statusFilter, varietyFilter]);
 
-    const openClassifyDrawer = (item: RawMaterialItem) => {
-        setSelectedItem(item);
-        setDirectionMode(item.direction === "UNCLASSIFIED" ? "FRESH_EXPORT" : item.direction);
-        const maxW = item.currentWeight || item.actualReceivedWeight || 0;
-        setFreshWeightInput(item.freshExportWeight || maxW);
-        setProcWeightInput(item.processingWeight || 0);
-        setNoteInput("");
+    // Handler: Open Receive Drawer
+    const handleOpenReceive = (item: RawMaterialItem) => {
+        setReceivingItem(item);
+        setActualWeightInput(item.actualReceivedWeight || item.declaredWeight || "");
+        setUnitPriceInput(item.expectedPricePerKg || 85000);
+        const now = new Date();
+        const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        setReceivedAtInput(localIso);
+        setTruckPlateInput(item.vehiclePlate || "51D-123.45");
+        setConditionInput("Đạt chuẩn tươi mới, gai xanh cứng, cuống tươi");
+        setReceiveNoteInput("");
     };
 
-    const handleConfirmClassification = async () => {
-        if (!selectedItem) return;
-        const totalAvail = selectedItem.currentWeight || selectedItem.actualReceivedWeight || 0;
-        let freshW = 0;
-        let procW = 0;
-        if (directionMode === "FRESH_EXPORT") { freshW = totalAvail; procW = 0; }
-        else if (directionMode === "PROCESSING") { freshW = 0; procW = totalAvail; }
-        else {
-            freshW = Number(freshWeightInput) || 0;
-            procW = Number(procWeightInput) || 0;
-            if (freshW + procW <= 0) { toast({ title: "Khối lượng không hợp lệ", description: "Vui lòng nhập khối lượng cho ít nhất 1 nhánh.", variant: "destructive" }); return; }
-            if (freshW + procW > totalAvail + 0.01) { toast({ title: "Vượt quá khối lượng", description: `Tổng phân loại (${freshW + procW} kg) vượt quá khối lượng lô (${totalAvail} kg).`, variant: "destructive" }); return; }
+    // Live difference in Receive Modal
+    const liveDiff = useMemo(() => {
+        if (!receivingItem) return 0;
+        const actual = Number(actualWeightInput) || 0;
+        return actual - receivingItem.declaredWeight;
+    }, [receivingItem, actualWeightInput]);
+
+    // Handler: Confirm Receive
+    const handleConfirmReceive = async () => {
+        if (!receivingItem) return;
+        const actualWeight = Number(actualWeightInput);
+        if (!actualWeight || actualWeight <= 0) {
+            toast({ title: "Khối lượng không hợp lệ", description: "Vui lòng nhập khối lượng thực nhận lớn hơn 0.", variant: "destructive" });
+            return;
         }
-        setSubmitting(true);
+
+        const harvestId = receivingItem.harvestId || receivingItem.id.replace("harvest-", "");
+        setSubmittingReceive(true);
+
         try {
-            const res = await fetch(`/api/processing/raw-materials/${selectedItem.id}/classify`, {
+            const res = await fetch(`/api/harvests/${harvestId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "RECEIVE",
+                    receivedWeight: actualWeight,
+                    receivedAt: receivedAtInput ? new Date(receivedAtInput).toISOString() : new Date().toISOString(),
+                    weightDifferenceReason: liveDiff !== 0 ? `Chênh lệch ${liveDiff > 0 ? "+" : ""}${liveDiff} kg so với khai báo` : undefined,
+                    note: `${conditionInput} | Xe: ${truckPlateInput} | Đơn giá: ${unitPriceInput ? `${Number(unitPriceInput).toLocaleString("vi-VN")} đ/kg` : "—"}${receiveNoteInput ? ` | ${receiveNoteInput}` : ""}`,
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || "Không thể xác nhận tiếp nhận lô hàng.");
+            }
+
+            toast({
+                title: "Tiếp nhận hàng thành công",
+                description: `Đã tiếp nhận ${actualWeight.toLocaleString("vi-VN")} kg từ ${receivingItem.farmName}. Chuyển sang bước Phân loại.`,
+                variant: "success",
+            });
+
+            // Update local state: Transition to WAITING_CLASSIFICATION
+            setItems((prev) =>
+                prev.map((i) =>
+                    i.id === receivingItem.id
+                        ? {
+                              ...i,
+                              actualReceivedWeight: actualWeight,
+                              weightDifference: actualWeight - i.declaredWeight,
+                              receivedAt: receivedAtInput ? new Date(receivedAtInput) : new Date(),
+                              vehiclePlate: truckPlateInput,
+                              condition: conditionInput,
+                              status: "WAITING_CLASSIFICATION",
+                              direction: "UNCLASSIFIED",
+                          }
+                        : i
+                )
+            );
+
+            setReceivingItem(null);
+        } catch (err: any) {
+            toast({ title: "Lỗi tiếp nhận", description: err.message || "Có lỗi xảy ra.", variant: "destructive" });
+        } finally {
+            setSubmittingReceive(false);
+        }
+    };
+
+    // Handler: Open Classify Drawer
+    const handleOpenClassify = (item: RawMaterialItem) => {
+        setClassifyingItem(item);
+        const total = item.actualReceivedWeight || item.declaredWeight || 0;
+
+        if (item.freshExportWeight !== undefined || item.processingWeight !== undefined) {
+            setFreshWeightInput(item.freshExportWeight || 0);
+            setProcWeightInput(item.processingWeight || 0);
+            setRejectWeightInput(item.rejectedWeight || Math.max(0, total - ((item.freshExportWeight || 0) + (item.processingWeight || 0))));
+        } else {
+            // Default: 75% Fresh Export, 23% Processing, 2% Reject
+            const fresh = Math.round(total * 0.75);
+            const proc = Math.round(total * 0.23);
+            const rej = Math.max(0, total - (fresh + proc));
+            setFreshWeightInput(fresh);
+            setProcWeightInput(proc);
+            setRejectWeightInput(rej);
+        }
+        setClassifyNoteInput("");
+    };
+
+    // Live Classification Validation
+    const classificationValidation = useMemo(() => {
+        if (!classifyingItem) return { totalInput: 0, currentSum: 0, diff: 0, isValid: false, fresh: 0, proc: 0, rej: 0 };
+        const totalInput = classifyingItem.actualReceivedWeight || classifyingItem.declaredWeight || 0;
+        const fresh = Number(freshWeightInput) || 0;
+        const proc = Number(procWeightInput) || 0;
+        const rej = Number(rejectWeightInput) || 0;
+        const currentSum = fresh + proc + rej;
+        const diff = Number((currentSum - totalInput).toFixed(2));
+        const isValid = Math.abs(diff) <= 0.01 && currentSum > 0;
+
+        return { totalInput, currentSum, diff, isValid, fresh, proc, rej };
+    }, [classifyingItem, freshWeightInput, procWeightInput, rejectWeightInput]);
+
+    // Handler: Confirm Classification
+    const handleConfirmClassify = async () => {
+        if (!classifyingItem) return;
+        const { totalInput, currentSum, diff, isValid, fresh = 0, proc = 0, rej = 0 } = classificationValidation;
+
+        if (!isValid) {
+            toast({
+                title: "Tổng khối lượng chưa khớp",
+                description: `Tổng 3 phần (${currentSum.toLocaleString("vi-VN")} kg) phải bằng đúng khối lượng thực nhận (${totalInput.toLocaleString("vi-VN")} kg). Chênh lệch: ${diff > 0 ? `+${diff}` : diff} kg.`,
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setSubmittingClassify(true);
+        const lotId = classifyingItem.rawLotId || classifyingItem.id;
+
+        try {
+            const res = await fetch(`/api/processing/raw-materials/${lotId}/classify`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ freshExportWeight: freshW, processingWeight: procW, note: noteInput }),
+                body: JSON.stringify({
+                    freshExportWeight: fresh,
+                    processingWeight: proc,
+                    rejectedWeight: rej,
+                    note: classifyNoteInput,
+                }),
             });
+
             const data = await res.json();
-            if (!res.ok || !data.success) throw new Error(data.message || "Không thể lưu phân loại.");
-            toast({ title: "Phân loại thành công", description: `Đã phân loại lô ${selectedItem.code}.`, variant: "success" });
-            setItems((prev) => prev.map((i) => i.id === selectedItem.id ? { ...i, direction: freshW > 0 && procW > 0 ? "SPLIT" : freshW > 0 ? "FRESH_EXPORT" : "PROCESSING", freshExportWeight: freshW, processingWeight: procW, status: procW > 0 ? "AVAILABLE" : "USED" } : i));
-            setSelectedItem(null);
-        } catch (err: any) { toast({ title: "Lỗi", description: err.message || "Có lỗi xảy ra.", variant: "destructive" }); }
-        finally { setSubmitting(false); }
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || "Không thể lưu phân loại.");
+            }
+
+            toast({
+                title: "Phân loại thành công",
+                description: `Đã phân loại ${totalInput.toLocaleString("vi-VN")} kg (Trái tươi: ${fresh} kg, Chế biến: ${proc} kg, Loại bỏ: ${rej} kg). Dữ liệu đã chuyển sang Chế biến & Đóng gói.`,
+                variant: "success",
+            });
+
+            // Update local state to CLASSIFIED
+            setItems((prev) =>
+                prev.map((i) =>
+                    i.id === classifyingItem.id
+                        ? {
+                              ...i,
+                              freshExportWeight: fresh,
+                              processingWeight: proc,
+                              rejectedWeight: rej,
+                              direction: fresh > 0 && proc > 0 ? "SPLIT" : fresh > 0 ? "FRESH_EXPORT" : "PROCESSING",
+                              status: "CLASSIFIED",
+                          }
+                        : i
+                )
+            );
+
+            setClassifyingItem(null);
+        } catch (err: any) {
+            toast({ title: "Lỗi phân loại", description: err.message || "Có lỗi xảy ra.", variant: "destructive" });
+        } finally {
+            setSubmittingClassify(false);
+        }
     };
 
     return (
         <div className="space-y-6">
+            {/* Breadcrumb */}
             <nav className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                 <span>Cơ sở chế biến</span>
                 <span>/</span>
-                <span className="text-emerald-700 font-bold">Tiếp nhận & Phân loại</span>
+                <span className="text-emerald-700 font-bold">2. Tiếp nhận & Phân loại</span>
             </nav>
+
+            {/* Header + KPIs */}
             <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-5">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Tiếp nhận & Phân loại</h1>
-                    <p className="mt-1 text-xs sm:text-sm text-slate-500">Quản lý đầu vào từ Farm, kiểm tra tiếp nhận và phân chia nhánh Trái tươi xuất khẩu hoặc Chuyển chế biến.</p>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900">2. Tiếp nhận & Phân loại</h1>
+                    <p className="mt-1 text-xs sm:text-sm text-slate-500">
+                        Đây là trang đầu tiên của nghiệp vụ tiếp nhận nông sản từ Phiếu thu hoạch của Farm, đối soát khối lượng thực nhận và phân chia nhánh Trái tươi xuất khẩu hoặc Chuyển chế biến.
+                    </p>
                 </div>
+
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
-                        <div className="flex items-center gap-2 text-amber-700 text-xs font-bold uppercase tracking-wider"><Clock className="h-4 w-4 shrink-0" /><span>Chờ tiếp nhận</span></div>
+                        <div className="flex items-center gap-2 text-amber-700 text-xs font-bold uppercase tracking-wider">
+                            <Clock className="h-4 w-4 shrink-0" />
+                            <span>Chờ tiếp nhận</span>
+                        </div>
                         <p className="mt-2 text-2xl font-black text-amber-900">{kpis.waitingReceipt}</p>
                     </div>
+
                     <div className="rounded-2xl border border-sky-200 bg-sky-50/70 p-4">
-                        <div className="flex items-center gap-2 text-sky-700 text-xs font-bold uppercase tracking-wider"><SlidersHorizontal className="h-4 w-4 shrink-0" /><span>Chờ phân loại</span></div>
+                        <div className="flex items-center gap-2 text-sky-700 text-xs font-bold uppercase tracking-wider">
+                            <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                            <span>Chờ phân loại</span>
+                        </div>
                         <p className="mt-2 text-2xl font-black text-sky-900">{kpis.waitingClassification}</p>
                     </div>
+
                     <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
-                        <div className="flex items-center gap-2 text-emerald-700 text-xs font-bold uppercase tracking-wider"><CheckCircle2 className="h-4 w-4 shrink-0" /><span>Đã phân loại</span></div>
+                        <div className="flex items-center gap-2 text-emerald-700 text-xs font-bold uppercase tracking-wider">
+                            <CheckCircle2 className="h-4 w-4 shrink-0" />
+                            <span>Đã phân loại</span>
+                        </div>
                         <p className="mt-2 text-2xl font-black text-emerald-900">{kpis.classified}</p>
                     </div>
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-500 text-white p-4 shadow-soft">
-                        <div className="flex items-center gap-2 text-emerald-100 text-xs font-bold uppercase tracking-wider"><Boxes className="h-4 w-4 shrink-0" /><span>Tổng nhận hôm nay</span></div>
-                        <p className="mt-2 text-2xl font-black text-white">{kpis.todayWeight.toLocaleString("vi-VN")} kg</p>
+
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-600 text-white p-4 shadow-soft">
+                        <div className="flex items-center gap-2 text-emerald-100 text-xs font-bold uppercase tracking-wider">
+                            <Boxes className="h-4 w-4 shrink-0" />
+                            <span>Tổng nhận hôm nay</span>
+                        </div>
+                        <p className="mt-2 text-2xl font-black text-white">
+                            {kpis.todayWeight.toLocaleString("vi-VN")} kg
+                        </p>
                     </div>
                 </div>
             </div>
+
+            {/* Filter Bar */}
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Tìm mã lô / Farm..." className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs font-semibold focus:border-emerald-500 focus:bg-white focus:outline-none" /></div>
-                    <div className="relative"><Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs font-semibold focus:border-emerald-500 focus:bg-white focus:outline-none" /></div>
-                    <div><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold focus:border-emerald-500 focus:bg-white focus:outline-none"><option value="ALL">Tất cả trạng thái</option><option value="PENDING_RECEIPT">Chờ tiếp nhận</option><option value="WAITING_CLASSIFICATION">Chờ phân loại</option><option value="CLASSIFIED">Đã phân loại</option><option value="REJECTED">Không đạt</option></select></div>
-                    <div><select value={varietyFilter} onChange={(e) => setVarietyFilter(e.target.value)} className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold focus:border-emerald-500 focus:bg-white focus:outline-none"><option value="ALL">Tất cả loại hàng</option><option value="Ri6">Sầu riêng Ri6</option><option value="Monthong">Sầu riêng Monthong / Dona</option><option value="Khác">Giống khác</option></select></div>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Tìm mã phiếu / Farm / Vùng trồng..."
+                            className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs font-semibold focus:border-emerald-500 focus:bg-white focus:outline-none"
+                        />
+                    </div>
+                    <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="date"
+                            value={dateFilter}
+                            onChange={(e) => setDateFilter(e.target.value)}
+                            className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs font-semibold focus:border-emerald-500 focus:bg-white focus:outline-none"
+                        />
+                    </div>
+                    <div>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold focus:border-emerald-500 focus:bg-white focus:outline-none"
+                        >
+                            <option value="ALL">Tất cả trạng thái</option>
+                            <option value="WAITING_RECEIPT">Chờ tiếp nhận</option>
+                            <option value="WAITING_CLASSIFICATION">Chờ phân loại</option>
+                            <option value="CLASSIFIED">Đã phân loại</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select
+                            value={varietyFilter}
+                            onChange={(e) => setVarietyFilter(e.target.value)}
+                            className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold focus:border-emerald-500 focus:bg-white focus:outline-none"
+                        >
+                            <option value="ALL">Tất cả giống sầu riêng</option>
+                            <option value="Ri6">Sầu riêng Ri6</option>
+                            <option value="Monthong">Sầu riêng Monthong / Dona</option>
+                            <option value="Khác">Giống khác</option>
+                        </select>
+                    </div>
                 </div>
             </div>
+
+            {/* Main Table: Mã phiếu | Farm/Vùng trồng | Ngày thu hoạch | Giống | KL khai báo | Trạng thái | Thao tác */}
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm border-collapse">
                         <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-600">
                             <tr>
-                                <th className="px-5 py-4 whitespace-nowrap">Mã lô</th>
+                                <th className="px-5 py-4 whitespace-nowrap">Mã phiếu</th>
                                 <th className="px-5 py-4 whitespace-nowrap">Farm / Vùng trồng</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Ngày nhận</th>
-                                <th className="px-5 py-4 whitespace-nowrap text-right">Khối lượng</th>
+                                <th className="px-5 py-4 whitespace-nowrap">Ngày thu hoạch</th>
+                                <th className="px-5 py-4 whitespace-nowrap">Giống</th>
+                                <th className="px-5 py-4 whitespace-nowrap text-right">KL khai báo</th>
+                                <th className="px-5 py-4 whitespace-nowrap text-right">KL thực nhận</th>
                                 <th className="px-5 py-4 text-center whitespace-nowrap">Trạng thái</th>
-                                <th className="px-5 py-4 text-center whitespace-nowrap">Phân loại</th>
                                 <th className="px-5 py-4 text-right whitespace-nowrap">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium">
                             {filteredItems.map((item) => {
-                                const isUnclassified = item.direction === "UNCLASSIFIED";
-                                const isWaitingReceipt = item.status === "PENDING_RECEIPT";
-                                const isRejected = item.status === "REJECTED" || item.qualityResult === "REJECTED";
+                                const isWaitingReceipt = item.status === "WAITING_RECEIPT";
+                                const isClassified = item.status === "CLASSIFIED" || item.direction !== "UNCLASSIFIED";
+                                const isWaitingClassification = !isWaitingReceipt && !isClassified;
+
                                 return (
                                     <tr key={item.id} className="h-14 hover:bg-slate-50/70 transition">
-                                        <td className="px-5 py-3 whitespace-nowrap"><span className="font-mono font-bold text-slate-900 text-xs">{item.code}</span>{item.sourceCode && item.sourceCode !== item.code && (<span className="block text-[10px] text-slate-400 font-mono">Nguồn: {item.sourceCode}</span>)}</td>
-                                        <td className="px-5 py-3 whitespace-nowrap"><p className="font-bold text-slate-800 text-xs sm:text-sm">{item.farmName}</p><p className="text-[11px] text-slate-500">{item.variety}</p></td>
-                                        <td className="px-5 py-3 whitespace-nowrap text-xs text-slate-600">{item.receivedAt ? new Date(item.receivedAt).toLocaleDateString("vi-VN") : "—"}</td>
-                                        <td className="px-5 py-3 whitespace-nowrap text-right font-black text-slate-900 text-xs sm:text-sm">{(item.actualReceivedWeight || item.currentWeight || 0).toLocaleString("vi-VN")} kg</td>
-                                        <td className="px-5 py-3 text-center whitespace-nowrap">{isWaitingReceipt ? (<span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">Chờ tiếp nhận</span>) : isRejected ? (<span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700">Không đạt</span>) : isUnclassified ? (<span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-700">Chờ phân loại</span>) : (<span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">Đã phân loại</span>)}</td>
-                                        <td className="px-5 py-3 text-center whitespace-nowrap">{item.direction === "FRESH_EXPORT" ? (<span className="inline-flex items-center gap-1 font-bold text-emerald-700 text-xs">📦 Trái tươi xuất khẩu</span>) : item.direction === "PROCESSING" ? (<span className="inline-flex items-center gap-1 font-bold text-indigo-700 text-xs">⚙️ Chuyển chế biến</span>) : item.direction === "SPLIT" ? (<span className="inline-flex items-center gap-1 font-bold text-amber-700 text-xs">🔀 Hỗn hợp ({item.freshExportWeight} / {item.processingWeight} kg)</span>) : (<span className="text-slate-400 text-xs">—</span>)}</td>
-                                        <td className="px-5 py-3 text-right whitespace-nowrap"><Button size="sm" onClick={() => openClassifyDrawer(item)} variant={isUnclassified ? "default" : "outline"} className={`h-8 rounded-xl text-xs font-bold ${isUnclassified ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-soft" : "border-slate-200 text-slate-700 hover:bg-slate-50"}`}>{isUnclassified ? "Phân loại" : "Đổi phân loại"}</Button></td>
+                                        {/* Mã phiếu */}
+                                        <td className="px-5 py-3 whitespace-nowrap">
+                                            <span className="font-mono font-bold text-slate-900 text-xs">{item.receiptCode || item.code}</span>
+                                        </td>
+
+                                        {/* Farm / Vùng trồng */}
+                                        <td className="px-5 py-3 whitespace-nowrap">
+                                            <p className="font-bold text-slate-800 text-xs sm:text-sm">{item.farmName}</p>
+                                            {item.regionCode && (
+                                                <p className="text-[11px] text-emerald-700 font-semibold">{item.regionCode}</p>
+                                            )}
+                                        </td>
+
+                                        {/* Ngày thu hoạch */}
+                                        <td className="px-5 py-3 whitespace-nowrap text-xs text-slate-600">
+                                            {item.harvestDate ? new Date(item.harvestDate).toLocaleDateString("vi-VN") : "—"}
+                                        </td>
+
+                                        {/* Giống */}
+                                        <td className="px-5 py-3 whitespace-nowrap text-xs font-bold text-slate-700">
+                                            {item.variety}
+                                        </td>
+
+                                        {/* KL khai báo (Farm) */}
+                                        <td className="px-5 py-3 whitespace-nowrap text-right font-mono font-bold text-slate-600 text-xs sm:text-sm">
+                                            {item.declaredWeight.toLocaleString("vi-VN")} kg
+                                        </td>
+
+                                        {/* KL thực nhận */}
+                                        <td className="px-5 py-3 whitespace-nowrap text-right font-black text-slate-900 text-xs sm:text-sm">
+                                            {isWaitingReceipt ? (
+                                                <span className="text-slate-400 text-xs">Chờ cân</span>
+                                            ) : (
+                                                <div>
+                                                    <span>{item.actualReceivedWeight.toLocaleString("vi-VN")} kg</span>
+                                                    {item.weightDifference !== 0 && (
+                                                        <span className={`block text-[10px] font-bold ${item.weightDifference < 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                                                            ({item.weightDifference > 0 ? "+" : ""}{item.weightDifference} kg)
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </td>
+
+                                        {/* Trạng thái */}
+                                        <td className="px-5 py-3 text-center whitespace-nowrap">
+                                            {isWaitingReceipt ? (
+                                                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+                                                    Chờ tiếp nhận
+                                                </span>
+                                            ) : isWaitingClassification ? (
+                                                <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-700">
+                                                    Chờ phân loại
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                                                    Đã phân loại
+                                                </span>
+                                            )}
+                                        </td>
+
+                                        {/* Thao tác */}
+                                        <td className="px-5 py-3 text-right whitespace-nowrap">
+                                            {isWaitingReceipt ? (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => handleOpenReceive(item)}
+                                                    className="h-8 rounded-xl bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
+                                                >
+                                                    <Scale className="mr-1 h-3.5 w-3.5" />
+                                                    Tiếp nhận
+                                                </Button>
+                                            ) : isWaitingClassification ? (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => handleOpenClassify(item)}
+                                                    className="h-8 rounded-xl bg-sky-600 text-xs font-bold text-white hover:bg-sky-700 shadow-soft"
+                                                >
+                                                    <SlidersHorizontal className="mr-1 h-3.5 w-3.5" />
+                                                    Phân loại
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => handleOpenClassify(item)}
+                                                    variant="outline"
+                                                    className="h-8 rounded-xl border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                                                >
+                                                    Xem / Đổi phân loại
+                                                </Button>
+                                            )}
+                                        </td>
                                     </tr>
                                 );
                             })}
-                            {filteredItems.length === 0 && (<tr><td colSpan={7} className="py-12 text-center text-xs text-slate-400">Không tìm thấy lô nguyên liệu nào phù hợp với bộ lọc.</td></tr>)}
+
+                            {filteredItems.length === 0 && (
+                                <tr>
+                                    <td colSpan={8} className="py-12 text-center text-xs text-slate-400">
+                                        Không tìm thấy phiếu thu hoạch nào phù hợp với bộ lọc.
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
             </div>
-            {selectedItem && (
-                <div className="fixed inset-0 z-[120] flex justify-end bg-slate-950/40 backdrop-blur-sm transition">
-                    <div className="relative flex h-full w-full max-w-md flex-col justify-between border-l border-slate-200 bg-white p-6 shadow-2xl animate-in slide-in-from-right duration-200">
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <div><span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Quy trình xưởng</span><h2 className="text-xl font-black text-slate-900">PHÂN LOẠI LÔ</h2></div>
-                                <button type="button" onClick={() => setSelectedItem(null)} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X className="h-5 w-5" /></button>
+
+            {/* MODAL 1: TIẾP NHẬN HÀNG (KHI NHÂN VIÊN BẤM "TIẾP NHẬN") */}
+            {receivingItem && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+                    <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
+                            <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Quy trình xưởng</span>
+                                <h2 className="text-xl font-black text-slate-900">TIẾP NHẬN HÀNG TỪ FARM</h2>
                             </div>
-                            <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700">
-                                <p className="flex justify-between"><span className="text-slate-500">Mã lô:</span><span className="font-mono font-bold text-slate-900">{selectedItem.code}</span></p>
-                                <p className="flex justify-between"><span className="text-slate-500">Farm:</span><span className="font-bold text-slate-800">{selectedItem.farmName}</span></p>
-                                <p className="flex justify-between"><span className="text-slate-500">Khối lượng:</span><span className="font-black text-emerald-700 text-sm">{(selectedItem.currentWeight || selectedItem.actualReceivedWeight || 0).toLocaleString("vi-VN")} kg</span></p>
-                            </div>
-                            <div className="space-y-3 pt-2">
-                                <label className="block text-xs font-bold uppercase tracking-wide text-slate-700">Hướng xử lý</label>
-                                <div className="space-y-2">
-                                    <label className={`flex cursor-pointer items-center justify-between rounded-2xl border p-3.5 transition ${directionMode === "FRESH_EXPORT" ? "border-emerald-500 bg-emerald-50/70 text-emerald-950 font-bold ring-2 ring-emerald-500/20" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
-                                        <div className="flex items-center gap-3"><input type="radio" name="directionMode" checked={directionMode === "FRESH_EXPORT"} onChange={() => setDirectionMode("FRESH_EXPORT")} className="h-4 w-4 text-emerald-600 focus:ring-emerald-500" /><div><p className="text-xs font-bold text-slate-900">Trái tươi xuất khẩu</p><p className="text-[11px] text-slate-500">Toàn bộ lô chuyển sang đóng gói thùng xuất</p></div></div><span className="text-xs font-bold text-emerald-700">100%</span>
-                                    </label>
-                                    <label className={`flex cursor-pointer items-center justify-between rounded-2xl border p-3.5 transition ${directionMode === "PROCESSING" ? "border-indigo-500 bg-indigo-50/70 text-indigo-950 font-bold ring-2 ring-indigo-500/20" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
-                                        <div className="flex items-center gap-3"><input type="radio" name="directionMode" checked={directionMode === "PROCESSING"} onChange={() => setDirectionMode("PROCESSING")} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500" /><div><p className="text-xs font-bold text-slate-900">Chuyển chế biến</p><p className="text-[11px] text-slate-500">Bóc múi, sấy, cấp đông</p></div></div><span className="text-xs font-bold text-indigo-700">100%</span>
-                                    </label>
-                                    <label className={`flex cursor-pointer items-center justify-between rounded-2xl border p-3.5 transition ${directionMode === "SPLIT" ? "border-amber-500 bg-amber-50/70 text-amber-950 font-bold ring-2 ring-amber-500/20" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
-                                        <div className="flex items-center gap-3"><input type="radio" name="directionMode" checked={directionMode === "SPLIT"} onChange={() => setDirectionMode("SPLIT")} className="h-4 w-4 text-amber-600 focus:ring-amber-500" /><div><p className="text-xs font-bold text-slate-900">Chia lô</p><p className="text-[11px] text-slate-500">Tách phần xuất trái tươi và phần chế biến</p></div></div><span className="text-xs font-bold text-amber-700">Tùy chỉnh</span>
-                                    </label>
+                            <button
+                                type="button"
+                                onClick={() => setReceivingItem(null)}
+                                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="overflow-y-auto p-5 sm:p-6 space-y-5">
+                            {/* KHU VỰC 1: THÔNG TIN GỐC TỪ PHIẾU THU HOẠCH (CHẾ ĐỘ CHỈ ĐỌC - READ ONLY) */}
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                                        <FileText className="h-4 w-4 text-slate-500" />
+                                        Thông tin gốc từ Phiếu thu hoạch (Chỉ đọc)
+                                    </span>
+                                    <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+                                        Dữ liệu Farm
+                                    </span>
                                 </div>
-                                {directionMode === "SPLIT" && (
-                                    <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-3.5 space-y-3 animate-in fade-in duration-150">
-                                        <div><label className="block text-xs font-bold text-slate-700 mb-1">Trái tươi xuất khẩu (kg)</label><input type="number" value={freshWeightInput} onChange={(e) => setFreshWeightInput(e.target.value)} className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none" /></div>
-                                        <div><label className="block text-xs font-bold text-slate-700 mb-1">Chuyển chế biến (kg)</label><input type="number" value={procWeightInput} onChange={(e) => setProcWeightInput(e.target.value)} className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none" /></div>
+
+                                <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                                    <div>
+                                        <span className="text-slate-400 block text-[11px]">Mã phiếu thu hoạch</span>
+                                        <span className="font-mono font-bold text-slate-900 text-sm">{receivingItem.receiptCode || receivingItem.code}</span>
                                     </div>
-                                )}
-                                <div><label className="block text-xs font-bold text-slate-600 mb-1">Ghi chú</label><textarea rows={2} value={noteInput} onChange={(e) => setNoteInput(e.target.value)} placeholder="Nhập ghi chú nếu có..." className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-emerald-500 focus:outline-none" /></div>
+                                    <div>
+                                        <span className="text-slate-400 block text-[11px]">Farm / Nhà vườn</span>
+                                        <span className="font-bold text-slate-900 text-sm">{receivingItem.farmName}</span>
+                                        {receivingItem.regionCode && (
+                                            <span className="block text-[10px] text-emerald-700 font-semibold">{receivingItem.regionCode}</span>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400 block text-[11px]">Ngày thu hoạch</span>
+                                        <span className="font-medium text-slate-800">
+                                            {receivingItem.harvestDate ? new Date(receivingItem.harvestDate).toLocaleDateString("vi-VN") : "—"}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400 block text-[11px]">Giống sầu riêng</span>
+                                        <span className="font-bold text-emerald-800">{receivingItem.variety}</span>
+                                    </div>
+                                </div>
+
+                                <div className="mt-2 rounded-xl bg-white p-3 border border-slate-200 flex items-center justify-between">
+                                    <span className="text-xs font-bold text-slate-600">Nông dân khai báo:</span>
+                                    <span className="font-mono font-black text-slate-900 text-base">
+                                        {receivingItem.declaredWeight.toLocaleString("vi-VN")} kg
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* KHU VỰC 2: CƠ SỞ BỔ SUNG DỮ LIỆU THỰC TẾ */}
+                            <div className="rounded-2xl border-2 border-emerald-400 bg-emerald-50/30 p-4 space-y-3">
+                                <span className="text-xs font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+                                    <Scale className="h-4 w-4 text-emerald-600" />
+                                    Dữ liệu cơ sở tiếp nhận thực tế
+                                </span>
+
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    {/* Khối lượng thực nhận */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-900 mb-1">
+                                            Khối lượng thực nhận (kg) <span className="text-rose-500">*</span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={actualWeightInput}
+                                            onChange={(e) => setActualWeightInput(e.target.value)}
+                                            placeholder="Ví dụ: 2460"
+                                            className="h-11 w-full rounded-xl border border-emerald-400 bg-white px-3 font-mono text-sm font-black text-slate-900 focus:border-emerald-600 focus:outline-none shadow-xs"
+                                        />
+                                    </div>
+
+                                    {/* Đơn giá */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-900 mb-1">
+                                            Đơn giá thỏa thuận (VNĐ/kg)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={unitPriceInput}
+                                            onChange={(e) => setUnitPriceInput(e.target.value)}
+                                            placeholder="85000"
+                                            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                        />
+                                    </div>
+
+                                    {/* Ngày giờ tiếp nhận */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-900 mb-1">
+                                            Ngày giờ tiếp nhận
+                                        </label>
+                                        <input
+                                            type="datetime-local"
+                                            value={receivedAtInput}
+                                            onChange={(e) => setReceivedAtInput(e.target.value)}
+                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                        />
+                                    </div>
+
+                                    {/* Biển số xe */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-900 mb-1">
+                                            Biển số xe vận chuyển
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={truckPlateInput}
+                                            onChange={(e) => setTruckPlateInput(e.target.value)}
+                                            placeholder="51D-123.45"
+                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Tình trạng hàng */}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-900 mb-1">
+                                        Tình trạng hàng thực tế
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={conditionInput}
+                                        onChange={(e) => setConditionInput(e.target.value)}
+                                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                {/* Ghi chú */}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-900 mb-1">
+                                        Ghi chú tiếp nhận
+                                    </label>
+                                    <textarea
+                                        rows={2}
+                                        value={receiveNoteInput}
+                                        onChange={(e) => setReceiveNoteInput(e.target.value)}
+                                        placeholder="Nhập ghi chú nếu có (ví dụ: nhận tại kho số 1)..."
+                                        className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                {/* BẢNG SO SÁNH & CHÊNH LỆCH QUAN TRỌNG (THEO YÊU CẦU NGHIỆP VỤ) */}
+                                <div className="rounded-2xl bg-white p-4 border border-emerald-300 shadow-xs space-y-2">
+                                    <p className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
+                                        Đối soát khối lượng & Chênh lệch
+                                    </p>
+                                    <div className="space-y-1 text-xs">
+                                        <div className="flex justify-between py-0.5">
+                                            <span className="text-slate-600">Nông dân khai báo:</span>
+                                            <span className="font-mono font-bold text-slate-900">{receivingItem.declaredWeight.toLocaleString("vi-VN")} kg</span>
+                                        </div>
+                                        <div className="flex justify-between py-0.5 border-t border-slate-100">
+                                            <span className="text-slate-600">Cơ sở thực nhận:</span>
+                                            <span className="font-mono font-bold text-emerald-700">{(Number(actualWeightInput) || 0).toLocaleString("vi-VN")} kg</span>
+                                        </div>
+                                        <div className="flex justify-between py-1 border-t border-slate-200 font-bold">
+                                            <span className="text-slate-700">Chênh lệch:</span>
+                                            <span className={`font-mono ${liveDiff < 0 ? "text-amber-600" : liveDiff > 0 ? "text-emerald-600" : "text-slate-600"}`}>
+                                                {liveDiff > 0 ? `+${liveDiff.toLocaleString("vi-VN")}` : liveDiff.toLocaleString("vi-VN")} kg
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 italic">
+                                        * Hệ thống giữ nguyên khối lượng khai báo của Farm và ghi nhận độc lập khối lượng thực nhận của cơ sở.
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex gap-2 border-t border-slate-100 pt-4">
-                            <Button type="button" variant="outline" onClick={() => setSelectedItem(null)} className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200">Hủy</Button>
-                            <Button type="button" onClick={handleConfirmClassification} disabled={submitting} className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft">{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Xác nhận"}</Button>
+
+                        {/* Footer */}
+                        <div className="flex gap-2 border-t border-slate-100 p-5 sm:p-6">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setReceivingItem(null)}
+                                className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200"
+                            >
+                                Hủy
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleConfirmReceive}
+                                disabled={submittingReceive}
+                                className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
+                            >
+                                {submittingReceive ? <Loader2 className="h-4 w-4 animate-spin" /> : "Xác nhận tiếp nhận"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 2: PHÂN LOẠI LÔ (3 NHÁNH & BẮT BUỘC KIỂM TRA TỔNG BẰNG KL THỰC NHẬN) */}
+            {classifyingItem && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+                    <div className="relative flex max-h-[90vh] w-full max-w-xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
+                            <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-sky-700">Quy trình phân loại</span>
+                                <h2 className="text-xl font-black text-slate-900">PHÂN LOẠI LÔ NGUYÊN LIỆU</h2>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setClassifyingItem(null)}
+                                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="overflow-y-auto p-5 sm:p-6 space-y-4">
+                            {/* Lot Summary */}
+                            <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700 border border-slate-200">
+                                <p className="flex justify-between">
+                                    <span className="text-slate-500">Mã phiếu / Mã lô:</span>
+                                    <span className="font-mono font-bold text-slate-900">{classifyingItem.receiptCode || classifyingItem.code}</span>
+                                </p>
+                                <p className="flex justify-between">
+                                    <span className="text-slate-500">Farm / Vườn:</span>
+                                    <span className="font-bold text-slate-800">{classifyingItem.farmName}</span>
+                                </p>
+                                <p className="flex justify-between border-t border-slate-200/60 pt-1.5 font-bold">
+                                    <span className="text-slate-700">Khối lượng thực nhận:</span>
+                                    <span className="font-black text-emerald-700 text-sm">
+                                        {(classifyingItem.actualReceivedWeight || classifyingItem.declaredWeight || 0).toLocaleString("vi-VN")} kg
+                                    </span>
+                                </p>
+                            </div>
+
+                            {/* 3 Classification Inputs */}
+                            <div className="space-y-3 pt-1">
+                                <label className="block text-xs font-black uppercase tracking-wide text-slate-800">
+                                    Phân chia khối lượng (3 phần)
+                                </label>
+
+                                {/* Phần 1: Trái tươi xuất khẩu */}
+                                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3.5 space-y-1">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                                            <span>📦 1. Trái tươi xuất khẩu (kg)</span>
+                                        </label>
+                                        <span className="text-[10px] text-emerald-700 font-bold">Chuyển đóng gói xuất</span>
+                                    </div>
+                                    <input
+                                        type="number"
+                                        value={freshWeightInput}
+                                        onChange={(e) => setFreshWeightInput(e.target.value)}
+                                        placeholder="Ví dụ: 1800"
+                                        className="h-10 w-full rounded-xl border border-emerald-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                {/* Phần 2: Chuyển chế biến */}
+                                <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-3.5 space-y-1">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                                            <span>⚙️ 2. Chuyển chế biến (kg)</span>
+                                        </label>
+                                        <span className="text-[10px] text-indigo-700 font-bold">Bóc múi, cấp đông</span>
+                                    </div>
+                                    <input
+                                        type="number"
+                                        value={procWeightInput}
+                                        onChange={(e) => setProcWeightInput(e.target.value)}
+                                        placeholder="Ví dụ: 620"
+                                        className="h-10 w-full rounded-xl border border-indigo-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                {/* Phần 3: Không đạt / loại bỏ */}
+                                <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-3.5 space-y-1">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="text-xs font-bold text-rose-950 flex items-center gap-1.5">
+                                            <span>🗑️ 3. Không đạt / loại bỏ (kg)</span>
+                                        </label>
+                                        <span className="text-[10px] text-rose-700 font-bold">Lọc bỏ / hư hại</span>
+                                    </div>
+                                    <input
+                                        type="number"
+                                        value={rejectWeightInput}
+                                        onChange={(e) => setRejectWeightInput(e.target.value)}
+                                        placeholder="Ví dụ: 40"
+                                        className="h-10 w-full rounded-xl border border-rose-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                {/* Ghi chú */}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 mb-1">Ghi chú phân loại</label>
+                                    <input
+                                        type="text"
+                                        value={classifyNoteInput}
+                                        onChange={(e) => setClassifyNoteInput(e.target.value)}
+                                        placeholder="Nhập ghi chú nếu có..."
+                                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs focus:border-emerald-500 focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* BẢNG KIỂM TRA TỔNG (VALIDATION BOX) */}
+                            <div className={`rounded-2xl p-4 border transition ${classificationValidation.isValid ? "border-emerald-300 bg-emerald-50/70" : "border-rose-300 bg-rose-50/70"}`}>
+                                <div className="space-y-1.5 text-xs">
+                                    <div className="flex justify-between font-medium">
+                                        <span className="text-slate-600">Khối lượng thực nhận:</span>
+                                        <span className="font-mono font-bold text-slate-900">{classificationValidation.totalInput.toLocaleString("vi-VN")} kg</span>
+                                    </div>
+                                    <div className="flex justify-between font-bold border-t border-slate-200/60 pt-1">
+                                        <span className="text-slate-800">Tổng 3 phần phân loại:</span>
+                                        <span className={`font-mono text-sm ${classificationValidation.isValid ? "text-emerald-700 font-black" : "text-rose-700 font-black"}`}>
+                                            {classificationValidation.currentSum.toLocaleString("vi-VN")} kg
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="mt-2.5 pt-2 border-t border-slate-200/60 text-xs">
+                                    {classificationValidation.isValid ? (
+                                        <p className="flex items-center gap-1.5 font-bold text-emerald-800">
+                                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                                            <span>Tổng phân loại khớp chính xác 100%. Hai phần hợp lệ sẽ tự động chuyển sang Chế biến & Đóng gói.</span>
+                                        </p>
+                                    ) : (
+                                        <p className="flex items-center gap-1.5 font-bold text-rose-800">
+                                            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                                            <span>
+                                                Tổng chưa khớp ({classificationValidation.diff > 0 ? `vượt +${classificationValidation.diff}` : `thiếu ${classificationValidation.diff}`} kg). Vui lòng điều chỉnh để tổng bằng đúng {classificationValidation.totalInput.toLocaleString("vi-VN")} kg.
+                                            </span>
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex gap-2 border-t border-slate-100 p-5 sm:p-6">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setClassifyingItem(null)}
+                                className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200"
+                            >
+                                Hủy
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleConfirmClassify}
+                                disabled={submittingClassify || !classificationValidation.isValid}
+                                className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft disabled:opacity-50"
+                            >
+                                {submittingClassify ? <Loader2 className="h-4 w-4 animate-spin" /> : "Xác nhận phân loại"}
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -246,3 +920,4 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
         </div>
     );
 }
+

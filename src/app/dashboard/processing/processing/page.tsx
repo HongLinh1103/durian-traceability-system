@@ -18,84 +18,150 @@ export default async function Page() {
             where: { ownerId: session.user.id, type: "PROCESSING_FACILITY", deletedAt: null },
         });
 
-        const [finishedLots, rawProcessingLots] = facility
-            ? await Promise.all([
-                  prisma.finishedProductLot.findMany({
-                      where: { facilityId: facility.id },
-                      include: {
-                          processingBatch: {
-                              include: {
-                                  inputs: {
-                                      include: {
-                                          rawMaterialLot: {
-                                              include: {
-                                                  rawMaterialReceipt: {
-                                                      include: { sourceHarvestLot: { include: { farm: true } } },
-                                                  },
-                                              },
-                                          },
-                                      },
-                                  },
-                              },
-                          },
-                      },
-                      orderBy: { createdAt: "desc" },
-                  }).catch(() => []),
-                  prisma.rawMaterialLot.findMany({
-                      where: {
-                          facilityId: facility.id,
-                          direction: { in: ["PROCESSING", "SPLIT"] },
-                      },
-                      include: {
-                          rawMaterialReceipt: {
-                              include: { sourceHarvestLot: { include: { farm: true } } },
-                          },
-                          batchInputs: {
-                              include: { processingBatch: true },
-                          },
-                      },
-                      orderBy: { createdAt: "desc" },
-                  }).catch(() => []),
-              ])
-            : [[], []];
+        if (facility) {
+            const [finishedLots, rawLotsWithFresh, rawProcessingLots] = await Promise.all([
+                // 1. All finished product lots
+                prisma.finishedProductLot.findMany({
+                    where: { facilityId: facility.id },
+                    include: {
+                        processingBatch: {
+                            include: {
+                                inputs: {
+                                    include: {
+                                        rawMaterialLot: {
+                                            include: {
+                                                rawMaterialReceipt: {
+                                                    include: {
+                                                        sourceHarvestLot: {
+                                                            include: { farm: true, harvestRecord: true },
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    orderBy: { createdAt: "desc" },
+                }).catch(() => []),
 
-        // Format fresh items
-        freshItems = finishedLots
-            .filter((lot) => lot.branch === "FRESH_PACKED" || lot.productType === "FRESH_DURIAN")
-            .map((lot) => {
-                const raw = lot.processingBatch?.inputs?.[0]?.rawMaterialLot;
-                const farm = raw?.rawMaterialReceipt?.sourceHarvestLot?.farm;
-                return {
-                    id: lot.id,
-                    code: lot.lotCode,
-                    sourceRawCode: raw?.lotCode,
+                // 2. Raw Material Lots classified with Fresh Export weight
+                prisma.rawMaterialLot.findMany({
+                    where: {
+                        facilityId: facility.id,
+                        freshExportWeight: { gt: 0 },
+                    },
+                    include: {
+                        rawMaterialReceipt: {
+                            include: {
+                                sourceHarvestLot: {
+                                    include: { farm: true, harvestRecord: true },
+                                },
+                            },
+                        },
+                    },
+                    orderBy: { createdAt: "desc" },
+                }).catch(() => []),
+
+                // 3. Raw Material Lots classified with Processing weight
+                prisma.rawMaterialLot.findMany({
+                    where: {
+                        facilityId: facility.id,
+                        direction: { in: ["PROCESSING", "SPLIT"] },
+                        processingWeight: { gt: 0 },
+                    },
+                    include: {
+                        rawMaterialReceipt: {
+                            include: {
+                                sourceHarvestLot: {
+                                    include: { farm: true, harvestRecord: true },
+                                },
+                            },
+                        },
+                        batchInputs: {
+                            include: { processingBatch: { include: { finishedLots: true } } },
+                        },
+                    },
+                    orderBy: { createdAt: "desc" },
+                }).catch(() => []),
+            ]);
+
+            // Map fresh items
+            const freshLotIds = new Set<string>();
+
+            finishedLots
+                .filter((lot) => lot.branch === "FRESH_PACKED" || lot.productType === "FRESH_DURIAN")
+                .forEach((lot) => {
+                    const raw = lot.processingBatch?.inputs?.[0]?.rawMaterialLot;
+                    const farm = raw?.rawMaterialReceipt?.sourceHarvestLot?.farm;
+                    const hr = raw?.rawMaterialReceipt?.sourceHarvestLot?.harvestRecord;
+                    const rawId = raw?.id;
+                    if (rawId) freshLotIds.add(rawId);
+
+                    const outW = Number(lot.netWeight || lot.quantity || 0);
+                    const inW = Number(lot.processingBatch?.totalInputWeight || outW);
+
+                    freshItems.push({
+                        id: lot.id,
+                        code: lot.lotCode,
+                        sourceRawCode: raw?.lotCode || hr?.code || "NVL-001",
+                        rawLotId: raw?.id,
+                        farmName: farm?.farmName || "Vườn liên kết",
+                        inputWeight: inW,
+                        outputWeight: outW,
+                        packagingDate: lot.manufacturedAt || lot.createdAt,
+                        boxCount: Math.round(outW / 18) || 1,
+                        packagingSpec: lot.packaging || "Thùng 5-6 trái / 18kg",
+                        status: "READY_FOR_EXPORT",
+                    });
+                });
+
+            // If a raw lot was classified with freshExportWeight but no FinishedProductLot created yet
+            rawLotsWithFresh.forEach((raw) => {
+                if (freshLotIds.has(raw.id)) return;
+                const farm = raw.rawMaterialReceipt?.sourceHarvestLot?.farm;
+                const hr = raw.rawMaterialReceipt?.sourceHarvestLot?.harvestRecord;
+                const freshW = Number(raw.freshExportWeight || 0);
+
+                freshItems.push({
+                    id: `raw-fresh-${raw.id}`,
+                    code: `PK-${raw.lotCode}`,
+                    sourceRawCode: raw.lotCode || hr?.code,
+                    rawLotId: raw.id,
                     farmName: farm?.farmName || "Vườn liên kết",
-                    inputWeight: Number(lot.quantity || lot.netWeight || 0),
-                    outputWeight: Number(lot.netWeight || 0),
-                    packagingDate: lot.manufacturedAt || lot.createdAt,
-                    boxCount: Math.round(Number(lot.netWeight || 0) / 18) || undefined,
-                    packagingSpec: lot.packaging || "Thùng 5-6 trái / 18kg",
-                    status: "READY_FOR_EXPORT",
-                };
+                    inputWeight: freshW,
+                    outputWeight: freshW,
+                    packagingDate: raw.classifiedAt || raw.createdAt,
+                    boxCount: Math.round(freshW / 18) || 1,
+                    packagingSpec: "Thùng 5-6 trái / 18kg",
+                    status: "PENDING_PACKAGING",
+                });
             });
 
-        // Format processed items
-        processedItems = rawProcessingLots.map((raw) => {
-            const farm = raw.rawMaterialReceipt?.sourceHarvestLot?.farm;
-            const batch = raw.batchInputs?.[0]?.processingBatch;
-            return {
-                id: raw.id,
-                code: batch ? batch.batchCode : `PROC-${raw.lotCode}`,
-                sourceRawCode: raw.lotCode,
-                rawLotId: raw.id,
-                farmName: farm?.farmName || "Vườn liên kết",
-                method: batch?.method || "Bóc múi / Tách múi",
-                inputWeight: Number(raw.processingWeight || raw.currentWeight || 0),
-                outputProduct: batch?.targetProduct || undefined,
-                outputWeight: batch ? Number(batch.totalOutputWeight || 0) : undefined,
-                status: batch ? "COMPLETED" : "PENDING",
-            };
-        });
+            // Map processed items
+            rawProcessingLots.forEach((raw) => {
+                const farm = raw.rawMaterialReceipt?.sourceHarvestLot?.farm;
+                const hr = raw.rawMaterialReceipt?.sourceHarvestLot?.harvestRecord;
+                const batch = raw.batchInputs?.[0]?.processingBatch;
+                const finished = batch?.finishedLots?.[0];
+                const inputW = Number(raw.processingWeight || raw.currentWeight || 0);
+
+                processedItems.push({
+                    id: raw.id,
+                    code: batch ? batch.batchCode : `PROC-${raw.lotCode}`,
+                    sourceRawCode: raw.lotCode || hr?.code || "NVL-001",
+                    rawLotId: raw.id,
+                    farmName: farm?.farmName || "Vườn liên kết",
+                    method: batch?.method || "Bóc múi / Tách múi",
+                    inputWeight: inputW,
+                    outputProduct: batch?.targetProduct || finished?.productName || "Cơm sầu riêng bóc múi",
+                    outputWeight: batch ? Number(batch.totalOutputWeight || 0) : undefined,
+                    status: batch ? "COMPLETED" : "PENDING",
+                });
+            });
+        }
     } catch (err) {
         console.error("Error loading processing production page:", err);
     }
@@ -109,3 +175,4 @@ export default async function Page() {
         </main>
     );
 }
+

@@ -35,6 +35,7 @@ export type ShipmentItemRow = {
     containerNumber?: string;
     sealNumber?: string;
     truckPlate?: string;
+    carrierName?: string;
     weight: number;
     boxCount?: number;
     destinationCountry?: string;
@@ -70,7 +71,7 @@ interface ProcessingShipmentsViewProps {
 export function ProcessingShipmentsView({
     initialShipments,
     availableFinishedLots,
-    facilityName = "Cơ sở Chế biến Sầu riêng Trị An",
+    facilityName = "Cơ sở Chế biến & Đóng gói Xuất khẩu",
 }: ProcessingShipmentsViewProps) {
     const { toast } = useToast();
     const [shipments, setShipments] = useState<ShipmentItemRow[]>(initialShipments);
@@ -94,20 +95,31 @@ export function ProcessingShipmentsView({
     const [truckPlate, setTruckPlate] = useState("");
     const [containerNumber, setContainerNumber] = useState("");
     const [sealNumber, setSealNumber] = useState("");
+    const [carrierName, setCarrierName] = useState("Công ty Vận tải Quốc tế Á Châu");
     const [exportDate, setExportDate] = useState(new Date().toISOString().slice(0, 10));
     const [destinationCountry, setDestinationCountry] = useState("Trung Quốc");
     const [portOfDestination, setPortOfDestination] = useState("Côn Minh, Vân Nam");
     const [portOfLoading, setPortOfLoading] = useState("Cửa khẩu Quốc tế Hữu Nghị");
+    const [exportNote, setExportNote] = useState("");
 
     // Selected lot details for live preview
     const selectedLot = useMemo(() => {
         return availableFinishedLots.find((l) => l.id === selectedFinishedLotId) || availableFinishedLots[0] || null;
     }, [availableFinishedLots, selectedFinishedLotId]);
 
+    // Validation for live QR generation
+    const isFormReadyForQr = useMemo(() => {
+        const hasLot = Boolean(selectedFinishedLotId);
+        const hasWeight = Number(weightInput) > 0;
+        const hasContainer = Boolean(containerNumber.trim());
+        const hasDestination = Boolean(portOfDestination.trim() || destinationCountry.trim());
+        return hasLot && hasWeight && hasContainer && hasDestination;
+    }, [selectedFinishedLotId, weightInput, containerNumber, portOfDestination, destinationCountry]);
+
     // Live Trace URL for form preview
     const liveTraceUrl = useMemo(() => {
-        if (typeof window === "undefined") return `/trace?code=${shipmentCode || "EXP"}`;
-        return `${window.location.origin}/trace?code=${encodeURIComponent(shipmentCode || "EXP")}`;
+        if (typeof window === "undefined") return `/trace/${shipmentCode || "EXP"}`;
+        return `${window.location.origin}/trace/${encodeURIComponent(shipmentCode || "EXP")}`;
     }, [shipmentCode]);
 
     const liveQrImage = useMemo(() => {
@@ -116,11 +128,10 @@ export function ProcessingShipmentsView({
 
     // KPIs
     const kpis = useMemo(() => {
-        const draftCount = shipments.filter((s) => s.status === "DRAFT").length;
-        const readyCount = shipments.filter((s) => s.status === "READY").length;
+        const readyCount = shipments.filter((s) => s.status === "READY" || s.hasQrCode).length;
         const dispatchedCount = shipments.filter((s) => s.status === "DISPATCHED").length;
         const totalWeightMonth = shipments.reduce((sum, s) => sum + (s.weight || 0), 0);
-        return { draftCount, readyCount, ready: readyCount, dispatchedCount, totalWeightMonth };
+        return { readyCount, dispatchedCount, totalWeightMonth };
     }, [shipments]);
 
     const filteredShipments = useMemo(() => {
@@ -148,20 +159,22 @@ export function ProcessingShipmentsView({
             setSelectedFinishedLotId(first.id);
             setProductName(first.productName || "Sầu riêng tươi xuất khẩu");
             setWeightInput(first.remainingWeight);
-            setBoxCountInput(Math.round(first.remainingWeight / 18));
+            setBoxCountInput(Math.max(1, Math.round(first.remainingWeight / 18)));
         } else {
             setSelectedFinishedLotId("");
             setProductName("Sầu riêng tươi xuất khẩu");
             setWeightInput("");
             setBoxCountInput("");
         }
-        setTruckPlate("51D-123.45");
-        setContainerNumber("TGHU1234567");
-        setSealNumber("SL987654");
+        setTruckPlate("51D-999.88");
+        setContainerNumber("TEMU-882910-2");
+        setSealNumber("SL-VN-88219");
+        setCarrierName("Công ty Vận tải Quốc tế Á Châu");
         setExportDate(new Date().toISOString().slice(0, 10));
         setDestinationCountry("Trung Quốc");
         setPortOfDestination("Côn Minh, Vân Nam");
         setPortOfLoading("Cửa khẩu Quốc tế Hữu Nghị");
+        setExportNote("");
         setOpenCreateModal(true);
     };
 
@@ -194,7 +207,8 @@ export function ProcessingShipmentsView({
                     destinationCountry,
                     portOfLoading,
                     portOfDestination,
-                    status: "READY",
+                    status: "DISPATCHED",
+                    note: `${carrierName ? `ĐVVC: ${carrierName} | ` : ""}${exportNote}`,
                 }),
             });
 
@@ -213,13 +227,14 @@ export function ProcessingShipmentsView({
                 containerNumber,
                 sealNumber,
                 truckPlate,
+                carrierName,
                 weight: w,
                 boxCount: Number(boxCountInput) || undefined,
                 destinationCountry,
                 portOfDestination,
                 portOfLoading,
                 dispatchDate: exportDate,
-                status: "READY",
+                status: "DISPATCHED",
                 hasQrCode: true,
                 qrPublicToken: token,
                 farmName: selectedLot?.farmName || "Vườn sầu riêng liên kết",
@@ -229,7 +244,11 @@ export function ProcessingShipmentsView({
             };
 
             setShipments((prev) => [newRow, ...prev]);
-            toast({ title: "Tạo lô xuất hàng thành công", description: `Lô ${shipmentCode} đã được lưu và phát hành mã QR.`, variant: "success" });
+            toast({
+                title: "Tạo lô & Phát hành QR thành công",
+                description: `Lô xuất hàng ${shipmentCode} đã được tạo và kích hoạt mã QR truy xuất nguồn gốc.`,
+                variant: "success",
+            });
             setOpenCreateModal(false);
         } catch (err: any) {
             toast({ title: "Lỗi", description: err.message || "Có lỗi xảy ra khi tạo lô.", variant: "destructive" });
@@ -245,21 +264,29 @@ export function ProcessingShipmentsView({
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const handlePrintQr = (s: ShipmentItemRow) => {
+        setViewQrShipment(s);
+        setTimeout(() => {
+            window.print();
+        }, 300);
+    };
+
     return (
         <div className="space-y-6">
+            {/* Breadcrumb */}
             <nav className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                 <span>Cơ sở chế biến</span>
                 <span>/</span>
-                <span className="text-emerald-700 font-bold">Xuất hàng</span>
+                <span className="text-emerald-700 font-bold">4. Xuất hàng</span>
             </nav>
 
             {/* Header + Actions */}
             <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">XUẤT HÀNG</h1>
+                        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">4. Xuất hàng</h1>
                         <p className="mt-1 text-xs sm:text-sm text-slate-500">
-                            Quản lý hồ sơ xuất khẩu, liên kết phương tiện, container và phát hành tem QR truy xuất nguồn gốc đến Farm.
+                            Quản lý hồ sơ xuất khẩu, liên kết phương tiện vận chuyển, container/seal và phát hành tem QR truy xuất nguồn gốc toàn chuỗi.
                         </p>
                     </div>
                     <Button
@@ -272,35 +299,27 @@ export function ProcessingShipmentsView({
                 </div>
 
                 {/* KPIs */}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="flex items-center gap-2 text-slate-600 text-xs font-bold uppercase tracking-wider">
-                            <Clock className="h-4 w-4 shrink-0" />
-                            <span>Chờ xuất (Nháp)</span>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+                        <div className="flex items-center gap-2 text-emerald-700 text-xs font-bold uppercase tracking-wider">
+                            <QrCode className="h-4 w-4 shrink-0" />
+                            <span>Đã phát hành QR</span>
                         </div>
-                        <p className="mt-2 text-2xl font-black text-slate-800">{kpis.draftCount}</p>
+                        <p className="mt-2 text-2xl font-black text-emerald-900">{kpis.readyCount}</p>
                     </div>
 
                     <div className="rounded-2xl border border-sky-200 bg-sky-50/70 p-4">
                         <div className="flex items-center gap-2 text-sky-700 text-xs font-bold uppercase tracking-wider">
                             <Truck className="h-4 w-4 shrink-0" />
-                            <span>Sẵn sàng xuất</span>
+                            <span>Lô đã xuất cảng</span>
                         </div>
-                        <p className="mt-2 text-2xl font-black text-sky-900">{kpis.readyCount}</p>
+                        <p className="mt-2 text-2xl font-black text-sky-900">{kpis.dispatchedCount}</p>
                     </div>
 
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
-                        <div className="flex items-center gap-2 text-emerald-700 text-xs font-bold uppercase tracking-wider">
-                            <CheckCircle2 className="h-4 w-4 shrink-0" />
-                            <span>Đã xuất hàng</span>
-                        </div>
-                        <p className="mt-2 text-2xl font-black text-emerald-900">{kpis.dispatchedCount}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-500 text-white p-4 shadow-soft">
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-600 text-white p-4 shadow-soft">
                         <div className="flex items-center gap-2 text-emerald-100 text-xs font-bold uppercase tracking-wider">
                             <Boxes className="h-4 w-4 shrink-0" />
-                            <span>Tổng khối lượng</span>
+                            <span>Tổng khối lượng xuất</span>
                         </div>
                         <p className="mt-2 text-2xl font-black text-white">
                             {(kpis.totalWeightMonth / 1000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tấn
@@ -318,7 +337,7 @@ export function ProcessingShipmentsView({
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Tìm mã lô xuất / Container / Seal / Xe..."
+                            placeholder="Tìm mã lô xuất / Container / Seal / Biển số xe..."
                             className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs font-semibold focus:border-emerald-500 focus:bg-white focus:outline-none"
                         />
                     </div>
@@ -329,15 +348,14 @@ export function ProcessingShipmentsView({
                             className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold focus:border-emerald-500 focus:bg-white focus:outline-none"
                         >
                             <option value="ALL">Tất cả trạng thái</option>
-                            <option value="DRAFT">Nháp</option>
+                            <option value="DISPATCHED">Đã xuất hàng (Có QR)</option>
                             <option value="READY">Sẵn sàng xuất</option>
-                            <option value="DISPATCHED">Đã xuất</option>
                         </select>
                     </div>
                 </div>
             </div>
 
-            {/* Main Table */}
+            {/* BẢNG CHÍNH: Mã lô xuất | Sản phẩm | Khối lượng | Số thùng | Container | Seal | Ngày xuất | Trạng thái QR | Thao tác */}
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm border-collapse">
@@ -345,76 +363,103 @@ export function ProcessingShipmentsView({
                             <tr>
                                 <th className="px-5 py-4 whitespace-nowrap">Mã lô xuất</th>
                                 <th className="px-5 py-4 whitespace-nowrap">Sản phẩm</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Container</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Seal</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Xe</th>
                                 <th className="px-5 py-4 whitespace-nowrap text-right">Khối lượng</th>
                                 <th className="px-5 py-4 text-center whitespace-nowrap">Số thùng</th>
-                                <th className="px-5 py-4 text-center whitespace-nowrap">Trạng thái</th>
+                                <th className="px-5 py-4 whitespace-nowrap">Container</th>
+                                <th className="px-5 py-4 whitespace-nowrap">Seal</th>
+                                <th className="px-5 py-4 whitespace-nowrap">Ngày xuất</th>
+                                <th className="px-5 py-4 text-center whitespace-nowrap">Trạng thái QR</th>
                                 <th className="px-5 py-4 text-right whitespace-nowrap">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium">
                             {filteredShipments.map((s) => {
-                                const isDispatched = s.status === "DISPATCHED";
-                                const isReady = s.status === "READY";
+                                const token = s.qrPublicToken || s.shipmentCode;
+                                const traceUrl = `/trace/${encodeURIComponent(token)}`;
+
                                 return (
                                     <tr key={s.id} className="h-14 hover:bg-slate-50/70 transition">
+                                        {/* Mã lô xuất */}
                                         <td className="px-5 py-3 whitespace-nowrap">
                                             <span className="font-mono font-bold text-slate-900 text-xs">{s.shipmentCode}</span>
-                                            {s.dispatchDate && (
-                                                <span className="block text-[10px] text-slate-400">
-                                                    {new Date(s.dispatchDate).toLocaleDateString("vi-VN")}
-                                                </span>
-                                            )}
                                         </td>
+
+                                        {/* Sản phẩm */}
                                         <td className="px-5 py-3 whitespace-nowrap">
                                             <p className="font-bold text-slate-800 text-xs sm:text-sm">{s.productName}</p>
                                             <p className="text-[11px] text-slate-500">{s.portOfDestination || s.destinationCountry}</p>
                                         </td>
-                                        <td className="px-5 py-3 whitespace-nowrap font-mono text-xs font-bold text-slate-700">
-                                            {s.containerNumber || "—"}
-                                        </td>
-                                        <td className="px-5 py-3 whitespace-nowrap font-mono text-xs text-slate-600">
-                                            {s.sealNumber || "—"}
-                                        </td>
-                                        <td className="px-5 py-3 whitespace-nowrap font-mono text-xs text-slate-600">
-                                            {s.truckPlate || "—"}
-                                        </td>
+
+                                        {/* Khối lượng */}
                                         <td className="px-5 py-3 whitespace-nowrap text-right font-black text-slate-900 text-xs sm:text-sm">
                                             {s.weight >= 1000 ? `${(s.weight / 1000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tấn` : `${s.weight.toLocaleString("vi-VN")} kg`}
                                         </td>
+
+                                        {/* Số thùng */}
                                         <td className="px-5 py-3 text-center whitespace-nowrap font-bold text-slate-700 text-xs">
                                             {s.boxCount ? `${s.boxCount.toLocaleString("vi-VN")}` : "—"}
                                         </td>
-                                        <td className="px-5 py-3 text-center whitespace-nowrap">
-                                            {isDispatched ? (
-                                                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                                                    Đã xuất
-                                                </span>
-                                            ) : isReady ? (
-                                                <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-700">
-                                                    Sẵn sàng
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
-                                                    Nháp
-                                                </span>
-                                            )}
+
+                                        {/* Container */}
+                                        <td className="px-5 py-3 whitespace-nowrap font-mono text-xs font-bold text-slate-700">
+                                            {s.containerNumber || "—"}
                                         </td>
+
+                                        {/* Seal */}
+                                        <td className="px-5 py-3 whitespace-nowrap font-mono text-xs text-slate-600">
+                                            {s.sealNumber || "—"}
+                                        </td>
+
+                                        {/* Ngày xuất */}
+                                        <td className="px-5 py-3 whitespace-nowrap text-xs text-slate-600">
+                                            {s.dispatchDate ? new Date(s.dispatchDate).toLocaleDateString("vi-VN") : "—"}
+                                        </td>
+
+                                        {/* Trạng thái QR */}
+                                        <td className="px-5 py-3 text-center whitespace-nowrap">
+                                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                                Đã phát hành
+                                            </span>
+                                        </td>
+
+                                        {/* Thao tác: Xem QR | In QR | Xem truy xuất */}
                                         <td className="px-5 py-3 text-right whitespace-nowrap">
-                                            <Button
-                                                size="sm"
-                                                onClick={() => setViewQrShipment(s)}
-                                                className="h-8 rounded-xl bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
-                                            >
-                                                <QrCode className="mr-1.5 h-3.5 w-3.5" />
-                                                Xem mã QR
-                                            </Button>
+                                            <div className="inline-flex items-center gap-1">
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => setViewQrShipment(s)}
+                                                    className="h-8 rounded-xl bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
+                                                >
+                                                    <QrCode className="mr-1 h-3.5 w-3.5" />
+                                                    Xem QR
+                                                </Button>
+
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => handlePrintQr(s)}
+                                                    className="h-8 rounded-xl border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                                                >
+                                                    <Printer className="mr-1 h-3.5 w-3.5" />
+                                                    In QR
+                                                </Button>
+
+                                                <a
+                                                    href={traceUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex h-8 items-center justify-center rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                                                >
+                                                    <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                                                    Xem truy xuất
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
                             })}
+
                             {filteredShipments.length === 0 && (
                                 <tr>
                                     <td colSpan={9} className="py-12 text-center text-xs text-slate-400">
@@ -427,7 +472,7 @@ export function ProcessingShipmentsView({
                 </div>
             </div>
 
-            {/* MODAL 1: TẠO LÔ XUẤT HÀNG (3 Cards + Live QR Preview & Traceability Link) */}
+            {/* MODAL 1: TẠO LÔ XUẤT HÀNG (4 Grouped Sections + Live Preview & Simultaneous QR Issuance) */}
             {openCreateModal && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
                     <div className="relative flex max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
@@ -435,7 +480,7 @@ export function ProcessingShipmentsView({
                         <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
                             <div>
                                 <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Hồ sơ xuất khẩu</span>
-                                <h2 className="text-xl font-black text-slate-900">TẠO LÔ XUẤT HÀNG</h2>
+                                <h2 className="text-xl font-black text-slate-900">TẠO LÔ XUẤT HÀNG & PHÁT HÀNH QR</h2>
                             </div>
                             <button type="button" onClick={() => setOpenCreateModal(false)} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
                                 <X className="h-5 w-5" />
@@ -444,11 +489,11 @@ export function ProcessingShipmentsView({
 
                         {/* Content */}
                         <div className="overflow-y-auto p-5 sm:p-6 space-y-5">
-                            {/* CARD 1: THÔNG TIN LÔ */}
+                            {/* PHẦN 1: THÔNG TIN HÀNG HÓA */}
                             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
                                 <h3 className="text-xs font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
                                     <Boxes className="h-4 w-4" />
-                                    1. THÔNG TIN LÔ
+                                    1. THÔNG TIN HÀNG HÓA
                                 </h3>
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div>
@@ -461,7 +506,7 @@ export function ProcessingShipmentsView({
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-700 mb-1">Lô thành phẩm nguồn</label>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Lô thành phẩm đủ điều kiện xuất</label>
                                         <select
                                             value={selectedFinishedLotId}
                                             onChange={(e) => {
@@ -471,7 +516,7 @@ export function ProcessingShipmentsView({
                                                 if (found) {
                                                     setProductName(found.productName);
                                                     setWeightInput(found.remainingWeight);
-                                                    setBoxCountInput(Math.round(found.remainingWeight / 18));
+                                                    setBoxCountInput(Math.max(1, Math.round(found.remainingWeight / 18)));
                                                 }
                                             }}
                                             className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-900 focus:border-emerald-500 focus:outline-none"
@@ -482,7 +527,7 @@ export function ProcessingShipmentsView({
                                                 </option>
                                             ))}
                                             {availableFinishedLots.length === 0 && (
-                                                <option value="">Không có lô sẵn sàng (tạo thủ công)</option>
+                                                <option value="">Không có lô sẵn sàng</option>
                                             )}
                                         </select>
                                     </div>
@@ -497,14 +542,14 @@ export function ProcessingShipmentsView({
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-700 mb-1">Khối lượng (kg)</label>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">Khối lượng xuất (kg) <span className="text-rose-500">*</span></label>
                                             <input
                                                 type="number"
                                                 value={weightInput}
                                                 onChange={(e) => {
                                                     setWeightInput(e.target.value);
                                                     const w = Number(e.target.value);
-                                                    if (w > 0) setBoxCountInput(Math.round(w / 18));
+                                                    if (w > 0) setBoxCountInput(Math.max(1, Math.round(w / 18)));
                                                 }}
                                                 className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
                                             />
@@ -522,20 +567,20 @@ export function ProcessingShipmentsView({
                                 </div>
                             </div>
 
-                            {/* CARD 2: VẬN CHUYỂN */}
+                            {/* PHẦN 2: THÔNG TIN VẬN CHUYỂN */}
                             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
                                 <h3 className="text-xs font-black uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
                                     <Truck className="h-4 w-4" />
-                                    2. VẬN CHUYỂN
+                                    2. THÔNG TIN VẬN CHUYỂN
                                 </h3>
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-700 mb-1">Biển số xe</label>
                                         <input
                                             type="text"
                                             value={truckPlate}
                                             onChange={(e) => setTruckPlate(e.target.value)}
-                                            placeholder="51D-123.45"
+                                            placeholder="51D-999.88"
                                             className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-semibold text-slate-900 focus:border-sky-500 focus:outline-none"
                                         />
                                     </div>
@@ -545,7 +590,7 @@ export function ProcessingShipmentsView({
                                             type="text"
                                             value={containerNumber}
                                             onChange={(e) => setContainerNumber(e.target.value)}
-                                            placeholder="TGHU1234567"
+                                            placeholder="TEMU-882910-2"
                                             className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-sky-500 focus:outline-none"
                                         />
                                     </div>
@@ -555,22 +600,32 @@ export function ProcessingShipmentsView({
                                             type="text"
                                             value={sealNumber}
                                             onChange={(e) => setSealNumber(e.target.value)}
-                                            placeholder="SL987654"
+                                            placeholder="SL-VN-88219"
                                             className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-sky-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Đơn vị vận chuyển</label>
+                                        <input
+                                            type="text"
+                                            value={carrierName}
+                                            onChange={(e) => setCarrierName(e.target.value)}
+                                            placeholder="Công ty Vận tải Quốc tế Á Châu"
+                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-sky-500 focus:outline-none"
                                         />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* CARD 3: XUẤT KHẨU */}
+                            {/* PHẦN 3: THÔNG TIN XUẤT HÀNG */}
                             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
                                 <h3 className="text-xs font-black uppercase tracking-wider text-indigo-800 flex items-center gap-1.5">
                                     <Globe className="h-4 w-4" />
-                                    3. XUẤT KHẨU
+                                    3. THÔNG TIN XUẤT HÀNG
                                 </h3>
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-700 mb-1">Ngày xuất</label>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Ngày giờ xuất</label>
                                         <input
                                             type="date"
                                             value={exportDate}
@@ -598,74 +653,90 @@ export function ProcessingShipmentsView({
                                             className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-indigo-500 focus:outline-none"
                                         />
                                     </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Quốc gia nhập khẩu</label>
+                                        <input
+                                            type="text"
+                                            value={destinationCountry}
+                                            onChange={(e) => setDestinationCountry(e.target.value)}
+                                            placeholder="Trung Quốc"
+                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-indigo-500 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Ghi chú xuất hàng</label>
+                                    <input
+                                        type="text"
+                                        value={exportNote}
+                                        onChange={(e) => setExportNote(e.target.value)}
+                                        placeholder="Nhập ghi chú hoặc yêu cầu kiểm dịch đặc biệt..."
+                                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs focus:border-emerald-500 focus:outline-none"
+                                    />
                                 </div>
                             </div>
 
-                            {/* CARD 4: XEM TRƯỚC TEM QR & DỮ LIỆU TRUY XUẤT NGUỒN GỐC (LIVE PREVIEW) */}
-                            <div className="rounded-2xl border-2 border-emerald-400 bg-emerald-50/40 p-4 space-y-3">
+                            {/* PHẦN 4: KHU VỰC QR TRUY XUẤT (LIVE PREVIEW & ĐỒNG THỜI PHÁT HÀNH) */}
+                            <div className={`rounded-2xl border-2 p-4 space-y-3 transition ${isFormReadyForQr ? "border-emerald-400 bg-emerald-50/40" : "border-slate-300 bg-slate-50/60"}`}>
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-xs font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
-                                        <Sparkles className="h-4 w-4 text-emerald-600" />
-                                        4. XEM TRƯỚC MÃ QR VÀ TRUY XUẤT NGUỒN GỐC ĐẾN FARM
+                                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                                        <QrCode className="h-4 w-4 text-emerald-600" />
+                                        4. KHU VỰC QR TRUY XUẤT NGUỒN GỐC
                                     </h3>
-                                    <span className="rounded-full bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
-                                        Tự động kích hoạt khi tạo
-                                    </span>
+                                    {isFormReadyForQr ? (
+                                        <span className="rounded-full bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 flex items-center gap-1">
+                                            <CheckCircle2 className="h-3 w-3" /> Đủ thông tin · Sẵn sàng phát hành
+                                        </span>
+                                    ) : (
+                                        <span className="rounded-full bg-amber-100 border border-amber-300 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
+                                            Chưa phát hành (Cần chọn lô & nhập thông tin)
+                                        </span>
+                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3 items-center">
-                                    {/* Cột trái: QR Image */}
-                                    <div className="flex flex-col items-center justify-center rounded-xl border border-emerald-200 bg-white p-3 text-center">
+                                    {/* Cột trái: QR Code Preview */}
+                                    <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-3 text-center">
                                         <img
                                             src={liveQrImage}
                                             alt={`QR Preview ${shipmentCode}`}
                                             className="h-32 w-32 rounded-lg object-contain"
                                         />
-                                        <span className="mt-2 font-mono text-[11px] font-bold text-slate-800">{shipmentCode}</span>
+                                        <span className="mt-2 font-mono text-[11px] font-black text-slate-900">{shipmentCode}</span>
                                         <span className="text-[10px] text-slate-400">Tem truy xuất điện tử</span>
                                     </div>
 
-                                    {/* Cột phải: Chi tiết chuỗi cung ứng liên kết */}
+                                    {/* Cột phải: Chuỗi truy xuất liên kết */}
                                     <div className="md:col-span-2 space-y-2 text-xs">
                                         <div className="grid grid-cols-2 gap-2">
-                                            <div className="rounded-xl bg-white p-2.5 border border-emerald-100">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Trees className="h-3 w-3 text-emerald-600" /> Farm nguồn</p>
-                                                <p className="font-bold text-slate-900 mt-0.5">{selectedLot?.farmName || "Vườn sầu riêng Minh Phát"}</p>
+                                            <div className="rounded-xl bg-white p-2.5 border border-slate-200">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Trees className="h-3 w-3 text-emerald-600" /> Farm / Vùng trồng</p>
+                                                <p className="font-bold text-slate-900 mt-0.5">{selectedLot?.farmName || "Vườn sầu riêng liên kết"}</p>
                                                 <p className="text-[10px] text-emerald-700 font-semibold">{selectedLot?.regionCode || "MSVT-VN-DL-0089"}</p>
                                             </div>
 
-                                            <div className="rounded-xl bg-white p-2.5 border border-emerald-100">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Building2 className="h-3 w-3 text-emerald-600" /> Cơ sở đóng gói</p>
+                                            <div className="rounded-xl bg-white p-2.5 border border-slate-200">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Building2 className="h-3 w-3 text-emerald-600" /> Cơ sở chế biến & đóng gói</p>
                                                 <p className="font-bold text-slate-900 mt-0.5">{facilityName}</p>
                                                 <p className="text-[10px] text-slate-500">Mã CS: CS-TV-001</p>
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <div className="rounded-xl bg-white p-2.5 border border-emerald-100">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase">Khối lượng</p>
-                                                <p className="font-black text-emerald-700">{weightInput ? `${Number(weightInput).toLocaleString("vi-VN")} kg` : "—"}</p>
-                                                <p className="text-[10px] text-slate-500">{boxCountInput ? `${boxCountInput} thùng` : ""}</p>
-                                            </div>
-
-                                            <div className="rounded-xl bg-white p-2.5 border border-emerald-100">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase">Vận chuyển</p>
-                                                <p className="font-mono font-bold text-slate-800">{truckPlate || "51D-123.45"}</p>
-                                                <p className="text-[10px] text-slate-500 font-mono">Seal: {sealNumber || "SL987654"}</p>
-                                            </div>
-
-                                            <div className="rounded-xl bg-white p-2.5 border border-emerald-100">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase">Cửa khẩu & Đích</p>
-                                                <p className="font-bold text-slate-800 truncate">{portOfDestination || "Côn Minh"}</p>
-                                                <p className="text-[10px] text-slate-500 truncate">{portOfLoading || "Hữu Nghị"}</p>
-                                            </div>
+                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200 space-y-1">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase">Tóm tắt lô xuất</p>
+                                            <p className="font-medium text-slate-800">
+                                                Container: <span className="font-mono font-bold text-slate-900">{containerNumber || "TEMU-..."}</span> · Seal: <span className="font-mono font-bold text-slate-900">{sealNumber || "SL-..."}</span> · Xe: <span className="font-mono font-bold text-slate-900">{truckPlate || "51D-..."}</span>
+                                            </p>
+                                            <p className="text-[11px] text-emerald-700 font-bold">
+                                                {isFormReadyForQr ? "✅ Chuỗi truy xuất hợp lệ: Farm ➔ Tiếp nhận ➔ Đóng gói ➔ Xuất khẩu." : "⚠️ Vui lòng điền đủ container và đích xuất để phát hành QR."}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Footer */}
+                        {/* Footer: [Tạo lô & Phát hành QR] */}
                         <div className="flex gap-2 border-t border-slate-100 p-5 sm:p-6">
                             <Button
                                 type="button"
@@ -678,17 +749,17 @@ export function ProcessingShipmentsView({
                             <Button
                                 type="button"
                                 onClick={handleCreateShipment}
-                                disabled={submitting}
-                                className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
+                                disabled={submitting || !isFormReadyForQr}
+                                className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft disabled:opacity-50"
                             >
-                                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Xác nhận tạo lô xuất hàng"}
+                                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Tạo lô & Phát hành QR"}
                             </Button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* MODAL 2: XEM MÃ QR & HỒ SƠ TRUY XUẤT NGUỒN GỐC (KHI BẤM "XEM MÃ QR") */}
+            {/* MODAL 2: XEM MÃ QR & HỒ SƠ TRUY XUẤT NGUỒN GỐC (KHI BẤM "XEM QR") */}
             {viewQrShipment && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
                     <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
@@ -752,10 +823,13 @@ export function ProcessingShipmentsView({
                                                 <div className="rounded-xl bg-slate-50 p-3 space-y-1">
                                                     <span className="text-[10px] font-bold uppercase text-slate-400">Vận chuyển & Cửa khẩu</span>
                                                     <p className="text-slate-800">
-                                                        Xe: <span className="font-mono font-bold text-slate-900">{viewQrShipment.truckPlate || "51D-123.45"}</span> · Seal: <span className="font-mono font-bold text-slate-900">{viewQrShipment.sealNumber || "SL987654"}</span>
+                                                        Container: <span className="font-mono font-bold text-slate-900">{viewQrShipment.containerNumber || "—"}</span> · Seal: <span className="font-mono font-bold text-slate-900">{viewQrShipment.sealNumber || "—"}</span>
+                                                    </p>
+                                                    <p className="text-slate-800">
+                                                        Xe: <span className="font-mono font-bold text-slate-900">{viewQrShipment.truckPlate || "—"}</span>
                                                     </p>
                                                     <p className="text-[11px] text-slate-500">
-                                                        {viewQrShipment.portOfLoading || "Cửa khẩu Hữu Nghị"} $ightarrow$ {viewQrShipment.portOfDestination || viewQrShipment.destinationCountry || "Trung Quốc"}
+                                                        {viewQrShipment.portOfLoading || "Cửa khẩu Hữu Nghị"} ➔ {viewQrShipment.portOfDestination || viewQrShipment.destinationCountry || "Trung Quốc"}
                                                     </p>
                                                 </div>
                                             </div>
@@ -831,3 +905,4 @@ export function ProcessingShipmentsView({
         </div>
     );
 }
+
