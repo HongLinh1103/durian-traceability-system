@@ -100,7 +100,7 @@ export function ChinaPortView() {
     const [regState, setRegState] = useState<string>("");
     const [selectedCorpTypes, setSelectedCorpTypes] = useState<string[]>(["02"]); // Packaging & Processing
     const [corpTypePanelOpen, setCorpTypePanelOpen] = useState<boolean>(false);
-    const [pageSize, setPageSize] = useState<number>(200);
+    const [pageSize, setPageSize] = useState<number>(15);
 
     // Filter, Data, & Table States
     const [countries, setCountries] = useState<ChinaPortCountry[]>([]);
@@ -262,7 +262,7 @@ export function ChinaPortView() {
         setProdName("榴莲");
         setRegState("");
         setSelectedCorpTypes(["02"]);
-        setPageSize(200);
+        setPageSize(15);
         setLiveFilter("");
         setStatusChipFilter("");
         setTimeout(() => executeSearch(1), 50);
@@ -580,16 +580,19 @@ export function ChinaPortView() {
                             </label>
                             <select
                                 value={pageSize}
-                                onChange={(e) => setPageSize(Number(e.target.value))}
+                                onChange={(e) => {
+                                    setPageSize(Number(e.target.value));
+                                    setCurrentPage(1);
+                                }}
                                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 focus:border-emerald-500 focus:outline-none h-10"
                             >
+                                <option value={15}>15 dòng (Mặc định)</option>
+                                <option value={30}>30 dòng</option>
                                 <option value={50}>50 dòng</option>
                                 <option value={100}>100 dòng</option>
-                                <option value={200}>200 dòng (Khuyên dùng)</option>
+                                <option value={200}>200 dòng</option>
                                 <option value={500}>500 dòng</option>
                                 <option value={1000}>1000 dòng</option>
-                                <option value={2000}>2000 dòng</option>
-                                <option value={3000}>3000 dòng</option>
                             </select>
                         </div>
                     </div>

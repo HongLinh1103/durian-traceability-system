@@ -2,224 +2,88 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import {
-    SYSTEM_ROLES,
-    PERMISSION_MODULES,
-    DEFAULT_ROLE_PERMISSIONS,
-    calculateRolePermissionStats,
-} from "@/lib/permissions-data";
+import { permissionsForRole, ROLE_LABELS } from "@/lib/account-permissions";
 
 export const dynamic = "force-dynamic";
 
-// In-memory store fallback if database is offline or not yet migrated
-const memoryConfigStore = new Map<string, { moduleEnabled: Record<string, boolean>; permissions: string[]; updatedAt: string }>();
-const memoryAuditLogs: any[] = [
-    {
-        id: "log-init-1",
-        roleKey: "COLLECTOR",
-        actorName: "Admin",
-        action: "UPDATE_PERMISSIONS",
-        changes: [{ type: "ADD", permissionKey: "FINANCE_DASHBOARD_EXPORT" }],
-        changeSummary: "Bổ sung quyền xuất báo cáo tài chính cho Vựa thu mua",
-        createdAt: new Date(Date.now() - 3600 * 1000 * 24).toISOString(),
-    },
-    {
-        id: "log-init-2",
-        roleKey: "FARMER",
-        actorName: "Admin",
-        action: "UPDATE_PERMISSIONS",
-        changes: [{ type: "REMOVE", permissionKey: "HARVEST_REQUEST_DELETE" }],
-        changeSummary: "Thu hồi quyền hủy phiếu thu hoạch đã bàn giao",
-        createdAt: new Date(Date.now() - 3600 * 1000 * 48).toISOString(),
-    },
-];
-
-// Initialize in-memory defaults
-for (const [roleKey, def] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
-    memoryConfigStore.set(roleKey, {
-        moduleEnabled: def.moduleEnabled,
-        permissions: def.permissions,
-        updatedAt: new Date().toISOString(),
-    });
+async function requireAdmin() {
+    const session = await getServerSession(authOptions);
+    return session?.user?.id && session.user.role === "ADMIN" ? session : null;
 }
 
-// GET /api/admin/permissions
-export async function GET(request: Request) {
+export async function GET() {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id || session.user.role !== "ADMIN") {
-            // For development & mock test, if not admin, return 401 or mock if dev
-        }
-
-        const roleConfigs: Record<string, { moduleEnabled: Record<string, boolean>; permissions: string[]; stats: any }> = {};
-
-        const allRoles = [...SYSTEM_ROLES];
-
-        // Try to load from database
-        let dbAvailable = false;
-        try {
-            const dbConfigs = await prisma.rolePermissionConfig.findMany();
-            dbAvailable = true;
-
-            // Map DB configs
-            for (const item of dbConfigs) {
-                const moduleEnabled = (item.moduleEnabled as Record<string, boolean>) || {};
-                const permissions = item.permissions || [];
-                const stats = calculateRolePermissionStats(item.roleKey, permissions, moduleEnabled);
-
-                roleConfigs[item.roleKey] = {
-                    moduleEnabled,
-                    permissions,
-                    stats,
-                };
-
-                // Add custom role to allRoles if not exists
-                if (!allRoles.some(r => r.key === item.roleKey)) {
-                    allRoles.push({
-                        key: item.roleKey,
-                        name: item.roleName || item.roleKey,
-                        description: item.roleDescription || `Vai trò ${item.roleName || item.roleKey} tùy chỉnh`,
-                        badgeColor: "bg-indigo-100 text-indigo-800 border-indigo-200",
-                    });
-                }
-            }
-        } catch (dbErr) {
-            console.warn("[PermissionsAPI] Database offline, using in-memory store:", dbErr);
-        }
-
-        // Fill missing roles with default configurations
-        for (const role of allRoles) {
-            if (!roleConfigs[role.key]) {
-                const memConfig = memoryConfigStore.get(role.key) || DEFAULT_ROLE_PERMISSIONS[role.key] || {
-                    moduleEnabled: {},
-                    permissions: [],
-                };
-                const stats = calculateRolePermissionStats(role.key, memConfig.permissions, memConfig.moduleEnabled);
-
-                roleConfigs[role.key] = {
-                    moduleEnabled: memConfig.moduleEnabled,
-                    permissions: memConfig.permissions,
-                    stats,
-                };
-            }
-        }
-
-        // Load audit logs
-        let auditLogs = memoryAuditLogs;
-        if (dbAvailable) {
-            try {
-                const dbLogs = await prisma.permissionAuditLog.findMany({
-                    orderBy: { createdAt: "desc" },
-                    take: 50,
-                });
-                if (dbLogs.length > 0) {
-                    auditLogs = dbLogs.map(l => ({
-                        ...l,
-                        createdAt: l.createdAt.toISOString(),
-                    }));
-                }
-            } catch (err) {
-                console.warn("[PermissionsAPI] Failed to load audit logs from DB:", err);
-            }
-        }
-
-        return NextResponse.json({
-            success: true,
-            data: {
-                roles: allRoles,
-                modules: PERMISSION_MODULES,
-                roleConfigs,
-                auditLogs,
-            },
+        const session = await requireAdmin();
+        if (!session) return NextResponse.json({ success: false, message: "Không có quyền truy cập." }, { status: 403 });
+        const users = await prisma.user.findMany({
+            where: { role: { not: "ADMIN" }, deletedAt: null },
+            select: { id: true, fullName: true, phone: true, email: true, role: true, accountStatus: true },
+            orderBy: [{ fullName: "asc" }, { phone: "asc" }],
         });
-    } catch (error: any) {
-        console.error("Error in GET /api/admin/permissions:", error);
-        return NextResponse.json(
-            { success: false, message: error.message || "Lỗi khi lấy thông tin phân quyền" },
-            { status: 500 }
-        );
+        let savedConfigs = new Map<string, string[]>();
+        try {
+            const configs = await prisma.userPermissionConfig.findMany({ select: { userId: true, permissions: true } });
+            savedConfigs = new Map(configs.map((config) => [config.userId, config.permissions]));
+        } catch (error) {
+            console.warn("[Permissions] Bảng user_permission_configs chưa sẵn sàng, dùng quyền mặc định.", error);
+        }
+        return NextResponse.json({ success: true, data: users.map((user) => {
+            const availablePermissions = permissionsForRole(user.role);
+            const savedPermissions = savedConfigs.get(user.id);
+            return {
+                id: user.id, fullName: user.fullName || user.phone, phone: user.phone, email: user.email,
+                role: user.role, roleLabel: ROLE_LABELS[user.role] || user.role, accountStatus: user.accountStatus,
+                availablePermissions, permissions: savedPermissions ?? availablePermissions.map((item) => item.key),
+                isDefault: !savedPermissions,
+            };
+        }) });
+    } catch (error) {
+        console.error("GET /api/admin/permissions failed", error);
+        return NextResponse.json({ success: false, message: "Không thể tải dữ liệu phân quyền. Vui lòng kiểm tra kết nối cơ sở dữ liệu." }, { status: 500 });
     }
 }
 
-// PUT /api/admin/permissions - Lưu thay đổi quyền cho 1 vai trò
 export async function PUT(request: Request) {
-    try {
-        const session = await getServerSession(authOptions);
-        const adminName = session?.user?.fullName || session?.user?.phone || "Admin";
+  try {
+    const session = await requireAdmin();
+    if (!session) return NextResponse.json({ success: false, message: "Không có quyền truy cập." }, { status: 403 });
+    const body = await request.json();
+    const userId = typeof body.userId === "string" ? body.userId : "";
+    const requested: string[] = Array.isArray(body.permissions)
+        ? (body.permissions as unknown[]).filter((key): key is string => typeof key === "string")
+        : [];
+    const user = await prisma.user.findFirst({ where: { id: userId, role: { not: "ADMIN" }, deletedAt: null }, select: { id: true, role: true, fullName: true, phone: true } });
+    if (!user) return NextResponse.json({ success: false, message: "Tài khoản không tồn tại." }, { status: 404 });
+    const allowedKeys = new Set(permissionsForRole(user.role).map((item) => item.key));
+    const permissions = [...new Set(requested)].filter((key) => allowedKeys.has(key));
+    const adminName = session.user.fullName || session.user.phone || "Admin";
+    await prisma.$transaction([
+        prisma.userPermissionConfig.upsert({
+            where: { userId }, update: { permissions, updatedById: session.user.id, updatedByName: adminName },
+            create: { userId, permissions, updatedById: session.user.id, updatedByName: adminName },
+        }),
+        prisma.permissionAuditLog.create({ data: {
+            roleKey: `USER:${userId}`, actorId: session.user.id, actorName: adminName,
+            action: "UPDATE_USER_PERMISSIONS", changes: { permissions },
+            changeSummary: `Cập nhật quyền cho ${user.fullName || user.phone}`,
+        } }),
+    ]);
+    return NextResponse.json({ success: true, message: "Đã cập nhật quyền tài khoản.", data: { userId, permissions } });
+  } catch (error) {
+    console.error("PUT /api/admin/permissions failed", error);
+    return NextResponse.json({ success: false, message: "Không thể lưu quyền. Hãy chạy migration cơ sở dữ liệu rồi thử lại." }, { status: 500 });
+  }
+}
 
-        const body = await request.json();
-        const { roleKey, moduleEnabled, permissions, changeSummary, changes } = body;
-
-        if (!roleKey) {
-            return NextResponse.json({ success: false, message: "Thiếu thông tin vai trò (roleKey)" }, { status: 400 });
-        }
-
-        // Update in-memory store
-        memoryConfigStore.set(roleKey, {
-            moduleEnabled: moduleEnabled || {},
-            permissions: permissions || [],
-            updatedAt: new Date().toISOString(),
-        });
-
-        const newLogItem = {
-            id: `log-${Date.now()}`,
-            roleKey,
-            actorName: adminName,
-            action: "UPDATE_PERMISSIONS",
-            changes: changes || [],
-            changeSummary: changeSummary || `Cập nhật cấu hình phân quyền vai trò ${roleKey}`,
-            createdAt: new Date().toISOString(),
-        };
-        memoryAuditLogs.unshift(newLogItem);
-
-        // Update database if available
-        try {
-            await prisma.rolePermissionConfig.upsert({
-                where: { roleKey },
-                update: {
-                    moduleEnabled: moduleEnabled || {},
-                    permissions: permissions || [],
-                    updatedByName: adminName,
-                    updatedAt: new Date(),
-                },
-                create: {
-                    roleKey,
-                    moduleEnabled: moduleEnabled || {},
-                    permissions: permissions || [],
-                    updatedByName: adminName,
-                },
-            });
-
-            await prisma.permissionAuditLog.create({
-                data: {
-                    roleKey,
-                    actorName: adminName,
-                    action: "UPDATE_PERMISSIONS",
-                    changes: changes || [],
-                    changeSummary: changeSummary || `Cập nhật cấu hình phân quyền vai trò ${roleKey}`,
-                },
-            });
-        } catch (dbErr) {
-            console.warn("[PermissionsAPI] Database offline during save, saved to memory:", dbErr);
-        }
-
-        const stats = calculateRolePermissionStats(roleKey, permissions || [], moduleEnabled || {});
-
-        return NextResponse.json({
-            success: true,
-            message: `Đã lưu thành công cấu hình phân quyền cho vai trò ${roleKey}`,
-            data: {
-                roleKey,
-                moduleEnabled,
-                permissions,
-                stats,
-            },
-        });
-    } catch (error: any) {
-        console.error("Error in PUT /api/admin/permissions:", error);
-        return NextResponse.json(
-            { success: false, message: error.message || "Lỗi khi lưu phân quyền" },
-            { status: 500 }
-        );
-    }
+export async function DELETE(request: Request) {
+  try {
+    const session = await requireAdmin();
+    if (!session) return NextResponse.json({ success: false, message: "Không có quyền truy cập." }, { status: 403 });
+    const userId = new URL(request.url).searchParams.get("userId") || "";
+    await prisma.userPermissionConfig.deleteMany({ where: { userId, user: { role: { not: "ADMIN" } } } });
+    return NextResponse.json({ success: true, message: "Đã khôi phục quyền mặc định." });
+  } catch (error) {
+    console.error("DELETE /api/admin/permissions failed", error);
+    return NextResponse.json({ success: false, message: "Không thể khôi phục quyền. Hãy kiểm tra cơ sở dữ liệu rồi thử lại." }, { status: 500 });
+  }
 }

@@ -145,11 +145,11 @@ export function FarmerHarvests({ initial }: { initial: Row[] }) {
                         <CardContent className="space-y-3 pt-1">
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-700">
                                 <p>
-                                    <b>Vườn:</b> {item.farm.farmName}
+                                    <b>Vườn:</b> {item.farm?.farmName || "Chưa xác định"}
                                 </p>
                                 <p className="flex items-center gap-1 text-slate-500">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    {new Date(item.expectedHarvestDate).toLocaleDateString("vi-VN")}
+                                    {item.expectedHarvestDate ? new Date(item.expectedHarvestDate).toLocaleDateString("vi-VN") : "—"}
                                 </p>
                                 <p className="font-semibold text-brand-700">
                                     Dự kiến: {item.expectedWeight} {item.weightUnit}

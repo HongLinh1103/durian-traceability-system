@@ -27,24 +27,23 @@ type DashboardLink = {
     badge?: boolean;
     planBadge?: boolean;
     collectorBadge?: boolean;
+    notificationKey?: "documents" | "news";
 };
 
 const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/area-manager/traceability", label: "Truy xuất trong vùng", roles: ["AREA_MANAGER"] },
+    { href: "/documents", label: "Tài liệu", roles: ["FARMER"], notificationKey: "documents" as const },
+    { href: "/news", label: "Tin tức", roles: ["FARMER"], notificationKey: "news" as const },
+    { href: "/china-port", label: "China Port", roles: ["FARMER", "COLLECTOR", "PROCESSING_FACILITY"] },
+    { href: "/dashboard/farmer/plans", label: "Kế hoạch", roles: ["FARMER"], planBadge: true },
+    { href: "/dashboard/farmer/journal", label: "Nhật ký", roles: ["FARMER"] },
+    { href: "/dashboard/farmer/traceability", label: "Tạo QR", roles: ["FARMER"] },
     { href: "/materials", label: "Tất cả vật tư", roles: ["FARMER"] },
     { href: "/materials/fertilizers", label: "Phân bón", roles: ["FARMER"] },
     { href: "/materials/pesticides", label: "Thuốc BVTV", roles: ["FARMER"] },
     { href: "/materials/stores", label: "Cửa hàng vật tư", roles: ["FARMER"] },
     { href: "/cart", label: "Giỏ hàng", roles: ["FARMER"] },
     { href: "/orders", label: "Đơn mua của tôi", roles: ["FARMER"] },
-    { href: "/dashboard/farmer/journal", label: "Nhật ký", roles: ["FARMER"] },
-    { href: "/dashboard/farmer/statistics", label: "Thống kê", roles: ["FARMER"] },
-    { href: "/dashboard/farmer/plans", label: "Kế hoạch", roles: ["FARMER"], planBadge: true },
-    { href: "/dashboard/farmer/harvests", label: "Phiếu thu hoạch", roles: ["FARMER"] },
-    { href: "/dashboard/farmer/traceability", label: "Tạo QR", roles: ["FARMER"] },
-    { href: "/china-port", label: "China Port", roles: ["FARMER", "COLLECTOR", "PROCESSING_FACILITY"] },
-    { href: "/documents", label: "Tài liệu", roles: ["FARMER"] },
-    { href: "/news", label: "Tin tức", roles: ["FARMER"] },
     { href: "/region-manager/gardens", label: "Quản lý vườn trồng", roles: ["AREA_MANAGER"] },
     { href: "/region-manager/farmers", label: "Hồ sơ nông dân", roles: ["AREA_MANAGER"], badge: true },
     { href: "/dashboard/admin/farming", label: "Canh tác", roles: ["ADMIN"] },
@@ -327,14 +326,6 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                             )}
                         </Link>
                     ))}
-                    {isAuthed && materialLinks.length > 0 && (
-                        <div className="relative">
-                            <button type="button" onClick={() => setMaterialsOpen((open) => !open)} aria-expanded={materialsOpen} aria-haspopup="menu" className={cn("flex items-center gap-1 whitespace-nowrap rounded-2xl px-3 py-2 text-sm font-semibold transition", (pathname.startsWith("/materials") || pathname.startsWith("/orders")) ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900")}>
-                                Vật tư <ChevronDown className={cn("h-4 w-4 transition-transform", materialsOpen && "rotate-180")} />
-                            </button>
-                            {materialsOpen && <div role="menu" className="absolute left-0 top-full z-[70] mt-2 min-w-56 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">{materialLinks.map((link) => <Link key={link.href} href={link.href} role="menuitem" onClick={() => setMaterialsOpen(false)} className={cn("flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition", pathname === link.href ? "bg-brand-50 text-brand-700" : "text-slate-700 hover:bg-brand-50 hover:text-brand-700")}><span>{link.label}</span>{link.href === "/cart" && cartCount > 0 && <CartBadge count={cartCount} />}</Link>)}</div>}
-                        </div>
-                    )}
                     {isAuthed &&
                         primaryDashboardLinks.map((link) => (
                             <Link
@@ -348,6 +339,11 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                 )}
                             >
                                 {link.label}
+                                {link.notificationKey && contentCounts[link.notificationKey] > 0 && (
+                                    <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                                        {contentCounts[link.notificationKey] > 99 ? "99+" : contentCounts[link.notificationKey]}
+                                    </span>
+                                )}
                                 {link.badge && pendingCount > 0 && (
                                     <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
                                         {pendingCount > 99 ? "99+" : pendingCount}
@@ -365,6 +361,14 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                 )}
                             </Link>
                         ))}
+                    {isAuthed && materialLinks.length > 0 && (
+                        <div className="relative">
+                            <button type="button" onClick={() => setMaterialsOpen((open) => !open)} aria-expanded={materialsOpen} aria-haspopup="menu" className={cn("flex items-center gap-1 whitespace-nowrap rounded-2xl px-3 py-2 text-sm font-semibold transition", (pathname.startsWith("/materials") || pathname.startsWith("/orders")) ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900")}>
+                                Vật tư <ChevronDown className={cn("h-4 w-4 transition-transform", materialsOpen && "rotate-180")} />
+                            </button>
+                            {materialsOpen && <div role="menu" className="absolute left-0 top-full z-[70] mt-2 min-w-56 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">{materialLinks.map((link) => <Link key={link.href} href={link.href} role="menuitem" onClick={() => setMaterialsOpen(false)} className={cn("flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition", pathname === link.href ? "bg-brand-50 text-brand-700" : "text-slate-700 hover:bg-brand-50 hover:text-brand-700")}><span>{link.label}</span>{link.href === "/cart" && cartCount > 0 && <CartBadge count={cartCount} />}</Link>)}</div>}
+                        </div>
+                    )}
                 </div>
 
                 {/* Desktop Auth */}
@@ -484,12 +488,6 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                             </Link>
                         ))}
 
-                        {isAuthed && materialLinks.length > 0 && (
-                            <div className="rounded-2xl border border-slate-100 p-2">
-                                <button type="button" onClick={() => setMaterialsOpen((open) => !open)} aria-expanded={materialsOpen} className="flex w-full items-center justify-between px-2 py-2 text-sm font-bold text-slate-700">Vật tư <ChevronDown className={cn("h-4 w-4 transition-transform", materialsOpen && "rotate-180")} /></button>
-                                {materialsOpen && <div className="space-y-1 border-t border-slate-100 pt-1">{materialLinks.map((link) => <Link key={link.href} href={link.href} onClick={() => { setMaterialsOpen(false); setMobileOpen(false); }} className="flex items-center justify-between gap-3 rounded-xl px-4 py-2 text-sm text-slate-600 hover:bg-brand-50"><span>{link.label}</span>{link.href === "/cart" && cartCount > 0 && <CartBadge count={cartCount} />}</Link>)}</div>}
-                            </div>
-                        )}
                         {isAuthed &&
                             primaryDashboardLinks.map((link) => (
                                 <Link
@@ -504,6 +502,11 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                     )}
                                 >
                                     <span>{link.label}</span>
+                                    {link.notificationKey && contentCounts[link.notificationKey] > 0 && (
+                                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                                            {contentCounts[link.notificationKey] > 99 ? "99+" : contentCounts[link.notificationKey]}
+                                        </span>
+                                    )}
                                     {link.badge && pendingCount > 0 && (
                                         <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
                                             {pendingCount > 99 ? "99+" : pendingCount}
@@ -513,6 +516,13 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                     {link.collectorBadge && collectorNoticeCount > 0 && <CartBadge count={collectorNoticeCount} />}
                                 </Link>
                             ))}
+
+                        {isAuthed && materialLinks.length > 0 && (
+                            <div className="rounded-2xl border border-slate-100 p-2">
+                                <button type="button" onClick={() => setMaterialsOpen((open) => !open)} aria-expanded={materialsOpen} className="flex w-full items-center justify-between px-2 py-2 text-sm font-bold text-slate-700">Vật tư <ChevronDown className={cn("h-4 w-4 transition-transform", materialsOpen && "rotate-180")} /></button>
+                                {materialsOpen && <div className="space-y-1 border-t border-slate-100 pt-1">{materialLinks.map((link) => <Link key={link.href} href={link.href} onClick={() => { setMaterialsOpen(false); setMobileOpen(false); }} className="flex items-center justify-between gap-3 rounded-xl px-4 py-2 text-sm text-slate-600 hover:bg-brand-50"><span>{link.label}</span>{link.href === "/cart" && cartCount > 0 && <CartBadge count={cartCount} />}</Link>)}</div>}
+                            </div>
+                        )}
 
                         <hr className="my-3 border-slate-100" />
 

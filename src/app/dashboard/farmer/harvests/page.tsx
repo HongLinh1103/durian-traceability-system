@@ -7,12 +7,34 @@ import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { FarmerHarvests } from "@/components/farmer-harvests";
 
+export const dynamic = "force-dynamic";
+
 export default async function Page() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "FARMER") redirect("/login");
     const rows = await prisma.harvestRecord.findMany({
         where: { farmerId: session.user.id },
-        include: { varietyItems: true, farm: true, buyerFacility: true },
+        include: {
+            varietyItems: true,
+            farm: {
+                select: {
+                    id: true,
+                    farmName: true,
+                    farmCode: true,
+                    address: true,
+                    durianVariety: true,
+                },
+            },
+            buyerFacility: {
+                select: {
+                    id: true,
+                    name: true,
+                    phone: true,
+                    province: true,
+                    ward: true,
+                },
+            },
+        },
         orderBy: { createdAt: "desc" },
     });
 

@@ -10,6 +10,8 @@ interface PageProps {
     };
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function FarmerHarvestDetailPage({ params }: PageProps) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
