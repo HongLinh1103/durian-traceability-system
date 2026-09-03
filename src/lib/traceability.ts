@@ -955,6 +955,45 @@ async function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTrac
         ];
     }) || [];
     const uniquePreviewSources = [...new Map(previewSources.map((source) => [source.id, source])).values()];
+    // Some legacy/demo finished lots were created without batch inputs. In that
+    // case the preview still carries the farm identity selected upstream, so use
+    // that exact identity to recover the farmer's real active season and logs.
+    const previewFarm = uniquePreviewSources.length === 0 && (preview?.farmName || preview?.regionCode)
+        ? await prisma.farm.findFirst({
+              where: {
+                  isActive: true,
+                  OR: [
+                      ...(preview?.farmName ? [{ farmName: { equals: preview.farmName, mode: "insensitive" as const } }] : []),
+                      ...(preview?.regionCode ? [{ farmCode: { equals: preview.regionCode, mode: "insensitive" as const } }] : []),
+                  ],
+              },
+              include: {
+                  region: true,
+                  cropSeasons: {
+                      where: { status: "ACTIVE" },
+                      orderBy: [{ year: "desc" }, { sequence: "desc" }],
+                      take: 1,
+                      include: {
+                          farmingLogs: {
+                              orderBy: { actionDate: "desc" },
+                              take: 30,
+                              select: {
+                                  stage: true,
+                                  activityType: true,
+                                  otherActivity: true,
+                                  chemicalName: true,
+                                  dosage: true,
+                                  phiDays: true,
+                                  isGACCCompliant: true,
+                                  actionDate: true,
+                                  notes: true,
+                              },
+                          },
+                      },
+                  },
+              },
+          }).catch(() => null)
+        : null;
     const isExport = preview ? preview.shipmentType === "EXPORT" : !cleanToken.toUpperCase().startsWith("DOM-");
     const weight = preview?.weight || 3100;
     const boxCount = preview?.boxCount || Math.max(1, Math.round(weight / 18));
@@ -1161,6 +1200,21 @@ async function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTrac
                     notes: log.notes,
                 })),
             }))
+            : previewFarm && previewFarm.cropSeasons[0]
+            ? [{
+                lotCode: rawCode,
+                farmName: previewFarm.farmName,
+                farmCode: previewFarm.farmCode,
+                region: previewFarm.region ? { code: previewFarm.region.code, name: previewFarm.region.name } : null,
+                variety: previewFarm.durianVariety,
+                harvestedAt: new Date(),
+                contributedWeight: weight,
+                unit: "kg",
+                complianceStatus: "COMPLIANT",
+                season: previewFarm.cropSeasons[0].name,
+                cultivationSummary: null,
+                cultivationLogs: previewFarm.cropSeasons[0].farmingLogs,
+            }]
             : [{
                 lotCode: rawCode,
                 farmName,

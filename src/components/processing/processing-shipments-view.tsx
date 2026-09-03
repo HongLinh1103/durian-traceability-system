@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+    AlertTriangle,
     Boxes,
     Building2,
     Calendar,
@@ -519,6 +520,46 @@ export function ProcessingShipmentsView({
         partnerSystem,
         deliveryAddress,
         distributionChannel,
+    ]);
+
+    const destinationDisplay = useMemo(() => {
+        if (shipmentType === "EXPORT") {
+            return destinationCountry.trim() || portOfDestination.trim() || "Trung Quốc";
+        }
+        return partnerBranch.trim() || customerName.trim() || partnerSystem.trim() || deliveryAddress.trim() || "Nội địa";
+    }, [shipmentType, destinationCountry, portOfDestination, partnerBranch, customerName, partnerSystem, deliveryAddress]);
+
+    const missingReasonText = useMemo(() => {
+        if (!selectedFinishedLotId || !selectedLot) {
+            return "Chưa chọn lô thành phẩm nguồn gốc (vui lòng chọn ở mục Thông tin hàng hóa).";
+        }
+        if (!Number(weightInput) || Number(weightInput) <= 0) {
+            return "Chưa nhập khối lượng xuất hợp lệ.";
+        }
+        if (shipmentType === "EXPORT") {
+            if (!destinationCountry.trim() && !portOfDestination.trim()) {
+                return "Thiếu thông tin quốc gia nhập khẩu hoặc điểm đến xuất khẩu.";
+            }
+        } else {
+            if (!distributionChannel.trim()) {
+                return "Thiếu kênh phân phối nội địa.";
+            }
+            if (!partnerBranch.trim() && !customerName.trim() && !partnerSystem.trim()) {
+                return "Thiếu thông tin đối tác hoặc chi nhánh nhận hàng.";
+            }
+        }
+        return "Dữ liệu đã được liên kết từ vùng trồng đến lô xuất.";
+    }, [
+        selectedFinishedLotId,
+        selectedLot,
+        weightInput,
+        shipmentType,
+        destinationCountry,
+        portOfDestination,
+        distributionChannel,
+        partnerBranch,
+        customerName,
+        partnerSystem,
     ]);
 
     // Encode real-time form data into URL query param so ANY scanner gets 100% exact data
@@ -1545,111 +1586,212 @@ export function ProcessingShipmentsView({
                                     </div>
                                 )}
 
-                                {/* PHẦN 4: KHU VỰC QR TRUY XUẤT (LIVE PREVIEW & QUÉT TRỰC TIẾP NGAY TRÊN FORM) */}
-                                <div className={`rounded-2xl border-2 p-4 space-y-3 transition ${selectedLot && isFormReadyForQr ? "border-emerald-400 bg-emerald-50/40" : "border-slate-300 bg-slate-50/60"}`}>
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                                            <QrCode className="h-4 w-4 text-emerald-600" />
-                                            KHU VỰC QR TRUY XUẤT NGUỒN GỐC (QUÉT & XEM TRỰC TIẾP)
-                                        </h3>
-                                        {selectedLot && isFormReadyForQr ? (
-                                            <span className="rounded-full bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 flex items-center gap-1">
-                                                <CheckCircle2 className="h-3 w-3" /> Đủ thông tin · Sẵn sàng quét & phát hành
-                                            </span>
-                                        ) : !selectedLot ? (
-                                            <span className="rounded-full bg-amber-100 border border-amber-300 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
-                                                Chưa chọn lô thành phẩm
-                                            </span>
-                                        ) : (
-                                            <span className="rounded-full bg-amber-100 border border-amber-300 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
-                                                {shipmentType === "EXPORT" ? "Chưa đủ thông tin điểm đến / xuất khẩu" : "Chưa đủ thông tin khách hàng / địa chỉ nhận"}
-                                            </span>
-                                        )}
+                                {/* KHU VỰC QR TRUY XUẤT NGUỒN GỐC (BỐ CỤC: QR BÊN TRÁI, THÔNG TIN KIỂM TRA BÊN PHẢI) */}
+                                <div className={`rounded-3xl border-2 p-4 sm:p-5 space-y-4 transition ${
+                                    selectedLot && isFormReadyForQr
+                                        ? "border-emerald-400 bg-emerald-50/30"
+                                        : "border-slate-300 bg-slate-50/50"
+                                }`}>
+                                    {/* 1. Header tinh gọn */}
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200/80 pb-3">
+                                        <div>
+                                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                                                <QrCode className="h-4 w-4 text-emerald-600" />
+                                                QR TRUY XUẤT NGUỒN GỐC
+                                            </h3>
+                                            <p className="text-xs text-slate-500 mt-0.5">
+                                                Quét mã hoặc xem trước thông tin truy xuất của lô hàng.
+                                            </p>
+                                        </div>
+                                        <div>
+                                            {selectedLot && isFormReadyForQr ? (
+                                                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 border border-emerald-300 px-3 py-1 text-xs font-bold text-emerald-800">
+                                                    <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse" />
+                                                    Sẵn sàng phát hành
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-700">
+                                                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                                                    Chưa sẵn sàng phát hành
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3 items-center">
-                                        {/* Cột trái: QR Code Live Preview & Trực tiếp quét */}
-                                        <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-3 text-center min-h-[190px]">
+                                    {/* Bố cục 2 cột: Cột trái (QR Code) - Cột phải (Thông tin kiểm tra trước khi phát hành) */}
+                                    <div className="grid grid-cols-1 md:grid-cols-[250px_minmax(0,1fr)] gap-5 items-stretch">
+                                        {/* 2. CỘT TRÁI CHỈ DÀNH CHO QR CODE (200-220px) */}
+                                        <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-xs">
                                             {selectedLot && isFormReadyForQr ? (
                                                 <>
-                                                    <img
-                                                        src={liveQrImage}
-                                                        alt={`QR Preview ${shipmentCode}`}
-                                                        className="h-36 w-36 rounded-lg object-contain shadow-sm border border-slate-100"
-                                                    />
-                                                    <span className="mt-2 font-mono text-[11px] font-black text-slate-900">{shipmentCode}</span>
-
+                                                    <div className="p-2 rounded-xl bg-white border border-slate-100 shadow-sm">
+                                                        <img
+                                                            src={liveQrImage}
+                                                            alt={`QR Code ${shipmentCode}`}
+                                                            className="h-[210px] w-[210px] rounded-lg object-contain"
+                                                        />
+                                                    </div>
+                                                    <p className="mt-3 font-mono text-xs font-black text-slate-900 tracking-wide">
+                                                        {shipmentCode}
+                                                    </p>
                                                     <a
                                                         href={liveTraceUrl}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="mt-2 inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-emerald-700 shadow-soft transition"
+                                                        className="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm transition"
                                                     >
-                                                        <ExternalLink className="h-3 w-3" />
-                                                        Xem trước trang truy xuất
+                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                        Xem trang truy xuất
                                                     </a>
                                                 </>
                                             ) : (
-                                                <div className="py-4 space-y-2 text-slate-400">
-                                                    <QrCode className="h-16 w-16 mx-auto opacity-30" />
-                                                    <span className="block font-mono text-[11px] font-bold text-slate-400">
+                                                <div className="py-6 px-3 flex flex-col items-center justify-center text-slate-400 space-y-3">
+                                                    <div className="h-[190px] w-[190px] rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/70 flex flex-col items-center justify-center p-3 text-center">
+                                                        <QrCode className="h-16 w-16 text-slate-300" />
+                                                        <span className="mt-2 text-[11px] text-slate-400 font-bold">Chưa tạo mã QR</span>
+                                                    </div>
+                                                    <p className="font-mono text-xs font-bold text-slate-400">
                                                         {shipmentCode || "EXP-..."}
-                                                    </span>
-                                                    <span className="block text-[10px] text-slate-400 max-w-[180px]">
-                                                        Điền đầy đủ lô thành phẩm và thông tin vận chuyển để kích hoạt mã quét trực tiếp
+                                                    </p>
+                                                    <span className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">
+                                                        Điền đủ thông tin hàng hóa & đối tác để kích hoạt mã QR
                                                     </span>
                                                 </div>
                                             )}
                                         </div>
 
-                                        {/* Cột phải: Chuỗi truy xuất liên kết */}
-                                        <div className="md:col-span-2 space-y-2 text-xs">
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="rounded-xl bg-white p-2.5 border border-slate-200">
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                                                        <Trees className="h-3 w-3 text-emerald-600" /> Farm / Vùng trồng
-                                                    </p>
-                                                    {selectedLot ? (
-                                                        <>
-                                                            <p className="font-bold text-slate-900 mt-0.5">{selectedLot.farmName || "Vườn liên kết"}</p>
-                                                            <p className="text-[10px] text-emerald-700 font-semibold">{selectedLot.regionCode || "MSVT-VN-DL-0089"}</p>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <p className="font-semibold text-slate-400 mt-0.5">— (Chưa chọn lô thành phẩm)</p>
-                                                            <p className="text-[10px] text-slate-400">—</p>
-                                                        </>
-                                                    )}
-                                                </div>
-
-                                                <div className="rounded-xl bg-white p-2.5 border border-slate-200">
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                                                        <Building2 className="h-3 w-3 text-emerald-600" /> Cơ sở chế biến & đóng gói
-                                                    </p>
-                                                    <p className="font-bold text-slate-900 mt-0.5">{facilityName}</p>
-                                                    <p className="text-[10px] text-slate-500">Mã CS: CS-TV-001</p>
+                                        {/* CỘT PHẢI: THÔNG TIN KIỂM TRA TRƯỚC KHI PHÁT HÀNH */}
+                                        <div className="flex flex-col justify-between space-y-3">
+                                            {/* 4. THÔNG TIN TRUY XUẤT (Lô thành phẩm & Hình thức xuất) */}
+                                            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 space-y-1.5">
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                                    THÔNG TIN TRUY XUẤT
+                                                </span>
+                                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-0.5">
+                                                    <div>
+                                                        <p className="font-mono text-xs font-black text-slate-900">
+                                                            {selectedLot ? selectedLot.lotCode : "—"}
+                                                        </p>
+                                                        <p className="text-xs font-bold text-slate-700 mt-0.5">
+                                                            {productName.trim() || selectedLot?.productName || "Sầu riêng tươi xuất khẩu"}
+                                                        </p>
+                                                    </div>
+                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold self-start sm:self-center ${
+                                                        shipmentType === "EXPORT"
+                                                            ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                                            : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                                    }`}>
+                                                        {shipmentType === "EXPORT" ? "Xuất khẩu nước ngoài" : "Xuất bán trong nước"}
+                                                    </span>
                                                 </div>
                                             </div>
 
-                                            <div className="rounded-xl bg-white p-2.5 border border-slate-200 space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase">Tóm tắt chuỗi truy xuất nguồn gốc</p>
-                                                {selectedLot ? (
-                                                    <>
-                                                        <p className="font-medium text-slate-800">
-                                                            Lô nguồn: <span className="font-mono font-bold text-slate-900">{selectedLot.lotCode}</span> ({selectedLot.productName}) · Hình thức: <span className="font-bold text-emerald-700">{shipmentType === "EXPORT" ? "Xuất khẩu nước ngoài" : "Xuất bán trong nước"}</span>
+                                            {/* 3. NGUỒN GỐC (Gom Farm và Cơ sở đóng gói vào cùng một section) */}
+                                            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 space-y-2">
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                                    NGUỒN GỐC
+                                                </span>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+                                                    {/* Vườn / Farm */}
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                                                            <Trees className="h-3 w-3 text-emerald-600" />
+                                                            Farm / Vùng trồng
                                                         </p>
-                                                        <p className="text-[11px] text-emerald-700 font-bold">
-                                                            {isFormReadyForQr
-                                                                ? `✅ Chuỗi truy xuất hợp lệ: ${selectedLot.farmName || "Farm"} ➔ Tiếp nhận & Phân loại ➔ Đóng gói ➔ ${shipmentType === "EXPORT" ? `Xuất khẩu (${destinationCountry || portOfDestination})` : `Xuất bán nội địa (${partnerBranch || customerName || partnerSystem || deliveryAddress})`}.`
-                                                                : "⚠️ Vui lòng điền đủ khối lượng xuất và thông tin điểm đến/khách hàng."}
+                                                        <p className="text-xs font-bold text-slate-900">
+                                                            {selectedLot?.farmName || "Vườn sầu riêng liên kết"}
                                                         </p>
-                                                    </>
-                                                ) : (
-                                                    <p className="text-[11px] text-amber-700 font-bold">
-                                                        ⚠️ Chưa liên kết nguồn gốc. Vui lòng chọn lô thành phẩm từ kho ở Phần 1 để hệ thống kết nối chuỗi dữ liệu vườn / Farm.
-                                                    </p>
-                                                )}
+                                                        <p className="text-[11px] font-mono font-semibold text-emerald-700">
+                                                            {selectedLot?.regionCode || "MSVT-VN-DL-0089"}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Cơ sở đóng gói */}
+                                                    <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-slate-100 pt-2 sm:pt-0 sm:pl-3">
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                                                            <Building2 className="h-3 w-3 text-emerald-600" />
+                                                            Cơ sở đóng gói
+                                                        </p>
+                                                        <p className="text-xs font-bold text-slate-900 truncate" title={facilityName}>
+                                                            {facilityName}
+                                                        </p>
+                                                        <p className="text-[11px] font-mono text-slate-500">
+                                                            Mã CS: CS-TV-001
+                                                        </p>
+                                                    </div>
+                                                </div>
                                             </div>
+
+                                            {/* 5. CHUỖI TRUY XUẤT (Visual timeline 4 chặng: Farm -> Tiếp nhận -> Đóng gói -> Xuất hàng) */}
+                                            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 space-y-2">
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                                    CHUỖI TRUY XUẤT
+                                                </span>
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5">
+                                                    {/* Chặng 1: Farm / Vùng trồng */}
+                                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-2 text-left space-y-0.5">
+                                                        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-800">
+                                                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[9px] font-black text-white">1</span>
+                                                            <span className="truncate">Farm / Vùng trồng</span>
+                                                        </div>
+                                                        <p className="text-[11px] font-bold text-slate-900 truncate" title={selectedLot?.farmName || "Vườn nguồn"}>
+                                                            {selectedLot?.farmName || "Vườn nguồn"}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Chặng 2: Tiếp nhận & Phân loại */}
+                                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-2 text-left space-y-0.5">
+                                                        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-800">
+                                                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[9px] font-black text-white">2</span>
+                                                            <span className="truncate">Tiếp nhận & Phân loại</span>
+                                                        </div>
+                                                        <p className="text-[11px] font-semibold text-slate-700 truncate">
+                                                            QC & Tiếp nhận
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Chặng 3: Chế biến & Đóng gói */}
+                                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-2 text-left space-y-0.5">
+                                                        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-800">
+                                                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[9px] font-black text-white">3</span>
+                                                            <span className="truncate">Chế biến & Đóng gói</span>
+                                                        </div>
+                                                        <p className="text-[11px] font-semibold text-slate-700 truncate">
+                                                            Đóng thùng xuất xưởng
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Chặng 4: Xuất hàng */}
+                                                    <div className="rounded-xl border border-emerald-300 bg-emerald-100/70 p-2 text-left space-y-0.5">
+                                                        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-900">
+                                                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-700 text-[9px] font-black text-white">4</span>
+                                                            <span className="truncate">Xuất hàng</span>
+                                                        </div>
+                                                        <p className="text-[11px] font-black text-emerald-950 truncate" title={destinationDisplay}>
+                                                            {destinationDisplay}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* 6. TRẠNG THÁI ĐẶT CUỐI CARD */}
+                                            {selectedLot && isFormReadyForQr ? (
+                                                <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 flex items-start gap-2.5">
+                                                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                                                    <div>
+                                                        <p className="text-xs font-bold text-emerald-900">Chuỗi truy xuất đầy đủ</p>
+                                                        <p className="text-[11px] text-emerald-700 mt-0.5">Dữ liệu đã được liên kết từ vùng trồng đến lô xuất.</p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 flex items-start gap-2.5">
+                                                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                                                    <div>
+                                                        <p className="text-xs font-bold text-amber-900">Chuỗi truy xuất chưa đầy đủ</p>
+                                                        <p className="text-[11px] text-amber-800 mt-0.5">{missingReasonText}</p>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1668,8 +1810,8 @@ export function ProcessingShipmentsView({
                                 <Button
                                     type="button"
                                     onClick={handleCreateShipment}
-                                    disabled={submitting}
-                                    className="flex-1 rounded-2xl h-11 text-xs font-black bg-emerald-600 text-white hover:bg-emerald-700 shadow-soft"
+                                    disabled={submitting || !selectedLot || !isFormReadyForQr}
+                                    className="flex-1 rounded-2xl h-11 text-xs font-black bg-emerald-600 text-white hover:bg-emerald-700 shadow-soft disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {submitting ? (
                                         <>
