@@ -329,11 +329,10 @@ function SearchableCombobox({
                                     onSelectOption(opt);
                                     setIsOpen(false);
                                 }}
-                                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-semibold transition ${
-                                    opt.toLowerCase() === value.trim().toLowerCase()
+                                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-semibold transition ${opt.toLowerCase() === value.trim().toLowerCase()
                                         ? "bg-emerald-50 text-emerald-800 font-bold"
                                         : "text-slate-700 hover:bg-slate-100"
-                                }`}
+                                    }`}
                             >
                                 <span>{opt}</span>
                                 {opt.toLowerCase() === value.trim().toLowerCase() && (
@@ -855,14 +854,14 @@ export function ProcessingShipmentsView({
             <nav className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                 <span>Cơ sở chế biến</span>
                 <span>/</span>
-                <span className="text-emerald-700 font-bold">4. Xuất hàng</span>
+                <span className="text-emerald-700 font-bold">Xuất hàng</span>
             </nav>
 
             {/* Header + Actions */}
             <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">4. Xuất hàng</h1>
+                        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Xuất hàng</h1>
                         <p className="mt-1 text-xs sm:text-sm text-slate-500">
                             Quản lý hồ sơ xuất khẩu, liên kết phương tiện vận chuyển, container/seal và phát hành tem QR truy xuất nguồn gốc toàn chuỗi.
                         </p>
@@ -1105,8 +1104,8 @@ export function ProcessingShipmentsView({
                                             }
                                         }}
                                         className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-black transition ${shipmentType === "EXPORT"
-                                                ? "bg-white text-indigo-700 shadow-sm border border-slate-200"
-                                                : "text-slate-600 hover:text-slate-900"
+                                            ? "bg-white text-indigo-700 shadow-sm border border-slate-200"
+                                            : "text-slate-600 hover:text-slate-900"
                                             }`}
                                     >
                                         <Globe className="h-4 w-4" />
@@ -1121,8 +1120,8 @@ export function ProcessingShipmentsView({
                                             }
                                         }}
                                         className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-black transition ${shipmentType === "DOMESTIC"
-                                                ? "bg-white text-emerald-700 shadow-sm border border-slate-200"
-                                                : "text-slate-600 hover:text-slate-900"
+                                            ? "bg-white text-emerald-700 shadow-sm border border-slate-200"
+                                            : "text-slate-600 hover:text-slate-900"
                                             }`}
                                     >
                                         <Building2 className="h-4 w-4" />

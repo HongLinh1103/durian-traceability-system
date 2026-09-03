@@ -538,45 +538,59 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                     </div>
 
                     {/* DÂY CHUYỀN LIÊN TỤC (CONTINUOUS CHAIN TRACK) */}
-                    <div className="relative pl-6 sm:pl-9 space-y-8 border-l-2 border-emerald-600/80 ml-4 sm:ml-5 py-2 min-w-0">
+                    <div className="max-w-4xl py-1 min-w-0">
                         {displayedMilestones.map((milestone, idx) => {
                             const isProcessing = milestone.type === "PROCESSING_PACKAGING";
                             const isLast = idx === displayedMilestones.length - 1;
 
                             return (
-                                <div key={milestone.id} className="relative group min-w-0">
-                                    {/* Circular Node on the Chain */}
-                                    <div
-                                        className={`absolute -left-[17px] sm:-left-[21px] top-0 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full shadow-md ring-4 ${getNodeColorClass(
-                                            milestone.type
-                                        )} transition group-hover:scale-110`}
-                                    >
-                                        {getMilestoneIcon(milestone.type)}
+                                <div
+                                    key={milestone.id}
+                                    className={`group grid grid-cols-[2.75rem_minmax(0,1fr)] sm:grid-cols-[3.5rem_minmax(0,1fr)] min-w-0 ${
+                                        isLast ? "" : "pb-7 sm:pb-9"
+                                    }`}
+                                >
+                                    {/* Dedicated timeline column: the node never shares space with text. */}
+                                    <div className="relative flex justify-center">
+                                        {!isLast && (
+                                            <span className="absolute left-1/2 top-9 bottom-0 w-0.5 -translate-x-1/2 bg-emerald-600/70" />
+                                        )}
+                                        <div
+                                            className={`relative z-10 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full shadow-md ring-4 ${getNodeColorClass(
+                                                milestone.type
+                                            )} transition group-hover:scale-105`}
+                                        >
+                                            {getMilestoneIcon(milestone.type)}
+                                        </div>
                                     </div>
 
                                     {/* Milestone Content */}
-                                    <div className="space-y-2 min-w-0">
+                                    <div
+                                        className={`min-w-0 pl-2 sm:pl-3 ${
+                                            isLast ? "" : "border-b border-slate-200/80 pb-7 sm:pb-9"
+                                        }`}
+                                    >
                                         {/* Milestone Header Line: Title + Date */}
-                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                                        <div className="flex flex-col sm:flex-row sm:items-start gap-1.5 sm:gap-4 min-w-0">
                                             <h3 className="text-sm sm:text-base font-black uppercase tracking-wide text-slate-900 break-words leading-tight">
                                                 {milestone.title}
                                             </h3>
-                                            <span className="font-mono text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 whitespace-nowrap self-start sm:self-auto shrink-0">
+                                            <span className="font-mono text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 whitespace-nowrap self-start shrink-0">
                                                 {milestone.dateText}
                                             </span>
                                         </div>
 
                                         {/* Milestone Fields List */}
-                                        <div className="space-y-1.5 text-xs sm:text-sm pl-0.5 min-w-0">
+                                        <div className="mt-3 grid gap-2.5 text-xs sm:text-sm min-w-0">
                                             {milestone.fields.map((field, fIdx) => {
                                                 const isQc = field.label.toUpperCase().includes("QC");
                                                 return (
-                                                    <div key={fIdx} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 min-w-0">
-                                                        <span className="text-slate-500 font-medium shrink-0 text-xs">
-                                                            {field.label}:
+                                                    <div key={fIdx} className="grid gap-0.5 sm:grid-cols-[10.5rem_minmax(0,1fr)] sm:gap-x-3 min-w-0">
+                                                        <span className="text-slate-500 font-medium text-xs leading-5">
+                                                            {field.label}
                                                         </span>
                                                         {isQc ? (
-                                                            <span className="inline-flex items-start gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-black text-emerald-800 border border-emerald-200 break-words max-w-full">
+                                                            <span className="inline-flex w-fit items-start gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-black text-emerald-800 border border-emerald-200 break-words max-w-full">
                                                                 <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0 mt-0.5" />
                                                                 <span className="break-words">{field.value}</span>
                                                             </span>
