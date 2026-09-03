@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     Boxes,
     Calendar,
@@ -28,6 +28,7 @@ export type FreshProductItem = {
     rawLotId?: string;
     farmName: string;
     inputWeight: number;
+    fruitCount?: number;
     outputWeight?: number;
     packagingDate?: string | Date | null;
     boxCount?: number;
@@ -43,6 +44,7 @@ export type ProcessedBatchItem = {
     farmName: string;
     method: "PEELING" | "FREEZING" | "FURTHER_PROCESSING" | string;
     inputWeight: number;
+    fruitCount?: number;
     outputProduct?: string;
     outputWeight?: number;
     status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
@@ -62,6 +64,68 @@ export function ProcessingProductionView({
     const [freshItems, setFreshItems] = useState<FreshProductItem[]>(initialFreshItems);
     const [processedItems, setProcessedItems] = useState<ProcessedBatchItem[]>(initialProcessedItems);
     const [searchQuery, setSearchQuery] = useState("");
+
+    // Hydrate newly classified tickets from localStorage
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem("processing_classified_lots");
+            if (!raw) return;
+            const lots: any[] = JSON.parse(raw);
+            if (!Array.isArray(lots) || lots.length === 0) return;
+
+            setFreshItems((prev) => {
+                const existingLotIds = new Set(prev.map((i) => i.rawLotId || i.id));
+                const newFresh: FreshProductItem[] = [];
+
+                lots.forEach((lot) => {
+                    const freshW = Number(lot.freshExportWeight || 0);
+                    if (freshW > 0 && !existingLotIds.has(lot.id)) {
+                        newFresh.push({
+                            id: `raw-fresh-${lot.id}`,
+                            code: `PK-${lot.code}`,
+                            sourceRawCode: lot.code,
+                            rawLotId: lot.id,
+                            farmName: lot.farmName || "Vườn liên kết",
+                            inputWeight: freshW,
+                            fruitCount: Number(lot.freshExportFruitCount) || (freshW > 0 ? Math.round(freshW / 3) : undefined),
+                            outputWeight: freshW,
+                            packagingDate: lot.classifiedAt || new Date().toISOString().slice(0, 10),
+                            boxCount: Math.round(freshW / 18) || 1,
+                            packagingSpec: "Thùng 5-6 trái / 18kg",
+                            status: "PENDING_PACKAGING",
+                        });
+                    }
+                });
+
+                return newFresh.length > 0 ? [...newFresh, ...prev] : prev;
+            });
+
+            setProcessedItems((prev) => {
+                const existingLotIds = new Set(prev.map((i) => i.rawLotId || i.id));
+                const newProc: ProcessedBatchItem[] = [];
+
+                lots.forEach((lot) => {
+                    const procW = Number(lot.processingWeight || 0);
+                    if (procW > 0 && !existingLotIds.has(lot.id)) {
+                        newProc.push({
+                            id: `raw-proc-${lot.id}`,
+                            code: `PROC-${lot.code}`,
+                            sourceRawCode: lot.code,
+                            rawLotId: lot.id,
+                            farmName: lot.farmName || "Vườn liên kết",
+                            method: "Bóc múi / Tách múi",
+                            inputWeight: procW,
+                            fruitCount: Number(lot.processingFruitCount) || (procW > 0 ? Math.round(procW / 3) : undefined),
+                            outputProduct: "Cơm sầu riêng bóc múi",
+                            status: "PENDING",
+                        });
+                    }
+                });
+
+                return newProc.length > 0 ? [...newProc, ...prev] : prev;
+            });
+        } catch {}
+    }, []);
 
     // Fresh packaging drawer
     const [selectedFresh, setSelectedFresh] = useState<FreshProductItem | null>(null);
@@ -138,6 +202,23 @@ export function ProcessingProductionView({
                 )
             );
 
+            // Sync to localStorage under processing_packaged_lots
+            try {
+                const existing = JSON.parse(localStorage.getItem("processing_packaged_lots") || "[]");
+                const packagedEntry = {
+                    id: selectedFresh.id,
+                    lotCode: selectedFresh.code,
+                    productName: "Sầu riêng tươi xuất khẩu",
+                    remainingWeight: outW,
+                    packaging: freshPackagingSpec,
+                    farmName: selectedFresh.farmName,
+                    rawLotCode: selectedFresh.sourceRawCode || selectedFresh.code,
+                    status: "READY_FOR_DISTRIBUTION",
+                };
+                const filtered = existing.filter((x: any) => x.id !== packagedEntry.id);
+                localStorage.setItem("processing_packaged_lots", JSON.stringify([...filtered, packagedEntry]));
+            } catch {}
+
             toast({
                 title: "Đóng gói hoàn tất",
                 description: `Lô ${selectedFresh.code} (${outW.toLocaleString("vi-VN")} kg · ${boxes} thùng) đã chuyển sang trạng thái Sẵn sàng xuất hàng.`,
@@ -202,6 +283,23 @@ export function ProcessingProductionView({
                         : item
                 )
             );
+
+            // Sync to localStorage under processing_packaged_lots
+            try {
+                const existing = JSON.parse(localStorage.getItem("processing_packaged_lots") || "[]");
+                const packagedEntry = {
+                    id: selectedProc.id,
+                    lotCode: selectedProc.code,
+                    productName: procProductName,
+                    remainingWeight: outW,
+                    packaging: "Khay hút chân không 500g",
+                    farmName: selectedProc.farmName,
+                    rawLotCode: selectedProc.sourceRawCode || selectedProc.code,
+                    status: "READY_FOR_DISTRIBUTION",
+                };
+                const filtered = existing.filter((x: any) => x.id !== packagedEntry.id);
+                localStorage.setItem("processing_packaged_lots", JSON.stringify([...filtered, packagedEntry]));
+            } catch {}
 
             toast({
                 title: "Mẻ chế biến hoàn tất",
@@ -337,8 +435,13 @@ export function ProcessingProductionView({
                                             </td>
 
                                             {/* KL đầu vào */}
-                                            <td className="px-5 py-3 whitespace-nowrap text-right font-mono text-slate-600 text-xs sm:text-sm">
-                                                {item.inputWeight.toLocaleString("vi-VN")} kg
+                                            <td className="px-5 py-3 whitespace-nowrap text-right text-xs sm:text-sm">
+                                                <div className="font-mono font-bold text-slate-800">{item.inputWeight.toLocaleString("vi-VN")} kg</div>
+                                                {item.fruitCount && (
+                                                    <span className="block text-[11px] font-semibold text-emerald-700">
+                                                        {item.fruitCount.toLocaleString("vi-VN")} trái
+                                                    </span>
+                                                )}
                                             </td>
 
                                             {/* KL thành phẩm */}
@@ -443,8 +546,13 @@ export function ProcessingProductionView({
                                             </td>
 
                                             {/* KL đầu vào */}
-                                            <td className="px-5 py-3 whitespace-nowrap text-right font-mono text-slate-600 text-xs sm:text-sm">
-                                                {item.inputWeight.toLocaleString("vi-VN")} kg
+                                            <td className="px-5 py-3 whitespace-nowrap text-right text-xs sm:text-sm">
+                                                <div className="font-mono font-bold text-slate-800">{item.inputWeight.toLocaleString("vi-VN")} kg</div>
+                                                {item.fruitCount && (
+                                                    <span className="block text-[11px] font-semibold text-indigo-700">
+                                                        {item.fruitCount.toLocaleString("vi-VN")} trái
+                                                    </span>
+                                                )}
                                             </td>
 
                                             {/* Thành phẩm thu được */}
@@ -497,30 +605,50 @@ export function ProcessingProductionView({
                 </div>
             )}
 
-            {/* DRAWER: LÔ ĐÓNG GÓI TRÁI TƯƠI */}
+            {/* MODAL: LÔ ĐÓNG GÓI TRÁI TƯƠI (FULL SCREEN OVERLAY) */}
             {selectedFresh && (
-                <div className="fixed inset-0 z-[120] flex justify-end bg-slate-950/40 backdrop-blur-sm transition">
-                    <div className="relative flex h-full w-full max-w-md flex-col justify-between border-l border-slate-200 bg-white p-6 shadow-2xl animate-in slide-in-from-right duration-200">
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <div>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Đóng gói xuất khẩu</span>
-                                    <h2 className="text-xl font-black text-slate-900">HOÀN TẤT ĐÓNG GÓI</h2>
-                                </div>
-                                <button type="button" onClick={() => setSelectedFresh(null)} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
-                                    <X className="h-5 w-5" />
-                                </button>
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                    <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
+                            <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Đóng gói xuất khẩu</span>
+                                <h2 className="text-xl font-black text-slate-900">HOÀN TẤT ĐÓNG GÓI</h2>
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedFresh(null)}
+                                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
 
+                        {/* Body */}
+                        <div className="overflow-y-auto p-5 sm:p-6 space-y-4">
                             <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700 border border-slate-200">
-                                <p className="flex justify-between"><span className="text-slate-500">Mã lô nguồn:</span><span className="font-mono font-bold text-slate-900">{selectedFresh.sourceRawCode || selectedFresh.code}</span></p>
-                                <p className="flex justify-between"><span className="text-slate-500">Farm / Vùng:</span><span className="font-bold text-slate-800">{selectedFresh.farmName}</span></p>
-                                <p className="flex justify-between border-t border-slate-200/60 pt-1 font-bold"><span className="text-slate-700">Khối lượng đầu vào:</span><span className="font-black text-emerald-700">{selectedFresh.inputWeight.toLocaleString("vi-VN")} kg</span></p>
+                                <p className="flex justify-between">
+                                    <span className="text-slate-500">Mã lô nguồn:</span>
+                                    <span className="font-mono font-bold text-slate-900">{selectedFresh.sourceRawCode || selectedFresh.code}</span>
+                                </p>
+                                <p className="flex justify-between">
+                                    <span className="text-slate-500">Farm / Vùng:</span>
+                                    <span className="font-bold text-slate-800">{selectedFresh.farmName}</span>
+                                </p>
+                                <p className="flex justify-between border-t border-slate-200/60 pt-1 font-bold">
+                                    <span className="text-slate-700">Khối lượng đầu vào:</span>
+                                    <span className="font-black text-emerald-700">
+                                        {selectedFresh.inputWeight.toLocaleString("vi-VN")} kg
+                                        {selectedFresh.fruitCount ? ` (${selectedFresh.fruitCount.toLocaleString("vi-VN")} trái)` : ""}
+                                    </span>
+                                </p>
                             </div>
 
-                            <div className="space-y-3 pt-2">
+                            <div className="space-y-3 pt-1">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Khối lượng thành phẩm (kg) <span className="text-rose-500">*</span></label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                                        Khối lượng thành phẩm (kg) <span className="text-rose-500">*</span>
+                                    </label>
                                     <input
                                         type="number"
                                         value={freshOutputWeight}
@@ -577,36 +705,69 @@ export function ProcessingProductionView({
                             </div>
                         </div>
 
-                        <div className="flex gap-2 border-t border-slate-100 pt-4">
-                            <Button type="button" variant="outline" onClick={() => setSelectedFresh(null)} className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200">Hủy</Button>
-                            <Button type="button" onClick={handleConfirmFreshPackaging} disabled={submittingFresh} className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft">{submittingFresh ? <Loader2 className="h-4 w-4 animate-spin" /> : "Hoàn tất đóng gói"}</Button>
+                        {/* Footer */}
+                        <div className="flex gap-2 border-t border-slate-100 p-5 sm:p-6">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setSelectedFresh(null)}
+                                className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200"
+                            >
+                                Hủy
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleConfirmFreshPackaging}
+                                disabled={submittingFresh}
+                                className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
+                            >
+                                {submittingFresh ? <Loader2 className="h-4 w-4 animate-spin" /> : "Hoàn tất đóng gói"}
+                            </Button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* DRAWER: MẺ CHẾ BIẾN */}
+            {/* MODAL: MẺ CHẾ BIẾN (FULL SCREEN OVERLAY) */}
             {selectedProc && (
-                <div className="fixed inset-0 z-[120] flex justify-end bg-slate-950/40 backdrop-blur-sm transition">
-                    <div className="relative flex h-full w-full max-w-md flex-col justify-between border-l border-slate-200 bg-white p-6 shadow-2xl animate-in slide-in-from-right duration-200">
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <div>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700">Chế biến sâu</span>
-                                    <h2 className="text-xl font-black text-slate-900">MẺ CHẾ BIẾN</h2>
-                                </div>
-                                <button type="button" onClick={() => setSelectedProc(null)} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
-                                    <X className="h-5 w-5" />
-                                </button>
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                    <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
+                            <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700">Chế biến sâu</span>
+                                <h2 className="text-xl font-black text-slate-900">MẺ CHẾ BIẾN</h2>
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedProc(null)}
+                                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
 
+                        {/* Body */}
+                        <div className="overflow-y-auto p-5 sm:p-6 space-y-4">
                             <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700 border border-slate-200">
-                                <p className="flex justify-between"><span className="text-slate-500">Mã lô nguồn:</span><span className="font-mono font-bold text-slate-900">{selectedProc.sourceRawCode || selectedProc.code}</span></p>
-                                <p className="flex justify-between"><span className="text-slate-500">Farm / Vùng:</span><span className="font-bold text-slate-800">{selectedProc.farmName}</span></p>
-                                <p className="flex justify-between border-t border-slate-200/60 pt-1 font-bold"><span className="text-slate-700">Khối lượng đầu vào:</span><span className="font-black text-indigo-700">{selectedProc.inputWeight.toLocaleString("vi-VN")} kg</span></p>
+                                <p className="flex justify-between">
+                                    <span className="text-slate-500">Mã lô nguồn:</span>
+                                    <span className="font-mono font-bold text-slate-900">{selectedProc.sourceRawCode || selectedProc.code}</span>
+                                </p>
+                                <p className="flex justify-between">
+                                    <span className="text-slate-500">Farm / Vùng:</span>
+                                    <span className="font-bold text-slate-800">{selectedProc.farmName}</span>
+                                </p>
+                                <p className="flex justify-between border-t border-slate-200/60 pt-1 font-bold">
+                                    <span className="text-slate-700">Khối lượng đầu vào:</span>
+                                    <span className="font-black text-indigo-700">
+                                        {selectedProc.inputWeight.toLocaleString("vi-VN")} kg
+                                        {selectedProc.fruitCount ? ` (${selectedProc.fruitCount.toLocaleString("vi-VN")} trái)` : ""}
+                                    </span>
+                                </p>
                             </div>
 
-                            <div className="space-y-3 pt-2">
+                            <div className="space-y-3 pt-1">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 mb-1">Hướng xử lý</label>
                                     <select
@@ -636,7 +797,9 @@ export function ProcessingProductionView({
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Khối lượng thành phẩm thu được (kg) <span className="text-rose-500">*</span></label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                                        Khối lượng thành phẩm thu được (kg) <span className="text-rose-500">*</span>
+                                    </label>
                                     <input
                                         type="number"
                                         value={procOutputWeight}
@@ -668,9 +831,24 @@ export function ProcessingProductionView({
                             </div>
                         </div>
 
-                        <div className="flex gap-2 border-t border-slate-100 pt-4">
-                            <Button type="button" variant="outline" onClick={() => setSelectedProc(null)} className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200">Hủy</Button>
-                            <Button type="button" onClick={handleConfirmProcBatch} disabled={submittingProc} className="flex-1 rounded-2xl h-11 bg-indigo-600 text-xs font-bold text-white hover:bg-indigo-700 shadow-soft">{submittingProc ? <Loader2 className="h-4 w-4 animate-spin" /> : "Hoàn tất mẻ chế biến"}</Button>
+                        {/* Footer */}
+                        <div className="flex gap-2 border-t border-slate-100 p-5 sm:p-6">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setSelectedProc(null)}
+                                className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200"
+                            >
+                                Hủy
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleConfirmProcBatch}
+                                disabled={submittingProc}
+                                className="flex-1 rounded-2xl h-11 bg-indigo-600 text-xs font-bold text-white hover:bg-indigo-700 shadow-soft"
+                            >
+                                {submittingProc ? <Loader2 className="h-4 w-4 animate-spin" /> : "Hoàn tất chế biến"}
+                            </Button>
                         </div>
                     </div>
                 </div>

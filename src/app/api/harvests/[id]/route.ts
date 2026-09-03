@@ -40,7 +40,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         const item = await tx.harvestRecord.update({ where: { id: record.id }, data: {
             status: target, rejectionReason: action === "REJECT" ? String(body.reason || "") : undefined,
             actualStartedAt: action === "START" ? new Date() : undefined, actualHarvestedAt: action === "FINISH" ? new Date() : undefined,
-            actualTreeCount: body.actualTreeCount ? Number(body.actualTreeCount) : undefined, actualFruitCount: body.actualFruitCount ? Number(body.actualFruitCount) : undefined,
+            actualTreeCount: body.actualTreeCount ? Number(body.actualTreeCount) : undefined,
+            actualFruitCount: body.actualFruitCount !== undefined ? Number(body.actualFruitCount) : (body.fruitCount !== undefined ? Number(body.fruitCount) : undefined),
             actualWeight, actualNote: body.note, farmerDeliveredAt: action === "DELIVER" ? new Date() : undefined,
             deliveredWeight: action === "DELIVER" ? deliveredWeight : undefined, buyerReceivedAt: action === "RECEIVE" ? receivedAt : undefined,
             receivedWeight: action === "RECEIVE" ? receivedWeight : undefined, weightDifferenceReason: action === "RECEIVE" ? String(body.weightDifferenceReason || "") : undefined,
@@ -96,7 +97,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
                     }
                 });
             }
-            const note = [`Nông dân giao: ${dispatched} kg`, `Thực nhận: ${receivedWeight} kg`, `Từ chối: ${rejectedWeight} kg`, body.receiverName ? `Người nhận: ${String(body.receiverName)}` : "", body.weightDifferenceReason ? `Lý do chênh lệch: ${String(body.weightDifferenceReason)}` : "", body.note ? `Ghi chú: ${String(body.note)}` : ""].filter(Boolean).join("\n");
+            const note = [
+                `Nông dân giao: ${dispatched} kg`,
+                `Thực nhận: ${receivedWeight} kg`,
+                body.fruitCount ? `Số lượng trái thực nhận: ${body.fruitCount} trái` : "",
+                `Từ chối: ${rejectedWeight} kg`,
+                body.receiverName ? `Người nhận: ${String(body.receiverName)}` : "",
+                body.weightDifferenceReason ? `Lý do chênh lệch: ${String(body.weightDifferenceReason)}` : "",
+                body.note ? `Ghi chú: ${String(body.note)}` : ""
+            ].filter(Boolean).join("\n");
             const receipt = await tx.rawMaterialReceipt.upsert({ where: { receiptCode: `RMR-${record.code}` }, update: {
                 dispatchedWeight: dispatched, receivedWeight: acceptedWeight, receivedAt, receivedById: session.user.id, status: "QC_PENDING", note,
             }, create: {

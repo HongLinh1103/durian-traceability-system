@@ -70,6 +70,7 @@ export default async function Page() {
             if (existingHarvestIds.has(h.id)) return;
 
             const declaredWeight = Number(h.deliveredWeight || h.actualWeight || h.expectedWeight || 0);
+            const declaredFruitCount = h.actualFruitCount || h.expectedFruitCount || (declaredWeight ? Math.round(declaredWeight / 3) : undefined);
             const variety = h.durianVariety || h.varietyItems?.[0]?.durianVariety || "Ri6";
 
             formattedItems.push({
@@ -84,8 +85,10 @@ export default async function Page() {
                 variety,
                 harvestDate: h.actualHarvestedAt || h.expectedHarvestDate || h.createdAt,
                 declaredWeight,
+                declaredFruitCount,
                 expectedPricePerKg: h.expectedPricePerKg ? Number(h.expectedPricePerKg) : undefined,
                 actualReceivedWeight: h.receivedWeight ? Number(h.receivedWeight) : declaredWeight,
+                actualFruitCount: h.actualFruitCount || declaredFruitCount,
                 weightDifference: h.receivedWeight ? Number(h.receivedWeight) - declaredWeight : 0,
                 receivedAt: h.buyerReceivedAt || null,
                 status: "WAITING_RECEIPT",
@@ -101,7 +104,9 @@ export default async function Page() {
             const farm = sourceHarvest?.farm;
 
             const declaredWeight = Number(hr?.deliveredWeight || hr?.actualWeight || hr?.expectedWeight || row.rawMaterialReceipt?.dispatchedWeight || row.acceptedWeight || 0);
+            const declaredFruitCount = hr?.actualFruitCount || hr?.expectedFruitCount || (declaredWeight ? Math.round(declaredWeight / 3) : undefined);
             const actualReceivedWeight = Number(row.rawMaterialReceipt?.receivedWeight || row.acceptedWeight || 0);
+            const actualFruitCount = hr?.actualFruitCount || (actualReceivedWeight ? Math.round(actualReceivedWeight / 3) : undefined);
             const weightDifference = actualReceivedWeight - declaredWeight;
             const variety = farm?.durianVariety || hr?.durianVariety || hr?.varietyItems?.[0]?.durianVariety || "Ri6";
 
@@ -123,15 +128,20 @@ export default async function Page() {
                 variety,
                 harvestDate: hr?.actualHarvestedAt || hr?.expectedHarvestDate || row.rawMaterialReceipt?.receivedAt || row.createdAt,
                 declaredWeight,
+                declaredFruitCount,
                 expectedPricePerKg: hr?.expectedPricePerKg ? Number(hr.expectedPricePerKg) : undefined,
                 actualReceivedWeight,
+                actualFruitCount,
                 weightDifference,
                 receivedAt: row.rawMaterialReceipt?.receivedAt || row.createdAt,
                 status: isClassified ? "CLASSIFIED" : "WAITING_CLASSIFICATION",
                 direction: (row.direction || (isClassified ? (freshW > 0 && procW > 0 ? "SPLIT" : freshW > 0 ? "FRESH_EXPORT" : "PROCESSING") : "UNCLASSIFIED")) as any,
                 freshExportWeight: freshW > 0 ? freshW : undefined,
+                freshExportFruitCount: freshW > 0 ? Math.round(freshW / 3) : undefined,
                 processingWeight: procW > 0 ? procW : undefined,
+                processingFruitCount: procW > 0 ? Math.round(procW / 3) : undefined,
                 rejectedWeight: isClassified && rejectedW > 0 ? rejectedW : undefined,
+                rejectedFruitCount: isClassified && rejectedW > 0 ? Math.round(rejectedW / 3) : undefined,
                 note: row.rawMaterialReceipt?.note || undefined,
             });
         });
@@ -156,8 +166,10 @@ export default async function Page() {
                     variety: "Ri6",
                     harvestDate: d1,
                     declaredWeight: 2500,
+                    declaredFruitCount: 830,
                     expectedPricePerKg: 85000,
                     actualReceivedWeight: 2500,
+                    actualFruitCount: 830,
                     weightDifference: 0,
                     receivedAt: null,
                     status: "WAITING_RECEIPT",
@@ -176,8 +188,10 @@ export default async function Page() {
                     variety: "Monthong / Dona",
                     harvestDate: d2,
                     declaredWeight: 3000,
+                    declaredFruitCount: 1000,
                     expectedPricePerKg: 95000,
                     actualReceivedWeight: 2950,
+                    actualFruitCount: 980,
                     weightDifference: -50,
                     receivedAt: d2,
                     vehiclePlate: "63C-882.19",
@@ -198,17 +212,22 @@ export default async function Page() {
                     variety: "Ri6",
                     harvestDate: d3,
                     declaredWeight: 4200,
+                    declaredFruitCount: 1400,
                     expectedPricePerKg: 88000,
                     actualReceivedWeight: 4180,
+                    actualFruitCount: 1390,
                     weightDifference: -20,
                     receivedAt: d3,
                     vehiclePlate: "60B-991.22",
                     status: "CLASSIFIED",
                     direction: "SPLIT",
                     freshExportWeight: 3100,
+                    freshExportFruitCount: 1030,
                     processingWeight: 1020,
+                    processingFruitCount: 340,
                     rejectedWeight: 60,
-                    note: "Đã phân loại hoàn tất: Trái tươi 3.100 kg, Chế biến 1.020 kg, Loại bỏ 60 kg",
+                    rejectedFruitCount: 20,
+                    note: "Đã phân loại hoàn tất: Trái tươi 3.100 kg (1.030 trái), Chế biến 1.020 kg (340 trái), Loại bỏ 60 kg (20 trái)",
                 },
                 {
                     id: "demo-harvest-004",
@@ -222,8 +241,10 @@ export default async function Page() {
                     variety: "Chín Hóa",
                     harvestDate: d1,
                     declaredWeight: 1800,
+                    declaredFruitCount: 600,
                     expectedPricePerKg: 78000,
                     actualReceivedWeight: 1800,
+                    actualFruitCount: 600,
                     weightDifference: 0,
                     receivedAt: null,
                     status: "WAITING_RECEIPT",

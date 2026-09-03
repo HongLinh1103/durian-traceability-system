@@ -132,7 +132,6 @@ const navigationByRole: Record<string, RoleNavigation> = {
         ],
         actions: [
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
-            { label: "Tạo QR", description: "Phát hành mã QR truy xuất nguồn gốc", href: "/dashboard/processing/traceability", icon: QrCode },
             { label: "Tài chính", description: "Báo cáo doanh thu, chi phí và hiệu quả chế biến", href: "/dashboard/processing/finance", icon: CircleDollarSign },
             { label: "Cá nhân", description: "Quản lý thông tin tài khoản và đổi mật khẩu", href: "/account", icon: UserRound },
         ],

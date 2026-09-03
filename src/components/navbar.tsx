@@ -69,7 +69,6 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/processing/raw-materials", label: "Tiếp nhận & Phân loại", roles: ["PROCESSING_FACILITY"], collectorBadge: true },
     { href: "/dashboard/processing/processing", label: "Chế biến & Đóng gói", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/shipments", label: "Xuất hàng", roles: ["PROCESSING_FACILITY"] },
-    { href: "/dashboard/processing/traceability", label: "Tạo QR", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/finance", label: "Tài chính", roles: ["PROCESSING_FACILITY"] },
 ];
 

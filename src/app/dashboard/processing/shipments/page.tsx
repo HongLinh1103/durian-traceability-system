@@ -150,7 +150,7 @@ export default async function Page() {
             };
         });
 
-        // If no available finished lots in database, provide available lots ready for export from Processing
+        // If no available finished lots in database, provide available lots in status "Đã đóng gói" (READY_FOR_DISTRIBUTION)
         if (availableLots.length === 0) {
             availableLots = [
                 {
@@ -162,16 +162,6 @@ export default async function Page() {
                     farmName: "Hợp tác xã Sầu riêng Tân Phú",
                     regionCode: "MSVT-VN-DN-0115",
                     rawLotCode: "TH-20260829-002",
-                },
-                {
-                    id: "demo-fp-002",
-                    lotCode: "FP-FRESH-20260831-002",
-                    productName: "Sầu riêng tươi xuất khẩu",
-                    remainingWeight: 2200,
-                    packaging: "Thùng 5-6 trái / 18kg",
-                    farmName: "Nông trại Sầu riêng Hoàng Anh",
-                    regionCode: "MSVT-VN-TG-0042",
-                    rawLotCode: "TH-20260830-004",
                 },
                 {
                     id: "demo-pb-001",

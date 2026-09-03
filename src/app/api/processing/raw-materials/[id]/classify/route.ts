@@ -8,6 +8,9 @@ const schema = z.object({
     freshExportWeight: z.coerce.number().min(0).default(0),
     processingWeight: z.coerce.number().min(0).default(0),
     rejectedWeight: z.coerce.number().min(0).default(0),
+    freshExportFruitCount: z.coerce.number().min(0).optional(),
+    processingFruitCount: z.coerce.number().min(0).optional(),
+    rejectedFruitCount: z.coerce.number().min(0).optional(),
     freshProductName: z.string().trim().min(1).default("Sầu riêng tươi xuất khẩu"),
     packaging: z.string().trim().optional(),
     classifiedAt: z.string().optional(),
@@ -106,74 +109,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
             },
         });
 
-        let freshFinishedLot = null;
-        if (value.freshExportWeight > 0) {
-            const suffix = `${Date.now().toString().slice(-6)}`;
-            const batch = await tx.processingBatch.create({
-                data: {
-                    batchCode: `PK-${dateCode}-${suffix}`,
-                    facilityId: lot.facilityId,
-                    method: "Đóng gói trái tươi xuất khẩu",
-                    targetProduct: value.freshProductName,
-                    startedAt: classifiedAt,
-                    completedAt: classifiedAt,
-                    supervisorId: session.user.id,
-                    totalInputWeight: value.freshExportWeight,
-                    totalOutputWeight: value.freshExportWeight,
-                    lossWeight: 0,
-                    yieldPercent: 100,
-                    status: "COMPLETED",
-                    note: value.note || "Nhánh trái tươi đạt chuẩn xuất khẩu",
-                },
-            });
-
-            await tx.processingBatchInput.create({
-                data: {
-                    processingBatchId: batch.id,
-                    rawMaterialLotId: lot.id,
-                    inputWeight: value.freshExportWeight,
-                },
-            });
-
-            freshFinishedLot = await tx.finishedProductLot.create({
-                data: {
-                    lotCode: `FP-FRESH-${dateCode}-${suffix}`,
-                    processingBatchId: batch.id,
-                    facilityId: lot.facilityId,
-                    productName: value.freshProductName,
-                    productType: "FRESH_DURIAN",
-                    branch: "FRESH_PACKED",
-                    quantity: value.freshExportWeight,
-                    netWeight: value.freshExportWeight,
-                    remainingWeight: value.freshExportWeight,
-                    manufacturedAt: classifiedAt,
-                    packaging: value.packaging || "Thùng 5-6 trái / 18kg",
-                    status: "READY_FOR_DISTRIBUTION",
-                },
-            });
-
-            await tx.lotRelation.create({
-                data: {
-                    sourceType: "RAW_MATERIAL_LOT",
-                    sourceId: lot.id,
-                    targetType: "PROCESSING_BATCH",
-                    targetId: batch.id,
-                    relationType: "PACKAGED_INTO",
-                    quantity: value.freshExportWeight,
-                },
-            });
-
-            await tx.lotRelation.create({
-                data: {
-                    sourceType: "PROCESSING_BATCH",
-                    sourceId: batch.id,
-                    targetType: "FINISHED_PRODUCT_LOT",
-                    targetId: freshFinishedLot.id,
-                    relationType: "PACKAGED_INTO",
-                    quantity: value.freshExportWeight,
-                },
-            });
-        }
+        const fruitSummary = [
+            value.freshExportFruitCount ? `Trái tươi: ${value.freshExportFruitCount} trái` : "",
+            value.processingFruitCount ? `Chế biến: ${value.processingFruitCount} trái` : "",
+            value.rejectedFruitCount ? `Loại bỏ: ${value.rejectedFruitCount} trái` : "",
+        ].filter(Boolean).join(" · ");
 
         await tx.traceEvent.create({
             data: {
@@ -186,19 +126,23 @@ export async function POST(request: Request, { params }: { params: { id: string 
                 organizationType: "PROCESSING_FACILITY",
                 organizationId: lot.facilityId,
                 title: "Tiếp nhận và phân loại nguyên liệu",
-                description: `Trái tươi xuất khẩu: ${value.freshExportWeight.toLocaleString("vi-VN")} kg · Chuyển chế biến: ${value.processingWeight.toLocaleString("vi-VN")} kg · Không đạt/loại bỏ: ${value.rejectedWeight.toLocaleString("vi-VN")} kg`,
+                description: `Trái tươi xuất khẩu: ${value.freshExportWeight.toLocaleString("vi-VN")} kg${value.freshExportFruitCount ? ` (${value.freshExportFruitCount} trái)` : ""} · Chuyển chế biến: ${value.processingWeight.toLocaleString("vi-VN")} kg${value.processingFruitCount ? ` (${value.processingFruitCount} trái)` : ""} · Không đạt/loại bỏ: ${value.rejectedWeight.toLocaleString("vi-VN")} kg${value.rejectedFruitCount ? ` (${value.rejectedFruitCount} trái)` : ""}`,
                 metadata: {
                     direction,
                     freshExportWeight: value.freshExportWeight,
                     processingWeight: value.processingWeight,
                     rejectedWeight: value.rejectedWeight,
+                    freshExportFruitCount: value.freshExportFruitCount,
+                    processingFruitCount: value.processingFruitCount,
+                    rejectedFruitCount: value.rejectedFruitCount,
                     totalActualWeight: totalInput,
+                    fruitSummary,
                 },
                 isPublic: true,
             },
         });
 
-        return { rawMaterialLot: updated, freshFinishedLot };
+        return { rawMaterialLot: updated };
     });
 
     return NextResponse.json({

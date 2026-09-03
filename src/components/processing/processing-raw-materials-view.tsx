@@ -34,10 +34,13 @@ export type RawMaterialItem = {
     farmerPhone?: string;
     variety: string;
     harvestDate: string | Date;
-    declaredWeight: number; // Nông dân khai báo
+    declaredWeight: number; // Nông dân khai báo (kg)
+    declaredFruitCount?: number; // Nông dân khai báo (Số lượng trái)
     expectedPricePerKg?: number;
-    actualReceivedWeight: number; // Cơ sở thực nhận
-    weightDifference: number; // Chênh lệch (thực nhận - khai báo)
+    actualReceivedWeight: number; // Cơ sở thực nhận (kg)
+    actualFruitCount?: number; // Cơ sở thực nhận (Số lượng trái)
+    weightDifference: number; // Chênh lệch (thực nhận - khai báo) kg
+    fruitDifference?: number; // Chênh lệch số lượng trái
     receivedAt?: string | Date | null;
     vehiclePlate?: string;
     condition?: string;
@@ -45,8 +48,11 @@ export type RawMaterialItem = {
     status: "WAITING_RECEIPT" | "RECEIVED" | "WAITING_CLASSIFICATION" | "CLASSIFIED";
     direction: "UNCLASSIFIED" | "FRESH_EXPORT" | "PROCESSING" | "SPLIT";
     freshExportWeight?: number;
+    freshExportFruitCount?: number;
     processingWeight?: number;
+    processingFruitCount?: number;
     rejectedWeight?: number;
+    rejectedFruitCount?: number;
 };
 
 export function ProcessingRawMaterialsView({ initialItems }: { initialItems: RawMaterialItem[] }) {
@@ -60,6 +66,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
     // Modal 1: TIẾP NHẬN HÀNG
     const [receivingItem, setReceivingItem] = useState<RawMaterialItem | null>(null);
     const [actualWeightInput, setActualWeightInput] = useState<number | string>("");
+    const [actualFruitCountInput, setActualFruitCountInput] = useState<number | string>("");
     const [unitPriceInput, setUnitPriceInput] = useState<number | string>("");
     const [receivedAtInput, setReceivedAtInput] = useState<string>("");
     const [truckPlateInput, setTruckPlateInput] = useState<string>("");
@@ -70,8 +77,11 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
     // Modal 2: PHÂN LOẠI LÔ
     const [classifyingItem, setClassifyingItem] = useState<RawMaterialItem | null>(null);
     const [freshWeightInput, setFreshWeightInput] = useState<number | string>("");
+    const [freshFruitCountInput, setFreshFruitCountInput] = useState<number | string>("");
     const [procWeightInput, setProcWeightInput] = useState<number | string>("");
+    const [procFruitCountInput, setProcFruitCountInput] = useState<number | string>("");
     const [rejectWeightInput, setRejectWeightInput] = useState<number | string>("");
+    const [rejectFruitCountInput, setRejectFruitCountInput] = useState<number | string>("");
     const [classifyNoteInput, setClassifyNoteInput] = useState("");
     const [submittingClassify, setSubmittingClassify] = useState(false);
 
@@ -133,6 +143,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
     const handleOpenReceive = (item: RawMaterialItem) => {
         setReceivingItem(item);
         setActualWeightInput(item.actualReceivedWeight || item.declaredWeight || "");
+        setActualFruitCountInput(item.actualFruitCount || item.declaredFruitCount || (item.declaredWeight ? Math.round(item.declaredWeight / 3) : ""));
         setUnitPriceInput(item.expectedPricePerKg || 85000);
         const now = new Date();
         const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -149,12 +160,24 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
         return actual - receivingItem.declaredWeight;
     }, [receivingItem, actualWeightInput]);
 
+    // Live fruit difference in Receive Modal
+    const liveFruitDiff = useMemo(() => {
+        if (!receivingItem || !receivingItem.declaredFruitCount) return 0;
+        const actual = Number(actualFruitCountInput) || 0;
+        return actual - receivingItem.declaredFruitCount;
+    }, [receivingItem, actualFruitCountInput]);
+
     // Handler: Confirm Receive
     const handleConfirmReceive = async () => {
         if (!receivingItem) return;
         const actualWeight = Number(actualWeightInput);
+        const actualFruitCount = Number(actualFruitCountInput);
         if (!actualWeight || actualWeight <= 0) {
             toast({ title: "Khối lượng không hợp lệ", description: "Vui lòng nhập khối lượng thực nhận lớn hơn 0.", variant: "destructive" });
+            return;
+        }
+        if (!actualFruitCount || actualFruitCount <= 0) {
+            toast({ title: "Số lượng trái không hợp lệ", description: "Vui lòng nhập số lượng trái thực nhận lớn hơn 0.", variant: "destructive" });
             return;
         }
 
@@ -168,9 +191,10 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                 body: JSON.stringify({
                     action: "RECEIVE",
                     receivedWeight: actualWeight,
+                    fruitCount: actualFruitCount,
                     receivedAt: receivedAtInput ? new Date(receivedAtInput).toISOString() : new Date().toISOString(),
                     weightDifferenceReason: liveDiff !== 0 ? `Chênh lệch ${liveDiff > 0 ? "+" : ""}${liveDiff} kg so với khai báo` : undefined,
-                    note: `${conditionInput} | Xe: ${truckPlateInput} | Đơn giá: ${unitPriceInput ? `${Number(unitPriceInput).toLocaleString("vi-VN")} đ/kg` : "—"}${receiveNoteInput ? ` | ${receiveNoteInput}` : ""}`,
+                    note: `${conditionInput} | Số trái: ${actualFruitCount} | Xe: ${truckPlateInput} | Đơn giá: ${unitPriceInput ? `${Number(unitPriceInput).toLocaleString("vi-VN")} đ/kg` : "—"}${receiveNoteInput ? ` | ${receiveNoteInput}` : ""}`,
                 }),
             });
 
@@ -181,7 +205,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
 
             toast({
                 title: "Tiếp nhận hàng thành công",
-                description: `Đã tiếp nhận ${actualWeight.toLocaleString("vi-VN")} kg từ ${receivingItem.farmName}. Chuyển sang bước Phân loại.`,
+                description: `Đã tiếp nhận ${actualWeight.toLocaleString("vi-VN")} kg (${actualFruitCount.toLocaleString("vi-VN")} trái) từ ${receivingItem.farmName}. Chuyển sang bước Phân loại.`,
                 variant: "success",
             });
 
@@ -192,7 +216,9 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                         ? {
                               ...i,
                               actualReceivedWeight: actualWeight,
+                              actualFruitCount,
                               weightDifference: actualWeight - i.declaredWeight,
+                              fruitDifference: i.declaredFruitCount ? actualFruitCount - i.declaredFruitCount : undefined,
                               receivedAt: receivedAtInput ? new Date(receivedAtInput) : new Date(),
                               vehiclePlate: truckPlateInput,
                               condition: conditionInput,
@@ -214,47 +240,93 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
     // Handler: Open Classify Drawer
     const handleOpenClassify = (item: RawMaterialItem) => {
         setClassifyingItem(item);
-        const total = item.actualReceivedWeight || item.declaredWeight || 0;
+        const totalW = item.actualReceivedWeight || item.declaredWeight || 0;
+        const totalF = item.actualFruitCount || item.declaredFruitCount || (totalW > 0 ? Math.round(totalW / 3) : 0);
 
         if (item.freshExportWeight !== undefined || item.processingWeight !== undefined) {
             setFreshWeightInput(item.freshExportWeight || 0);
             setProcWeightInput(item.processingWeight || 0);
-            setRejectWeightInput(item.rejectedWeight || Math.max(0, total - ((item.freshExportWeight || 0) + (item.processingWeight || 0))));
+            setRejectWeightInput(item.rejectedWeight || Math.max(0, totalW - ((item.freshExportWeight || 0) + (item.processingWeight || 0))));
+            setFreshFruitCountInput(item.freshExportFruitCount !== undefined ? item.freshExportFruitCount : Math.round((item.freshExportWeight || 0) / 3));
+            setProcFruitCountInput(item.processingFruitCount !== undefined ? item.processingFruitCount : Math.round((item.processingWeight || 0) / 3));
+            setRejectFruitCountInput(item.rejectedFruitCount !== undefined ? item.rejectedFruitCount : Math.max(0, totalF - (((item.freshExportFruitCount || Math.round((item.freshExportWeight || 0) / 3))) + ((item.processingFruitCount || Math.round((item.processingWeight || 0) / 3))))));
         } else {
             // Default: 75% Fresh Export, 23% Processing, 2% Reject
-            const fresh = Math.round(total * 0.75);
-            const proc = Math.round(total * 0.23);
-            const rej = Math.max(0, total - (fresh + proc));
-            setFreshWeightInput(fresh);
-            setProcWeightInput(proc);
-            setRejectWeightInput(rej);
+            const freshW = Math.round(totalW * 0.75);
+            const procW = Math.round(totalW * 0.23);
+            const rejW = Math.max(0, totalW - (freshW + procW));
+            setFreshWeightInput(freshW);
+            setProcWeightInput(procW);
+            setRejectWeightInput(rejW);
+
+            const freshF = Math.round(totalF * 0.75);
+            const procF = Math.round(totalF * 0.23);
+            const rejF = Math.max(0, totalF - (freshF + procF));
+            setFreshFruitCountInput(freshF);
+            setProcFruitCountInput(procF);
+            setRejectFruitCountInput(rejF);
         }
         setClassifyNoteInput("");
     };
 
-    // Live Classification Validation
+    // Live Classification Validation (both weight and fruit count)
     const classificationValidation = useMemo(() => {
-        if (!classifyingItem) return { totalInput: 0, currentSum: 0, diff: 0, isValid: false, fresh: 0, proc: 0, rej: 0 };
+        if (!classifyingItem) return { totalInput: 0, currentSum: 0, diff: 0, isValid: false, fresh: 0, proc: 0, rej: 0, totalFruits: 0, currentFruitSum: 0, fruitDiff: 0, freshF: 0, procF: 0, rejF: 0, isWeightValid: false, isFruitValid: true };
         const totalInput = classifyingItem.actualReceivedWeight || classifyingItem.declaredWeight || 0;
+        const totalFruits = classifyingItem.actualFruitCount || classifyingItem.declaredFruitCount || 0;
+
         const fresh = Number(freshWeightInput) || 0;
         const proc = Number(procWeightInput) || 0;
         const rej = Number(rejectWeightInput) || 0;
         const currentSum = fresh + proc + rej;
         const diff = Number((currentSum - totalInput).toFixed(2));
-        const isValid = Math.abs(diff) <= 0.01 && currentSum > 0;
+        const isWeightValid = Math.abs(diff) <= 0.01 && currentSum > 0;
 
-        return { totalInput, currentSum, diff, isValid, fresh, proc, rej };
-    }, [classifyingItem, freshWeightInput, procWeightInput, rejectWeightInput]);
+        const freshF = Number(freshFruitCountInput) || 0;
+        const procF = Number(procFruitCountInput) || 0;
+        const rejF = Number(rejectFruitCountInput) || 0;
+        const currentFruitSum = freshF + procF + rejF;
+        const fruitDiff = totalFruits > 0 ? currentFruitSum - totalFruits : 0;
+        const isFruitValid = totalFruits > 0 ? fruitDiff === 0 : currentFruitSum > 0;
+
+        const isValid = isWeightValid && isFruitValid;
+
+        return {
+            totalInput,
+            currentSum,
+            diff,
+            fresh,
+            proc,
+            rej,
+            totalFruits,
+            currentFruitSum,
+            fruitDiff,
+            freshF,
+            procF,
+            rejF,
+            isWeightValid,
+            isFruitValid,
+            isValid,
+        };
+    }, [classifyingItem, freshWeightInput, procWeightInput, rejectWeightInput, freshFruitCountInput, procFruitCountInput, rejectFruitCountInput]);
 
     // Handler: Confirm Classification
     const handleConfirmClassify = async () => {
         if (!classifyingItem) return;
-        const { totalInput, currentSum, diff, isValid, fresh = 0, proc = 0, rej = 0 } = classificationValidation;
+        const { totalInput, currentSum, diff, isValid, fresh = 0, proc = 0, rej = 0, totalFruits, currentFruitSum, fruitDiff, freshF = 0, procF = 0, rejF = 0 } = classificationValidation;
 
         if (!isValid) {
+            let msg = "";
+            if (Math.abs(diff) > 0.01) {
+                msg = `Tổng 3 phần (${currentSum.toLocaleString("vi-VN")} kg) phải bằng đúng khối lượng thực nhận (${totalInput.toLocaleString("vi-VN")} kg). Chênh lệch: ${diff > 0 ? `+${diff}` : diff} kg.`;
+            } else if (totalFruits > 0 && fruitDiff !== 0) {
+                msg = `Tổng số lượng trái (${currentFruitSum.toLocaleString("vi-VN")} trái) phải bằng đúng số lượng trái thực nhận (${totalFruits.toLocaleString("vi-VN")} trái). Chênh lệch: ${fruitDiff > 0 ? `+${fruitDiff}` : fruitDiff} trái.`;
+            } else {
+                msg = "Vui lòng kiểm tra lại khối lượng và số lượng trái phân loại.";
+            }
             toast({
-                title: "Tổng khối lượng chưa khớp",
-                description: `Tổng 3 phần (${currentSum.toLocaleString("vi-VN")} kg) phải bằng đúng khối lượng thực nhận (${totalInput.toLocaleString("vi-VN")} kg). Chênh lệch: ${diff > 0 ? `+${diff}` : diff} kg.`,
+                title: "Dữ liệu phân loại chưa khớp",
+                description: msg,
                 variant: "destructive",
             });
             return;
@@ -269,8 +341,11 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     freshExportWeight: fresh,
+                    freshExportFruitCount: freshF,
                     processingWeight: proc,
+                    processingFruitCount: procF,
                     rejectedWeight: rej,
+                    rejectedFruitCount: rejF,
                     note: classifyNoteInput,
                 }),
             });
@@ -282,7 +357,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
 
             toast({
                 title: "Phân loại thành công",
-                description: `Đã phân loại ${totalInput.toLocaleString("vi-VN")} kg (Trái tươi: ${fresh} kg, Chế biến: ${proc} kg, Loại bỏ: ${rej} kg). Dữ liệu đã chuyển sang Chế biến & Đóng gói.`,
+                description: `Đã phân loại ${totalInput.toLocaleString("vi-VN")} kg (Trái tươi: ${fresh} kg / ${freshF} trái, Chế biến: ${proc} kg / ${procF} trái, Loại bỏ: ${rej} kg / ${rejF} trái). Dữ liệu đã chuyển sang Chế biến & Đóng gói.`,
                 variant: "success",
             });
 
@@ -293,14 +368,37 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                         ? {
                               ...i,
                               freshExportWeight: fresh,
+                              freshExportFruitCount: freshF,
                               processingWeight: proc,
+                              processingFruitCount: procF,
                               rejectedWeight: rej,
+                              rejectedFruitCount: rejF,
                               direction: fresh > 0 && proc > 0 ? "SPLIT" : fresh > 0 ? "FRESH_EXPORT" : "PROCESSING",
                               status: "CLASSIFIED",
                           }
                         : i
                 )
             );
+
+            // Sync with localStorage so page 3 (Chế biến & Đóng gói) instantly has this classified lot!
+            try {
+                const existing = JSON.parse(localStorage.getItem("processing_classified_lots") || "[]");
+                const lotEntry = {
+                    id: classifyingItem.rawLotId || classifyingItem.id,
+                    code: classifyingItem.receiptCode || classifyingItem.code,
+                    farmName: classifyingItem.farmName,
+                    freshExportWeight: fresh,
+                    freshExportFruitCount: freshF,
+                    processingWeight: proc,
+                    processingFruitCount: procF,
+                    rejectedWeight: rej,
+                    rejectedFruitCount: rejF,
+                    status: "CLASSIFIED",
+                    classifiedAt: new Date().toISOString(),
+                };
+                const filtered = existing.filter((x: any) => x.id !== lotEntry.id);
+                localStorage.setItem("processing_classified_lots", JSON.stringify([...filtered, lotEntry]));
+            } catch {}
 
             setClassifyingItem(null);
         } catch (err: any) {
@@ -414,7 +512,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                 </div>
             </div>
 
-            {/* Main Table: Mã phiếu | Farm/Vùng trồng | Ngày thu hoạch | Giống | KL khai báo | Trạng thái | Thao tác */}
+            {/* Main Table: Mã phiếu | Farm/Vùng trồng | Ngày thu hoạch | Giống | Trạng thái | Thao tác */}
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm border-collapse">
@@ -424,8 +522,6 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                 <th className="px-5 py-4 whitespace-nowrap">Farm / Vùng trồng</th>
                                 <th className="px-5 py-4 whitespace-nowrap">Ngày thu hoạch</th>
                                 <th className="px-5 py-4 whitespace-nowrap">Giống</th>
-                                <th className="px-5 py-4 whitespace-nowrap text-right">KL khai báo</th>
-                                <th className="px-5 py-4 whitespace-nowrap text-right">KL thực nhận</th>
                                 <th className="px-5 py-4 text-center whitespace-nowrap">Trạng thái</th>
                                 <th className="px-5 py-4 text-right whitespace-nowrap">Thao tác</th>
                             </tr>
@@ -459,27 +555,6 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                         {/* Giống */}
                                         <td className="px-5 py-3 whitespace-nowrap text-xs font-bold text-slate-700">
                                             {item.variety}
-                                        </td>
-
-                                        {/* KL khai báo (Farm) */}
-                                        <td className="px-5 py-3 whitespace-nowrap text-right font-mono font-bold text-slate-600 text-xs sm:text-sm">
-                                            {item.declaredWeight.toLocaleString("vi-VN")} kg
-                                        </td>
-
-                                        {/* KL thực nhận */}
-                                        <td className="px-5 py-3 whitespace-nowrap text-right font-black text-slate-900 text-xs sm:text-sm">
-                                            {isWaitingReceipt ? (
-                                                <span className="text-slate-400 text-xs">Chờ cân</span>
-                                            ) : (
-                                                <div>
-                                                    <span>{item.actualReceivedWeight.toLocaleString("vi-VN")} kg</span>
-                                                    {item.weightDifference !== 0 && (
-                                                        <span className={`block text-[10px] font-bold ${item.weightDifference < 0 ? "text-amber-600" : "text-emerald-600"}`}>
-                                                            ({item.weightDifference > 0 ? "+" : ""}{item.weightDifference} kg)
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
                                         </td>
 
                                         {/* Trạng thái */}
@@ -536,7 +611,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
 
                             {filteredItems.length === 0 && (
                                 <tr>
-                                    <td colSpan={8} className="py-12 text-center text-xs text-slate-400">
+                                    <td colSpan={6} className="py-12 text-center text-xs text-slate-400">
                                         Không tìm thấy phiếu thu hoạch nào phù hợp với bộ lọc.
                                     </td>
                                 </tr>
@@ -603,11 +678,19 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                     </div>
                                 </div>
 
-                                <div className="mt-2 rounded-xl bg-white p-3 border border-slate-200 flex items-center justify-between">
-                                    <span className="text-xs font-bold text-slate-600">Nông dân khai báo:</span>
-                                    <span className="font-mono font-black text-slate-900 text-base">
-                                        {receivingItem.declaredWeight.toLocaleString("vi-VN")} kg
-                                    </span>
+                                <div className="mt-2 rounded-xl bg-white p-3 border border-slate-200 grid grid-cols-2 gap-3">
+                                    <div>
+                                        <span className="text-slate-500 block text-[11px] font-semibold">KL khai báo (Farm):</span>
+                                        <span className="font-mono font-black text-slate-900 text-base">
+                                            {receivingItem.declaredWeight.toLocaleString("vi-VN")} kg
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-500 block text-[11px] font-semibold">Số lượng trái khai báo:</span>
+                                        <span className="font-mono font-black text-slate-900 text-base">
+                                            {receivingItem.declaredFruitCount ? `${receivingItem.declaredFruitCount.toLocaleString("vi-VN")} trái` : "Chưa ghi nhận"}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -629,6 +712,20 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                             value={actualWeightInput}
                                             onChange={(e) => setActualWeightInput(e.target.value)}
                                             placeholder="Ví dụ: 2460"
+                                            className="h-11 w-full rounded-xl border border-emerald-400 bg-white px-3 font-mono text-sm font-black text-slate-900 focus:border-emerald-600 focus:outline-none shadow-xs"
+                                        />
+                                    </div>
+
+                                    {/* Số lượng trái thực nhận */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-900 mb-1">
+                                            Số lượng trái thực nhận (trái) <span className="text-rose-500">*</span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={actualFruitCountInput}
+                                            onChange={(e) => setActualFruitCountInput(e.target.value)}
+                                            placeholder="Ví dụ: 820"
                                             className="h-11 w-full rounded-xl border border-emerald-400 bg-white px-3 font-mono text-sm font-black text-slate-900 focus:border-emerald-600 focus:outline-none shadow-xs"
                                         />
                                     </div>
@@ -656,7 +753,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                             type="datetime-local"
                                             value={receivedAtInput}
                                             onChange={(e) => setReceivedAtInput(e.target.value)}
-                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
                                         />
                                     </div>
 
@@ -673,19 +770,19 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                             className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
                                         />
                                     </div>
-                                </div>
 
-                                {/* Tình trạng hàng */}
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-900 mb-1">
-                                        Tình trạng hàng thực tế
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={conditionInput}
-                                        onChange={(e) => setConditionInput(e.target.value)}
-                                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                    />
+                                    {/* Tình trạng hàng */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-900 mb-1">
+                                            Tình trạng hàng thực tế
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={conditionInput}
+                                            onChange={(e) => setConditionInput(e.target.value)}
+                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Ghi chú */}
@@ -705,26 +802,39 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                 {/* BẢNG SO SÁNH & CHÊNH LỆCH QUAN TRỌNG (THEO YÊU CẦU NGHIỆP VỤ) */}
                                 <div className="rounded-2xl bg-white p-4 border border-emerald-300 shadow-xs space-y-2">
                                     <p className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
-                                        Đối soát khối lượng & Chênh lệch
+                                        Đối soát dữ liệu tiếp nhận & Chênh lệch
                                     </p>
                                     <div className="space-y-1 text-xs">
                                         <div className="flex justify-between py-0.5">
-                                            <span className="text-slate-600">Nông dân khai báo:</span>
+                                            <span className="text-slate-600">Khối lượng khai báo (Farm):</span>
                                             <span className="font-mono font-bold text-slate-900">{receivingItem.declaredWeight.toLocaleString("vi-VN")} kg</span>
                                         </div>
                                         <div className="flex justify-between py-0.5 border-t border-slate-100">
-                                            <span className="text-slate-600">Cơ sở thực nhận:</span>
+                                            <span className="text-slate-600">Khối lượng thực nhận (Cơ sở):</span>
                                             <span className="font-mono font-bold text-emerald-700">{(Number(actualWeightInput) || 0).toLocaleString("vi-VN")} kg</span>
                                         </div>
                                         <div className="flex justify-between py-1 border-t border-slate-200 font-bold">
-                                            <span className="text-slate-700">Chênh lệch:</span>
+                                            <span className="text-slate-700">Chênh lệch khối lượng:</span>
                                             <span className={`font-mono ${liveDiff < 0 ? "text-amber-600" : liveDiff > 0 ? "text-emerald-600" : "text-slate-600"}`}>
                                                 {liveDiff > 0 ? `+${liveDiff.toLocaleString("vi-VN")}` : liveDiff.toLocaleString("vi-VN")} kg
                                             </span>
                                         </div>
+                                        {receivingItem.declaredFruitCount ? (
+                                            <div className="flex justify-between py-1 border-t border-slate-100 font-bold">
+                                                <span className="text-slate-700">Chênh lệch số lượng trái:</span>
+                                                <span className={`font-mono ${liveFruitDiff < 0 ? "text-amber-600" : liveFruitDiff > 0 ? "text-emerald-600" : "text-slate-600"}`}>
+                                                    {liveFruitDiff > 0 ? `+${liveFruitDiff.toLocaleString("vi-VN")}` : liveFruitDiff.toLocaleString("vi-VN")} trái (Khai báo: {receivingItem.declaredFruitCount} ➔ Thực nhận: {Number(actualFruitCountInput) || 0})
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex justify-between py-1 border-t border-slate-100">
+                                                <span className="text-slate-600">Số lượng trái thực nhận:</span>
+                                                <span className="font-mono font-bold text-slate-900">{Number(actualFruitCountInput) || 0} trái</span>
+                                            </div>
+                                        )}
                                     </div>
                                     <p className="text-[10px] text-slate-400 italic">
-                                        * Hệ thống giữ nguyên khối lượng khai báo của Farm và ghi nhận độc lập khối lượng thực nhận của cơ sở.
+                                        * Hệ thống đối soát độc lập cả khối lượng (kg) và số lượng trái giữa khai báo của Farm và thực nhận của cơ sở.
                                     </p>
                                 </div>
                             </div>
@@ -784,69 +894,122 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                     <span className="text-slate-500">Farm / Vườn:</span>
                                     <span className="font-bold text-slate-800">{classifyingItem.farmName}</span>
                                 </p>
-                                <p className="flex justify-between border-t border-slate-200/60 pt-1.5 font-bold">
-                                    <span className="text-slate-700">Khối lượng thực nhận:</span>
-                                    <span className="font-black text-emerald-700 text-sm">
-                                        {(classifyingItem.actualReceivedWeight || classifyingItem.declaredWeight || 0).toLocaleString("vi-VN")} kg
-                                    </span>
-                                </p>
+                                <div className="grid grid-cols-2 gap-2 border-t border-slate-200/60 pt-2 mt-1">
+                                    <div>
+                                        <span className="text-slate-500 block text-[11px]">Khối lượng thực nhận:</span>
+                                        <span className="font-black text-emerald-700 text-sm">
+                                            {(classifyingItem.actualReceivedWeight || classifyingItem.declaredWeight || 0).toLocaleString("vi-VN")} kg
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-500 block text-[11px]">Số lượng trái thực nhận:</span>
+                                        <span className="font-black text-emerald-700 text-sm">
+                                            {(classifyingItem.actualFruitCount || classifyingItem.declaredFruitCount || Math.round((classifyingItem.actualReceivedWeight || classifyingItem.declaredWeight || 0) / 3)).toLocaleString("vi-VN")} trái
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* 3 Classification Inputs */}
+                            {/* 3 Classification Inputs (Khối lượng + Số lượng trái) */}
                             <div className="space-y-3 pt-1">
                                 <label className="block text-xs font-black uppercase tracking-wide text-slate-800">
-                                    Phân chia khối lượng (3 phần)
+                                    Phân chia khối lượng & số lượng trái (3 phần)
                                 </label>
 
                                 {/* Phần 1: Trái tươi xuất khẩu */}
-                                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3.5 space-y-1">
-                                    <div className="flex justify-between items-center mb-1">
+                                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3.5 space-y-2">
+                                    <div className="flex justify-between items-center">
                                         <label className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                                            <span>📦 1. Trái tươi xuất khẩu (kg)</span>
+                                            <span>📦 1. Trái tươi xuất khẩu</span>
                                         </label>
                                         <span className="text-[10px] text-emerald-700 font-bold">Chuyển đóng gói xuất</span>
                                     </div>
-                                    <input
-                                        type="number"
-                                        value={freshWeightInput}
-                                        onChange={(e) => setFreshWeightInput(e.target.value)}
-                                        placeholder="Ví dụ: 1800"
-                                        className="h-10 w-full rounded-xl border border-emerald-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                    />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <span className="block text-[11px] font-semibold text-emerald-900 mb-1">Khối lượng (kg) *</span>
+                                            <input
+                                                type="number"
+                                                value={freshWeightInput}
+                                                onChange={(e) => setFreshWeightInput(e.target.value)}
+                                                placeholder="Ví dụ: 1800"
+                                                className="h-10 w-full rounded-xl border border-emerald-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <span className="block text-[11px] font-semibold text-emerald-900 mb-1">Số lượng (trái) *</span>
+                                            <input
+                                                type="number"
+                                                value={freshFruitCountInput}
+                                                onChange={(e) => setFreshFruitCountInput(e.target.value)}
+                                                placeholder="Ví dụ: 600"
+                                                className="h-10 w-full rounded-xl border border-emerald-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Phần 2: Chuyển chế biến */}
-                                <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-3.5 space-y-1">
-                                    <div className="flex justify-between items-center mb-1">
+                                <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-3.5 space-y-2">
+                                    <div className="flex justify-between items-center">
                                         <label className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                                            <span>⚙️ 2. Chuyển chế biến (kg)</span>
+                                            <span>⚙️ 2. Chuyển chế biến</span>
                                         </label>
                                         <span className="text-[10px] text-indigo-700 font-bold">Bóc múi, cấp đông</span>
                                     </div>
-                                    <input
-                                        type="number"
-                                        value={procWeightInput}
-                                        onChange={(e) => setProcWeightInput(e.target.value)}
-                                        placeholder="Ví dụ: 620"
-                                        className="h-10 w-full rounded-xl border border-indigo-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
-                                    />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <span className="block text-[11px] font-semibold text-indigo-900 mb-1">Khối lượng (kg) *</span>
+                                            <input
+                                                type="number"
+                                                value={procWeightInput}
+                                                onChange={(e) => setProcWeightInput(e.target.value)}
+                                                placeholder="Ví dụ: 620"
+                                                className="h-10 w-full rounded-xl border border-indigo-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <span className="block text-[11px] font-semibold text-indigo-900 mb-1">Số lượng (trái) *</span>
+                                            <input
+                                                type="number"
+                                                value={procFruitCountInput}
+                                                onChange={(e) => setProcFruitCountInput(e.target.value)}
+                                                placeholder="Ví dụ: 200"
+                                                className="h-10 w-full rounded-xl border border-indigo-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Phần 3: Không đạt / loại bỏ */}
-                                <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-3.5 space-y-1">
-                                    <div className="flex justify-between items-center mb-1">
+                                <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-3.5 space-y-2">
+                                    <div className="flex justify-between items-center">
                                         <label className="text-xs font-bold text-rose-950 flex items-center gap-1.5">
-                                            <span>🗑️ 3. Không đạt / loại bỏ (kg)</span>
+                                            <span>🗑️ 3. Không đạt / loại bỏ</span>
                                         </label>
                                         <span className="text-[10px] text-rose-700 font-bold">Lọc bỏ / hư hại</span>
                                     </div>
-                                    <input
-                                        type="number"
-                                        value={rejectWeightInput}
-                                        onChange={(e) => setRejectWeightInput(e.target.value)}
-                                        placeholder="Ví dụ: 40"
-                                        className="h-10 w-full rounded-xl border border-rose-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
-                                    />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <span className="block text-[11px] font-semibold text-rose-900 mb-1">Khối lượng (kg) *</span>
+                                            <input
+                                                type="number"
+                                                value={rejectWeightInput}
+                                                onChange={(e) => setRejectWeightInput(e.target.value)}
+                                                placeholder="Ví dụ: 40"
+                                                className="h-10 w-full rounded-xl border border-rose-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <span className="block text-[11px] font-semibold text-rose-900 mb-1">Số lượng (trái) *</span>
+                                            <input
+                                                type="number"
+                                                value={rejectFruitCountInput}
+                                                onChange={(e) => setRejectFruitCountInput(e.target.value)}
+                                                placeholder="Ví dụ: 20"
+                                                className="h-10 w-full rounded-xl border border-rose-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Ghi chú */}
@@ -864,15 +1027,20 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
 
                             {/* BẢNG KIỂM TRA TỔNG (VALIDATION BOX) */}
                             <div className={`rounded-2xl p-4 border transition ${classificationValidation.isValid ? "border-emerald-300 bg-emerald-50/70" : "border-rose-300 bg-rose-50/70"}`}>
-                                <div className="space-y-1.5 text-xs">
-                                    <div className="flex justify-between font-medium">
-                                        <span className="text-slate-600">Khối lượng thực nhận:</span>
-                                        <span className="font-mono font-bold text-slate-900">{classificationValidation.totalInput.toLocaleString("vi-VN")} kg</span>
+                                <div className="space-y-2 text-xs">
+                                    {/* Khối lượng */}
+                                    <div className="flex justify-between items-center font-medium">
+                                        <span className="text-slate-600">Khối lượng:</span>
+                                        <span className="font-mono">
+                                            Tổng 3 phần: <strong className={classificationValidation.isWeightValid ? "text-emerald-700" : "text-rose-700"}>{classificationValidation.currentSum.toLocaleString("vi-VN")} kg</strong> / Thực nhận: <strong>{classificationValidation.totalInput.toLocaleString("vi-VN")} kg</strong>
+                                        </span>
                                     </div>
-                                    <div className="flex justify-between font-bold border-t border-slate-200/60 pt-1">
-                                        <span className="text-slate-800">Tổng 3 phần phân loại:</span>
-                                        <span className={`font-mono text-sm ${classificationValidation.isValid ? "text-emerald-700 font-black" : "text-rose-700 font-black"}`}>
-                                            {classificationValidation.currentSum.toLocaleString("vi-VN")} kg
+
+                                    {/* Số lượng trái */}
+                                    <div className="flex justify-between items-center font-medium border-t border-slate-200/60 pt-1.5">
+                                        <span className="text-slate-600">Số lượng trái:</span>
+                                        <span className="font-mono">
+                                            Tổng 3 phần: <strong className={classificationValidation.isFruitValid ? "text-emerald-700" : "text-rose-700"}>{classificationValidation.currentFruitSum.toLocaleString("vi-VN")} trái</strong> / Thực nhận: <strong>{classificationValidation.totalFruits.toLocaleString("vi-VN")} trái</strong>
                                         </span>
                                     </div>
                                 </div>
@@ -881,13 +1049,14 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                     {classificationValidation.isValid ? (
                                         <p className="flex items-center gap-1.5 font-bold text-emerald-800">
                                             <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                                            <span>Tổng phân loại khớp chính xác 100%. Hai phần hợp lệ sẽ tự động chuyển sang Chế biến & Đóng gói.</span>
+                                            <span>Khối lượng và số lượng trái khớp chính xác 100%. Lô hợp lệ sẽ chuyển sang Chế biến & Đóng gói.</span>
                                         </p>
                                     ) : (
                                         <p className="flex items-center gap-1.5 font-bold text-rose-800">
                                             <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
                                             <span>
-                                                Tổng chưa khớp ({classificationValidation.diff > 0 ? `vượt +${classificationValidation.diff}` : `thiếu ${classificationValidation.diff}`} kg). Vui lòng điều chỉnh để tổng bằng đúng {classificationValidation.totalInput.toLocaleString("vi-VN")} kg.
+                                                {!classificationValidation.isWeightValid && `Khối lượng chưa khớp (${classificationValidation.diff > 0 ? `vượt +${classificationValidation.diff}` : `thiếu ${classificationValidation.diff}`} kg). `}
+                                                {!classificationValidation.isFruitValid && `Số lượng trái chưa khớp (${classificationValidation.fruitDiff > 0 ? `vượt +${classificationValidation.fruitDiff}` : `thiếu ${classificationValidation.fruitDiff}`} trái).`}
                                             </span>
                                         </p>
                                     )}

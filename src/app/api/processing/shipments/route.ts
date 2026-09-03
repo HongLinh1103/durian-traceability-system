@@ -9,15 +9,24 @@ const schema = z.object({
     shipmentCode: z.string().trim().min(2),
     finishedProductLotId: z.string().min(1),
     productName: z.string().trim().min(2),
+    shipmentType: z.enum(["EXPORT", "DOMESTIC"]).default("EXPORT"),
     weight: z.coerce.number().positive(),
     boxCount: z.coerce.number().int().min(1).optional(),
     truckPlate: z.string().trim().optional(),
     containerNumber: z.string().trim().optional(),
     sealNumber: z.string().trim().optional(),
+    carrierName: z.string().trim().optional(),
     exportDate: z.string().optional(),
-    destinationCountry: z.string().trim().default("Trung Quốc"),
+    destinationCountry: z.string().trim().optional(),
     portOfLoading: z.string().trim().optional(),
     portOfDestination: z.string().trim().optional(),
+    // Domestic fields
+    distributionChannel: z.string().trim().optional(),
+    customerName: z.string().trim().optional(),
+    customerPhone: z.string().trim().optional(),
+    deliveryAddress: z.string().trim().optional(),
+    transportMethod: z.string().trim().optional(),
+    driverName: z.string().trim().optional(),
     status: z.enum(["DRAFT", "READY", "DISPATCHED"]).default("READY"),
     note: z.string().trim().optional(),
 });
@@ -87,8 +96,16 @@ export async function POST(request: Request) {
     }
 
     const exportDate = v.exportDate ? new Date(v.exportDate) : new Date();
+    const isExport = v.shipmentType === "EXPORT";
 
-    const destName = v.portOfDestination || v.destinationCountry || "Thị trường Xuất khẩu";
+    const destName = isExport
+        ? (v.portOfDestination || v.destinationCountry || "Thị trường Xuất khẩu")
+        : (v.customerName || v.deliveryAddress || "Khách hàng nội địa");
+    const destCountry = isExport ? (v.destinationCountry || "Trung Quốc") : "Việt Nam";
+    const destAddress = isExport
+        ? (v.portOfDestination || `${destCountry}`)
+        : (v.deliveryAddress || "Nội địa Việt Nam");
+
     let destination = await prisma.distributionDestination.findFirst({
         where: { name: destName },
     });
@@ -97,12 +114,25 @@ export async function POST(request: Request) {
         destination = await prisma.distributionDestination.create({
             data: {
                 name: destName,
-                type: "EXPORT",
-                country: v.destinationCountry,
-                address: v.portOfDestination || `${v.destinationCountry}`,
+                type: isExport ? "EXPORT" : v.distributionChannel?.includes("Siêu thị") ? "RETAIL" : v.distributionChannel?.includes("Chợ") ? "MARKET" : "DISTRIBUTOR",
+                country: destCountry,
+                address: destAddress,
             },
         });
     }
+
+    const noteContent = isExport
+        ? (v.note || null)
+        : [
+            v.distributionChannel ? `Kênh: ${v.distributionChannel}` : "",
+            v.customerName ? `Khách: ${v.customerName}` : "",
+            v.customerPhone ? `SĐT: ${v.customerPhone}` : "",
+            v.deliveryAddress ? `Giao đến: ${v.deliveryAddress}` : "",
+            v.transportMethod ? `Vận chuyển: ${v.transportMethod}` : "",
+            v.driverName ? `Tài xế: ${v.driverName}` : "",
+            v.carrierName ? `ĐVVC: ${v.carrierName}` : "",
+            v.note ? `Ghi chú: ${v.note}` : "",
+        ].filter(Boolean).join(" | ") || null;
 
     const publicToken = `TRC-${randomBytes(4).toString("hex").toUpperCase()}`;
 
@@ -134,11 +164,11 @@ export async function POST(request: Request) {
                 dispatchedWeight: v.weight,
                 dispatchAt: exportDate,
                 vehicleReference: v.truckPlate || null,
-                containerNumber: v.containerNumber || null,
-                sealNumber: v.sealNumber || null,
+                containerNumber: isExport ? (v.containerNumber || null) : null,
+                sealNumber: isExport ? (v.sealNumber || null) : null,
                 boxCount: v.boxCount || null,
                 status: v.status === "DRAFT" ? "DRAFT" : v.status === "READY" ? "READY" : "DISPATCHED",
-                note: v.note || null,
+                note: noteContent,
             },
         });
 
@@ -152,18 +182,20 @@ export async function POST(request: Request) {
             },
         });
 
-        // 4. Create ExportShipmentInfo
-        await tx.exportShipmentInfo.create({
-            data: {
-                shipmentId: shipment.id,
-                destinationCountry: v.destinationCountry,
-                portOfLoading: v.portOfLoading || null,
-                portOfDestination: v.portOfDestination || null,
-                containerNumber: v.containerNumber || null,
-                sealNumber: v.sealNumber || null,
-                exportDate,
-            },
-        });
+        // 4. Create ExportShipmentInfo (only if export)
+        if (isExport) {
+            await tx.exportShipmentInfo.create({
+                data: {
+                    shipmentId: shipment.id,
+                    destinationCountry: destCountry,
+                    portOfLoading: v.portOfLoading || null,
+                    portOfDestination: v.portOfDestination || null,
+                    containerNumber: v.containerNumber || null,
+                    sealNumber: v.sealNumber || null,
+                    exportDate,
+                },
+            });
+        }
 
         // 5. Link Finished Lot to Commercial Lot
         await tx.lotRelation.create({
