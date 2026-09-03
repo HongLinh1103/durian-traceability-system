@@ -296,7 +296,14 @@ export async function GET() {
         { id: "exp-proc-6", category: "FACTORY_OVERHEAD" as PartnerExpenseCategory, title: "Vật tư vệ sinh, cồn khử trùng xưởng chế biến", amount: 5500000, paidAmount: 3500000, debtAmount: 2000000, status: "PARTIAL" as ExpensePaymentStatus, expenseDate: "2026-08-20T08:00:00.000Z", paymentMethod: "Chuyển khoản", recipient: "Công ty Hóa chất & Thiết bị Việt Nhật", note: "Còn nợ tiền hóa chất 2.000.000 đ", receiptImageUrl: null, payments: [] },
     ];
 
-    let formattedExpenses = expenses.map((exp) => ({
+    const rawMaterialExpenses = expenses.filter(
+        (exp) => exp.category === "RAW_MATERIAL" || Boolean(exp.relatedHarvestRecordId)
+    );
+    const operatingExpenses = expenses.filter(
+        (exp) => exp.category !== "RAW_MATERIAL" && !exp.relatedHarvestRecordId
+    );
+
+    let formattedExpenses = operatingExpenses.map((exp) => ({
         id: exp.id,
         category: exp.category,
         title: exp.title,
@@ -315,6 +322,7 @@ export async function GET() {
             paymentDate: p.paymentDate.toISOString(),
             paymentMethod: p.paymentMethod,
             receiverName: p.receiverName,
+            referenceCode: p.referenceCode,
             note: p.note,
         })),
     }));
@@ -335,6 +343,19 @@ export async function GET() {
             weight: 4180,
             pricePerKg: 88000,
             totalCost: 367840000,
+            paidAmount: 0,
+            debtAmount: 367840000,
+            paymentStatus: "UNPAID",
+            expenseId: null as string | null,
+            payments: [] as Array<{
+                id: string;
+                amount: number;
+                paymentDate: string;
+                paymentMethod: string;
+                receiverName: string | null;
+                referenceCode: string | null;
+                note: string | null;
+            }>,
             date: "2026-08-29T10:15:00.000Z",
         },
     ];
@@ -342,6 +363,16 @@ export async function GET() {
     let formattedHarvestPurchases = harvestPurchases.map((rec) => {
         const weight = Number(rec.receivedWeight ?? rec.actualWeight ?? rec.expectedWeight);
         const price = Number(rec.expectedPricePerKg ?? 0);
+        const totalCost = weight * price;
+
+        const linkedExp = rawMaterialExpenses.find(
+            (e) => e.relatedHarvestRecordId === rec.id || e.title.includes(rec.code)
+        );
+
+        const paidAmount = linkedExp ? Number(linkedExp.paidAmount || 0) : 0;
+        const debtAmount = Math.max(0, totalCost - paidAmount);
+        const paymentStatus = debtAmount === 0 ? "PAID" : (paidAmount > 0 ? "PARTIAL" : "UNPAID");
+
         return {
             id: rec.id,
             code: rec.code,
@@ -352,7 +383,28 @@ export async function GET() {
             status: rec.status,
             weight,
             pricePerKg: price,
-            totalCost: weight * price,
+            totalCost,
+            paidAmount,
+            debtAmount,
+            paymentStatus,
+            expenseId: linkedExp?.id || null,
+            payments: linkedExp ? linkedExp.payments.map((p) => ({
+                id: p.id,
+                amount: Number(p.amount),
+                paymentDate: p.paymentDate.toISOString(),
+                paymentMethod: p.paymentMethod,
+                receiverName: p.receiverName ?? null,
+                referenceCode: p.referenceCode ?? null,
+                note: p.note ?? null,
+            })) : ([] as Array<{
+                id: string;
+                amount: number;
+                paymentDate: string;
+                paymentMethod: string;
+                receiverName: string | null;
+                referenceCode: string | null;
+                note: string | null;
+            }>),
             date: (rec.completedAt ?? rec.buyerReceivedAt ?? rec.expectedHarvestDate).toISOString(),
         };
     });
@@ -374,22 +426,28 @@ export async function GET() {
 
     // Material purchase costs from farmers
     let totalMaterialCost = 0;
+    let totalPaidMaterialCost = 0;
+    let totalMaterialDebt = 0;
     formattedHarvestPurchases.forEach((rec) => {
         totalMaterialCost += rec.totalCost;
+        totalPaidMaterialCost += rec.paidAmount;
+        totalMaterialDebt += rec.debtAmount;
     });
 
     // Operating expenses
     let totalOperatingExpense = 0;
-    let totalPaidExpense = 0;
-    let totalPayable = 0;
+    let totalPaidOperatingExpense = 0;
+    let totalOperatingDebt = 0;
 
     formattedExpenses.forEach((exp) => {
         totalOperatingExpense += exp.amount;
-        totalPaidExpense += exp.paidAmount;
-        totalPayable += exp.debtAmount;
+        totalPaidOperatingExpense += exp.paidAmount;
+        totalOperatingDebt += exp.debtAmount;
     });
 
     const totalExpense = totalMaterialCost + totalOperatingExpense;
+    const totalPaidExpense = totalPaidMaterialCost + totalPaidOperatingExpense;
+    const totalPayable = totalMaterialDebt + totalOperatingDebt;
     const estimatedProfit = totalRevenue - totalExpense;
 
     // -------------------------------------------------------------
@@ -452,6 +510,7 @@ export async function GET() {
         paymentMethod: string;
         payerName: string | null;
         receiverName: string | null;
+        referenceCode?: string | null;
         note: string | null;
         commercialLotCode?: string;
         commercialProductName?: string;
@@ -459,12 +518,13 @@ export async function GET() {
         expenseCategory?: PartnerExpenseCategory;
     }[] = paymentRecords.map((p) => ({
         id: p.id,
-        type: p.type,
+        type: p.type === "RECEIPT" ? "RECEIPT" : "PAYMENT",
         amount: Number(p.amount),
         paymentDate: p.paymentDate.toISOString(),
         paymentMethod: p.paymentMethod,
         payerName: p.payerName,
         receiverName: p.receiverName,
+        referenceCode: p.referenceCode,
         note: p.note,
         commercialLotCode: p.commercialLot?.lotCode,
         commercialProductName: p.commercialLot?.productName,
