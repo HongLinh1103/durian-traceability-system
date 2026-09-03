@@ -130,21 +130,21 @@ export async function POST(request: Request) {
         });
     }
 
-    const noteContent = isExport
-        ? (v.note || null)
-        : [
-            v.distributionChannel ? `Kênh: ${v.distributionChannel}` : "",
-            v.partnerSystem ? `Hệ thống: ${v.partnerSystem}` : "",
-            v.partnerBranch ? `Chi nhánh: ${v.partnerBranch}` : "",
-            v.contactPerson ? `Người liên hệ: ${v.contactPerson}` : "",
-            v.customerName ? `Khách: ${v.customerName}` : "",
-            v.customerPhone ? `SĐT: ${v.customerPhone}` : "",
-            v.deliveryAddress ? `Giao đến: ${v.deliveryAddress}` : "",
-            v.transportMethod ? `Vận chuyển: ${v.transportMethod}` : "",
-            v.driverName ? `Tài xế: ${v.driverName}` : "",
-            v.carrierName ? `ĐVVC: ${v.carrierName}` : "",
-            v.note ? `Ghi chú: ${v.note}` : "",
-        ].filter(Boolean).join(" | ") || null;
+    const structuredMeta = {
+        channel: v.distributionChannel || undefined,
+        partnerSystem: v.partnerSystem || undefined,
+        partnerBranch: v.partnerBranch || undefined,
+        contactPerson: v.contactPerson || undefined,
+        customerName: v.customerName || undefined,
+        customerPhone: v.customerPhone || undefined,
+        deliveryAddress: v.deliveryAddress || undefined,
+        transportMethod: v.transportMethod || undefined,
+        driverName: v.driverName || undefined,
+        carrierName: v.carrierName || undefined,
+        truckPlate: v.truckPlate || undefined,
+        userNote: v.note || undefined,
+    };
+    const noteContent = JSON.stringify(structuredMeta);
 
     const publicToken = `TRC-${randomBytes(4).toString("hex").toUpperCase()}`;
 

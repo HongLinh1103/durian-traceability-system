@@ -452,6 +452,16 @@ export async function collectPublicHarvestSources(lotId: string) {
         if (receipt.sourceHarvestLot) sources.push(receipt.sourceHarvestLot);
         receipt.sourceCollectionLot?.items.forEach((item) => sources.push(item.harvestLot));
     });
+    if (sources.length === 0 && lot.sourceFinishedProductLot) {
+        const fallbackHarvest = await prisma.harvestLot.findFirst({
+            where: {
+                rawReceipts: { some: { facilityId: lot.sourceFinishedProductLot.facilityId } },
+            },
+            include: harvestInclude,
+            orderBy: { createdAt: "desc" },
+        });
+        if (fallbackHarvest) sources.push(fallbackHarvest);
+    }
     return [...new Map(sources.map((source) => [source.id, source])).values()];
 }
 
@@ -767,13 +777,53 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
 
     const dispatchDate = trace.commercialLot.dispatchedAt || shipment?.dispatchAt || trace.commercialLot.createdAt;
 
+    let shipmentMeta: {
+        channel?: string;
+        partnerSystem?: string;
+        partnerBranch?: string;
+        contactPerson?: string;
+        customerName?: string;
+        customerPhone?: string;
+        deliveryAddress?: string;
+        driverName?: string;
+        transportMethod?: string;
+        carrierName?: string;
+        truckPlate?: string;
+        userNote?: string;
+    } = {};
+
+    if (shipment?.note) {
+        if (shipment.note.trim().startsWith("{")) {
+            try {
+                shipmentMeta = JSON.parse(shipment.note);
+            } catch {}
+        } else {
+            const parts = (shipment.note as string).split("|").map((p: string) => p.trim());
+            parts.forEach((part: string) => {
+                if (part.startsWith("Kênh:")) shipmentMeta.channel = part.replace("Kênh:", "").trim();
+                else if (part.startsWith("Hệ thống:")) shipmentMeta.partnerSystem = part.replace("Hệ thống:", "").trim();
+                else if (part.startsWith("Chi nhánh:")) shipmentMeta.partnerBranch = part.replace("Chi nhánh:", "").trim();
+                else if (part.startsWith("Người liên hệ:")) shipmentMeta.contactPerson = part.replace("Người liên hệ:", "").trim();
+                else if (part.startsWith("Khách:")) shipmentMeta.customerName = part.replace("Khách:", "").trim();
+                else if (part.startsWith("SĐT:")) shipmentMeta.customerPhone = part.replace("SĐT:", "").trim();
+                else if (part.startsWith("Giao đến:")) shipmentMeta.deliveryAddress = part.replace("Giao đến:", "").trim();
+                else if (part.startsWith("Vận chuyển:")) shipmentMeta.transportMethod = part.replace("Vận chuyển:", "").trim();
+                else if (part.startsWith("Tài xế:")) shipmentMeta.driverName = part.replace("Tài xế:", "").trim();
+                else if (part.startsWith("ĐVVC:")) shipmentMeta.carrierName = part.replace("ĐVVC:", "").trim();
+            });
+        }
+    }
+
     if (isExport) {
         const country = dest?.country || shipment?.exportInfo?.destinationCountry || (destNameLower.includes("trung quốc") ? "Trung Quốc" : dest?.name || "Trung Quốc");
         const exporterName = trace.commercialLot.owner?.name || trace.commercialLot.farmerOwner?.fullName || "Cơ sở Chế biến Sầu riêng Trị An";
         const port = shipment?.exportInfo?.portOfLoading || "Cửa khẩu Quốc tế Hữu Nghị (Lạng Sơn)";
+        const portOfDest = shipment?.exportInfo?.portOfDestination || null;
         const container = shipment?.exportInfo?.containerNumber || shipment?.containerNumber;
         const seal = shipment?.exportInfo?.sealNumber || shipment?.sealNumber;
-        const vehicle = shipment?.vehicleReference;
+        const vehicle = shipment?.vehicleReference || shipmentMeta.truckPlate;
+        const driver = shipmentMeta.driverName || null;
+        const transport = shipmentMeta.transportMethod || null;
 
         const milestoneExport: TraceMilestone = {
             id: "milestone-export",
@@ -786,22 +836,33 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
             badgeText: "Xuất khẩu",
             badgeVariant: "indigo",
             fields: [
+                { label: "Tên sản phẩm xuất khẩu", value: trace.commercialLot.productName, highlight: true },
                 { label: "Thị trường", value: country, highlight: true },
-                ...(port ? [{ label: "Cửa khẩu", value: port }] : []),
+                ...(port ? [{ label: "Cửa khẩu xuất", value: port }] : []),
+                ...(portOfDest ? [{ label: "Cảng / Điểm đến", value: portOfDest }] : []),
                 { label: "Lô xuất khẩu", value: trace.commercialLot.lotCode, highlight: true },
                 ...(exporterName ? [{ label: "Đơn vị xuất", value: exporterName }] : []),
-                ...(container ? [{ label: "Container", value: container }] : []),
-                ...(seal ? [{ label: "Seal niêm phong", value: seal }] : []),
+                ...(container ? [{ label: "Số container", value: container }] : []),
+                ...(seal ? [{ label: "Số chì / Seal", value: seal }] : []),
                 ...(vehicle ? [{ label: "Biển số xe", value: vehicle }] : []),
-                ...(shipment?.boxCount ? [{ label: "Số thùng", value: shipment.boxCount.toLocaleString("vi-VN") }] : []),
-                { label: "Khối lượng", value: `${(Number(shipment?.dispatchedWeight || trace.commercialLot.quantity) / 1000).toLocaleString("vi-VN")} tấn` },
+                ...(driver ? [{ label: "Tài xế vận chuyển", value: driver }] : []),
+                ...(transport ? [{ label: "Hình thức vận chuyển", value: transport }] : []),
+                ...(shipment?.boxCount ? [{ label: "Số thùng", value: `${shipment.boxCount.toLocaleString("vi-VN")} thùng` }] : []),
+                { label: "Khối lượng", value: `${Number(shipment?.dispatchedWeight || trace.commercialLot.quantity).toLocaleString("vi-VN")} kg` },
             ],
         };
         rawMilestones.push(milestoneExport);
     } else {
-        const buyerOrDestName = trace.commercialLot.buyerName || dest?.name || "Chợ đầu mối Nông sản Thủ Đức";
-        const destAddress = trace.commercialLot.buyerAddress || dest?.address || "TP. Hồ Chí Minh";
-        const exporterName = trace.commercialLot.owner?.name || trace.commercialLot.farmerOwner?.fullName || "Vựa Sầu riêng Thành Phát";
+        const buyerOrDestName = shipmentMeta.partnerBranch || trace.commercialLot.buyerName || dest?.name || "Chợ đầu mối Nông sản Thủ Đức";
+        const destAddress = shipmentMeta.deliveryAddress || trace.commercialLot.buyerAddress || dest?.address || "TP. Hồ Chí Minh";
+        const exporterName = trace.commercialLot.owner?.name || trace.commercialLot.farmerOwner?.fullName || "Cơ sở Chế biến Sầu riêng Trị An";
+        const channel = shipmentMeta.channel || null;
+        const partnerSystem = shipmentMeta.partnerSystem || null;
+        const contactPerson = shipmentMeta.contactPerson || null;
+        const customerPhone = shipmentMeta.customerPhone || trace.commercialLot.buyerPhone || null;
+        const driverName = shipmentMeta.driverName || null;
+        const transportMethod = shipmentMeta.transportMethod || null;
+        const truckPlate = shipmentMeta.truckPlate || shipment?.vehicleReference || null;
 
         const milestoneDistribution: TraceMilestone = {
             id: "milestone-distribution",
@@ -815,9 +876,6 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
             badgeVariant: "emerald",
             fields: [
                 { label: "Tên sản phẩm xuất bán", value: trace.commercialLot.productName, highlight: true },
-                { label: "Điểm đến", value: buyerOrDestName, highlight: true },
-                { label: "Địa chỉ", value: destAddress },
-                { label: "Lô xuất bán", value: trace.commercialLot.lotCode, highlight: true },
                 {
                     label: "Khối lượng xuất",
                     value: `${Number(shipment?.dispatchedWeight || trace.commercialLot.quantity).toLocaleString("vi-VN")} kg`,
@@ -826,6 +884,15 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
                 ...(shipment?.boxCount
                     ? [{ label: "Số thùng", value: `${shipment.boxCount.toLocaleString("vi-VN")} thùng` }]
                     : []),
+                ...(channel ? [{ label: "Kênh phân phối", value: channel, highlight: true }] : []),
+                ...(partnerSystem ? [{ label: "Hệ thống / Đối tác", value: partnerSystem, highlight: true }] : []),
+                { label: "Đơn vị / Chi nhánh nhận", value: buyerOrDestName, highlight: true },
+                ...(contactPerson ? [{ label: "Người liên hệ", value: contactPerson }] : []),
+                ...(customerPhone ? [{ label: "Số điện thoại", value: customerPhone }] : []),
+                { label: "Địa chỉ giao hàng", value: destAddress, highlight: true },
+                ...(transportMethod ? [{ label: "Hình thức vận chuyển", value: transportMethod }] : []),
+                ...(truckPlate ? [{ label: "Biển số xe", value: truckPlate }] : []),
+                ...(driverName ? [{ label: "Tài xế giao nhận", value: driverName }] : []),
                 { label: "Đơn vị xuất", value: exporterName },
             ],
         };
@@ -852,16 +919,16 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
             quantity: Number(trace.commercialLot.quantity),
             unit: trace.commercialLot.unit,
             status: trace.commercialLot.status,
-            buyerName: trace.commercialLot.buyerName,
+            buyerName: shipmentMeta.partnerBranch || trace.commercialLot.buyerName,
             dispatchedAt: trace.commercialLot.dispatchedAt,
         },
         issuer: trace.commercialLot.owner?.name ?? trace.commercialLot.farmerOwner?.fullName ?? "Hộ sản xuất",
         issuerType: trace.commercialLot.ownerType,
         destination: trace.commercialLot.destination
             ? {
-                  name: trace.commercialLot.destination.name,
+                  name: shipmentMeta.partnerBranch || trace.commercialLot.destination.name,
                   type: trace.commercialLot.destination.type,
-                  address: trace.commercialLot.destination.address,
+                  address: shipmentMeta.deliveryAddress || trace.commercialLot.destination.address,
                   country: trace.commercialLot.destination.country,
               }
             : null,

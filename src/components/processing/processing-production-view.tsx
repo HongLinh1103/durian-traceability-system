@@ -228,7 +228,7 @@ export function ProcessingProductionView({
 
             toast({
                 title: "Đóng gói hoàn tất",
-                description: `Lô ${selectedFresh.code} (${outW.toLocaleString("vi-VN")} kg · ${boxes} thùng) đã chuyển sang trạng thái Sẵn sàng xuất hàng.`,
+                description: `Lô ${selectedFresh.code} (${outW.toLocaleString("vi-VN")} kg · ${boxes} thùng) đã chuyển sang trạng thái Đã đóng gói.`,
                 variant: "success",
             });
             setSelectedFresh(null);
@@ -316,7 +316,7 @@ export function ProcessingProductionView({
 
             toast({
                 title: "Mẻ chế biến hoàn tất",
-                description: `Đã hoàn tất sản xuất ${procProductName} (${outW.toLocaleString("vi-VN")} kg thành phẩm). Lô đã sẵn sàng xuất hàng.`,
+                description: `Đã hoàn tất sản xuất ${procProductName} (${outW.toLocaleString("vi-VN")} kg thành phẩm). Lô đã chuyển sang trạng thái Đã đóng gói.`,
                 variant: "success",
             });
             setSelectedProc(null);
@@ -359,7 +359,7 @@ export function ProcessingProductionView({
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Chế biến & Đóng gói</h1>
                     <p className="mt-1 text-xs sm:text-sm text-slate-500">
-                        Nhận các lô đã được phân loại từ bước trước, ghi nhận quy cách đóng gói xuất khẩu hoặc hướng chế biến sâu và tự động chuyển thành Lô thành phẩm sẵn sàng xuất hàng.
+                        Nhận các lô đã được phân loại từ bước trước, ghi nhận quy cách đóng gói xuất khẩu hoặc hướng chế biến sâu và tự động chuyển thành Lô thành phẩm ở trạng thái Đã đóng gói.
                     </p>
                 </div>
 
@@ -470,7 +470,7 @@ export function ProcessingProductionView({
                                             <td className="px-5 py-3 text-center whitespace-nowrap">
                                                 {isReady ? (
                                                     <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                                                        Sẵn sàng xuất hàng
+                                                        Đã đóng gói
                                                     </span>
                                                 ) : isUnavailable ? (
                                                     <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
@@ -581,7 +581,7 @@ export function ProcessingProductionView({
                                             <td className="px-5 py-3 text-center whitespace-nowrap">
                                                 {isDone ? (
                                                     <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                                                        Sẵn sàng xuất hàng
+                                                        Đã đóng gói
                                                     </span>
                                                 ) : isUnavailable ? (
                                                     <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
