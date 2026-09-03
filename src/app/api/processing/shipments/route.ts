@@ -97,6 +97,12 @@ export async function POST(request: Request) {
     if (!finishedLot || finishedLot.facilityId !== facility.id) {
         return NextResponse.json({ success: false, message: "Không tìm thấy lô thành phẩm tương ứng." }, { status: 404 });
     }
+    if (finishedLot.status !== "READY_FOR_DISTRIBUTION") {
+        return NextResponse.json({ success: false, message: "Lô thành phẩm không còn ở trạng thái Sẵn sàng xuất hàng." }, { status: 409 });
+    }
+    if (v.weight > Number(finishedLot.remainingWeight)) {
+        return NextResponse.json({ success: false, message: "Khối lượng xuất vượt quá khối lượng còn lại của lô thành phẩm." }, { status: 400 });
+    }
 
     const exportDate = v.exportDate ? new Date(v.exportDate) : new Date();
     const isExport = v.shipmentType === "EXPORT";
@@ -260,6 +266,15 @@ export async function POST(request: Request) {
                     boxCount: v.boxCount,
                 },
                 isPublic: true,
+            },
+        });
+
+        const remainingWeight = Number(finishedLot.remainingWeight) - v.weight;
+        await tx.finishedProductLot.update({
+            where: { id: finishedLot.id },
+            data: {
+                remainingWeight,
+                status: remainingWeight > 0 ? "PARTIALLY_DISTRIBUTED" : "DISTRIBUTED",
             },
         });
 

@@ -433,30 +433,30 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                     </div>
 
                     {/* QR Code Action Box */}
-                    <div className="rounded-2xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-slate-50 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                    <div className="rounded-2xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-slate-50 p-4 sm:p-5 flex flex-col items-center gap-3">
+                        <div className="flex flex-col items-center gap-2.5 w-full text-center">
                             {qrDataUrl ? (
                                 <div className="rounded-2xl bg-white p-2 border border-emerald-200 shadow-xs shrink-0">
                                     <img
                                         src={qrDataUrl}
                                         alt={`QR - ${trace.commercialLot.lotCode}`}
-                                        className="h-20 w-20 sm:h-24 sm:w-24 object-contain rounded-lg shrink-0"
+                                        className="h-32 w-32 sm:h-36 sm:w-36 object-contain rounded-lg shrink-0"
                                     />
                                 </div>
                             ) : (
-                                <div className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl bg-white text-emerald-700 border border-emerald-200 shrink-0">
-                                    <QrCode className="h-10 w-10 text-emerald-600 shrink-0" />
+                                <div className="flex h-32 w-32 sm:h-36 sm:w-36 items-center justify-center rounded-2xl bg-white text-emerald-700 border border-emerald-200 shrink-0">
+                                    <QrCode className="h-12 w-12 text-emerald-600 shrink-0" />
                                 </div>
                             )}
-                            <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5 text-xs font-black uppercase text-emerald-800 tracking-wide whitespace-nowrap">
+                            <div className="min-w-0">
+                                <div className="flex items-center justify-center gap-1.5 text-xs font-black uppercase text-emerald-800 tracking-wide whitespace-nowrap">
                                     <Sparkles className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                                     <span className="whitespace-nowrap">Mã QR Định Danh</span>
                                 </div>
-                                <p className="text-xs text-slate-600 mt-1 line-clamp-2">
+                                <p className="text-xs text-slate-600 mt-1">
                                     Quét bằng Camera hoặc Zalo để xác thực nguồn gốc sầu riêng.
                                 </p>
-                                <div className="mt-1.5 flex items-center gap-2">
+                                <div className="mt-1.5 flex items-center justify-center gap-2">
                                     <span className="font-mono text-[11px] font-bold text-slate-700 bg-white px-2 py-0.5 rounded-md border border-slate-200 whitespace-nowrap shrink-0 inline-block">
                                         Token: {trace.publicToken}
                                     </span>
@@ -464,7 +464,7 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <div className="grid grid-cols-3 items-center gap-2 w-full max-w-md">
                             <Button
                                 type="button"
                                 onClick={handleDownloadQr}

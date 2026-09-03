@@ -192,32 +192,6 @@ export default async function Page() {
             };
         });
 
-        // Keep the empty-state demo in sync with the records displayed on the
-        // Processing & Packaging page. Do not maintain a second, unrelated lot list.
-        if (availableLots.length === 0) {
-            availableLots = [
-                {
-                    id: "demo-fp-001",
-                    lotCode: "FP-FRESH-20260830-001",
-                    productName: "Sầu riêng tươi xuất khẩu",
-                    remainingWeight: 3100,
-                    packaging: "Thùng 5-6 trái / 18kg",
-                    farmName: "Vườn sầu riêng Minh Phát",
-                    regionCode: "MSVT-GACC-001",
-                    rawLotCode: "TH-20260829-002",
-                },
-                {
-                    id: "demo-pb-001",
-                    lotCode: "PB-20260830-001",
-                    productName: "Cơm sầu riêng bóc múi",
-                    remainingWeight: 326,
-                    packaging: "Khay hút chân không 500g",
-                    farmName: "Vườn sầu riêng Minh Phát",
-                    regionCode: "MSVT-GACC-001",
-                    rawLotCode: "TH-20260829-002",
-                },
-            ];
-        }
         // Note: shipments array stays as queried (empty [] if no shipments created yet)
     } catch (err) {
         console.error("Error loading processing shipments page:", err);

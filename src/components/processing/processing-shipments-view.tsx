@@ -404,6 +404,8 @@ export function ProcessingShipmentsView({
                     if (
                         p.status === "READY_FOR_DISTRIBUTION" &&
                         Number(p.remainingWeight) > 0 &&
+                        !String(p.id || "").startsWith("demo-") &&
+                        !String(p.id || "").startsWith("raw-") &&
                         !existingIds.has(p.id) &&
                         !existingCodes.has(p.lotCode)
                     ) {
@@ -836,12 +838,15 @@ export function ProcessingShipmentsView({
             });
 
             const data = await res.json();
+            if (!res.ok || !data?.success || !data?.data?.shipment || !data?.data?.traceCode?.publicToken) {
+                throw new Error(data?.message || "Không thể lưu lô xuất hàng và phát hành QR.");
+            }
             const created = data?.data?.shipment;
-            const token = data?.data?.traceCode?.publicToken || `TRC-${shipmentCode}`;
+            const token = data.data.traceCode.publicToken;
 
             const newRow: ShipmentItemRow = {
-                id: created?.id || `ship-${Date.now()}`,
-                shipmentCode: created?.shipmentCode || shipmentCode,
+                id: created.id,
+                shipmentCode: created.shipmentCode,
                 productName: productName || selectedLot.productName,
                 shipmentType,
                 containerNumber: shipmentType === "EXPORT" ? containerNumber : undefined,
