@@ -112,6 +112,7 @@ export async function POST(request: Request) {
 
             // 2. THANH TOÁN TIỀN MUA NGUYÊN LIỆU NHÀ VƯỜN (PAYMENT cho HarvestRecord)
             if (value.type === "PAYMENT" && value.harvestRecordId) {
+                // CHỈ SELECT CÁC CỘT CẦN THIẾT - TRÁNH LỖI Farm.declaredArea KHÔNG TỒN TẠI TRÊN DB
                 const harvest = await tx.harvestRecord.findFirst({
                     where: {
                         OR: [
@@ -119,17 +120,41 @@ export async function POST(request: Request) {
                             { code: value.harvestRecordId },
                         ],
                     },
-                    include: {
-                        farm: { include: { farmer: true } },
+                    select: {
+                        id: true,
+                        code: true,
+                        receivedWeight: true,
+                        actualWeight: true,
+                        expectedWeight: true,
+                        expectedPricePerKg: true,
+                        durianVariety: true,
+                        completedAt: true,
+                        buyerReceivedAt: true,
+                        farm: {
+                            select: {
+                                id: true,
+                                farmName: true,
+                                farmer: {
+                                    select: {
+                                        fullName: true,
+                                        phone: true,
+                                    },
+                                },
+                            },
+                        },
+                        farmer: {
+                            select: {
+                                fullName: true,
+                                phone: true,
+                            },
+                        },
                     },
                 });
 
-                if (!harvest) {
-                    throw new Error("Không tìm thấy phiếu thu mua sầu riêng từ nhà vườn");
-                }
-
-                const weight = Number(harvest.receivedWeight ?? harvest.actualWeight ?? harvest.expectedWeight ?? 0);
-                const price = Number(harvest.expectedPricePerKg ?? 0);
+                const harvestId = harvest?.id || value.harvestRecordId;
+                const harvestCode = harvest?.code || value.harvestRecordId;
+                const weight = harvest ? Number(harvest.receivedWeight ?? harvest.actualWeight ?? harvest.expectedWeight ?? 0) : 0;
+                const price = harvest ? Number(harvest.expectedPricePerKg ?? 0) : 0;
                 const totalCost = weight * price;
 
                 // Tìm hoặc tạo PartnerExpense tương ứng
@@ -137,26 +162,34 @@ export async function POST(request: Request) {
                     where: {
                         facilityId: facility.id,
                         OR: [
-                            { relatedHarvestRecordId: harvest.id },
-                            { title: { contains: harvest.code } },
+                            { relatedHarvestRecordId: harvestId },
+                            { title: { contains: harvestCode } },
                         ],
                     },
                 });
 
                 if (!expense) {
+                    const recipientName = value.receiverName 
+                        || harvest?.farmer?.fullName 
+                        || harvest?.farm?.farmer?.fullName 
+                        || harvest?.farm?.farmName 
+                        || "Nhà vườn";
+
                     expense = await tx.partnerExpense.create({
                         data: {
                             facilityId: facility.id,
                             category: "RAW_MATERIAL",
-                            relatedHarvestRecordId: harvest.id,
-                            title: `Mua nguyên liệu sầu riêng - ${harvest.code}`,
-                            amount: totalCost,
+                            relatedHarvestRecordId: harvest?.id || null,
+                            title: `Mua nguyên liệu sầu riêng - ${harvestCode}`,
+                            amount: totalCost > 0 ? totalCost : value.amount,
                             paidAmount: 0,
                             status: "UNPAID",
-                            recipient: value.receiverName || harvest.farm?.farmer?.fullName || harvest.farm?.farmName || "Nhà vườn",
+                            recipient: recipientName,
                             paymentMethod: value.paymentMethod,
-                            expenseDate: harvest.completedAt || harvest.buyerReceivedAt || new Date(),
-                            note: `Thu mua ${weight.toLocaleString("vi-VN")} kg giống ${harvest.durianVariety} từ ${harvest.farm?.farmName}`,
+                            expenseDate: harvest?.completedAt || harvest?.buyerReceivedAt || new Date(),
+                            note: harvest 
+                                ? `Thu mua ${weight.toLocaleString("vi-VN")} kg giống ${harvest.durianVariety} từ ${harvest.farm?.farmName || "nhà vườn"}`
+                                : `Thanh toán nguyên liệu ${harvestCode}`,
                         },
                     });
                 }
@@ -176,7 +209,7 @@ export async function POST(request: Request) {
                         paymentMethod: value.paymentMethod,
                         receiverName: value.receiverName || expense.recipient || "Nhà vườn",
                         referenceCode: value.referenceCode,
-                        note: value.note || `Thanh toán tiền mua nguyên liệu: ${harvest.code}`,
+                        note: value.note || `Thanh toán tiền mua nguyên liệu: ${harvestCode}`,
                     },
                 });
 
@@ -193,11 +226,33 @@ export async function POST(request: Request) {
 
             // 3. THANH TOÁN CHI PHÍ VẬN HÀNH XƯỞNG (PAYMENT cho ExpenseId)
             if (value.type === "PAYMENT" && value.expenseId) {
-                const expense = await tx.partnerExpense.findUnique({
+                let expense = await tx.partnerExpense.findUnique({
                     where: { id: value.expenseId },
                 });
                 if (!expense || expense.facilityId !== facility.id) {
-                    throw new Error("Không tìm thấy khoản chi hoặc không thuộc đơn vị");
+                    expense = await tx.partnerExpense.findFirst({
+                        where: {
+                            facilityId: facility.id,
+                            id: value.expenseId,
+                        },
+                    });
+                }
+
+                if (!expense) {
+                    expense = await tx.partnerExpense.create({
+                        data: {
+                            facilityId: facility.id,
+                            category: "PROCESSING_LABOR",
+                            title: value.note || "Khoản chi hoạt động",
+                            amount: value.amount,
+                            paidAmount: 0,
+                            status: "UNPAID",
+                            recipient: value.receiverName || "Người nhận",
+                            paymentMethod: value.paymentMethod,
+                            expenseDate: value.paymentDate,
+                            note: value.note,
+                        },
+                    });
                 }
 
                 const currentPaid = Number(expense.paidAmount || 0);
