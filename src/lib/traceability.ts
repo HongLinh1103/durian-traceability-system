@@ -444,9 +444,14 @@ export async function collectPublicHarvestSources(lotId: string) {
     return [...new Map(sources.map((source) => [source.id, source])).values()];
 }
 
-export async function getPublicTrace(publicToken: string) {
+export async function getPublicTrace(publicToken: string, encodedPayload?: string) {
     const cleanToken = publicToken?.trim();
     if (!cleanToken) return null;
+
+    const preview = getPreviewTrace(cleanToken, encodedPayload);
+    if (encodedPayload && preview) {
+        return buildPreviewTraceObject(cleanToken, preview);
+    }
 
     const trace: any = await prisma.traceabilityCode.findFirst({
         where: {
@@ -513,7 +518,6 @@ export async function getPublicTrace(publicToken: string) {
     });
 
     if (!trace) {
-        const preview = getPreviewTrace(cleanToken);
         const up = cleanToken.toUpperCase();
         if (preview || up.startsWith("EXP-") || up.startsWith("DOM-") || up.startsWith("TRC-") || up.startsWith("FP-")) {
             return buildPreviewTraceObject(cleanToken, preview);
@@ -900,7 +904,7 @@ function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTraceData)
     const facilityName = preview?.facilityName || "Cơ sở Chế biến & Đóng gói Sầu riêng Xuất khẩu TriViet";
     const destName = isExport
         ? (preview?.portOfDestination || preview?.destinationCountry || "Côn Minh, Vân Nam (Trung Quốc)")
-        : (preview?.customerName || preview?.deliveryAddress || "Hệ thống Siêu thị WinMart");
+        : (preview?.partnerBranch || preview?.customerName || preview?.partnerSystem || preview?.deliveryAddress || "Hệ thống Siêu thị WinMart");
     const destCountry = isExport ? (preview?.destinationCountry || "Trung Quốc") : "Việt Nam";
     const destAddress = isExport
         ? (preview?.portOfDestination || "Côn Minh, Vân Nam")
@@ -996,12 +1000,15 @@ function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTraceData)
                     { label: "Đơn vị vận chuyển", value: preview?.carrierName || "Công ty Vận tải Quốc tế Á Châu" },
                 ]
                 : [
-                    { label: "Khách hàng / Đơn vị nhận", value: destName, highlight: true },
+                    ...(preview?.distributionChannel ? [{ label: "Kênh phân phối", value: preview.distributionChannel, highlight: true }] : []),
+                    ...(preview?.partnerSystem ? [{ label: "Hệ thống / Đối tác", value: preview.partnerSystem, highlight: true }] : []),
+                    { label: "Đơn vị / Chi nhánh nhận", value: destName, highlight: true },
+                    ...(preview?.contactPerson ? [{ label: "Người liên hệ", value: preview.contactPerson }] : (preview?.customerName && preview.customerName !== destName ? [{ label: "Người liên hệ", value: preview.customerName }] : [])),
+                    ...(preview?.customerPhone ? [{ label: "Số điện thoại", value: preview.customerPhone }] : []),
                     { label: "Địa chỉ giao hàng", value: destAddress, highlight: true },
-                    { label: "Số điện thoại", value: preview?.customerPhone || "0912 345 678" },
-                    { label: "Hình thức vận chuyển", value: preview?.transportMethod || "Xe tải lạnh nội địa" },
-                    { label: "Biển số xe", value: preview?.truckPlate || "60C-882.19" },
-                    { label: "Tài xế giao nhận", value: preview?.driverName || "Nguyễn Văn Nam" },
+                    ...(preview?.transportMethod ? [{ label: "Hình thức vận chuyển", value: preview.transportMethod }] : []),
+                    ...(preview?.truckPlate ? [{ label: "Biển số xe", value: preview.truckPlate }] : []),
+                    ...(preview?.driverName ? [{ label: "Tài xế giao nhận", value: preview.driverName }] : []),
                 ],
         },
     ];

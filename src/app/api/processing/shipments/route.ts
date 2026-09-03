@@ -20,9 +20,12 @@ const schema = z.object({
     destinationCountry: z.string().trim().optional(),
     portOfLoading: z.string().trim().optional(),
     portOfDestination: z.string().trim().optional(),
-    // Domestic fields
+    // Domestic fields (3-level distribution channel)
     distributionChannel: z.string().trim().optional(),
+    partnerSystem: z.string().trim().optional(),
+    partnerBranch: z.string().trim().optional(),
     customerName: z.string().trim().optional(),
+    contactPerson: z.string().trim().optional(),
     customerPhone: z.string().trim().optional(),
     deliveryAddress: z.string().trim().optional(),
     transportMethod: z.string().trim().optional(),
@@ -100,7 +103,7 @@ export async function POST(request: Request) {
 
     const destName = isExport
         ? (v.portOfDestination || v.destinationCountry || "Thị trường Xuất khẩu")
-        : (v.customerName || v.deliveryAddress || "Khách hàng nội địa");
+        : (v.partnerBranch || v.customerName || v.partnerSystem || v.deliveryAddress || "Khách hàng nội địa");
     const destCountry = isExport ? (v.destinationCountry || "Trung Quốc") : "Việt Nam";
     const destAddress = isExport
         ? (v.portOfDestination || `${destCountry}`)
@@ -125,6 +128,9 @@ export async function POST(request: Request) {
         ? (v.note || null)
         : [
             v.distributionChannel ? `Kênh: ${v.distributionChannel}` : "",
+            v.partnerSystem ? `Hệ thống: ${v.partnerSystem}` : "",
+            v.partnerBranch ? `Chi nhánh: ${v.partnerBranch}` : "",
+            v.contactPerson ? `Người liên hệ: ${v.contactPerson}` : "",
             v.customerName ? `Khách: ${v.customerName}` : "",
             v.customerPhone ? `SĐT: ${v.customerPhone}` : "",
             v.deliveryAddress ? `Giao đến: ${v.deliveryAddress}` : "",
@@ -137,7 +143,7 @@ export async function POST(request: Request) {
     const publicToken = `TRC-${randomBytes(4).toString("hex").toUpperCase()}`;
 
     const result = await prisma.$transaction(async (tx) => {
-        // 1. Create CommercialLot
+        // 1. Create CommercialLot with buyer info
         const commercialLot = await tx.commercialLot.create({
             data: {
                 lotCode: v.shipmentCode,
@@ -150,6 +156,10 @@ export async function POST(request: Request) {
                 productName: v.productName,
                 quantity: v.weight,
                 remainingQuantity: v.weight,
+                buyerName: destName,
+                buyerPhone: v.customerPhone || null,
+                buyerAddress: destAddress || null,
+                dispatchedAt: exportDate,
                 status: "QR_ISSUED",
             },
         });

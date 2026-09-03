@@ -6,9 +6,13 @@ export const dynamic = "force-dynamic";
 
 export default async function TracePage(props: {
     params: Promise<{ publicToken: string }> | { publicToken: string };
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }> | { [key: string]: string | string[] | undefined };
 }) {
     const params = await Promise.resolve(props.params);
-    const trace = await getPublicTrace(params.publicToken);
+    const search = props.searchParams ? await Promise.resolve(props.searchParams) : {};
+    const encodedPayload = typeof search.p === "string" ? search.p : (typeof search.preview === "string" ? search.preview : undefined);
+
+    const trace = await getPublicTrace(params.publicToken, encodedPayload);
 
     if (!trace) notFound();
 

@@ -43,19 +43,24 @@ export default async function Page() {
                                                                       include: {
                                                                           rawMaterialReceipt: {
                                                                               include: {
-                                                                                  sourceHarvestLot: {
-                                                                                      include: {
-                                                                                          farm: {
-                                                                                              include: { region: true },
-                                                                                          },
-                                                                                      },
-                                                                                  },
-                                                                              },
-                                                                          },
-                                                                      },
-                                                                  },
-                                                              },
-                                                          },
+                                                                                   sourceHarvestLot: {
+                                                                                       include: {
+                                                                                           farm: {
+                                                                                               select: {
+                                                                                                   id: true,
+                                                                                                   farmName: true,
+                                                                                                   growingRegion: true,
+                                                                                                   region: { select: { code: true, name: true } },
+                                                                                               },
+                                                                                           },
+                                                                                       },
+                                                                                   },
+                                                                               },
+                                                                           },
+                                                                       },
+                                                                   },
+                                                               },
+                                                           },
                                                       },
                                                   },
                                               },
@@ -85,7 +90,12 @@ export default async function Page() {
                                                           sourceHarvestLot: {
                                                               include: {
                                                                   farm: {
-                                                                      include: { region: true },
+                                                                      select: {
+                                                                          id: true,
+                                                                          farmName: true,
+                                                                          growingRegion: true,
+                                                                          region: { select: { code: true, name: true } },
+                                                                      },
                                                                   },
                                                               },
                                                           },
@@ -110,18 +120,46 @@ export default async function Page() {
             const harvest = raw?.rawMaterialReceipt?.sourceHarvestLot;
             const farm = harvest?.farm;
 
+            const note = s.note || "";
+            const extractField = (prefix: string) => {
+                const match = note.match(new RegExp(`${prefix}:\\s*([^|]+)`));
+                return match ? match[1].trim() : undefined;
+            };
+
+            const distributionChannel = extractField("Kênh");
+            const partnerSystem = extractField("Hệ thống");
+            const partnerBranch = extractField("Chi nhánh");
+            const contactPerson = extractField("Người liên hệ");
+            const customerPhone = firstCommercial?.buyerPhone || extractField("SĐT");
+            const deliveryAddress = firstCommercial?.buyerAddress || extractField("Giao đến");
+            const transportMethod = extractField("Vận chuyển");
+            const driverName = extractField("Tài xế");
+            const carrierName = extractField("ĐVVC");
+            const isDomestic = s.shipmentCode.startsWith("DOM-") || s.destination?.country === "Việt Nam" || Boolean(distributionChannel);
+
             return {
                 id: s.id,
                 shipmentCode: s.shipmentCode,
+                shipmentType: (isDomestic ? "DOMESTIC" : "EXPORT") as "EXPORT" | "DOMESTIC",
                 productName: firstCommercial?.productName || "Sầu riêng tươi xuất khẩu",
                 containerNumber: s.containerNumber || s.exportInfo?.containerNumber || undefined,
                 sealNumber: s.sealNumber || s.exportInfo?.sealNumber || undefined,
                 truckPlate: s.vehicleReference || undefined,
+                carrierName: carrierName || undefined,
                 weight: Number(s.dispatchedWeight || 0),
                 boxCount: s.boxCount || undefined,
-                destinationCountry: s.exportInfo?.destinationCountry || s.destination?.country || "Trung Quốc",
+                destinationCountry: isDomestic ? "Việt Nam" : (s.exportInfo?.destinationCountry || s.destination?.country || "Trung Quốc"),
                 portOfLoading: s.exportInfo?.portOfLoading || undefined,
-                portOfDestination: s.exportInfo?.portOfDestination || s.destination?.name || undefined,
+                portOfDestination: isDomestic ? deliveryAddress : (s.exportInfo?.portOfDestination || s.destination?.name || undefined),
+                distributionChannel,
+                partnerSystem,
+                partnerBranch,
+                contactPerson,
+                customerName: firstCommercial?.buyerName || partnerBranch || s.destination?.name || undefined,
+                customerPhone,
+                deliveryAddress,
+                transportMethod,
+                driverName,
                 dispatchDate: s.dispatchAt || s.createdAt,
                 status: (s.status === "DISPATCHED" ? "DISPATCHED" : s.status === "READY" ? "READY" : "DRAFT") as any,
                 hasQrCode: Boolean(firstCommercial?.traceabilityCode),
