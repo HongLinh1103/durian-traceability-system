@@ -215,17 +215,17 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                 prev.map((i) =>
                     i.id === receivingItem.id
                         ? {
-                              ...i,
-                              actualReceivedWeight: actualWeight,
-                              actualFruitCount,
-                              weightDifference: actualWeight - i.declaredWeight,
-                              fruitDifference: i.declaredFruitCount ? actualFruitCount - i.declaredFruitCount : undefined,
-                              receivedAt: receivedAtInput ? new Date(receivedAtInput) : new Date(),
-                              vehiclePlate: truckPlateInput,
-                              condition: conditionInput,
-                              status: "WAITING_CLASSIFICATION",
-                              direction: "UNCLASSIFIED",
-                          }
+                            ...i,
+                            actualReceivedWeight: actualWeight,
+                            actualFruitCount,
+                            weightDifference: actualWeight - i.declaredWeight,
+                            fruitDifference: i.declaredFruitCount ? actualFruitCount - i.declaredFruitCount : undefined,
+                            receivedAt: receivedAtInput ? new Date(receivedAtInput) : new Date(),
+                            vehiclePlate: truckPlateInput,
+                            condition: conditionInput,
+                            status: "WAITING_CLASSIFICATION",
+                            direction: "UNCLASSIFIED",
+                        }
                         : i
                 )
             );
@@ -367,16 +367,16 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                 prev.map((i) =>
                     i.id === classifyingItem.id
                         ? {
-                              ...i,
-                              freshExportWeight: fresh,
-                              freshExportFruitCount: freshF,
-                              processingWeight: proc,
-                              processingFruitCount: procF,
-                              rejectedWeight: rej,
-                              rejectedFruitCount: rejF,
-                              direction: fresh > 0 && proc > 0 ? "SPLIT" : fresh > 0 ? "FRESH_EXPORT" : "PROCESSING",
-                              status: "CLASSIFIED",
-                          }
+                            ...i,
+                            freshExportWeight: fresh,
+                            freshExportFruitCount: freshF,
+                            processingWeight: proc,
+                            processingFruitCount: procF,
+                            rejectedWeight: rej,
+                            rejectedFruitCount: rejF,
+                            direction: fresh > 0 && proc > 0 ? "SPLIT" : fresh > 0 ? "FRESH_EXPORT" : "PROCESSING",
+                            status: "CLASSIFIED",
+                        }
                         : i
                 )
             );
@@ -399,7 +399,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                 };
                 const filtered = existing.filter((x: any) => x.id !== lotEntry.id);
                 localStorage.setItem("processing_classified_lots", JSON.stringify([...filtered, lotEntry]));
-            } catch {}
+            } catch { }
 
             setClassifyingItem(null);
         } catch (err: any) {
@@ -415,13 +415,13 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
             <nav className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                 <span>Cơ sở chế biến</span>
                 <span>/</span>
-                <span className="text-emerald-700 font-bold">2. Tiếp nhận & Phân loại</span>
+                <span className="text-emerald-700 font-bold">Tiếp nhận & Phân loại</span>
             </nav>
 
             {/* Header + KPIs */}
             <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-5">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900">2. Tiếp nhận & Phân loại</h1>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Tiếp nhận & Phân loại</h1>
                     <p className="mt-1 text-xs sm:text-sm text-slate-500">
                         Đây là trang đầu tiên của nghiệp vụ tiếp nhận nông sản từ Phiếu thu hoạch của Farm, đối soát khối lượng thực nhận và phân chia nhánh Trái tươi xuất khẩu hoặc Chuyển chế biến.
                     </p>
@@ -742,13 +742,12 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
 
                                         <div>
                                             <label className="block text-xs font-bold text-slate-700 mb-1">Đánh giá chênh lệch khối lượng</label>
-                                            <div className={`h-10 rounded-xl px-3 flex items-center justify-between border text-xs font-bold ${
-                                                Math.abs(liveDiff) === 0
+                                            <div className={`h-10 rounded-xl px-3 flex items-center justify-between border text-xs font-bold ${Math.abs(liveDiff) === 0
                                                     ? "bg-slate-100 border-slate-200 text-slate-700"
                                                     : liveDiff < 0
-                                                    ? "bg-amber-50 border-amber-300 text-amber-800"
-                                                    : "bg-emerald-50 border-emerald-300 text-emerald-800"
-                                            }`}>
+                                                        ? "bg-amber-50 border-amber-300 text-amber-800"
+                                                        : "bg-emerald-50 border-emerald-300 text-emerald-800"
+                                                }`}>
                                                 <span>Chênh lệch:</span>
                                                 <span>
                                                     {liveDiff > 0 ? `+${liveDiff.toLocaleString("vi-VN")} kg` : `${liveDiff.toLocaleString("vi-VN")} kg`}
@@ -815,226 +814,226 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                 <ModalPortal>
                     <div className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
                         <div className="relative flex max-h-[90vh] w-full max-w-xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
-                        {/* Header */}
-                        <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
-                            <div>
-                                <span className="text-[10px] font-black uppercase tracking-wider text-sky-700">Quy trình phân loại</span>
-                                <h2 className="text-xl font-black text-slate-900">PHÂN LOẠI LÔ NGUYÊN LIỆU</h2>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setClassifyingItem(null)}
-                                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        {/* Modal Body */}
-                        <div className="overflow-y-auto p-5 sm:p-6 space-y-4">
-                            {/* Lot Summary */}
-                            <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700 border border-slate-200">
-                                <p className="flex justify-between">
-                                    <span className="text-slate-500">Mã phiếu / Mã lô:</span>
-                                    <span className="font-mono font-bold text-slate-900">{classifyingItem.receiptCode || classifyingItem.code}</span>
-                                </p>
-                                <p className="flex justify-between">
-                                    <span className="text-slate-500">Farm / Vườn:</span>
-                                    <span className="font-bold text-slate-800">{classifyingItem.farmName}</span>
-                                </p>
-                                <div className="grid grid-cols-2 gap-2 border-t border-slate-200/60 pt-2 mt-1">
-                                    <div>
-                                        <span className="text-slate-500 block text-[11px]">Khối lượng thực nhận:</span>
-                                        <span className="font-black text-emerald-700 text-sm">
-                                            {(classifyingItem.actualReceivedWeight || classifyingItem.declaredWeight || 0).toLocaleString("vi-VN")} kg
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-500 block text-[11px]">Số lượng trái thực nhận:</span>
-                                        <span className="font-black text-emerald-700 text-sm">
-                                            {(classifyingItem.actualFruitCount || classifyingItem.declaredFruitCount || Math.round((classifyingItem.actualReceivedWeight || classifyingItem.declaredWeight || 0) / 3)).toLocaleString("vi-VN")} trái
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* 3 Classification Inputs (Khối lượng + Số lượng trái) */}
-                            <div className="space-y-3 pt-1">
-                                <label className="block text-xs font-black uppercase tracking-wide text-slate-800">
-                                    Phân chia khối lượng & số lượng trái (3 phần)
-                                </label>
-
-                                {/* Phần 1: Trái tươi */}
-                                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3.5 space-y-2">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                                            <span>📦 1. Trái tươi</span>
-                                        </label>
-                                        <span className="text-[10px] text-emerald-700 font-bold">Chuyển đóng gói</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <span className="block text-[11px] font-semibold text-emerald-900 mb-1">Khối lượng (kg) *</span>
-                                            <input
-                                                type="number"
-                                                value={freshWeightInput}
-                                                onChange={(e) => setFreshWeightInput(e.target.value)}
-                                                placeholder="Ví dụ: 1800"
-                                                className="h-10 w-full rounded-xl border border-emerald-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                            />
-                                        </div>
-                                        <div>
-                                            <span className="block text-[11px] font-semibold text-emerald-900 mb-1">Số lượng (trái) *</span>
-                                            <input
-                                                type="number"
-                                                value={freshFruitCountInput}
-                                                onChange={(e) => setFreshFruitCountInput(e.target.value)}
-                                                placeholder="Ví dụ: 600"
-                                                className="h-10 w-full rounded-xl border border-emerald-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Phần 2: Chế biến khác */}
-                                <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-3.5 space-y-2">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                                            <span>⚙️ 2. Chế biến khác</span>
-                                        </label>
-                                        <span className="text-[10px] text-indigo-700 font-bold">Bóc múi, cấp đông</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <span className="block text-[11px] font-semibold text-indigo-900 mb-1">Khối lượng (kg) *</span>
-                                            <input
-                                                type="number"
-                                                value={procWeightInput}
-                                                onChange={(e) => setProcWeightInput(e.target.value)}
-                                                placeholder="Ví dụ: 620"
-                                                className="h-10 w-full rounded-xl border border-indigo-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
-                                            />
-                                        </div>
-                                        <div>
-                                            <span className="block text-[11px] font-semibold text-indigo-900 mb-1">Số lượng (trái) *</span>
-                                            <input
-                                                type="number"
-                                                value={procFruitCountInput}
-                                                onChange={(e) => setProcFruitCountInput(e.target.value)}
-                                                placeholder="Ví dụ: 200"
-                                                className="h-10 w-full rounded-xl border border-indigo-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Phần 3: Không đạt / loại bỏ */}
-                                <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-3.5 space-y-2">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-xs font-bold text-rose-950 flex items-center gap-1.5">
-                                            <span>🗑️ 3. Không đạt / loại bỏ</span>
-                                        </label>
-                                        <span className="text-[10px] text-rose-700 font-bold">Lọc bỏ / hư hại</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <span className="block text-[11px] font-semibold text-rose-900 mb-1">Khối lượng (kg) *</span>
-                                            <input
-                                                type="number"
-                                                value={rejectWeightInput}
-                                                onChange={(e) => setRejectWeightInput(e.target.value)}
-                                                placeholder="Ví dụ: 40"
-                                                className="h-10 w-full rounded-xl border border-rose-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
-                                            />
-                                        </div>
-                                        <div>
-                                            <span className="block text-[11px] font-semibold text-rose-900 mb-1">Số lượng (trái) *</span>
-                                            <input
-                                                type="number"
-                                                value={rejectFruitCountInput}
-                                                onChange={(e) => setRejectFruitCountInput(e.target.value)}
-                                                placeholder="Ví dụ: 20"
-                                                className="h-10 w-full rounded-xl border border-rose-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Ghi chú */}
+                            {/* Header */}
+                            <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-600 mb-1">Ghi chú phân loại</label>
-                                    <input
-                                        type="text"
-                                        value={classifyNoteInput}
-                                        onChange={(e) => setClassifyNoteInput(e.target.value)}
-                                        placeholder="Nhập ghi chú nếu có..."
-                                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs focus:border-emerald-500 focus:outline-none"
-                                    />
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-sky-700">Quy trình phân loại</span>
+                                    <h2 className="text-xl font-black text-slate-900">PHÂN LOẠI LÔ NGUYÊN LIỆU</h2>
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setClassifyingItem(null)}
+                                    className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
                             </div>
 
-                            {/* BẢNG KIỂM TRA TỔNG (VALIDATION BOX) */}
-                            <div className={`rounded-2xl p-4 border transition ${classificationValidation.isValid ? "border-emerald-300 bg-emerald-50/70" : "border-rose-300 bg-rose-50/70"}`}>
-                                <div className="space-y-2 text-xs">
-                                    {/* Khối lượng */}
-                                    <div className="flex justify-between items-center font-medium">
-                                        <span className="text-slate-600">Khối lượng:</span>
-                                        <span className="font-mono">
-                                            Tổng 3 phần: <strong className={classificationValidation.isWeightValid ? "text-emerald-700" : "text-rose-700"}>{classificationValidation.currentSum.toLocaleString("vi-VN")} kg</strong> / Thực nhận: <strong>{classificationValidation.totalInput.toLocaleString("vi-VN")} kg</strong>
-                                        </span>
-                                    </div>
-
-                                    {/* Số lượng trái */}
-                                    <div className="flex justify-between items-center font-medium border-t border-slate-200/60 pt-1.5">
-                                        <span className="text-slate-600">Số lượng trái:</span>
-                                        <span className="font-mono">
-                                            Tổng 3 phần: <strong className={classificationValidation.isFruitValid ? "text-emerald-700" : "text-rose-700"}>{classificationValidation.currentFruitSum.toLocaleString("vi-VN")} trái</strong> / Thực nhận: <strong>{classificationValidation.totalFruits.toLocaleString("vi-VN")} trái</strong>
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="mt-2.5 pt-2 border-t border-slate-200/60 text-xs">
-                                    {classificationValidation.isValid ? (
-                                        <p className="flex items-center gap-1.5 font-bold text-emerald-800">
-                                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                                            <span>Khối lượng và số lượng trái khớp chính xác 100%. Lô hợp lệ sẽ chuyển sang Chế biến & Đóng gói.</span>
-                                        </p>
-                                    ) : (
-                                        <p className="flex items-center gap-1.5 font-bold text-rose-800">
-                                            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-                                            <span>
-                                                {!classificationValidation.isWeightValid && `Khối lượng chưa khớp (${classificationValidation.diff > 0 ? `vượt +${classificationValidation.diff}` : `thiếu ${classificationValidation.diff}`} kg). `}
-                                                {!classificationValidation.isFruitValid && `Số lượng trái chưa khớp (${classificationValidation.fruitDiff > 0 ? `vượt +${classificationValidation.fruitDiff}` : `thiếu ${classificationValidation.fruitDiff}`} trái).`}
+                            {/* Modal Body */}
+                            <div className="overflow-y-auto p-5 sm:p-6 space-y-4">
+                                {/* Lot Summary */}
+                                <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700 border border-slate-200">
+                                    <p className="flex justify-between">
+                                        <span className="text-slate-500">Mã phiếu / Mã lô:</span>
+                                        <span className="font-mono font-bold text-slate-900">{classifyingItem.receiptCode || classifyingItem.code}</span>
+                                    </p>
+                                    <p className="flex justify-between">
+                                        <span className="text-slate-500">Farm / Vườn:</span>
+                                        <span className="font-bold text-slate-800">{classifyingItem.farmName}</span>
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-2 border-t border-slate-200/60 pt-2 mt-1">
+                                        <div>
+                                            <span className="text-slate-500 block text-[11px]">Khối lượng thực nhận:</span>
+                                            <span className="font-black text-emerald-700 text-sm">
+                                                {(classifyingItem.actualReceivedWeight || classifyingItem.declaredWeight || 0).toLocaleString("vi-VN")} kg
                                             </span>
-                                        </p>
-                                    )}
+                                        </div>
+                                        <div>
+                                            <span className="text-slate-500 block text-[11px]">Số lượng trái thực nhận:</span>
+                                            <span className="font-black text-emerald-700 text-sm">
+                                                {(classifyingItem.actualFruitCount || classifyingItem.declaredFruitCount || Math.round((classifyingItem.actualReceivedWeight || classifyingItem.declaredWeight || 0) / 3)).toLocaleString("vi-VN")} trái
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 3 Classification Inputs (Khối lượng + Số lượng trái) */}
+                                <div className="space-y-3 pt-1">
+                                    <label className="block text-xs font-black uppercase tracking-wide text-slate-800">
+                                        Phân chia khối lượng & số lượng trái (3 phần)
+                                    </label>
+
+                                    {/* Phần 1: Trái tươi */}
+                                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3.5 space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                                                <span>📦 1. Trái tươi</span>
+                                            </label>
+                                            <span className="text-[10px] text-emerald-700 font-bold">Chuyển đóng gói</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <span className="block text-[11px] font-semibold text-emerald-900 mb-1">Khối lượng (kg) *</span>
+                                                <input
+                                                    type="number"
+                                                    value={freshWeightInput}
+                                                    onChange={(e) => setFreshWeightInput(e.target.value)}
+                                                    placeholder="Ví dụ: 1800"
+                                                    className="h-10 w-full rounded-xl border border-emerald-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <span className="block text-[11px] font-semibold text-emerald-900 mb-1">Số lượng (trái) *</span>
+                                                <input
+                                                    type="number"
+                                                    value={freshFruitCountInput}
+                                                    onChange={(e) => setFreshFruitCountInput(e.target.value)}
+                                                    placeholder="Ví dụ: 600"
+                                                    className="h-10 w-full rounded-xl border border-emerald-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Phần 2: Chế biến khác */}
+                                    <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-3.5 space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                                                <span>⚙️ 2. Chế biến khác</span>
+                                            </label>
+                                            <span className="text-[10px] text-indigo-700 font-bold">Bóc múi, cấp đông</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <span className="block text-[11px] font-semibold text-indigo-900 mb-1">Khối lượng (kg) *</span>
+                                                <input
+                                                    type="number"
+                                                    value={procWeightInput}
+                                                    onChange={(e) => setProcWeightInput(e.target.value)}
+                                                    placeholder="Ví dụ: 620"
+                                                    className="h-10 w-full rounded-xl border border-indigo-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <span className="block text-[11px] font-semibold text-indigo-900 mb-1">Số lượng (trái) *</span>
+                                                <input
+                                                    type="number"
+                                                    value={procFruitCountInput}
+                                                    onChange={(e) => setProcFruitCountInput(e.target.value)}
+                                                    placeholder="Ví dụ: 200"
+                                                    className="h-10 w-full rounded-xl border border-indigo-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Phần 3: Không đạt / loại bỏ */}
+                                    <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-3.5 space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-xs font-bold text-rose-950 flex items-center gap-1.5">
+                                                <span>🗑️ 3. Không đạt / loại bỏ</span>
+                                            </label>
+                                            <span className="text-[10px] text-rose-700 font-bold">Lọc bỏ / hư hại</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <span className="block text-[11px] font-semibold text-rose-900 mb-1">Khối lượng (kg) *</span>
+                                                <input
+                                                    type="number"
+                                                    value={rejectWeightInput}
+                                                    onChange={(e) => setRejectWeightInput(e.target.value)}
+                                                    placeholder="Ví dụ: 40"
+                                                    className="h-10 w-full rounded-xl border border-rose-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <span className="block text-[11px] font-semibold text-rose-900 mb-1">Số lượng (trái) *</span>
+                                                <input
+                                                    type="number"
+                                                    value={rejectFruitCountInput}
+                                                    onChange={(e) => setRejectFruitCountInput(e.target.value)}
+                                                    placeholder="Ví dụ: 20"
+                                                    className="h-10 w-full rounded-xl border border-rose-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Ghi chú */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-600 mb-1">Ghi chú phân loại</label>
+                                        <input
+                                            type="text"
+                                            value={classifyNoteInput}
+                                            onChange={(e) => setClassifyNoteInput(e.target.value)}
+                                            placeholder="Nhập ghi chú nếu có..."
+                                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs focus:border-emerald-500 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* BẢNG KIỂM TRA TỔNG (VALIDATION BOX) */}
+                                <div className={`rounded-2xl p-4 border transition ${classificationValidation.isValid ? "border-emerald-300 bg-emerald-50/70" : "border-rose-300 bg-rose-50/70"}`}>
+                                    <div className="space-y-2 text-xs">
+                                        {/* Khối lượng */}
+                                        <div className="flex justify-between items-center font-medium">
+                                            <span className="text-slate-600">Khối lượng:</span>
+                                            <span className="font-mono">
+                                                Tổng 3 phần: <strong className={classificationValidation.isWeightValid ? "text-emerald-700" : "text-rose-700"}>{classificationValidation.currentSum.toLocaleString("vi-VN")} kg</strong> / Thực nhận: <strong>{classificationValidation.totalInput.toLocaleString("vi-VN")} kg</strong>
+                                            </span>
+                                        </div>
+
+                                        {/* Số lượng trái */}
+                                        <div className="flex justify-between items-center font-medium border-t border-slate-200/60 pt-1.5">
+                                            <span className="text-slate-600">Số lượng trái:</span>
+                                            <span className="font-mono">
+                                                Tổng 3 phần: <strong className={classificationValidation.isFruitValid ? "text-emerald-700" : "text-rose-700"}>{classificationValidation.currentFruitSum.toLocaleString("vi-VN")} trái</strong> / Thực nhận: <strong>{classificationValidation.totalFruits.toLocaleString("vi-VN")} trái</strong>
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-2.5 pt-2 border-t border-slate-200/60 text-xs">
+                                        {classificationValidation.isValid ? (
+                                            <p className="flex items-center gap-1.5 font-bold text-emerald-800">
+                                                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                                                <span>Khối lượng và số lượng trái khớp chính xác 100%. Lô hợp lệ sẽ chuyển sang Chế biến & Đóng gói.</span>
+                                            </p>
+                                        ) : (
+                                            <p className="flex items-center gap-1.5 font-bold text-rose-800">
+                                                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                                                <span>
+                                                    {!classificationValidation.isWeightValid && `Khối lượng chưa khớp (${classificationValidation.diff > 0 ? `vượt +${classificationValidation.diff}` : `thiếu ${classificationValidation.diff}`} kg). `}
+                                                    {!classificationValidation.isFruitValid && `Số lượng trái chưa khớp (${classificationValidation.fruitDiff > 0 ? `vượt +${classificationValidation.fruitDiff}` : `thiếu ${classificationValidation.fruitDiff}`} trái).`}
+                                                </span>
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Footer */}
-                        <div className="flex gap-2 border-t border-slate-100 p-5 sm:p-6">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setClassifyingItem(null)}
-                                className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200"
-                            >
-                                Hủy
-                            </Button>
-                            <Button
-                                type="button"
-                                onClick={handleConfirmClassify}
-                                disabled={submittingClassify || !classificationValidation.isValid}
-                                className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft disabled:opacity-50"
-                            >
-                                {submittingClassify ? <Loader2 className="h-4 w-4 animate-spin" /> : "Xác nhận phân loại"}
-                            </Button>
+                            {/* Footer */}
+                            <div className="flex gap-2 border-t border-slate-100 p-5 sm:p-6">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setClassifyingItem(null)}
+                                    className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200"
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={handleConfirmClassify}
+                                    disabled={submittingClassify || !classificationValidation.isValid}
+                                    className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft disabled:opacity-50"
+                                >
+                                    {submittingClassify ? <Loader2 className="h-4 w-4 animate-spin" /> : "Xác nhận phân loại"}
+                                </Button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </ModalPortal>
-        )}
+                </ModalPortal>
+            )}
         </div>
     );
 }

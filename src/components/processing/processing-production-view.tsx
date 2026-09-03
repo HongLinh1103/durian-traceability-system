@@ -125,7 +125,7 @@ export function ProcessingProductionView({
 
                 return newProc.length > 0 ? [...newProc, ...prev] : prev;
             });
-        } catch {}
+        } catch { }
     }, []);
 
     // Fresh packaging drawer
@@ -192,13 +192,13 @@ export function ProcessingProductionView({
                 prev.map((item) =>
                     item.id === selectedFresh.id
                         ? {
-                              ...item,
-                              outputWeight: outW,
-                              boxCount: boxes,
-                              packagingSpec: freshPackagingSpec,
-                              packagingDate: freshCompleteDate,
-                              status: "READY_FOR_EXPORT",
-                          }
+                            ...item,
+                            outputWeight: outW,
+                            boxCount: boxes,
+                            packagingSpec: freshPackagingSpec,
+                            packagingDate: freshCompleteDate,
+                            status: "READY_FOR_EXPORT",
+                        }
                         : item
                 )
             );
@@ -218,7 +218,7 @@ export function ProcessingProductionView({
                 };
                 const filtered = existing.filter((x: any) => x.id !== packagedEntry.id);
                 localStorage.setItem("processing_packaged_lots", JSON.stringify([...filtered, packagedEntry]));
-            } catch {}
+            } catch { }
 
             toast({
                 title: "Đóng gói hoàn tất",
@@ -275,12 +275,12 @@ export function ProcessingProductionView({
                 prev.map((item) =>
                     item.id === selectedProc.id
                         ? {
-                              ...item,
-                              outputProduct: procProductName,
-                              outputWeight: outW,
-                              method: procMethod,
-                              status: "COMPLETED",
-                          }
+                            ...item,
+                            outputProduct: procProductName,
+                            outputWeight: outW,
+                            method: procMethod,
+                            status: "COMPLETED",
+                        }
                         : item
                 )
             );
@@ -300,7 +300,7 @@ export function ProcessingProductionView({
                 };
                 const filtered = existing.filter((x: any) => x.id !== packagedEntry.id);
                 localStorage.setItem("processing_packaged_lots", JSON.stringify([...filtered, packagedEntry]));
-            } catch {}
+            } catch { }
 
             toast({
                 title: "Mẻ chế biến hoàn tất",
@@ -339,13 +339,13 @@ export function ProcessingProductionView({
             <nav className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                 <span>Cơ sở chế biến</span>
                 <span>/</span>
-                <span className="text-emerald-700 font-bold">3. Chế biến & Đóng gói</span>
+                <span className="text-emerald-700 font-bold"></span>
             </nav>
 
             {/* Header */}
             <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-4">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900">3. Chế biến & Đóng gói</h1>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Chế biến & Đóng gói</h1>
                     <p className="mt-1 text-xs sm:text-sm text-slate-500">
                         Nhận các lô đã được phân loại từ bước trước, ghi nhận quy cách đóng gói xuất khẩu hoặc hướng chế biến sâu và tự động chuyển thành Lô thành phẩm sẵn sàng xuất hàng.
                     </p>
@@ -357,11 +357,10 @@ export function ProcessingProductionView({
                         <button
                             type="button"
                             onClick={() => setActiveTab("FRESH")}
-                            className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-black transition ${
-                                activeTab === "FRESH"
-                                    ? "bg-emerald-600 text-white shadow-soft"
-                                    : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-                            }`}
+                            className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-black transition ${activeTab === "FRESH"
+                                ? "bg-emerald-600 text-white shadow-soft"
+                                : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+                                }`}
                         >
                             <Package className="h-4 w-4" />
                             <span>[ Trái tươi ]</span>
@@ -373,11 +372,10 @@ export function ProcessingProductionView({
                         <button
                             type="button"
                             onClick={() => setActiveTab("PROCESSED")}
-                            className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-black transition ${
-                                activeTab === "PROCESSED"
-                                    ? "bg-indigo-600 text-white shadow-soft"
-                                    : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-                            }`}
+                            className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-black transition ${activeTab === "PROCESSED"
+                                ? "bg-indigo-600 text-white shadow-soft"
+                                : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+                                }`}
                         >
                             <Factory className="h-4 w-4" />
                             <span>[ Chế biến khác ]</span>
@@ -478,11 +476,10 @@ export function ProcessingProductionView({
                                                     size="sm"
                                                     onClick={() => handleOpenFreshDrawer(item)}
                                                     variant={isReady ? "outline" : "default"}
-                                                    className={`h-8 rounded-xl text-xs font-bold ${
-                                                        isReady
-                                                            ? "border-slate-200 text-slate-700 hover:bg-slate-50"
-                                                            : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-soft"
-                                                    }`}
+                                                    className={`h-8 rounded-xl text-xs font-bold ${isReady
+                                                        ? "border-slate-200 text-slate-700 hover:bg-slate-50"
+                                                        : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-soft"
+                                                        }`}
                                                 >
                                                     {isReady ? "Chi tiết / Sửa" : "Đóng gói"}
                                                 </Button>
@@ -542,8 +539,8 @@ export function ProcessingProductionView({
                                                 {item.method === "PEELING"
                                                     ? "Bóc múi / Tách múi"
                                                     : item.method === "FREEZING"
-                                                    ? "Cơm sầu đông lạnh IQF"
-                                                    : item.method || "Bóc múi / Tách múi"}
+                                                        ? "Cơm sầu đông lạnh IQF"
+                                                        : item.method || "Bóc múi / Tách múi"}
                                             </td>
 
                                             {/* KL đầu vào */}
@@ -580,11 +577,10 @@ export function ProcessingProductionView({
                                                     size="sm"
                                                     onClick={() => handleOpenProcDrawer(item)}
                                                     variant={isDone ? "outline" : "default"}
-                                                    className={`h-8 rounded-xl text-xs font-bold ${
-                                                        isDone
-                                                            ? "border-slate-200 text-slate-700 hover:bg-slate-50"
-                                                            : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-soft"
-                                                    }`}
+                                                    className={`h-8 rounded-xl text-xs font-bold ${isDone
+                                                        ? "border-slate-200 text-slate-700 hover:bg-slate-50"
+                                                        : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-soft"
+                                                        }`}
                                                 >
                                                     {isDone ? "Chi tiết / Sửa" : "Ghi nhận mẻ"}
                                                 </Button>

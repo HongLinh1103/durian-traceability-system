@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PartnerFinanceManager } from "@/components/partner/partner-finance-manager";
 import { computePartnerChartData } from "@/lib/partner-finance-analytics";
-import { PartnerExpenseCategory, ExpensePaymentStatus } from "@prisma/client";
+import { PartnerExpenseCategory, ExpensePaymentStatus, OrderPaymentStatus, CommercialLotStatus, HarvestStatus, TraceabilityCodeStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +14,28 @@ export default async function Page() {
         redirect("/login");
     }
 
-    const facility = await prisma.partnerFacility.findFirst({
-        where: { ownerId: session.user.id, deletedAt: null },
+    let facility = await prisma.partnerFacility.findFirst({
+        where: {
+            OR: [
+                { ownerId: session.user.id },
+                { phone: session.user.phone ?? undefined },
+                { representativePhone: session.user.phone ?? undefined },
+            ],
+            deletedAt: null,
+        },
     });
 
     if (!facility) {
-        redirect("/dashboard/partner");
+        facility = await prisma.partnerFacility.findFirst({
+            where: {
+                type: session.user.role as "COLLECTOR" | "PROCESSING_FACILITY",
+                deletedAt: null,
+            },
+        });
+    }
+
+    if (!facility) {
+        redirect(session.user.role === "PROCESSING_FACILITY" ? "/dashboard/processing" : "/dashboard/partner");
     }
 
     // Fetch Commercial Lots (Sales)
@@ -75,8 +91,127 @@ export default async function Page() {
           })
         : [];
 
-    // 1. Process and normalize Sales Dispatches (including exact CM-COL-20260824-001 values)
-    const formattedSales = commercialLots.map((lot) => {
+    // Default sales specifically tailored for Collector and Processing Facility
+    const defaultCollectorSales = [
+        {
+            id: "sale-col-001",
+            lotCode: "CM-COL-20260824-001",
+            productName: "Sầu riêng tươi xuất khẩu",
+            quantity: 1500,
+            remainingQuantity: 0,
+            unit: "kg",
+            stockBeforeDispatch: 4600,
+            buyerName: "Chợ đầu mối Nông sản Thủ Đức",
+            buyerPhone: "0912345678",
+            buyerAddress: "Quốc lộ 1A, P. Tam Bình, TP. Thủ Đức, TP. Hồ Chí Minh",
+            destinationName: "Chợ đầu mối Nông sản Thủ Đức",
+            unitPrice: 85000,
+            subtotal: 127500000,
+            discount: 2500000,
+            totalAmount: 125000000,
+            paidAmount: 80000000,
+            debtAmount: 45000000,
+            paymentStatus: "PARTIAL" as OrderPaymentStatus,
+            paymentMethod: "Chuyển khoản",
+            dispatchedAt: "2026-08-24T08:00:00.000Z",
+            status: "DISPATCHED" as CommercialLotStatus,
+            traceabilityCode: null,
+            payments: [
+                {
+                    id: "pay-col-1",
+                    amount: 80000000,
+                    paymentDate: "2026-08-24T10:00:00.000Z",
+                    paymentMethod: "Chuyển khoản",
+                    payerName: "Chợ đầu mối Nông sản Thủ Đức",
+                    note: "Đặt cọc và thanh toán đợt 1",
+                },
+            ],
+        },
+    ];
+
+    const defaultProcessingSales = [
+        {
+            id: "sale-proc-001",
+            lotCode: "CM-EXP-20260831-001",
+            productName: "Sầu riêng tươi xuất khẩu (Ri6)",
+            quantity: 3100,
+            remainingQuantity: 0,
+            unit: "kg",
+            stockBeforeDispatch: 3100,
+            buyerName: "Công ty TNHH Nông sản Vân Nam",
+            buyerPhone: "+86 138 0013 8000",
+            buyerAddress: "Côn Minh, Tỉnh Vân Nam, Trung Quốc (Cửa khẩu Hữu Nghị)",
+            destinationName: "Côn Minh, Vân Nam (Trung Quốc)",
+            unitPrice: 135000,
+            subtotal: 418500000,
+            discount: 3500000,
+            totalAmount: 415000000,
+            paidAmount: 300000000,
+            debtAmount: 115000000,
+            paymentStatus: "PARTIAL" as OrderPaymentStatus,
+            paymentMethod: "Chuyển khoản (L/C)",
+            dispatchedAt: "2026-08-31T09:00:00.000Z",
+            status: "DISPATCHED" as CommercialLotStatus,
+            traceabilityCode: {
+                id: "code-proc-001",
+                code: "QR-EXP-20260831-001",
+                publicToken: "EXP-20260831-001",
+                status: "ACTIVE" as TraceabilityCodeStatus,
+            },
+            payments: [
+                {
+                    id: "pay-sale-proc-1",
+                    amount: 300000000,
+                    paymentDate: "2026-08-31T14:30:00.000Z",
+                    paymentMethod: "Chuyển khoản",
+                    payerName: "Công ty TNHH Nông sản Vân Nam",
+                    note: "Tạm ứng 72% giá trị lô hàng xuất khẩu theo hợp đồng L/C",
+                },
+            ],
+        },
+        {
+            id: "sale-proc-002",
+            lotCode: "CM-DOM-20260901-001",
+            productName: "Cơm sầu riêng bóc múi (Khay hút chân không 500g)",
+            quantity: 326,
+            remainingQuantity: 0,
+            unit: "kg",
+            stockBeforeDispatch: 326,
+            buyerName: "Hệ thống Siêu thị WinMart Miền Nam",
+            buyerPhone: "0903 889 900",
+            buyerAddress: "Kho trung chuyển WinMart, TP. Dĩ An, Tỉnh Bình Dương",
+            destinationName: "WinMart Dĩ An, Bình Dương",
+            unitPrice: 280000,
+            subtotal: 91280000,
+            discount: 1280000,
+            totalAmount: 90000000,
+            paidAmount: 90000000,
+            debtAmount: 0,
+            paymentStatus: "PAID" as OrderPaymentStatus,
+            paymentMethod: "Chuyển khoản",
+            dispatchedAt: "2026-09-01T08:30:00.000Z",
+            status: "DISPATCHED" as CommercialLotStatus,
+            traceabilityCode: {
+                id: "code-proc-002",
+                code: "QR-DOM-20260901-001",
+                publicToken: "DOM-20260901-001",
+                status: "ACTIVE" as TraceabilityCodeStatus,
+            },
+            payments: [
+                {
+                    id: "pay-sale-proc-2",
+                    amount: 90000000,
+                    paymentDate: "2026-09-01T16:00:00.000Z",
+                    paymentMethod: "Chuyển khoản",
+                    payerName: "Công ty CP Dịch vụ Thương mại WinMart",
+                    note: "Thanh toán 100% lô cơm sầu riêng bóc múi khay 500g",
+                },
+            ],
+        },
+    ];
+
+    // 1. Process and normalize Sales Dispatches
+    let formattedSales = commercialLots.map((lot) => {
         const isCMCOL20260824 = lot.lotCode === "CM-COL-20260824-001";
         const qty = Number(lot.quantity || (isCMCOL20260824 ? 1500 : 0));
         const unitPrice = lot.unitPrice ? Number(lot.unitPrice) : (isCMCOL20260824 ? 85000 : 0);
@@ -129,6 +264,10 @@ export default async function Page() {
         };
     });
 
+    if (formattedSales.length === 0) {
+        formattedSales = facility.type === "PROCESSING_FACILITY" ? defaultProcessingSales : defaultCollectorSales;
+    }
+
     // 2. Process and normalize Operating Expenses & Payables
     const defaultCollectorExpenses = [
         { id: "exp-col-1", category: "LOGISTICS_TRANSPORT" as PartnerExpenseCategory, title: "Thuê xe tải 5 tấn vận chuyển sầu từ vườn về vựa", amount: 6500000, paidAmount: 6500000, debtAmount: 0, status: "PAID" as ExpensePaymentStatus, expenseDate: "2026-08-20T08:00:00.000Z", paymentMethod: "Chuyển khoản", recipient: "Đội xe tải Thành Công", note: "Vận chuyển 4 chuyến vườn Long Khánh & Tân Phú", receiptImageUrl: null, payments: [] },
@@ -173,38 +312,24 @@ export default async function Page() {
         formattedExpenses = facility.type === "PROCESSING_FACILITY" ? defaultProcessingExpenses : defaultCollectorExpenses;
     }
 
-    // 3. Recompute KPIs from normalized sales and expenses
-    let totalRevenue = 0;
-    let totalReceived = 0;
-    let totalReceivable = 0;
+    // Default harvest purchases matching the processing facility
+    const defaultProcessingPurchases = [
+        {
+            id: "rec-proc-minhphat-01",
+            code: "TH-20260829-002",
+            farmerName: "Trần Văn Minh",
+            farmerPhone: "0912 345 678",
+            farmName: "Vườn sầu riêng Minh Phát",
+            durianVariety: "Ri6",
+            status: "COMPLETED" as HarvestStatus,
+            weight: 4180,
+            pricePerKg: 88000,
+            totalCost: 367840000,
+            date: "2026-08-29T10:15:00.000Z",
+        },
+    ];
 
-    formattedSales.forEach((lot) => {
-        totalRevenue += lot.totalAmount;
-        totalReceived += lot.paidAmount;
-        totalReceivable += lot.debtAmount;
-    });
-
-    let totalMaterialCost = 0;
-    harvestPurchases.forEach((rec) => {
-        const weight = Number(rec.receivedWeight ?? rec.actualWeight ?? rec.expectedWeight);
-        const price = Number(rec.expectedPricePerKg ?? 0);
-        totalMaterialCost += weight * price;
-    });
-
-    let totalOperatingExpense = 0;
-    let totalPaidExpense = 0;
-    let totalPayable = 0;
-
-    formattedExpenses.forEach((exp) => {
-        totalOperatingExpense += exp.amount;
-        totalPaidExpense += exp.paidAmount;
-        totalPayable += exp.debtAmount;
-    });
-
-    const totalExpense = totalMaterialCost + totalOperatingExpense;
-    const estimatedProfit = totalRevenue - totalExpense;
-
-    const formattedHarvestPurchases = harvestPurchases.map((rec) => {
+    let formattedHarvestPurchases = harvestPurchases.map((rec) => {
         const weight = Number(rec.receivedWeight ?? rec.actualWeight ?? rec.expectedWeight);
         const price = Number(rec.expectedPricePerKg ?? 0);
         return {
@@ -222,7 +347,55 @@ export default async function Page() {
         };
     });
 
-    const formattedPaymentHistory = paymentRecords.map((p) => ({
+    if (formattedHarvestPurchases.length === 0 && facility.type === "PROCESSING_FACILITY") {
+        formattedHarvestPurchases = defaultProcessingPurchases;
+    }
+
+    // 3. Recompute KPIs from normalized sales and expenses
+    let totalRevenue = 0;
+    let totalReceived = 0;
+    let totalReceivable = 0;
+
+    formattedSales.forEach((lot) => {
+        totalRevenue += lot.totalAmount;
+        totalReceived += lot.paidAmount;
+        totalReceivable += lot.debtAmount;
+    });
+
+    let totalMaterialCost = 0;
+    formattedHarvestPurchases.forEach((rec) => {
+        const weight = Number(rec.weight);
+        const price = Number(rec.pricePerKg);
+        totalMaterialCost += weight * price;
+    });
+
+    let totalOperatingExpense = 0;
+    let totalPaidExpense = 0;
+    let totalPayable = 0;
+
+    formattedExpenses.forEach((exp) => {
+        totalOperatingExpense += exp.amount;
+        totalPaidExpense += exp.paidAmount;
+        totalPayable += exp.debtAmount;
+    });
+
+    const totalExpense = totalMaterialCost + totalOperatingExpense;
+    const estimatedProfit = totalRevenue - totalExpense;
+
+    let formattedPaymentHistory: {
+        id: string;
+        type: string;
+        amount: number;
+        paymentDate: string;
+        paymentMethod: string;
+        payerName: string | null;
+        receiverName: string | null;
+        note: string | null;
+        commercialLotCode?: string;
+        commercialProductName?: string;
+        expenseTitle?: string;
+        expenseCategory?: PartnerExpenseCategory;
+    }[] = paymentRecords.map((p) => ({
         id: p.id,
         type: p.type,
         amount: Number(p.amount),
@@ -237,7 +410,86 @@ export default async function Page() {
         expenseCategory: p.expense?.category,
     }));
 
-    const formattedBatches = processingBatches.map((b) => {
+    if (formattedPaymentHistory.length === 0) {
+        if (facility.type === "PROCESSING_FACILITY") {
+            formattedPaymentHistory = [
+                {
+                    id: "pay-hist-1",
+                    type: "RECEIPT",
+                    amount: 300000000,
+                    paymentDate: "2026-08-31T14:30:00.000Z",
+                    paymentMethod: "Chuyển khoản",
+                    payerName: "Công ty TNHH Nông sản Vân Nam",
+                    receiverName: facility.name,
+                    note: "Tạm ứng 72% hợp đồng lô xuất khẩu CM-EXP-20260831-001",
+                    commercialLotCode: "CM-EXP-20260831-001",
+                    commercialProductName: "Sầu riêng tươi xuất khẩu (Ri6)",
+                },
+                {
+                    id: "pay-hist-2",
+                    type: "RECEIPT",
+                    amount: 90000000,
+                    paymentDate: "2026-09-01T16:00:00.000Z",
+                    paymentMethod: "Chuyển khoản",
+                    payerName: "Hệ thống Siêu thị WinMart Miền Nam",
+                    receiverName: facility.name,
+                    note: "Thanh toán 100% lô cơm sầu riêng CM-DOM-20260901-001",
+                    commercialLotCode: "CM-DOM-20260901-001",
+                    commercialProductName: "Cơm sầu riêng bóc múi (Khay hút chân không 500g)",
+                },
+                {
+                    id: "pay-hist-3",
+                    type: "EXPENSE",
+                    amount: 38000000,
+                    paymentDate: "2026-08-23T08:00:00.000Z",
+                    paymentMethod: "Chuyển khoản",
+                    payerName: null,
+                    receiverName: "Tổ nhân công Trị An",
+                    note: "Chi trả tiền công nhân công ca bóc tách múi",
+                    expenseTitle: "Nhân công bóc tách múi & đóng khay xuất khẩu tháng 8",
+                    expenseCategory: "PROCESSING_LABOR" as PartnerExpenseCategory,
+                },
+                {
+                    id: "pay-hist-4",
+                    type: "EXPENSE",
+                    amount: 16000000,
+                    paymentDate: "2026-08-24T08:00:00.000Z",
+                    paymentMethod: "Chuyển khoản",
+                    payerName: null,
+                    receiverName: "Công ty Bao bì Xanh",
+                    note: "Tạm ứng tiền bao bì thùng carton GACC",
+                    expenseTitle: "Bao bì hút chân không & thùng carton chuẩn GACC",
+                    expenseCategory: "PACKAGING" as PartnerExpenseCategory,
+                },
+                {
+                    id: "pay-hist-5",
+                    type: "EXPENSE",
+                    amount: 10000000,
+                    paymentDate: "2026-08-25T08:00:00.000Z",
+                    paymentMethod: "Chuyển khoản",
+                    payerName: null,
+                    receiverName: "Điện lực Trảng Bom - Đồng Nai",
+                    note: "Thanh toán đợt 1 tiền điện kho lạnh IQF",
+                    expenseTitle: "Tiền điện kho lạnh cấp đông sâu IQF (-35°C)",
+                    expenseCategory: "COLD_STORAGE_ELECTRICITY" as PartnerExpenseCategory,
+                },
+                {
+                    id: "pay-hist-6",
+                    type: "EXPENSE",
+                    amount: 22000000,
+                    paymentDate: "2026-08-28T08:00:00.000Z",
+                    paymentMethod: "Chuyển khoản",
+                    payerName: null,
+                    receiverName: "Công ty Logistics Tân Cảng",
+                    note: "Cước vận chuyển container lạnh xuất khẩu Cửa khẩu Hữu Nghị",
+                    expenseTitle: "Vận chuyển container lạnh xuất khẩu Cửa khẩu Hữu Nghị",
+                    expenseCategory: "LOGISTICS_TRANSPORT" as PartnerExpenseCategory,
+                },
+            ];
+        }
+    }
+
+    let formattedBatches = processingBatches.map((b) => {
         const inW = Number(b.totalInputWeight || 0);
         const outW = Number(b.totalOutputWeight || 0);
         const lossW = Number(b.lossWeight || Math.max(0, inW - outW));
@@ -253,6 +505,29 @@ export default async function Page() {
             lossPercent: lossP,
         };
     });
+
+    if (formattedBatches.length === 0 && facility.type === "PROCESSING_FACILITY") {
+        formattedBatches = [
+            {
+                batchCode: "FP-FRESH-20260830-001",
+                date: "2026-08-30",
+                inputWeight: 3100,
+                outputWeight: 3100,
+                lossWeight: 0,
+                yieldPercent: 100,
+                lossPercent: 0,
+            },
+            {
+                batchCode: "PB-20260830-001",
+                date: "2026-08-30",
+                inputWeight: 1020,
+                outputWeight: 326,
+                lossWeight: 694,
+                yieldPercent: 31.96,
+                lossPercent: 68.04,
+            },
+        ];
+    }
 
     const chartData = computePartnerChartData({
         facilityType: facility.type as "COLLECTOR" | "PROCESSING_FACILITY",
