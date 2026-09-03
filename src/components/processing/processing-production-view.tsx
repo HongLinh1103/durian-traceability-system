@@ -34,7 +34,7 @@ export type FreshProductItem = {
     packagingDate?: string | Date | null;
     boxCount?: number;
     packagingSpec?: string;
-    status: "PENDING_PACKAGING" | "IN_PROGRESS" | "COMPLETED" | "READY_FOR_EXPORT";
+    status: "PENDING_PACKAGING" | "IN_PROGRESS" | "COMPLETED" | "READY_FOR_EXPORT" | "NOT_READY_FOR_EXPORT";
 };
 
 export type ProcessedBatchItem = {
@@ -48,7 +48,7 @@ export type ProcessedBatchItem = {
     fruitCount?: number;
     outputProduct?: string;
     outputWeight?: number;
-    status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
+    status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "NOT_READY_FOR_EXPORT";
 };
 
 interface ProcessingProductionViewProps {
@@ -188,11 +188,17 @@ export function ProcessingProductionView({
                 throw new Error(data.message || "Không thể lưu thông tin đóng gói.");
             }
 
+            const savedFinishedLot = data.data?.finishedLot || data.data;
+            const savedLotId = savedFinishedLot?.id || selectedFresh.id;
+            const savedLotCode = savedFinishedLot?.lotCode || selectedFresh.code;
+
             setFreshItems((prev) =>
                 prev.map((item) =>
                     item.id === selectedFresh.id
                         ? {
                             ...item,
+                            id: savedLotId,
+                            code: savedLotCode,
                             outputWeight: outW,
                             boxCount: boxes,
                             packagingSpec: freshPackagingSpec,
@@ -207,8 +213,8 @@ export function ProcessingProductionView({
             try {
                 const existing = JSON.parse(localStorage.getItem("processing_packaged_lots") || "[]");
                 const packagedEntry = {
-                    id: selectedFresh.id,
-                    lotCode: selectedFresh.code,
+                    id: savedLotId,
+                    lotCode: savedLotCode,
                     productName: "Sầu riêng tươi xuất khẩu",
                     remainingWeight: outW,
                     packaging: freshPackagingSpec,
@@ -271,11 +277,17 @@ export function ProcessingProductionView({
             const data = await res.json();
             if (!res.ok || !data.success) throw new Error(data.message || "Lỗi tạo mẻ chế biến.");
 
+            const savedFinishedLot = data.data?.finishedLot;
+            const savedLotId = savedFinishedLot?.id || selectedProc.id;
+            const savedLotCode = savedFinishedLot?.lotCode || selectedProc.code;
+
             setProcessedItems((prev) =>
                 prev.map((item) =>
                     item.id === selectedProc.id
                         ? {
                             ...item,
+                            id: savedLotId,
+                            code: savedLotCode,
                             outputProduct: procProductName,
                             outputWeight: outW,
                             method: procMethod,
@@ -289,8 +301,8 @@ export function ProcessingProductionView({
             try {
                 const existing = JSON.parse(localStorage.getItem("processing_packaged_lots") || "[]");
                 const packagedEntry = {
-                    id: selectedProc.id,
-                    lotCode: selectedProc.code,
+                    id: savedLotId,
+                    lotCode: savedLotCode,
                     productName: procProductName,
                     remainingWeight: outW,
                     packaging: "Khay hút chân không 500g",
@@ -417,6 +429,7 @@ export function ProcessingProductionView({
                             <tbody className="divide-y divide-slate-100 font-medium">
                                 {filteredFresh.map((item) => {
                                     const isReady = item.status === "READY_FOR_EXPORT" || item.status === "COMPLETED";
+                                    const isUnavailable = item.status === "NOT_READY_FOR_EXPORT";
 
                                     return (
                                         <tr key={item.id} className="h-14 hover:bg-slate-50/70 transition">
@@ -459,6 +472,10 @@ export function ProcessingProductionView({
                                                     <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
                                                         Sẵn sàng xuất hàng
                                                     </span>
+                                                ) : isUnavailable ? (
+                                                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                                                        Không còn đủ điều kiện xuất
+                                                    </span>
                                                 ) : item.status === "IN_PROGRESS" ? (
                                                     <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-700">
                                                         Đang xử lý
@@ -475,6 +492,7 @@ export function ProcessingProductionView({
                                                 <Button
                                                     size="sm"
                                                     onClick={() => handleOpenFreshDrawer(item)}
+                                                    disabled={isUnavailable}
                                                     variant={isReady ? "outline" : "default"}
                                                     className={`h-8 rounded-xl text-xs font-bold ${isReady
                                                         ? "border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -520,6 +538,7 @@ export function ProcessingProductionView({
                             <tbody className="divide-y divide-slate-100 font-medium">
                                 {filteredProc.map((item) => {
                                     const isDone = item.status === "COMPLETED";
+                                    const isUnavailable = item.status === "NOT_READY_FOR_EXPORT";
 
                                     return (
                                         <tr key={item.id} className="h-14 hover:bg-slate-50/70 transition">
@@ -564,6 +583,10 @@ export function ProcessingProductionView({
                                                     <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
                                                         Sẵn sàng xuất hàng
                                                     </span>
+                                                ) : isUnavailable ? (
+                                                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                                                        Không còn đủ điều kiện xuất
+                                                    </span>
                                                 ) : (
                                                     <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
                                                         Chờ xử lý
@@ -576,6 +599,7 @@ export function ProcessingProductionView({
                                                 <Button
                                                     size="sm"
                                                     onClick={() => handleOpenProcDrawer(item)}
+                                                    disabled={isUnavailable}
                                                     variant={isDone ? "outline" : "default"}
                                                     className={`h-8 rounded-xl text-xs font-bold ${isDone
                                                         ? "border-slate-200 text-slate-700 hover:bg-slate-50"

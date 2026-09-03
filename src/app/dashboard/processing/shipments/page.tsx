@@ -75,7 +75,10 @@ export default async function Page() {
                   prisma.finishedProductLot.findMany({
                       where: {
                           facilityId: facility.id,
-                          status: { in: ["READY_FOR_DISTRIBUTION", "PARTIALLY_DISTRIBUTED"] },
+                          // The export form must mirror the "Sẵn sàng xuất hàng" state
+                          // shown by the processing page. Partially/distributed lots are
+                          // intentionally excluded from this selector.
+                          status: "READY_FOR_DISTRIBUTION",
                           remainingWeight: { gt: 0 },
                       },
                       include: {
@@ -185,10 +188,12 @@ export default async function Page() {
                 farmName: farm?.farmName || "Vườn sầu riêng liên kết",
                 regionCode: farm?.region?.code || farm?.growingRegion || "MSVT-VN-DL",
                 rawLotCode: raw?.lotCode || "NVL-001",
+                status: lot.status,
             };
         });
 
-        // If no available finished lots in database, provide available lots in status "Đã đóng gói" (READY_FOR_DISTRIBUTION)
+        // Keep the empty-state demo in sync with the records displayed on the
+        // Processing & Packaging page. Do not maintain a second, unrelated lot list.
         if (availableLots.length === 0) {
             availableLots = [
                 {

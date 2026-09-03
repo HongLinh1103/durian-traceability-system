@@ -114,7 +114,7 @@ export default async function Page() {
                         packagingDate: lot.manufacturedAt || lot.createdAt,
                         boxCount: Math.round(outW / 18) || 1,
                         packagingSpec: lot.packaging || "Thùng 5-6 trái / 18kg",
-                        status: "READY_FOR_EXPORT",
+                        status: lot.status === "READY_FOR_DISTRIBUTION" ? "READY_FOR_EXPORT" : "NOT_READY_FOR_EXPORT",
                     });
                 });
 
@@ -149,8 +149,8 @@ export default async function Page() {
                 const inputW = Number(raw.processingWeight || raw.currentWeight || 0);
 
                 processedItems.push({
-                    id: raw.id,
-                    code: batch ? batch.batchCode : `PROC-${raw.lotCode}`,
+                    id: finished?.id || raw.id,
+                    code: finished?.lotCode || (batch ? batch.batchCode : `PROC-${raw.lotCode}`),
                     sourceRawCode: raw.lotCode || hr?.code || "NVL-001",
                     rawLotId: raw.id,
                     farmName: farm?.farmName || "Vườn liên kết",
@@ -158,7 +158,9 @@ export default async function Page() {
                     inputWeight: inputW,
                     outputProduct: batch?.targetProduct || finished?.productName || "Cơm sầu riêng bóc múi",
                     outputWeight: batch ? Number(batch.totalOutputWeight || 0) : undefined,
-                    status: batch ? "COMPLETED" : "PENDING",
+                    status: finished
+                        ? (finished.status === "READY_FOR_DISTRIBUTION" ? "COMPLETED" : "NOT_READY_FOR_EXPORT")
+                        : (batch ? "IN_PROGRESS" : "PENDING"),
                 });
             });
         }

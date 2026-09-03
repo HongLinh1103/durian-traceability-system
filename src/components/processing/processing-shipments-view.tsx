@@ -330,8 +330,8 @@ function SearchableCombobox({
                                     setIsOpen(false);
                                 }}
                                 className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-semibold transition ${opt.toLowerCase() === value.trim().toLowerCase()
-                                        ? "bg-emerald-50 text-emerald-800 font-bold"
-                                        : "text-slate-700 hover:bg-slate-100"
+                                    ? "bg-emerald-50 text-emerald-800 font-bold"
+                                    : "text-slate-700 hover:bg-slate-100"
                                     }`}
                             >
                                 <span>{opt}</span>
@@ -378,7 +378,11 @@ export function ProcessingShipmentsView({
 }: ProcessingShipmentsViewProps) {
     const { toast } = useToast();
     const [shipments, setShipments] = useState<ShipmentItemRow[]>(initialShipments);
-    const [availableLots, setAvailableLots] = useState<AvailableFinishedLot[]>(availableFinishedLots);
+    const [availableLots, setAvailableLots] = useState<AvailableFinishedLot[]>(() =>
+        availableFinishedLots.filter(
+            (lot) => (!lot.status || lot.status === "READY_FOR_DISTRIBUTION") && lot.remainingWeight > 0
+        )
+    );
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
@@ -392,10 +396,16 @@ export function ProcessingShipmentsView({
 
             setAvailableLots((prev) => {
                 const existingIds = new Set(prev.map((l) => l.id));
+                const existingCodes = new Set(prev.map((l) => l.lotCode));
                 const newLots: AvailableFinishedLot[] = [];
 
                 packaged.forEach((p) => {
-                    if (!existingIds.has(p.id)) {
+                    if (
+                        p.status === "READY_FOR_DISTRIBUTION" &&
+                        Number(p.remainingWeight) > 0 &&
+                        !existingIds.has(p.id) &&
+                        !existingCodes.has(p.lotCode)
+                    ) {
                         newLots.push({
                             id: p.id,
                             lotCode: p.lotCode,
@@ -1133,7 +1143,7 @@ export function ProcessingShipmentsView({
                                 <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
                                     <h3 className="text-xs font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
                                         <Boxes className="h-4 w-4" />
-                                        1. THÔNG TIN HÀNG HÓA
+                                        THÔNG TIN HÀNG HÓA
                                     </h3>
                                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                         <div>
@@ -1227,7 +1237,7 @@ export function ProcessingShipmentsView({
                                     <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
                                         <h3 className="text-xs font-black uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
                                             <Truck className="h-4 w-4" />
-                                            2. PHƯƠNG TIỆN VẬN CHUYỂN & CONTAINER (XUẤT KHẨU)
+                                            PHƯƠNG TIỆN VẬN CHUYỂN & CONTAINER (XUẤT KHẨU)
                                         </h3>
                                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                                             <div>
@@ -1277,7 +1287,7 @@ export function ProcessingShipmentsView({
                                         <div className="flex items-center justify-between">
                                             <h3 className="text-xs font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
                                                 <Building2 className="h-4 w-4" />
-                                                2. THÔNG TIN ĐỐI TÁC & PHÂN PHỐI NỘI ĐỊA (3 CẤP)
+                                                THÔNG TIN ĐỐI TÁC & PHÂN PHỐI NỘI ĐỊA
                                             </h3>
                                             <span className="text-[10px] text-slate-500 font-medium">
                                                 * Chọn từ danh mục gợi ý hoặc gõ tự do
@@ -1416,7 +1426,7 @@ export function ProcessingShipmentsView({
                                     <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
                                         <h3 className="text-xs font-black uppercase tracking-wider text-indigo-800 flex items-center gap-1.5">
                                             <Globe className="h-4 w-4" />
-                                            3. THÔNG TIN XUẤT HÀNG & CỬA KHẨU (XUẤT KHẨU)
+                                            THÔNG TIN XUẤT HÀNG & CỬA KHẨU (XUẤT KHẨU)
                                         </h3>
                                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                                             <div>
@@ -1474,7 +1484,7 @@ export function ProcessingShipmentsView({
                                     <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
                                         <h3 className="text-xs font-black uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
                                             <Truck className="h-4 w-4" />
-                                            3. PHƯƠNG THỨC VẬN CHUYỂN & GIAO HÀNG (NỘI ĐỊA)
+                                            PHƯƠNG THỨC VẬN CHUYỂN & GIAO HÀNG (NỘI ĐỊA)
                                         </h3>
                                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                                             <div>
@@ -1539,7 +1549,7 @@ export function ProcessingShipmentsView({
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                                             <QrCode className="h-4 w-4 text-emerald-600" />
-                                            4. KHU VỰC QR TRUY XUẤT NGUỒN GỐC (QUÉT & XEM TRỰC TIẾP)
+                                            KHU VỰC QR TRUY XUẤT NGUỒN GỐC (QUÉT & XEM TRỰC TIẾP)
                                         </h3>
                                         {selectedLot && isFormReadyForQr ? (
                                             <span className="rounded-full bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 flex items-center gap-1">
