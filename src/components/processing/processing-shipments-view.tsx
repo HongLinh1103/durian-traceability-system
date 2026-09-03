@@ -526,6 +526,7 @@ export function ProcessingShipmentsView({
         if (!selectedLot || !shipmentCode) return "";
         const payload: Partial<PreviewTraceData> = {
             shipmentCode,
+            finishedProductLotId: selectedLot.id,
             shipmentType,
             productName: productName.trim() || selectedLot.productName,
             lotCode: selectedLot.lotCode,

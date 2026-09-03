@@ -245,11 +245,15 @@ export async function POST(request: Request) {
                 actorRole: "PROCESSING_FACILITY",
                 organizationType: "PROCESSING_FACILITY",
                 organizationId: facility.id,
-                title: "Tạo lô xuất hàng xuất khẩu & Phát hành QR",
-                description: `${v.productName} · Container: ${v.containerNumber || "N/A"} · Khối lượng: ${v.weight} kg (${v.boxCount || 0} thùng)`,
+                title: isExport
+                    ? "Tạo lô xuất hàng xuất khẩu & Phát hành QR"
+                    : "Tạo lô xuất bán nội địa & Phát hành QR",
+                description: `${v.productName} · Khối lượng: ${v.weight} kg (${v.boxCount || 0} thùng)${isExport ? ` · Container: ${v.containerNumber || "N/A"}` : ""}`,
                 metadata: {
                     shipmentCode: v.shipmentCode,
                     publicToken,
+                    productName: v.productName,
+                    dispatchedWeight: v.weight,
                     containerNumber: v.containerNumber,
                     sealNumber: v.sealNumber,
                     truckPlate: v.truckPlate,

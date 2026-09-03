@@ -1,5 +1,6 @@
 export interface PreviewTraceData {
     shipmentCode: string;
+    finishedProductLotId?: string;
     shipmentType: "EXPORT" | "DOMESTIC";
     productName: string;
     lotCode?: string;

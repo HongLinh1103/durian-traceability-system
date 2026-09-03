@@ -216,7 +216,18 @@ const harvestInclude = {
             farmingLogs: {
                 orderBy: { actionDate: "desc" as const },
                 take: 30,
-                select: { id: true, stage: true, activityType: true, actionDate: true, notes: true },
+                select: {
+                    id: true,
+                    stage: true,
+                    activityType: true,
+                    otherActivity: true,
+                    chemicalName: true,
+                    dosage: true,
+                    phiDays: true,
+                    isGACCCompliant: true,
+                    actionDate: true,
+                    notes: true,
+                },
             },
         },
     },
@@ -450,7 +461,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
 
     const preview = getPreviewTrace(cleanToken, encodedPayload);
     if (encodedPayload && preview) {
-        return buildPreviewTraceObject(cleanToken, preview);
+        return await buildPreviewTraceObject(cleanToken, preview);
     }
 
     const trace: any = await prisma.traceabilityCode.findFirst({
@@ -520,7 +531,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
     if (!trace) {
         const up = cleanToken.toUpperCase();
         if (preview || up.startsWith("EXP-") || up.startsWith("DOM-") || up.startsWith("TRC-") || up.startsWith("FP-")) {
-            return buildPreviewTraceObject(cleanToken, preview);
+            return await buildPreviewTraceObject(cleanToken, preview);
         }
         return null;
     }
@@ -796,17 +807,25 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
             id: "milestone-distribution",
             stepNumber: 5,
             type: "DISTRIBUTION",
-            title: "PHÂN PHỐI",
+            title: "XUẤT BÁN NỘI ĐỊA & GIAO HÀNG",
             subtitle: "Phân phối đến hệ thống siêu thị, chuỗi bán lẻ và chợ đầu mối trong nước",
             date: dispatchDate,
             dateText: formatVnDate(dispatchDate),
             badgeText: "Đã xuất bán",
             badgeVariant: "emerald",
             fields: [
+                { label: "Tên sản phẩm xuất bán", value: trace.commercialLot.productName, highlight: true },
                 { label: "Điểm đến", value: buyerOrDestName, highlight: true },
                 { label: "Địa chỉ", value: destAddress },
                 { label: "Lô xuất bán", value: trace.commercialLot.lotCode, highlight: true },
-                { label: "Khối lượng", value: `${Number(trace.commercialLot.quantity).toLocaleString("vi-VN")} ${trace.commercialLot.unit}` },
+                {
+                    label: "Khối lượng xuất",
+                    value: `${Number(shipment?.dispatchedWeight || trace.commercialLot.quantity).toLocaleString("vi-VN")} kg`,
+                    highlight: true,
+                },
+                ...(shipment?.boxCount
+                    ? [{ label: "Số thùng", value: `${shipment.boxCount.toLocaleString("vi-VN")} thùng` }]
+                    : []),
                 { label: "Đơn vị xuất", value: exporterName },
             ],
         };
@@ -885,6 +904,11 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
             cultivationLogs: source.cropSeason.farmingLogs.map((log) => ({
                 stage: log.stage,
                 activityType: log.activityType,
+                otherActivity: log.otherActivity,
+                chemicalName: log.chemicalName,
+                dosage: log.dosage,
+                phiDays: log.phiDays,
+                isGACCCompliant: log.isGACCCompliant,
                 actionDate: log.actionDate,
                 notes: log.notes,
             })),
@@ -892,7 +916,45 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
     };
 }
 
-function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTraceData) {
+async function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTraceData) {
+    const previewFinishedLot = preview?.finishedProductLotId
+        ? await prisma.finishedProductLot.findUnique({
+              where: { id: preview.finishedProductLotId },
+              include: {
+                  processingBatch: {
+                      include: {
+                          inputs: {
+                              include: {
+                                  rawMaterialLot: {
+                                      include: {
+                                          rawMaterialReceipt: {
+                                              include: {
+                                                  sourceHarvestLot: { include: harvestInclude },
+                                                  sourceCollectionLot: {
+                                                      include: {
+                                                          items: { include: { harvestLot: { include: harvestInclude } } },
+                                                      },
+                                                  },
+                                              },
+                                          },
+                                      },
+                                  },
+                              },
+                          },
+                      },
+                  },
+              },
+          }).catch(() => null)
+        : null;
+
+    const previewSources = previewFinishedLot?.processingBatch?.inputs.flatMap((input) => {
+        const receipt = input.rawMaterialLot.rawMaterialReceipt;
+        return [
+            ...(receipt.sourceHarvestLot ? [receipt.sourceHarvestLot] : []),
+            ...(receipt.sourceCollectionLot?.items.map((item) => item.harvestLot) || []),
+        ];
+    }) || [];
+    const uniquePreviewSources = [...new Map(previewSources.map((source) => [source.id, source])).values()];
     const isExport = preview ? preview.shipmentType === "EXPORT" : !cleanToken.toUpperCase().startsWith("DOM-");
     const weight = preview?.weight || 3100;
     const boxCount = preview?.boxCount || Math.max(1, Math.round(weight / 18));
@@ -900,7 +962,7 @@ function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTraceData)
     const farmName = preview?.farmName || "Vườn sầu riêng Minh Phát";
     const regionCode = preview?.regionCode || "MSVT-GACC-001";
     const rawCode = preview?.rawLotCode || "TH-20260829-002";
-    const productName = preview?.productName || (isExport ? "Sầu riêng tươi xuất khẩu" : "Sầu riêng Ri6 chọn lọc loại 1");
+    const productName = preview?.productName || "Sầu riêng tươi xuất khẩu";
     const facilityName = preview?.facilityName || "Cơ sở Chế biến & Đóng gói Sầu riêng Xuất khẩu TriViet";
     const destName = isExport
         ? (preview?.portOfDestination || preview?.destinationCountry || "Côn Minh, Vân Nam (Trung Quốc)")
@@ -1000,6 +1062,9 @@ function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTraceData)
                     { label: "Đơn vị vận chuyển", value: preview?.carrierName || "Công ty Vận tải Quốc tế Á Châu" },
                 ]
                 : [
+                    { label: "Tên sản phẩm xuất bán", value: productName, highlight: true },
+                    { label: "Khối lượng xuất", value: `${weight.toLocaleString("vi-VN")} kg`, highlight: true },
+                    { label: "Số thùng", value: `${boxCount.toLocaleString("vi-VN")} thùng` },
                     ...(preview?.distributionChannel ? [{ label: "Kênh phân phối", value: preview.distributionChannel, highlight: true }] : []),
                     ...(preview?.partnerSystem ? [{ label: "Hệ thống / Đối tác", value: preview.partnerSystem, highlight: true }] : []),
                     { label: "Đơn vị / Chi nhánh nhận", value: destName, highlight: true },
@@ -1071,8 +1136,32 @@ function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTraceData)
             description: m.subtitle || m.fields.map((f) => `${f.label}: ${f.value}`).join(" · "),
             locationText: m.fields.find((f) => f.label === "Địa chỉ" || f.label === "Địa phương" || f.label === "Điểm đến")?.value || null,
         })),
-        farms: [
-            {
+        farms: uniquePreviewSources.length > 0
+            ? uniquePreviewSources.map((source) => ({
+                lotCode: source.lotCode,
+                farmName: source.farm.farmName,
+                farmCode: source.farm.farmCode,
+                region: source.farm.region ? { code: source.farm.region.code, name: source.farm.region.name } : null,
+                variety: source.farm.durianVariety,
+                harvestedAt: source.harvestedAt,
+                contributedWeight: Number(source.weight),
+                unit: "kg",
+                complianceStatus: source.complianceStatus,
+                season: source.cropSeason.name,
+                cultivationSummary: source.snapshot?.cultivationSummarySnapshot ?? null,
+                cultivationLogs: source.cropSeason.farmingLogs.map((log) => ({
+                    stage: log.stage,
+                    activityType: log.activityType,
+                    otherActivity: log.otherActivity,
+                    chemicalName: log.chemicalName,
+                    dosage: log.dosage,
+                    phiDays: log.phiDays,
+                    isGACCCompliant: log.isGACCCompliant,
+                    actionDate: log.actionDate,
+                    notes: log.notes,
+                })),
+            }))
+            : [{
                 lotCode: rawCode,
                 farmName,
                 farmCode: regionCode,
@@ -1084,14 +1173,7 @@ function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTraceData)
                 complianceStatus: "COMPLIANT",
                 season: "Vụ mùa 2026",
                 cultivationSummary: "Canh tác tiêu chuẩn VietGAP & GACC kiểm định",
-                cultivationLogs: [
-                    { stage: "Bón phân đợt cuối", activityType: "FERTILIZING", actionDate: new Date("2026-07-20"), notes: "Bón kali sulphate giúp trái lên cơm vàng ngọt" },
-                    { stage: "Cách ly bảo vệ thực vật", activityType: "PHI_INSPECTION", actionDate: new Date("2026-08-22"), notes: "Thời gian cách ly 21 ngày đạt chuẩn không dư lượng" },
-                    { stage: "Thu hoạch xuất khẩu", activityType: "HARVEST", actionDate: new Date("2026-08-28"), notes: "Cắt trái già đạt độ chín 8.5 - 9 tuổi tại lô A & B, brix > 32°Bx, sản lượng 4.200 kg (1.400 trái)" },
-                    { stage: "Phân loại tại vườn", activityType: "FRUIT_GRADING", actionDate: new Date("2026-08-29"), notes: "Khử khuẩn nhẹ, lau sạch bụi phấn, tỉa cuống 3-5 cm, lót đệm xốp bảo vệ gai" },
-                    { stage: "Bàn giao vận chuyển", activityType: "DELIVERY", actionDate: new Date("2026-08-29"), notes: "Bàn giao xe tải 60B-991.22 vận chuyển đến Cơ sở Chế biến Sầu riêng Trị An" },
-                ],
-            },
-        ],
+                cultivationLogs: [],
+            }],
     };
 }

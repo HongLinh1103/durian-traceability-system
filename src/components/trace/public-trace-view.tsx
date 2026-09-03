@@ -91,6 +91,11 @@ export type PublicTraceData = {
         cultivationLogs: Array<{
             stage: string;
             activityType: string;
+            otherActivity?: string | null;
+            chemicalName?: string | null;
+            dosage?: string | null;
+            phiDays?: number | null;
+            isGACCCompliant?: boolean;
             actionDate: string | Date;
             notes?: string | null;
         }>;
@@ -735,8 +740,16 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                                                         </time>
                                                         <div>
                                                             <b className="text-slate-900 block">
-                                                                {activityLabels[log.activityType] || "Hoạt động canh tác"}
+                                                                {log.activityType === "OTHER" && log.otherActivity
+                                                                    ? log.otherActivity
+                                                                    : activityLabels[log.activityType] || log.activityType}
                                                             </b>
+                                                            {(log.chemicalName || log.dosage) && (
+                                                                <p className="text-slate-600 mt-0.5 font-medium">
+                                                                    {[log.chemicalName, log.dosage].filter(Boolean).join(" · ")}
+                                                                    {log.phiDays ? ` · Cách ly ${log.phiDays} ngày` : ""}
+                                                                </p>
+                                                            )}
                                                             {log.notes && (
                                                                 <p className="text-slate-600 mt-0.5 font-medium">
                                                                     {log.notes}
