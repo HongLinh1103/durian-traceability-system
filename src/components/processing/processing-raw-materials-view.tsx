@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 export type RawMaterialItem = {
     id: string;
@@ -621,252 +622,199 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                 </div>
             </div>
 
-            {/* MODAL 1: TIẾP NHẬN HÀNG (KHI NHÂN VIÊN BẤM "TIẾP NHẬN") */}
+            {/* MODAL 1: TIẾP NHẬN HÀNG (PORTAL TO BODY - FULL VIEWPORT OVERLAY) */}
             {receivingItem && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-                    <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
-                        {/* Header */}
-                        <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
-                            <div>
-                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Quy trình xưởng</span>
-                                <h2 className="text-xl font-black text-slate-900">TIẾP NHẬN HÀNG TỪ FARM</h2>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setReceivingItem(null)}
-                                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        {/* Modal Body */}
-                        <div className="overflow-y-auto p-5 sm:p-6 space-y-5">
-                            {/* KHU VỰC 1: THÔNG TIN GỐC TỪ PHIẾU THU HOẠCH (CHẾ ĐỘ CHỈ ĐỌC - READ ONLY) */}
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2.5">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-                                        <FileText className="h-4 w-4 text-slate-500" />
-                                        Thông tin gốc từ Phiếu thu hoạch (Chỉ đọc)
-                                    </span>
-                                    <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700">
-                                        Dữ liệu Farm
-                                    </span>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3 text-xs pt-1">
-                                    <div>
-                                        <span className="text-slate-400 block text-[11px]">Mã phiếu thu hoạch</span>
-                                        <span className="font-mono font-bold text-slate-900 text-sm">{receivingItem.receiptCode || receivingItem.code}</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-400 block text-[11px]">Farm / Nhà vườn</span>
-                                        <span className="font-bold text-slate-900 text-sm">{receivingItem.farmName}</span>
-                                        {receivingItem.regionCode && (
-                                            <span className="block text-[10px] text-emerald-700 font-semibold">{receivingItem.regionCode}</span>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-400 block text-[11px]">Ngày thu hoạch</span>
-                                        <span className="font-medium text-slate-800">
-                                            {receivingItem.harvestDate ? new Date(receivingItem.harvestDate).toLocaleDateString("vi-VN") : "—"}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-400 block text-[11px]">Giống sầu riêng</span>
-                                        <span className="font-bold text-emerald-800">{receivingItem.variety}</span>
-                                    </div>
-                                </div>
-
-                                <div className="mt-2 rounded-xl bg-white p-3 border border-slate-200 grid grid-cols-2 gap-3">
-                                    <div>
-                                        <span className="text-slate-500 block text-[11px] font-semibold">KL khai báo (Farm):</span>
-                                        <span className="font-mono font-black text-slate-900 text-base">
-                                            {receivingItem.declaredWeight.toLocaleString("vi-VN")} kg
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-500 block text-[11px] font-semibold">Số lượng trái khai báo:</span>
-                                        <span className="font-mono font-black text-slate-900 text-base">
-                                            {receivingItem.declaredFruitCount ? `${receivingItem.declaredFruitCount.toLocaleString("vi-VN")} trái` : "Chưa ghi nhận"}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* KHU VỰC 2: CƠ SỞ BỔ SUNG DỮ LIỆU THỰC TẾ */}
-                            <div className="rounded-2xl border-2 border-emerald-400 bg-emerald-50/30 p-4 space-y-3">
-                                <span className="text-xs font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
-                                    <Scale className="h-4 w-4 text-emerald-600" />
-                                    Dữ liệu cơ sở tiếp nhận thực tế
-                                </span>
-
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                    {/* Khối lượng thực nhận */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-900 mb-1">
-                                            Khối lượng thực nhận (kg) <span className="text-rose-500">*</span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={actualWeightInput}
-                                            onChange={(e) => setActualWeightInput(e.target.value)}
-                                            placeholder="Ví dụ: 2460"
-                                            className="h-11 w-full rounded-xl border border-emerald-400 bg-white px-3 font-mono text-sm font-black text-slate-900 focus:border-emerald-600 focus:outline-none shadow-xs"
-                                        />
-                                    </div>
-
-                                    {/* Số lượng trái thực nhận */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-900 mb-1">
-                                            Số lượng trái thực nhận (trái) <span className="text-rose-500">*</span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={actualFruitCountInput}
-                                            onChange={(e) => setActualFruitCountInput(e.target.value)}
-                                            placeholder="Ví dụ: 820"
-                                            className="h-11 w-full rounded-xl border border-emerald-400 bg-white px-3 font-mono text-sm font-black text-slate-900 focus:border-emerald-600 focus:outline-none shadow-xs"
-                                        />
-                                    </div>
-
-                                    {/* Đơn giá */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-900 mb-1">
-                                            Đơn giá thỏa thuận (VNĐ/kg)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={unitPriceInput}
-                                            onChange={(e) => setUnitPriceInput(e.target.value)}
-                                            placeholder="85000"
-                                            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                        />
-                                    </div>
-
-                                    {/* Ngày giờ tiếp nhận */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-900 mb-1">
-                                            Ngày giờ tiếp nhận
-                                        </label>
-                                        <input
-                                            type="datetime-local"
-                                            value={receivedAtInput}
-                                            onChange={(e) => setReceivedAtInput(e.target.value)}
-                                            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                        />
-                                    </div>
-
-                                    {/* Biển số xe */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-900 mb-1">
-                                            Biển số xe vận chuyển
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={truckPlateInput}
-                                            onChange={(e) => setTruckPlateInput(e.target.value)}
-                                            placeholder="51D-123.45"
-                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                        />
-                                    </div>
-
-                                    {/* Tình trạng hàng */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-900 mb-1">
-                                            Tình trạng hàng thực tế
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={conditionInput}
-                                            onChange={(e) => setConditionInput(e.target.value)}
-                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Ghi chú */}
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                        <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
+                            {/* Header */}
+                            <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-900 mb-1">
-                                        Ghi chú tiếp nhận
-                                    </label>
-                                    <textarea
-                                        rows={2}
-                                        value={receiveNoteInput}
-                                        onChange={(e) => setReceiveNoteInput(e.target.value)}
-                                        placeholder="Nhập ghi chú nếu có (ví dụ: nhận tại kho số 1)..."
-                                        className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                    />
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Quy trình xưởng</span>
+                                    <h2 className="text-xl font-black text-slate-900">TIẾP NHẬN HÀNG TỪ FARM</h2>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setReceivingItem(null)}
+                                    className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            {/* Modal Body */}
+                            <div className="overflow-y-auto p-5 sm:p-6 space-y-5">
+                                {/* KHU VỰC 1: THÔNG TIN GỐC TỪ PHIẾU THU HOẠCH (CHẾ ĐỘ CHỈ ĐỌC - READ ONLY) */}
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                                            <FileText className="h-4 w-4 text-slate-500" />
+                                            Thông tin gốc từ Phiếu thu hoạch (Chỉ đọc)
+                                        </span>
+                                        <span className="rounded-full bg-emerald-100 border border-emerald-300 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                                            Đã đối soát
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
+                                            <span className="text-[10px] font-semibold text-slate-400 block">Mã phiếu</span>
+                                            <span className="font-mono font-bold text-slate-900">{receivingItem.code}</span>
+                                        </div>
+                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
+                                            <span className="text-[10px] font-semibold text-slate-400 block">Farm / Nhà vườn</span>
+                                            <span className="font-bold text-slate-900 truncate block">{receivingItem.farmName}</span>
+                                        </div>
+                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
+                                            <span className="text-[10px] font-semibold text-slate-400 block">Nông dân / SĐT</span>
+                                            <span className="font-semibold text-slate-800 truncate block">{receivingItem.farmerName || "—"}</span>
+                                            <span className="text-[10px] text-slate-500 font-mono">{receivingItem.farmerPhone || "—"}</span>
+                                        </div>
+                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
+                                            <span className="text-[10px] font-semibold text-slate-400 block">Giống sầu riêng</span>
+                                            <span className="font-bold text-emerald-800">{receivingItem.variety}</span>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {/* BẢNG SO SÁNH & CHÊNH LỆCH QUAN TRỌNG (THEO YÊU CẦU NGHIỆP VỤ) */}
-                                <div className="rounded-2xl bg-white p-4 border border-emerald-300 shadow-xs space-y-2">
-                                    <p className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
-                                        Đối soát dữ liệu tiếp nhận & Chênh lệch
-                                    </p>
-                                    <div className="space-y-1 text-xs">
-                                        <div className="flex justify-between py-0.5">
-                                            <span className="text-slate-600">Khối lượng khai báo (Farm):</span>
-                                            <span className="font-mono font-bold text-slate-900">{receivingItem.declaredWeight.toLocaleString("vi-VN")} kg</span>
+                                {/* KHU VỰC 2: FORM NHẬP LIỆU TIẾP NHẬN THỰC TẾ (CÓ KL KHAI BÁO VÀ KL THỰC NHẬN) */}
+                                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-4">
+                                    <span className="text-xs font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+                                        <Scale className="h-4 w-4 text-emerald-700" />
+                                        Số liệu cân thực tế & đối soát tiếp nhận
+                                    </span>
+
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        {/* Khối lượng khai báo ban đầu (Read-only reference) */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                Khối lượng khai báo (kg) <span className="text-slate-400 font-normal">(từ phiếu Farm)</span>
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    value={receivingItem.declaredWeight}
+                                                    readOnly
+                                                    className="h-10 w-full rounded-xl border border-slate-300 bg-slate-100 px-3 font-mono text-xs font-bold text-slate-800 cursor-not-allowed focus:outline-none"
+                                                />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">kg</span>
+                                            </div>
+                                            <p className="mt-1 text-[10px] text-slate-500 italic">KL nông dân cân tại vườn khi giao</p>
                                         </div>
-                                        <div className="flex justify-between py-0.5 border-t border-slate-100">
-                                            <span className="text-slate-600">Khối lượng thực nhận (Cơ sở):</span>
-                                            <span className="font-mono font-bold text-emerald-700">{(Number(actualWeightInput) || 0).toLocaleString("vi-VN")} kg</span>
+
+                                        {/* Khối lượng thực nhận tại trạm xưởng */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                Khối lượng thực nhận (kg) <span className="text-rose-500">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    value={actualWeightInput}
+                                                    onChange={(e) => setActualWeightInput(e.target.value)}
+                                                    placeholder="Nhập KL cân tại cổng xưởng..."
+                                                    className="h-10 w-full rounded-xl border border-emerald-400 bg-white px-3 font-mono text-xs font-bold text-emerald-900 focus:border-emerald-600 focus:outline-none ring-2 ring-emerald-500/20"
+                                                />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-700">kg</span>
+                                            </div>
+                                            <p className="mt-1 text-[10px] text-emerald-700 font-medium">KL cân thực tế khi dỡ hàng xuống kho xưởng</p>
                                         </div>
-                                        <div className="flex justify-between py-1 border-t border-slate-200 font-bold">
-                                            <span className="text-slate-700">Chênh lệch khối lượng:</span>
-                                            <span className={`font-mono ${liveDiff < 0 ? "text-amber-600" : liveDiff > 0 ? "text-emerald-600" : "text-slate-600"}`}>
-                                                {liveDiff > 0 ? `+${liveDiff.toLocaleString("vi-VN")}` : liveDiff.toLocaleString("vi-VN")} kg
-                                            </span>
+                                    </div>
+
+                                    {/* Số lượng trái & Chênh lệch */}
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                Số lượng trái thực nhận (trái) <span className="text-rose-500">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    value={actualFruitCountInput}
+                                                    onChange={(e) => setActualFruitCountInput(e.target.value)}
+                                                    placeholder="Nhập số lượng trái đếm được..."
+                                                    className="h-10 w-full rounded-xl border border-emerald-400 bg-white px-3 font-mono text-xs font-bold text-emerald-900 focus:border-emerald-600 focus:outline-none"
+                                                />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-700">trái</span>
+                                            </div>
+                                            <p className="mt-1 text-[10px] text-slate-500">Đếm thực tế lúc bốc dỡ vào kho (khai báo: {receivingItem.declaredFruitCount || "—"})</p>
                                         </div>
-                                        {receivingItem.declaredFruitCount ? (
-                                            <div className="flex justify-between py-1 border-t border-slate-100 font-bold">
-                                                <span className="text-slate-700">Chênh lệch số lượng trái:</span>
-                                                <span className={`font-mono ${liveFruitDiff < 0 ? "text-amber-600" : liveFruitDiff > 0 ? "text-emerald-600" : "text-slate-600"}`}>
-                                                    {liveFruitDiff > 0 ? `+${liveFruitDiff.toLocaleString("vi-VN")}` : liveFruitDiff.toLocaleString("vi-VN")} trái (Khai báo: {receivingItem.declaredFruitCount} ➔ Thực nhận: {Number(actualFruitCountInput) || 0})
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">Đánh giá chênh lệch khối lượng</label>
+                                            <div className={`h-10 rounded-xl px-3 flex items-center justify-between border text-xs font-bold ${
+                                                Math.abs(liveDiff) === 0
+                                                    ? "bg-slate-100 border-slate-200 text-slate-700"
+                                                    : liveDiff < 0
+                                                    ? "bg-amber-50 border-amber-300 text-amber-800"
+                                                    : "bg-emerald-50 border-emerald-300 text-emerald-800"
+                                            }`}>
+                                                <span>Chênh lệch:</span>
+                                                <span>
+                                                    {liveDiff > 0 ? `+${liveDiff.toLocaleString("vi-VN")} kg` : `${liveDiff.toLocaleString("vi-VN")} kg`}
+                                                    {receivingItem.declaredWeight > 0 && ` (${((liveDiff / receivingItem.declaredWeight) * 100).toFixed(1)}%)`}
                                                 </span>
                                             </div>
-                                        ) : (
-                                            <div className="flex justify-between py-1 border-t border-slate-100">
-                                                <span className="text-slate-600">Số lượng trái thực nhận:</span>
-                                                <span className="font-mono font-bold text-slate-900">{Number(actualFruitCountInput) || 0} trái</span>
-                                            </div>
-                                        )}
+                                            <p className="mt-1 text-[10px] text-slate-400">Dung sai cho phép vận chuyển thường &lt; 2%</p>
+                                        </div>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 italic">
-                                        * Hệ thống đối soát độc lập cả khối lượng (kg) và số lượng trái giữa khai báo của Farm và thực nhận của cơ sở.
-                                    </p>
+
+                                    {/* Ngày tiếp nhận & Ghi chú */}
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">Ngày giờ tiếp nhận</label>
+                                            <input
+                                                type="datetime-local"
+                                                value={receivedAtInput}
+                                                onChange={(e) => setReceivedAtInput(e.target.value)}
+                                                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">Ghi chú tiếp nhận</label>
+                                            <input
+                                                type="text"
+                                                value={receiveNoteInput}
+                                                onChange={(e) => setReceiveNoteInput(e.target.value)}
+                                                placeholder="Tình trạng xe, hao hụt nếu có..."
+                                                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Footer */}
-                        <div className="flex gap-2 border-t border-slate-100 p-5 sm:p-6">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setReceivingItem(null)}
-                                className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200"
-                            >
-                                Hủy
-                            </Button>
-                            <Button
-                                type="button"
-                                onClick={handleConfirmReceive}
-                                disabled={submittingReceive}
-                                className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
-                            >
-                                {submittingReceive ? <Loader2 className="h-4 w-4 animate-spin" /> : "Xác nhận tiếp nhận"}
-                            </Button>
+                            {/* Footer */}
+                            <div className="flex gap-2 border-t border-slate-100 p-5 sm:p-6">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setReceivingItem(null)}
+                                    className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200"
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={handleConfirmReceive}
+                                    disabled={submittingReceive}
+                                    className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
+                                >
+                                    {submittingReceive ? <Loader2 className="h-4 w-4 animate-spin" /> : "Xác nhận tiếp nhận"}
+                                </Button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </ModalPortal>
             )}
 
-            {/* MODAL 2: PHÂN LOẠI LÔ (3 NHÁNH & BẮT BUỘC KIỂM TRA TỔNG BẰNG KL THỰC NHẬN) */}
+
+            {/* MODAL 2: PHÂN LOẠI LÔ (PORTAL TO BODY - FULL VIEWPORT OVERLAY) */}
             {classifyingItem && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-                    <div className="relative flex max-h-[90vh] w-full max-w-xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                        <div className="relative flex max-h-[90vh] w-full max-w-xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
                             <div>
@@ -916,13 +864,13 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                     Phân chia khối lượng & số lượng trái (3 phần)
                                 </label>
 
-                                {/* Phần 1: Trái tươi xuất khẩu */}
+                                {/* Phần 1: Trái tươi */}
                                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3.5 space-y-2">
                                     <div className="flex justify-between items-center">
                                         <label className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                                            <span>📦 1. Trái tươi xuất khẩu</span>
+                                            <span>📦 1. Trái tươi</span>
                                         </label>
-                                        <span className="text-[10px] text-emerald-700 font-bold">Chuyển đóng gói xuất</span>
+                                        <span className="text-[10px] text-emerald-700 font-bold">Chuyển đóng gói</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <div>
@@ -948,11 +896,11 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                     </div>
                                 </div>
 
-                                {/* Phần 2: Chuyển chế biến */}
+                                {/* Phần 2: Chế biến khác */}
                                 <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-3.5 space-y-2">
                                     <div className="flex justify-between items-center">
                                         <label className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                                            <span>⚙️ 2. Chuyển chế biến</span>
+                                            <span>⚙️ 2. Chế biến khác</span>
                                         </label>
                                         <span className="text-[10px] text-indigo-700 font-bold">Bóc múi, cấp đông</span>
                                     </div>
@@ -1085,7 +1033,8 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                         </div>
                     </div>
                 </div>
-            )}
+            </ModalPortal>
+        )}
         </div>
     );
 }

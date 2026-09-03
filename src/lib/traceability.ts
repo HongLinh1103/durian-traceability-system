@@ -893,8 +893,8 @@ function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTraceData)
     const weight = preview?.weight || 3100;
     const boxCount = preview?.boxCount || Math.max(1, Math.round(weight / 18));
     const lotCode = preview?.lotCode || "FP-FRESH-20260830-001";
-    const farmName = preview?.farmName || "Hợp tác xã Sầu riêng Tân Phú";
-    const regionCode = preview?.regionCode || "MSVT-VN-DN-0115";
+    const farmName = preview?.farmName || "Vườn sầu riêng Minh Phát";
+    const regionCode = preview?.regionCode || "MSVT-GACC-001";
     const rawCode = preview?.rawLotCode || "TH-20260829-002";
     const productName = preview?.productName || (isExport ? "Sầu riêng tươi xuất khẩu" : "Sầu riêng Ri6 chọn lọc loại 1");
     const facilityName = preview?.facilityName || "Cơ sở Chế biến & Đóng gói Sầu riêng Xuất khẩu TriViet";
@@ -1075,11 +1075,14 @@ function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTraceData)
                 contributedWeight: weight,
                 unit: "kg",
                 complianceStatus: "COMPLIANT",
-                season: "Vụ sầu riêng 2026",
+                season: "Vụ mùa 2026",
                 cultivationSummary: "Canh tác tiêu chuẩn VietGAP & GACC kiểm định",
                 cultivationLogs: [
                     { stage: "Bón phân đợt cuối", activityType: "FERTILIZING", actionDate: new Date("2026-07-20"), notes: "Bón kali sulphate giúp trái lên cơm vàng ngọt" },
-                    { stage: "Cách ly bảo vệ thực vật", activityType: "PHI_INSPECTION", actionDate: new Date("2026-08-10"), notes: "Thời gian cách ly 20 ngày đạt chuẩn không dư lượng" },
+                    { stage: "Cách ly bảo vệ thực vật", activityType: "PHI_INSPECTION", actionDate: new Date("2026-08-22"), notes: "Thời gian cách ly 21 ngày đạt chuẩn không dư lượng" },
+                    { stage: "Thu hoạch xuất khẩu", activityType: "HARVEST", actionDate: new Date("2026-08-28"), notes: "Cắt trái già đạt độ chín 8.5 - 9 tuổi tại lô A & B, brix > 32°Bx, sản lượng 4.200 kg (1.400 trái)" },
+                    { stage: "Phân loại tại vườn", activityType: "FRUIT_GRADING", actionDate: new Date("2026-08-29"), notes: "Khử khuẩn nhẹ, lau sạch bụi phấn, tỉa cuống 3-5 cm, lót đệm xốp bảo vệ gai" },
+                    { stage: "Bàn giao vận chuyển", activityType: "DELIVERY", actionDate: new Date("2026-08-29"), notes: "Bàn giao xe tải 60B-991.22 vận chuyển đến Cơ sở Chế biến Sầu riêng Trị An" },
                 ],
             },
         ],

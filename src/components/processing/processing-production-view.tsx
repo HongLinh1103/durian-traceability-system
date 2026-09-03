@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 export type FreshProductItem = {
     id: string;
@@ -363,7 +364,7 @@ export function ProcessingProductionView({
                             }`}
                         >
                             <Package className="h-4 w-4" />
-                            <span>[ Trái tươi xuất khẩu ]</span>
+                            <span>[ Trái tươi ]</span>
                             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${activeTab === "FRESH" ? "bg-emerald-700 text-emerald-100" : "bg-slate-200 text-slate-700"}`}>
                                 {freshItems.length}
                             </span>
@@ -379,7 +380,7 @@ export function ProcessingProductionView({
                             }`}
                         >
                             <Factory className="h-4 w-4" />
-                            <span>[ Chuyển chế biến ]</span>
+                            <span>[ Chế biến khác ]</span>
                             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${activeTab === "PROCESSED" ? "bg-indigo-700 text-indigo-100" : "bg-slate-200 text-slate-700"}`}>
                                 {processedItems.length}
                             </span>
@@ -605,255 +606,258 @@ export function ProcessingProductionView({
                 </div>
             )}
 
-            {/* MODAL: LÔ ĐÓNG GÓI TRÁI TƯƠI (FULL SCREEN OVERLAY) */}
+            {/* MODAL: LÔ ĐÓNG GÓI TRÁI TƯƠI (PORTAL TO BODY - FULL VIEWPORT OVERLAY) */}
             {selectedFresh && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-                    <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
-                        {/* Header */}
-                        <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
-                            <div>
-                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Đóng gói xuất khẩu</span>
-                                <h2 className="text-xl font-black text-slate-900">HOÀN TẤT ĐÓNG GÓI</h2>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setSelectedFresh(null)}
-                                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        {/* Body */}
-                        <div className="overflow-y-auto p-5 sm:p-6 space-y-4">
-                            <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700 border border-slate-200">
-                                <p className="flex justify-between">
-                                    <span className="text-slate-500">Mã lô nguồn:</span>
-                                    <span className="font-mono font-bold text-slate-900">{selectedFresh.sourceRawCode || selectedFresh.code}</span>
-                                </p>
-                                <p className="flex justify-between">
-                                    <span className="text-slate-500">Farm / Vùng:</span>
-                                    <span className="font-bold text-slate-800">{selectedFresh.farmName}</span>
-                                </p>
-                                <p className="flex justify-between border-t border-slate-200/60 pt-1 font-bold">
-                                    <span className="text-slate-700">Khối lượng đầu vào:</span>
-                                    <span className="font-black text-emerald-700">
-                                        {selectedFresh.inputWeight.toLocaleString("vi-VN")} kg
-                                        {selectedFresh.fruitCount ? ` (${selectedFresh.fruitCount.toLocaleString("vi-VN")} trái)` : ""}
-                                    </span>
-                                </p>
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                        <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
+                            {/* Header */}
+                            <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Đóng gói thành phẩm</span>
+                                    <h2 className="text-xl font-black text-slate-900">HOÀN TẤT ĐÓNG GÓI</h2>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedFresh(null)}
+                                    className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
                             </div>
 
-                            <div className="space-y-3 pt-1">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                                        Khối lượng thành phẩm (kg) <span className="text-rose-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={freshOutputWeight}
-                                        onChange={(e) => {
-                                            setFreshOutputWeight(e.target.value);
-                                            const w = Number(e.target.value);
-                                            if (w > 0) setFreshBoxCount(Math.max(1, Math.round(w / 18)));
-                                        }}
-                                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                    />
+                            {/* Body */}
+                            <div className="overflow-y-auto p-5 sm:p-6 space-y-4">
+                                <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700 border border-slate-200">
+                                    <p className="flex justify-between">
+                                        <span className="text-slate-500">Mã lô nguồn:</span>
+                                        <span className="font-mono font-bold text-slate-900">{selectedFresh.sourceRawCode || selectedFresh.code}</span>
+                                    </p>
+                                    <p className="flex justify-between">
+                                        <span className="text-slate-500">Farm / Vùng:</span>
+                                        <span className="font-bold text-slate-800">{selectedFresh.farmName}</span>
+                                    </p>
+                                    <p className="flex justify-between border-t border-slate-200/60 pt-1 font-bold">
+                                        <span className="text-slate-700">Khối lượng đầu vào:</span>
+                                        <span className="font-black text-emerald-700">
+                                            {selectedFresh.inputWeight.toLocaleString("vi-VN")} kg
+                                            {selectedFresh.fruitCount ? ` (${selectedFresh.fruitCount.toLocaleString("vi-VN")} trái)` : ""}
+                                        </span>
+                                    </p>
                                 </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Số thùng</label>
-                                    <input
-                                        type="number"
-                                        value={freshBoxCount}
-                                        onChange={(e) => setFreshBoxCount(e.target.value)}
-                                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                    />
-                                </div>
+                                <div className="space-y-3 pt-1">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                                            Khối lượng thành phẩm (kg) <span className="text-rose-500">*</span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={freshOutputWeight}
+                                            onChange={(e) => {
+                                                setFreshOutputWeight(e.target.value);
+                                                const w = Number(e.target.value);
+                                                if (w > 0) setFreshBoxCount(Math.max(1, Math.round(w / 18)));
+                                            }}
+                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                        />
+                                    </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Quy cách đóng gói</label>
-                                    <input
-                                        type="text"
-                                        value={freshPackagingSpec}
-                                        onChange={(e) => setFreshPackagingSpec(e.target.value)}
-                                        placeholder="Ví dụ: Thùng 5-6 trái / 18kg"
-                                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                    />
-                                </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Số thùng</label>
+                                        <input
+                                            type="number"
+                                            value={freshBoxCount}
+                                            onChange={(e) => setFreshBoxCount(e.target.value)}
+                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                        />
+                                    </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Ngày hoàn tất</label>
-                                    <input
-                                        type="date"
-                                        value={freshCompleteDate}
-                                        onChange={(e) => setFreshCompleteDate(e.target.value)}
-                                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                    />
-                                </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Quy cách đóng gói</label>
+                                        <input
+                                            type="text"
+                                            value={freshPackagingSpec}
+                                            onChange={(e) => setFreshPackagingSpec(e.target.value)}
+                                            placeholder="Ví dụ: Thùng 5-6 trái / 18kg"
+                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                        />
+                                    </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Ghi chú</label>
-                                    <input
-                                        type="text"
-                                        value={freshNote}
-                                        onChange={(e) => setFreshNote(e.target.value)}
-                                        placeholder="Ghi chú thêm nếu có..."
-                                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs focus:border-emerald-500 focus:outline-none"
-                                    />
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Ngày hoàn tất</label>
+                                        <input
+                                            type="date"
+                                            value={freshCompleteDate}
+                                            onChange={(e) => setFreshCompleteDate(e.target.value)}
+                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Ghi chú</label>
+                                        <input
+                                            type="text"
+                                            value={freshNote}
+                                            onChange={(e) => setFreshNote(e.target.value)}
+                                            placeholder="Ghi chú thêm nếu có..."
+                                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs focus:border-emerald-500 focus:outline-none"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Footer */}
-                        <div className="flex gap-2 border-t border-slate-100 p-5 sm:p-6">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setSelectedFresh(null)}
-                                className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200"
-                            >
-                                Hủy
-                            </Button>
-                            <Button
-                                type="button"
-                                onClick={handleConfirmFreshPackaging}
-                                disabled={submittingFresh}
-                                className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
-                            >
-                                {submittingFresh ? <Loader2 className="h-4 w-4 animate-spin" /> : "Hoàn tất đóng gói"}
-                            </Button>
+                            {/* Footer */}
+                            <div className="flex gap-2 border-t border-slate-100 p-5 sm:p-6">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setSelectedFresh(null)}
+                                    className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200"
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={handleConfirmFreshPackaging}
+                                    disabled={submittingFresh}
+                                    className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
+                                >
+                                    {submittingFresh ? <Loader2 className="h-4 w-4 animate-spin" /> : "Hoàn tất đóng gói"}
+                                </Button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </ModalPortal>
             )}
 
-            {/* MODAL: MẺ CHẾ BIẾN (FULL SCREEN OVERLAY) */}
+            {/* MODAL: MẺ CHẾ BIẾN (PORTAL TO BODY - FULL VIEWPORT OVERLAY) */}
             {selectedProc && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-                    <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
-                        {/* Header */}
-                        <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
-                            <div>
-                                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700">Chế biến sâu</span>
-                                <h2 className="text-xl font-black text-slate-900">MẺ CHẾ BIẾN</h2>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setSelectedProc(null)}
-                                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        {/* Body */}
-                        <div className="overflow-y-auto p-5 sm:p-6 space-y-4">
-                            <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700 border border-slate-200">
-                                <p className="flex justify-between">
-                                    <span className="text-slate-500">Mã lô nguồn:</span>
-                                    <span className="font-mono font-bold text-slate-900">{selectedProc.sourceRawCode || selectedProc.code}</span>
-                                </p>
-                                <p className="flex justify-between">
-                                    <span className="text-slate-500">Farm / Vùng:</span>
-                                    <span className="font-bold text-slate-800">{selectedProc.farmName}</span>
-                                </p>
-                                <p className="flex justify-between border-t border-slate-200/60 pt-1 font-bold">
-                                    <span className="text-slate-700">Khối lượng đầu vào:</span>
-                                    <span className="font-black text-indigo-700">
-                                        {selectedProc.inputWeight.toLocaleString("vi-VN")} kg
-                                        {selectedProc.fruitCount ? ` (${selectedProc.fruitCount.toLocaleString("vi-VN")} trái)` : ""}
-                                    </span>
-                                </p>
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                        <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
+                            {/* Header */}
+                            <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700">Chế biến sâu</span>
+                                    <h2 className="text-xl font-black text-slate-900">MẺ CHẾ BIẾN</h2>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedProc(null)}
+                                    className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
                             </div>
 
-                            <div className="space-y-3 pt-1">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Hướng xử lý</label>
-                                    <select
-                                        value={procMethod}
-                                        onChange={(e) => {
-                                            setProcMethod(e.target.value);
-                                            if (e.target.value.includes("Bóc múi")) setProcProductName("Cơm sầu riêng bóc múi");
-                                            else if (e.target.value.includes("Đông lạnh")) setProcProductName("Sầu riêng cấp đông IQF");
-                                            else setProcProductName("Sầu riêng sấy thăng hoa");
-                                        }}
-                                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
-                                    >
-                                        <option value="Bóc múi / Tách múi">Bóc múi / Tách múi</option>
-                                        <option value="Đông lạnh">Cơm sầu đông lạnh IQF</option>
-                                        <option value="Chế biến tiếp">Sấy thăng hoa / Chế biến tiếp</option>
-                                    </select>
+                            {/* Body */}
+                            <div className="overflow-y-auto p-5 sm:p-6 space-y-4">
+                                <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700 border border-slate-200">
+                                    <p className="flex justify-between">
+                                        <span className="text-slate-500">Mã lô nguồn:</span>
+                                        <span className="font-mono font-bold text-slate-900">{selectedProc.sourceRawCode || selectedProc.code}</span>
+                                    </p>
+                                    <p className="flex justify-between">
+                                        <span className="text-slate-500">Farm / Vùng:</span>
+                                        <span className="font-bold text-slate-800">{selectedProc.farmName}</span>
+                                    </p>
+                                    <p className="flex justify-between border-t border-slate-200/60 pt-1 font-bold">
+                                        <span className="text-slate-700">Khối lượng đầu vào:</span>
+                                        <span className="font-black text-indigo-700">
+                                            {selectedProc.inputWeight.toLocaleString("vi-VN")} kg
+                                            {selectedProc.fruitCount ? ` (${selectedProc.fruitCount.toLocaleString("vi-VN")} trái)` : ""}
+                                        </span>
+                                    </p>
                                 </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Tên sản phẩm thành phẩm</label>
-                                    <input
-                                        type="text"
-                                        value={procProductName}
-                                        onChange={(e) => setProcProductName(e.target.value)}
-                                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-indigo-500 focus:outline-none"
-                                    />
-                                </div>
+                                <div className="space-y-3 pt-1">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                                            Tên thành phẩm sau chế biến <span className="text-rose-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={procProductName}
+                                            onChange={(e) => setProcProductName(e.target.value)}
+                                            placeholder="Ví dụ: Cơm sầu riêng bóc múi hút chân không (Khay 500g)"
+                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-900 focus:border-indigo-500 focus:outline-none"
+                                        />
+                                    </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                                        Khối lượng thành phẩm thu được (kg) <span className="text-rose-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={procOutputWeight}
-                                        onChange={(e) => setProcOutputWeight(e.target.value)}
-                                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-indigo-700 focus:border-indigo-500 focus:outline-none"
-                                    />
-                                </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                Khối lượng thành phẩm (kg) <span className="text-rose-500">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={procOutputWeight}
+                                                onChange={(e) => setProcOutputWeight(e.target.value)}
+                                                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">Phương pháp chế biến</label>
+                                            <select
+                                                value={procMethod}
+                                                onChange={(e) => setProcMethod(e.target.value)}
+                                                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-indigo-500 focus:outline-none"
+                                            >
+                                                <option value="Bóc múi / Tách múi">Bóc múi / Tách múi</option>
+                                                <option value="Cấp đông nhanh (IQF)">Cấp đông nhanh (IQF)</option>
+                                                <option value="Sấy thăng hoa (Freeze Drying)">Sấy thăng hoa (Freeze Drying)</option>
+                                                <option value="Chế biến sâu khác">Chế biến sâu khác</option>
+                                            </select>
+                                        </div>
+                                    </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Ngày hoàn tất</label>
-                                    <input
-                                        type="date"
-                                        value={procDate}
-                                        onChange={(e) => setProcDate(e.target.value)}
-                                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-indigo-500 focus:outline-none"
-                                    />
-                                </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Ngày sản xuất</label>
+                                        <input
+                                            type="date"
+                                            value={procDate}
+                                            onChange={(e) => setProcDate(e.target.value)}
+                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-indigo-500 focus:outline-none"
+                                        />
+                                    </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Ghi chú</label>
-                                    <input
-                                        type="text"
-                                        value={procNote}
-                                        onChange={(e) => setProcNote(e.target.value)}
-                                        placeholder="Ghi chú thêm nếu có..."
-                                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs focus:border-indigo-500 focus:outline-none"
-                                    />
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Ghi chú mẻ chế biến</label>
+                                        <input
+                                            type="text"
+                                            value={procNote}
+                                            onChange={(e) => setProcNote(e.target.value)}
+                                            placeholder="Ghi chú thêm về quy trình, phụ liệu..."
+                                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs focus:border-indigo-500 focus:outline-none"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Footer */}
-                        <div className="flex gap-2 border-t border-slate-100 p-5 sm:p-6">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setSelectedProc(null)}
-                                className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200"
-                            >
-                                Hủy
-                            </Button>
-                            <Button
-                                type="button"
-                                onClick={handleConfirmProcBatch}
-                                disabled={submittingProc}
-                                className="flex-1 rounded-2xl h-11 bg-indigo-600 text-xs font-bold text-white hover:bg-indigo-700 shadow-soft"
-                            >
-                                {submittingProc ? <Loader2 className="h-4 w-4 animate-spin" /> : "Hoàn tất chế biến"}
-                            </Button>
+                            {/* Footer */}
+                            <div className="flex gap-2 border-t border-slate-100 p-5 sm:p-6">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setSelectedProc(null)}
+                                    className="flex-1 rounded-2xl h-11 text-xs font-bold border-slate-200"
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={handleConfirmProcBatch}
+                                    disabled={submittingProc}
+                                    className="flex-1 rounded-2xl h-11 bg-indigo-600 text-xs font-bold text-white hover:bg-indigo-700 shadow-soft"
+                                >
+                                    {submittingProc ? <Loader2 className="h-4 w-4 animate-spin" /> : "Hoàn tất chế biến"}
+                                </Button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </ModalPortal>
             )}
         </div>
     );
 }
-

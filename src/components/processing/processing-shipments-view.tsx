@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 export type ShipmentItemRow = {
     id: string;
@@ -666,10 +667,11 @@ export function ProcessingShipmentsView({
                 </div>
             </div>
 
-            {/* MODAL 1: TẠO LÔ XUẤT HÀNG (4 Grouped Sections + Live Preview & Simultaneous QR Issuance) */}
+            {/* MODAL 1: TẠO LÔ XUẤT HÀNG (PORTAL TO BODY - FULL VIEWPORT OVERLAY) */}
             {openCreateModal && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-                    <div className="relative flex max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                        <div className="relative flex max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
                             <div>
@@ -1180,12 +1182,14 @@ export function ProcessingShipmentsView({
                         </div>
                     </div>
                 </div>
-            )}
+            </ModalPortal>
+        )}
 
-            {/* MODAL 2: XEM MÃ QR & HỒ SƠ TRUY XUẤT NGUỒN GỐC (KHI BẤM "XEM QR") */}
+            {/* MODAL 2: XEM MÃ QR & HỒ SƠ TRUY XUẤT NGUỒN GỐC (PORTAL TO BODY - FULL VIEWPORT OVERLAY) */}
             {viewQrShipment && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-                    <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                        <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
                             <div>
@@ -1340,7 +1344,8 @@ export function ProcessingShipmentsView({
                         </div>
                     </div>
                 </div>
-            )}
+            </ModalPortal>
+        )}
         </div>
     );
 }

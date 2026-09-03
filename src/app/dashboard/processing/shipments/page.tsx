@@ -159,8 +159,8 @@ export default async function Page() {
                     productName: "Sầu riêng tươi xuất khẩu",
                     remainingWeight: 3100,
                     packaging: "Thùng 5-6 trái / 18kg",
-                    farmName: "Hợp tác xã Sầu riêng Tân Phú",
-                    regionCode: "MSVT-VN-DN-0115",
+                    farmName: "Vườn sầu riêng Minh Phát",
+                    regionCode: "MSVT-GACC-001",
                     rawLotCode: "TH-20260829-002",
                 },
                 {
@@ -169,8 +169,8 @@ export default async function Page() {
                     productName: "Cơm sầu riêng bóc múi",
                     remainingWeight: 326,
                     packaging: "Khay hút chân không 500g",
-                    farmName: "Hợp tác xã Sầu riêng Tân Phú",
-                    regionCode: "MSVT-VN-DN-0115",
+                    farmName: "Vườn sầu riêng Minh Phát",
+                    regionCode: "MSVT-GACC-001",
                     rawLotCode: "TH-20260829-002",
                 },
             ];
