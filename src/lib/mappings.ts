@@ -32,7 +32,6 @@ export const prismaActivityTypeMap = {
     "Bao trái": "FRUIT_BAGGING",
     "Chống cành": "BRANCH_SUPPORT",
     "Thu hoạch": "HARVEST",
-    "Phân loại trái": "FRUIT_GRADING",
     "Vệ sinh vườn": "GARDEN_SANITATION",
     "Khác": "OTHER",
 } as const satisfies Record<ActivityTypeLabel, string>;
