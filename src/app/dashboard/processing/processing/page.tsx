@@ -102,6 +102,7 @@ export default async function Page() {
 
                     const outW = Number(lot.netWeight || lot.quantity || 0);
                     const inW = Number(lot.processingBatch?.totalInputWeight || outW);
+                    const isAvailable = ["READY_FOR_DISTRIBUTION", "AVAILABLE", "PARTIALLY_DISTRIBUTED"].includes(lot.status) && Number(lot.remainingWeight || 0) > 0;
 
                     freshItems.push({
                         id: lot.id,
@@ -114,7 +115,7 @@ export default async function Page() {
                         packagingDate: lot.manufacturedAt || lot.createdAt,
                         boxCount: Math.round(outW / 18) || 1,
                         packagingSpec: lot.packaging || "Thùng 5-6 trái / 18kg",
-                        status: lot.status === "READY_FOR_DISTRIBUTION" ? "READY_FOR_EXPORT" : "NOT_READY_FOR_EXPORT",
+                        status: isAvailable ? "READY_FOR_EXPORT" : "NOT_READY_FOR_EXPORT",
                     });
                 });
 
@@ -140,27 +141,55 @@ export default async function Page() {
                 });
             });
 
-            // Map processed items
+            // Map processed items:
+            // 1. First, any finished product lots from processing (PROCESSED branch or non-fresh productType)
+            const processedFinishedLots = finishedLots.filter(
+                (lot) => lot.branch === "PROCESSED" || (lot.productType && lot.productType !== "FRESH_DURIAN")
+            );
+            const processedTrackedRawIds = new Set<string>();
+
+            processedFinishedLots.forEach((lot) => {
+                const raw = lot.processingBatch?.inputs?.[0]?.rawMaterialLot;
+                if (raw?.id) processedTrackedRawIds.add(raw.id);
+                const farm = raw?.rawMaterialReceipt?.sourceHarvestLot?.farm;
+                const hr = raw?.rawMaterialReceipt?.sourceHarvestLot?.harvestRecord;
+                const isReady = ["READY_FOR_DISTRIBUTION", "AVAILABLE", "PARTIALLY_DISTRIBUTED"].includes(lot.status) && Number(lot.remainingWeight || 0) > 0;
+                const outW = Number(lot.netWeight || lot.quantity || 0);
+                const inW = Number(lot.processingBatch?.totalInputWeight || outW);
+
+                processedItems.push({
+                    id: lot.id,
+                    code: lot.lotCode,
+                    sourceRawCode: raw?.lotCode || hr?.code || "NVL-001",
+                    rawLotId: raw?.id,
+                    farmName: farm?.farmName || "Vườn liên kết",
+                    method: lot.processingBatch?.method || "Bóc múi / Tách múi",
+                    inputWeight: inW,
+                    outputProduct: lot.productName || "Cơm sầu riêng bóc múi",
+                    outputWeight: outW,
+                    status: isReady ? "COMPLETED" : "NOT_READY_FOR_EXPORT",
+                });
+            });
+
+            // 2. Second, any raw lots with processing direction where batch is in progress or pending
             rawProcessingLots.forEach((raw) => {
+                if (processedTrackedRawIds.has(raw.id)) return;
                 const farm = raw.rawMaterialReceipt?.sourceHarvestLot?.farm;
                 const hr = raw.rawMaterialReceipt?.sourceHarvestLot?.harvestRecord;
                 const batch = raw.batchInputs?.[0]?.processingBatch;
-                const finished = batch?.finishedLots?.[0];
                 const inputW = Number(raw.processingWeight || raw.currentWeight || 0);
 
                 processedItems.push({
-                    id: finished?.id || raw.id,
-                    code: finished?.lotCode || (batch ? batch.batchCode : `PROC-${raw.lotCode}`),
+                    id: raw.id,
+                    code: batch ? batch.batchCode : `PROC-${raw.lotCode}`,
                     sourceRawCode: raw.lotCode || hr?.code || "NVL-001",
                     rawLotId: raw.id,
                     farmName: farm?.farmName || "Vườn liên kết",
                     method: batch?.method || "Bóc múi / Tách múi",
                     inputWeight: inputW,
-                    outputProduct: batch?.targetProduct || finished?.productName || "Cơm sầu riêng bóc múi",
+                    outputProduct: batch?.targetProduct || "Cơm sầu riêng bóc múi",
                     outputWeight: batch ? Number(batch.totalOutputWeight || 0) : undefined,
-                    status: finished
-                        ? (finished.status === "READY_FOR_DISTRIBUTION" ? "COMPLETED" : "NOT_READY_FOR_EXPORT")
-                        : (batch ? "IN_PROGRESS" : "PENDING"),
+                    status: batch ? "IN_PROGRESS" : "PENDING",
                 });
             });
         }
