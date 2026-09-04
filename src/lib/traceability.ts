@@ -712,7 +712,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
         const facility = fpl?.facility || trace.commercialLot.owner;
         const facilityName = facility?.name || "Cơ sở Chế biến Sầu riêng Trị An";
         const facilityAddress = [facility?.district, facility?.province].filter(Boolean).join(", ") || facility?.address || "Trảng Bom, Đồng Nai";
-        const batchCode = fpl?.processingBatch?.batchCode || "PB-20260826-001";
+        const batchCode = fpl?.processingBatch?.batchCode || "PB-20260830-001";
         const finishedLotCode = fpl?.lotCode || trace.commercialLot.lotCode;
         const finishedProductName = fpl?.productName || trace.commercialLot.productName;
         const finishedWeight = Number(fpl?.netWeight ?? fpl?.quantity ?? fpl?.processingBatch?.totalOutputWeight ?? trace.commercialLot.quantity);

@@ -164,18 +164,51 @@ export function ProcessingProductionView({
             if (packagedLots.length > 0) {
                 const existing = JSON.parse(localStorage.getItem("processing_packaged_lots") || "[]");
                 const existingMap = new Map<string, any>();
-                existing.forEach((x: any) => {
-                    const key = x.lotCode || x.id;
-                    if (key) existingMap.set(key, x);
-                });
+                if (Array.isArray(existing)) {
+                    existing.forEach((x: any) => {
+                        const key = x.lotCode || x.id;
+                        if (key && key !== "FPL-20260826-001" && x.lotCode !== "FPL-20260826-001" && x.id !== "FPL-20260826-001") {
+                            existingMap.set(key, x);
+                        }
+                    });
+                }
+
+                const finalLots: any[] = [];
                 packagedLots.forEach((lot) => {
                     const key = lot.lotCode || lot.id;
-                    if (key) {
-                        const prev = existingMap.get(key) || {};
-                        existingMap.set(key, { ...prev, ...lot });
-                    }
+                    const prev = existingMap.get(key) || {};
+                    // If lot was previously dispatched in part, keep remainingWeight if smaller
+                    const remWeight =
+                        prev.remainingWeight !== undefined && Number(prev.remainingWeight) < Number(lot.remainingWeight)
+                            ? Number(prev.remainingWeight)
+                            : lot.remainingWeight;
+
+                    finalLots.push({
+                        ...lot,
+                        ...prev,
+                        id: lot.id,
+                        lotCode: lot.lotCode,
+                        productName: lot.productName,
+                        remainingWeight: remWeight,
+                        packaging: lot.packaging || prev.packaging,
+                        farmName: lot.farmName || prev.farmName,
+                        rawLotCode: lot.rawLotCode || prev.rawLotCode,
+                        status: lot.status || prev.status || "READY_FOR_DISTRIBUTION",
+                    });
                 });
-                localStorage.setItem("processing_packaged_lots", JSON.stringify(Array.from(existingMap.values())));
+
+                localStorage.setItem("processing_packaged_lots", JSON.stringify(finalLots));
+            } else {
+                // If no packaged lots exist, clear or purge ghost lots
+                try {
+                    const existing = JSON.parse(localStorage.getItem("processing_packaged_lots") || "[]");
+                    if (Array.isArray(existing)) {
+                        const cleaned = existing.filter(
+                            (x: any) => x.lotCode !== "FPL-20260826-001" && x.id !== "FPL-20260826-001"
+                        );
+                        localStorage.setItem("processing_packaged_lots", JSON.stringify(cleaned));
+                    }
+                } catch { }
             }
         } catch { }
     }, [freshItems, processedItems]);

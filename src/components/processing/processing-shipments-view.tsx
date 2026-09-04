@@ -381,7 +381,18 @@ export function ProcessingShipmentsView({
     const [shipments, setShipments] = useState<ShipmentItemRow[]>(initialShipments);
     const [availableLots, setAvailableLots] = useState<AvailableFinishedLot[]>(() =>
         availableFinishedLots.filter(
-            (lot) => (!lot.status || ["READY_FOR_DISTRIBUTION", "AVAILABLE", "PARTIALLY_DISTRIBUTED", "READY_FOR_EXPORT", "COMPLETED"].includes(lot.status)) && lot.remainingWeight > 0
+            (lot) =>
+                lot.lotCode !== "FPL-20260826-001" &&
+                lot.id !== "FPL-20260826-001" &&
+                (!lot.status ||
+                    [
+                        "READY_FOR_DISTRIBUTION",
+                        "AVAILABLE",
+                        "PARTIALLY_DISTRIBUTED",
+                        "READY_FOR_EXPORT",
+                        "COMPLETED",
+                    ].includes(lot.status)) &&
+                lot.remainingWeight > 0
         )
     );
     const [searchQuery, setSearchQuery] = useState("");
@@ -395,14 +406,33 @@ export function ProcessingShipmentsView({
             const packaged: any[] = JSON.parse(raw);
             if (!Array.isArray(packaged) || packaged.length === 0) return;
 
+            // Purge ghost lots like FPL-20260826-001
+            const cleaned = packaged.filter(
+                (p) => p && p.lotCode !== "FPL-20260826-001" && p.id !== "FPL-20260826-001"
+            );
+            if (cleaned.length !== packaged.length) {
+                localStorage.setItem("processing_packaged_lots", JSON.stringify(cleaned));
+            }
+
             setAvailableLots((prev) => {
-                const existingIds = new Set(prev.map((l) => l.id));
-                const existingCodes = new Set(prev.map((l) => l.lotCode));
+                const filteredPrev = prev.filter(
+                    (l) => l.lotCode !== "FPL-20260826-001" && l.id !== "FPL-20260826-001"
+                );
+                const existingIds = new Set(filteredPrev.map((l) => l.id));
+                const existingCodes = new Set(filteredPrev.map((l) => l.lotCode));
                 const newLots: AvailableFinishedLot[] = [];
 
-                packaged.forEach((p) => {
+                cleaned.forEach((p) => {
                     const statusStr = p.status || "";
-                    const isReady = !statusStr || ["READY_FOR_DISTRIBUTION", "AVAILABLE", "PARTIALLY_DISTRIBUTED", "READY_FOR_EXPORT", "COMPLETED"].includes(statusStr);
+                    const isReady =
+                        !statusStr ||
+                        [
+                            "READY_FOR_DISTRIBUTION",
+                            "AVAILABLE",
+                            "PARTIALLY_DISTRIBUTED",
+                            "READY_FOR_EXPORT",
+                            "COMPLETED",
+                        ].includes(statusStr);
                     const weight = Number(p.remainingWeight || 0);
 
                     if (
@@ -425,7 +455,7 @@ export function ProcessingShipmentsView({
                     }
                 });
 
-                return newLots.length > 0 ? [...newLots, ...prev] : prev;
+                return newLots.length > 0 ? [...newLots, ...filteredPrev] : filteredPrev;
             });
         } catch { }
     }, []);
