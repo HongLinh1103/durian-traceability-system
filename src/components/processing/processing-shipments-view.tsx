@@ -64,6 +64,7 @@ export type ShipmentItemRow = {
     regionCode?: string;
     rawLotCode?: string;
     facilityName?: string;
+    previewPayload?: string;
 };
 
 export type AvailableFinishedLot = {
@@ -917,6 +918,7 @@ export function ProcessingShipmentsView({
                 regionCode: selectedLot.regionCode || "MSVT-VN-DL",
                 rawLotCode: selectedLot.rawLotCode || "NVL-001",
                 facilityName,
+                previewPayload: previewPayload || undefined,
             };
 
             setShipments((prev) => [newRow, ...prev]);
@@ -1078,7 +1080,9 @@ export function ProcessingShipmentsView({
                         <tbody className="divide-y divide-slate-100 font-medium">
                             {filteredShipments.map((s) => {
                                 const token = s.qrPublicToken || s.shipmentCode;
-                                const traceUrl = `/trace/${encodeURIComponent(token)}`;
+                                const traceUrl = s.previewPayload
+                                    ? `/trace/${encodeURIComponent(token)}?p=${encodeURIComponent(s.previewPayload)}`
+                                    : `/trace/${encodeURIComponent(token)}`;
                                 const isDomestic = s.shipmentType === "DOMESTIC" || s.shipmentCode.startsWith("DOM-");
 
                                 return (
@@ -1935,7 +1939,7 @@ export function ProcessingShipmentsView({
                                 {(() => {
                                     const token = viewQrShipment.qrPublicToken || viewQrShipment.shipmentCode;
                                     const traceUrl = typeof window !== "undefined"
-                                        ? `${window.location.origin}/trace/${encodeURIComponent(token)}`
+                                        ? `${window.location.origin}/trace/${encodeURIComponent(token)}${viewQrShipment.previewPayload ? `?p=${encodeURIComponent(viewQrShipment.previewPayload)}` : ""}`
                                         : `/trace/${token}`;
                                     const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(traceUrl)}`;
 
