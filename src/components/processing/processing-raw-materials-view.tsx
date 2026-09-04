@@ -6,6 +6,7 @@ import {
     Boxes,
     Calendar,
     CheckCircle2,
+    ClipboardCheck,
     Clock,
     FileText,
     HelpCircle,
@@ -46,7 +47,7 @@ export type RawMaterialItem = {
     vehiclePlate?: string;
     condition?: string;
     note?: string;
-    status: "WAITING_RECEIPT" | "RECEIVED" | "WAITING_CLASSIFICATION" | "CLASSIFIED";
+    status: "WAITING_CONFIRMATION" | "WAITING_RECEIPT" | "RECEIVED" | "WAITING_CLASSIFICATION" | "CLASSIFIED";
     direction: "UNCLASSIFIED" | "FRESH_EXPORT" | "PROCESSING" | "SPLIT";
     freshExportWeight?: number;
     freshExportFruitCount?: number;
@@ -64,7 +65,12 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
     const [varietyFilter, setVarietyFilter] = useState<string>("ALL");
 
-    // Modal 1: TIẾP NHẬN HÀNG
+    // Modal 0: XÁC NHẬN PHIẾU THU HOẠCH (Bước đầu tiên khi Nông dân gửi phiếu)
+    const [confirmingItem, setConfirmingItem] = useState<RawMaterialItem | null>(null);
+    const [confirmNoteInput, setConfirmNoteInput] = useState<string>("");
+    const [submittingConfirm, setSubmittingConfirm] = useState(false);
+
+    // Modal 1: TIẾP NHẬN HÀNG (Cân thực tế)
     const [receivingItem, setReceivingItem] = useState<RawMaterialItem | null>(null);
     const [actualWeightInput, setActualWeightInput] = useState<number | string>("");
     const [actualFruitCountInput, setActualFruitCountInput] = useState<number | string>("");
@@ -88,6 +94,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
 
     // KPIs
     const kpis = useMemo(() => {
+        const waitingConfirmation = items.filter((i) => i.status === "WAITING_CONFIRMATION").length;
         const waitingReceipt = items.filter((i) => i.status === "WAITING_RECEIPT").length;
         const waitingClassification = items.filter((i) => i.status === "WAITING_CLASSIFICATION" || (i.status === "RECEIVED" && i.direction === "UNCLASSIFIED")).length;
         const classified = items.filter((i) => i.status === "CLASSIFIED" || i.direction !== "UNCLASSIFIED").length;
@@ -103,8 +110,104 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
             })
             .reduce((sum, i) => sum + (i.actualReceivedWeight || 0), 0);
 
-        return { waitingReceipt, waitingClassification, classified, todayWeight };
+        return { waitingConfirmation, waitingReceipt, waitingClassification, classified, todayWeight };
     }, [items]);
+
+    // Handler: Open Confirm Modal
+    const handleOpenConfirm = (item: RawMaterialItem) => {
+        setConfirmingItem(item);
+        setConfirmNoteInput("Cơ sở Chế biến Sầu riêng Trị An xác nhận tiếp nhận nguồn nguyên liệu theo kế hoạch thu hoạch của Farm.");
+    };
+
+    // Handler: Confirm Harvest Ticket
+    const handleConfirmHarvest = async () => {
+        if (!confirmingItem) return;
+        const harvestId = confirmingItem.harvestId || confirmingItem.id.replace("harvest-", "");
+        setSubmittingConfirm(true);
+
+        try {
+            const res = await fetch(`/api/harvests/${harvestId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "CONFIRM",
+                    note: confirmNoteInput || "Cơ sở chế biến xác nhận phiếu thu hoạch.",
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || "Không thể xác nhận phiếu thu hoạch.");
+            }
+
+            toast({
+                title: "Xác nhận phiếu thành công",
+                description: `Đã xác nhận phiếu ${confirmingItem.code} từ ${confirmingItem.farmName}. Phiếu đã chuyển sang trạng thái Chờ tiếp nhận.`,
+                variant: "success",
+            });
+
+            setItems((prev) =>
+                prev.map((i) =>
+                    i.id === confirmingItem.id
+                        ? {
+                            ...i,
+                            status: "WAITING_RECEIPT",
+                            note: confirmNoteInput || i.note,
+                        }
+                        : i
+                )
+            );
+
+            setConfirmingItem(null);
+        } catch (err: any) {
+            toast({ title: "Lỗi xác nhận", description: err.message || "Có lỗi xảy ra.", variant: "destructive" });
+        } finally {
+            setSubmittingConfirm(false);
+        }
+    };
+
+    // Handler: Reject Harvest Ticket
+    const handleRejectHarvest = async () => {
+        if (!confirmingItem) return;
+        const reason = window.prompt("Vui lòng nhập lý do từ chối phiếu thu hoạch này:");
+        if (reason === null) return;
+        if (!reason.trim()) {
+            toast({ title: "Thiếu lý do", description: "Vui lòng nhập lý do từ chối.", variant: "destructive" });
+            return;
+        }
+
+        const harvestId = confirmingItem.harvestId || confirmingItem.id.replace("harvest-", "");
+        setSubmittingConfirm(true);
+
+        try {
+            const res = await fetch(`/api/harvests/${harvestId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "REJECT",
+                    reason: reason.trim(),
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || "Không thể từ chối phiếu thu hoạch.");
+            }
+
+            toast({
+                title: "Đã từ chối phiếu",
+                description: `Đã từ chối tiếp nhận phiếu ${confirmingItem.code}.`,
+                variant: "default",
+            });
+
+            setItems((prev) => prev.filter((i) => i.id !== confirmingItem.id));
+            setConfirmingItem(null);
+        } catch (err: any) {
+            toast({ title: "Lỗi từ chối", description: err.message || "Có lỗi xảy ra.", variant: "destructive" });
+        } finally {
+            setSubmittingConfirm(false);
+        }
+    };
 
     // Filter items
     const filteredItems = useMemo(() => {
@@ -126,6 +229,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                 }
             }
             if (statusFilter !== "ALL") {
+                if (statusFilter === "WAITING_CONFIRMATION" && item.status !== "WAITING_CONFIRMATION") return false;
                 if (statusFilter === "WAITING_RECEIPT" && item.status !== "WAITING_RECEIPT") return false;
                 if (statusFilter === "WAITING_CLASSIFICATION" && item.status !== "WAITING_CLASSIFICATION" && !(item.status === "RECEIVED" && item.direction === "UNCLASSIFIED")) return false;
                 if (statusFilter === "CLASSIFIED" && item.status !== "CLASSIFIED" && item.direction === "UNCLASSIFIED") return false;
@@ -427,7 +531,15 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                     </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                    <div className="rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4">
+                        <div className="flex items-center gap-2 text-indigo-700 text-xs font-bold uppercase tracking-wider">
+                            <ClipboardCheck className="h-4 w-4 shrink-0" />
+                            <span>Chờ xác nhận</span>
+                        </div>
+                        <p className="mt-2 text-2xl font-black text-indigo-900">{kpis.waitingConfirmation}</p>
+                    </div>
+
                     <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
                         <div className="flex items-center gap-2 text-amber-700 text-xs font-bold uppercase tracking-wider">
                             <Clock className="h-4 w-4 shrink-0" />
@@ -452,7 +564,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                         <p className="mt-2 text-2xl font-black text-emerald-900">{kpis.classified}</p>
                     </div>
 
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-600 text-white p-4 shadow-soft">
+                    <div className="col-span-2 sm:col-span-1 rounded-2xl border border-emerald-200 bg-emerald-600 text-white p-4 shadow-soft">
                         <div className="flex items-center gap-2 text-emerald-100 text-xs font-bold uppercase tracking-wider">
                             <Boxes className="h-4 w-4 shrink-0" />
                             <span>Tổng nhận hôm nay</span>
@@ -493,6 +605,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                             className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold focus:border-emerald-500 focus:bg-white focus:outline-none"
                         >
                             <option value="ALL">Tất cả trạng thái</option>
+                            <option value="WAITING_CONFIRMATION">Chờ xác nhận phiếu</option>
                             <option value="WAITING_RECEIPT">Chờ tiếp nhận</option>
                             <option value="WAITING_CLASSIFICATION">Chờ phân loại</option>
                             <option value="CLASSIFIED">Đã phân loại</option>
@@ -529,9 +642,10 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium">
                             {filteredItems.map((item) => {
+                                const isWaitingConfirmation = item.status === "WAITING_CONFIRMATION";
                                 const isWaitingReceipt = item.status === "WAITING_RECEIPT";
                                 const isClassified = item.status === "CLASSIFIED" || item.direction !== "UNCLASSIFIED";
-                                const isWaitingClassification = !isWaitingReceipt && !isClassified;
+                                const isWaitingClassification = !isWaitingConfirmation && !isWaitingReceipt && !isClassified;
 
                                 return (
                                     <tr key={item.id} className="h-14 hover:bg-slate-50/70 transition">
@@ -560,16 +674,24 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
 
                                         {/* Trạng thái */}
                                         <td className="px-5 py-3 text-center whitespace-nowrap">
-                                            {isWaitingReceipt ? (
-                                                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+                                            {isWaitingConfirmation ? (
+                                                <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">
+                                                    <ClipboardCheck className="h-3 w-3" />
+                                                    Chờ xác nhận
+                                                </span>
+                                            ) : isWaitingReceipt ? (
+                                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+                                                    <Clock className="h-3 w-3" />
                                                     Chờ tiếp nhận
                                                 </span>
                                             ) : isWaitingClassification ? (
-                                                <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-700">
+                                                <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-700">
+                                                    <SlidersHorizontal className="h-3 w-3" />
                                                     Chờ phân loại
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                                                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                                                    <CheckCircle2 className="h-3 w-3" />
                                                     Đã phân loại
                                                 </span>
                                             )}
@@ -577,7 +699,16 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
 
                                         {/* Thao tác */}
                                         <td className="px-5 py-3 text-right whitespace-nowrap">
-                                            {isWaitingReceipt ? (
+                                            {isWaitingConfirmation ? (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => handleOpenConfirm(item)}
+                                                    className="h-8 rounded-xl bg-indigo-600 text-xs font-bold text-white hover:bg-indigo-700 shadow-soft"
+                                                >
+                                                    <ClipboardCheck className="mr-1 h-3.5 w-3.5" />
+                                                    Xác nhận phiếu
+                                                </Button>
+                                            ) : isWaitingReceipt ? (
                                                 <Button
                                                     size="sm"
                                                     onClick={() => handleOpenReceive(item)}
@@ -621,6 +752,150 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                     </table>
                 </div>
             </div>
+
+            {/* MODAL XÁC NHẬN PHIẾU THU HOẠCH TỪ NÔNG DÂN (PORTAL TO BODY - FULL VIEWPORT OVERLAY) */}
+            {confirmingItem && (
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                        <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150">
+                            {/* Header */}
+                            <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 flex items-center gap-1.5">
+                                        <ClipboardCheck className="h-3.5 w-3.5" />
+                                        Tiếp nhận yêu cầu từ Nông dân
+                                    </span>
+                                    <h2 className="text-xl font-black text-slate-900">XÁC NHẬN PHIẾU THU HOẠCH</h2>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setConfirmingItem(null)}
+                                    className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            {/* Modal Body */}
+                            <div className="overflow-y-auto p-5 sm:p-6 space-y-5">
+                                {/* Thông tin chi tiết phiếu thu hoạch */}
+                                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-black uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
+                                            <FileText className="h-4 w-4 text-indigo-600" />
+                                            Thông tin kế hoạch thu hoạch & giao hàng
+                                        </span>
+                                        <span className="rounded-full bg-indigo-100 border border-indigo-300 px-2.5 py-0.5 text-[10px] font-bold text-indigo-800">
+                                            Chờ xác nhận
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
+                                            <span className="text-[10px] font-semibold text-slate-400 block">Mã phiếu</span>
+                                            <span className="font-mono font-bold text-slate-900">{confirmingItem.code}</span>
+                                        </div>
+                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
+                                            <span className="text-[10px] font-semibold text-slate-400 block">Farm / Nhà vườn</span>
+                                            <span className="font-bold text-slate-900 truncate block">{confirmingItem.farmName}</span>
+                                            {confirmingItem.regionCode && (
+                                                <span className="text-[10px] text-slate-500 font-mono">MSVT: {confirmingItem.regionCode}</span>
+                                            )}
+                                        </div>
+                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
+                                            <span className="text-[10px] font-semibold text-slate-400 block">Nông dân / SĐT</span>
+                                            <span className="font-semibold text-slate-800 truncate block">{confirmingItem.farmerName || "—"}</span>
+                                            <span className="text-[10px] text-slate-500 font-mono">{confirmingItem.farmerPhone || "—"}</span>
+                                        </div>
+                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
+                                            <span className="text-[10px] font-semibold text-slate-400 block">Giống sầu riêng</span>
+                                            <span className="font-bold text-emerald-800">{confirmingItem.variety}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3 pt-1">
+                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
+                                            <span className="text-[10px] font-semibold text-slate-400 block">Ngày dự kiến thu hoạch</span>
+                                            <span className="font-bold text-slate-800">
+                                                {confirmingItem.harvestDate
+                                                    ? new Date(confirmingItem.harvestDate).toLocaleDateString("vi-VN")
+                                                    : "—"}
+                                            </span>
+                                        </div>
+                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
+                                            <span className="text-[10px] font-semibold text-slate-400 block">Sản lượng dự kiến</span>
+                                            <span className="font-black text-indigo-700 text-sm">
+                                                {confirmingItem.declaredWeight.toLocaleString("vi-VN")} kg
+                                                {confirmingItem.declaredFruitCount ? ` (~${confirmingItem.declaredFruitCount} trái)` : ""}
+                                            </span>
+                                        </div>
+                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80 col-span-2 sm:col-span-1">
+                                            <span className="text-[10px] font-semibold text-slate-400 block">Đơn giá dự kiến / đề xuất</span>
+                                            <span className="font-bold text-amber-700">
+                                                {confirmingItem.expectedPricePerKg
+                                                    ? `${confirmingItem.expectedPricePerKg.toLocaleString("vi-VN")} đ/kg`
+                                                    : "Thương lượng khi nhập"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Ghi chú phản hồi xác nhận từ cơ sở chế biến */}
+                                <div className="space-y-2">
+                                    <label className="block text-xs font-bold text-slate-700">
+                                        Ghi chú xác nhận / Phản hồi cho nông hộ:
+                                    </label>
+                                    <textarea
+                                        rows={3}
+                                        value={confirmNoteInput}
+                                        onChange={(e) => setConfirmNoteInput(e.target.value)}
+                                        placeholder="Nhập ghi chú phản hồi, thời gian đón hàng hoặc hướng dẫn vận chuyển..."
+                                        className="w-full rounded-xl border border-slate-300 p-3 text-xs text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none ring-2 ring-indigo-500/10"
+                                    />
+                                    <p className="text-[11px] text-slate-500 italic">
+                                        Khi xác nhận, phiếu sẽ chuyển sang trạng thái <strong>Chờ tiếp nhận</strong> để xưởng tiến hành cân đo thực nhận và phân loại theo quy trình.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center justify-end gap-3 border-t border-slate-100 p-5 sm:p-6 bg-slate-50/50 rounded-b-3xl">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleRejectHarvest}
+                                    disabled={submittingConfirm}
+                                    className="rounded-2xl h-11 border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold"
+                                >
+                                    Từ chối phiếu
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setConfirmingItem(null)}
+                                    disabled={submittingConfirm}
+                                    className="rounded-2xl h-11 border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100"
+                                >
+                                    Đóng
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={handleConfirmHarvest}
+                                    disabled={submittingConfirm}
+                                    className="rounded-2xl h-11 bg-indigo-600 text-xs font-bold text-white hover:bg-indigo-700 shadow-soft px-5"
+                                >
+                                    {submittingConfirm ? (
+                                        <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                                    ) : (
+                                        <ClipboardCheck className="h-4 w-4 mr-1.5" />
+                                    )}
+                                    Xác nhận phiếu thu hoạch
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </ModalPortal>
+            )}
 
             {/* MODAL 1: TIẾP NHẬN HÀNG (PORTAL TO BODY - FULL VIEWPORT OVERLAY) */}
             {receivingItem && (

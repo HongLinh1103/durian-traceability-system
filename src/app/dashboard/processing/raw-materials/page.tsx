@@ -91,7 +91,7 @@ export default async function Page() {
                 actualFruitCount: h.actualFruitCount || declaredFruitCount,
                 weightDifference: h.receivedWeight ? Number(h.receivedWeight) - declaredWeight : 0,
                 receivedAt: h.buyerReceivedAt || null,
-                status: "WAITING_RECEIPT",
+                status: h.status === "WAITING_CONFIRMATION" ? "WAITING_CONFIRMATION" : "WAITING_RECEIPT",
                 direction: "UNCLASSIFIED",
             });
         });

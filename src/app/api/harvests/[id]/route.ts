@@ -16,9 +16,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (!session?.user?.id) return NextResponse.json({ success: false, message: "Chưa đăng nhập." }, { status: 401 });
     const body = await request.json();
     const action = String(body.action || "");
-    const record = await prisma.harvestRecord.findUnique({ where: { id: params.id }, include: { farm: true, harvestLot: true } });
+    const record = await prisma.harvestRecord.findUnique({ where: { id: params.id }, include: { farm: true, harvestLot: true, buyerFacility: true } });
     if (!record) return NextResponse.json({ success: false, message: "Không tìm thấy phiếu thu hoạch." }, { status: 404 });
-    const owns = session.user.role === "FARMER" ? record.farmerId === session.user.id : (record.buyerUserId === session.user.id || !record.buyerUserId);
+    const owns = session.user.role === "FARMER"
+        ? record.farmerId === session.user.id
+        : (record.buyerUserId === session.user.id || !record.buyerUserId || record.buyerFacility?.ownerId === session.user.id);
     if (!owns) return NextResponse.json({ success: false, message: "Bạn không có quyền xử lý phiếu này." }, { status: 403 });
     if (!transitions[session.user.role]?.[action]?.includes(record.status)) {
         return NextResponse.json({ success: false, message: `Không thể thực hiện '${action}' khi phiếu ở trạng thái '${record.status}'.` }, { status: 400 });
