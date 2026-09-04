@@ -194,45 +194,6 @@ export default async function Page() {
             });
         }
 
-        // If no records in database, provide realistic demo records for classified lots only
-        if (freshItems.length === 0 && processedItems.length === 0) {
-            const now = new Date();
-            const d3 = new Date(now.getTime() - 44 * 3600000);
-
-            // ONLY tickets in "Đã phân loại" (CLASSIFIED) appear here (demo-raw-003)
-            freshItems = [
-                {
-                    id: "demo-fp-001",
-                    code: "FP-FRESH-20260830-001",
-                    sourceRawCode: "TH-20260829-002",
-                    rawLotId: "demo-raw-003",
-                    farmName: "Vườn sầu riêng Minh Phát",
-                    inputWeight: 3100,
-                    fruitCount: 1030,
-                    outputWeight: 3100,
-                    packagingDate: d3,
-                    boxCount: 172,
-                    packagingSpec: "Thùng 5-6 trái / 18kg",
-                    status: "READY_FOR_EXPORT",
-                },
-            ];
-
-            processedItems = [
-                {
-                    id: "demo-pb-001",
-                    code: "PB-20260830-001",
-                    sourceRawCode: "TH-20260829-002",
-                    rawLotId: "demo-raw-003",
-                    farmName: "Vườn sầu riêng Minh Phát",
-                    method: "Bóc múi / Tách múi",
-                    inputWeight: 1020,
-                    fruitCount: 340,
-                    outputProduct: "Cơm sầu riêng bóc múi (Khay 500g)",
-                    outputWeight: 326,
-                    status: "COMPLETED",
-                },
-            ];
-        }
     } catch (err) {
         console.error("Error loading processing production page:", err);
     }

@@ -74,11 +74,21 @@ export function ProcessingProductionView({
             const lots: any[] = JSON.parse(raw);
             if (!Array.isArray(lots) || lots.length === 0) return;
 
+            const cleanedLots = lots.filter(
+                (lot) =>
+                    lot &&
+                    !String(lot.id).startsWith("demo-") &&
+                    !String(lot.code).includes("TH-DEMO-20260817-002")
+            );
+            if (cleanedLots.length !== lots.length) {
+                localStorage.setItem("processing_classified_lots", JSON.stringify(cleanedLots));
+            }
+
             setFreshItems((prev) => {
                 const existingLotIds = new Set(prev.map((i) => i.rawLotId || i.id));
                 const newFresh: FreshProductItem[] = [];
 
-                lots.forEach((lot) => {
+                cleanedLots.forEach((lot) => {
                     const freshW = Number(lot.freshExportWeight || 0);
                     if (freshW > 0 && !existingLotIds.has(lot.id)) {
                         newFresh.push({
@@ -105,7 +115,7 @@ export function ProcessingProductionView({
                 const existingLotIds = new Set(prev.map((i) => i.rawLotId || i.id));
                 const newProc: ProcessedBatchItem[] = [];
 
-                lots.forEach((lot) => {
+                cleanedLots.forEach((lot) => {
                     const procW = Number(lot.processingWeight || 0);
                     if (procW > 0 && !existingLotIds.has(lot.id)) {
                         newProc.push({

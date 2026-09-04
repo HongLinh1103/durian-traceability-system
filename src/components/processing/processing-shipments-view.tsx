@@ -407,9 +407,15 @@ export function ProcessingShipmentsView({
             const packaged: any[] = JSON.parse(raw);
             if (!Array.isArray(packaged) || packaged.length === 0) return;
 
-            // Purge ghost lots like FPL-20260826-001
+            // Purge ghost lots like FPL-20260826-001 or deleted demo / old harvest lots
             const cleaned = packaged.filter(
-                (p) => p && p.lotCode !== "FPL-20260826-001" && p.id !== "FPL-20260826-001"
+                (p) =>
+                    p &&
+                    p.lotCode !== "FPL-20260826-001" &&
+                    p.id !== "FPL-20260826-001" &&
+                    !String(p.id).startsWith("demo-") &&
+                    !String(p.lotCode).startsWith("demo-") &&
+                    !String(p.sourceRawCode).includes("TH-DEMO-20260817-002")
             );
             if (cleaned.length !== packaged.length) {
                 localStorage.setItem("processing_packaged_lots", JSON.stringify(cleaned));
@@ -417,7 +423,11 @@ export function ProcessingShipmentsView({
 
             setAvailableLots((prev) => {
                 const filteredPrev = prev.filter(
-                    (l) => l.lotCode !== "FPL-20260826-001" && l.id !== "FPL-20260826-001"
+                    (l) =>
+                        l.lotCode !== "FPL-20260826-001" &&
+                        l.id !== "FPL-20260826-001" &&
+                        !String(l.id).startsWith("demo-") &&
+                        !String(l.lotCode).startsWith("demo-")
                 );
                 const existingIds = new Set(filteredPrev.map((l) => l.id));
                 const existingCodes = new Set(filteredPrev.map((l) => l.lotCode));

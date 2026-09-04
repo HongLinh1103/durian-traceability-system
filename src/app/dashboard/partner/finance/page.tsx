@@ -264,8 +264,8 @@ export default async function Page() {
         };
     });
 
-    if (formattedSales.length === 0) {
-        formattedSales = facility.type === "PROCESSING_FACILITY" ? defaultProcessingSales : defaultCollectorSales;
+    if (formattedSales.length === 0 && facility.type !== "PROCESSING_FACILITY") {
+        formattedSales = defaultCollectorSales;
     }
 
     // 2. Process and normalize Operating Expenses & Payables
@@ -316,8 +316,8 @@ export default async function Page() {
         })),
     }));
 
-    if (!formattedExpenses.length) {
-        formattedExpenses = facility.type === "PROCESSING_FACILITY" ? defaultProcessingExpenses : defaultCollectorExpenses;
+    if (!formattedExpenses.length && facility.type !== "PROCESSING_FACILITY") {
+        formattedExpenses = defaultCollectorExpenses;
     }
 
     // Default harvest purchases matching the processing facility
@@ -398,10 +398,6 @@ export default async function Page() {
             date: (rec.completedAt ?? rec.buyerReceivedAt ?? rec.expectedHarvestDate).toISOString(),
         };
     });
-
-    if (formattedHarvestPurchases.length === 0 && facility.type === "PROCESSING_FACILITY") {
-        formattedHarvestPurchases = defaultProcessingPurchases;
-    }
 
     // 3. Recompute KPIs from normalized sales and expenses
     let totalRevenue = 0;
