@@ -124,7 +124,7 @@ export function ProcessingProductionView({
                             sourceRawCode: lot.code,
                             rawLotId: lot.id,
                             farmName: lot.farmName || "Vườn liên kết",
-                            method: "Bóc múi / Tách múi",
+                            method: "Bóc múi & cấp đông",
                             inputWeight: procW,
                             fruitCount: Number(lot.processingFruitCount) || (procW > 0 ? Math.round(procW / 3) : undefined),
                             outputProduct: "Cơm sầu riêng bóc múi",
@@ -235,7 +235,7 @@ export function ProcessingProductionView({
     // Processing batch drawer
     const [selectedProc, setSelectedProc] = useState<ProcessedBatchItem | null>(null);
     const [procProductName, setProcProductName] = useState("Cơm sầu riêng bóc múi");
-    const [procMethod, setProcMethod] = useState("Bóc múi / Tách múi");
+    const [procMethod, setProcMethod] = useState("Bóc múi & cấp đông");
     const [procOutputWeight, setProcOutputWeight] = useState<number | string>("");
     const [procDate, setProcDate] = useState(new Date().toISOString().slice(0, 10));
     const [procNote, setProcNote] = useState("");
@@ -341,7 +341,7 @@ export function ProcessingProductionView({
     // Handler: Open Processing Drawer
     const handleOpenProcDrawer = (item: ProcessedBatchItem) => {
         setSelectedProc(item);
-        setProcMethod(item.method || "Bóc múi / Tách múi");
+        setProcMethod(item.method || "Bóc múi & cấp đông");
         setProcProductName(item.outputProduct || "Cơm sầu riêng bóc múi");
         setProcOutputWeight(item.outputWeight || Math.round(item.inputWeight * 0.32));
         setProcDate(new Date().toISOString().slice(0, 10));
@@ -660,11 +660,11 @@ export function ProcessingProductionView({
 
                                             {/* Hướng xử lý */}
                                             <td className="px-5 py-3 whitespace-nowrap text-xs font-bold text-indigo-800">
-                                                {item.method === "PEELING"
-                                                    ? "Bóc múi / Tách múi"
-                                                    : item.method === "FREEZING"
-                                                        ? "Cơm sầu đông lạnh IQF"
-                                                        : item.method || "Bóc múi / Tách múi"}
+                                                {item.method === "PEELING" || item.method === "Bóc múi / Tách múi"
+                                                    ? "Bóc múi & cấp đông"
+                                                    : item.method === "FREEZING" || item.method === "Cơm sầu đông lạnh IQF"
+                                                        ? "Cấp đông nguyên trái"
+                                                        : item.method || "Bóc múi & cấp đông"}
                                             </td>
 
                                             {/* KL đầu vào */}
@@ -711,7 +711,7 @@ export function ProcessingProductionView({
                                                         : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-soft"
                                                         }`}
                                                 >
-                                                    {isDone ? "Chi tiết / Sửa" : "Ghi nhận mẻ"}
+                                                    {isDone ? "Chi tiết / Sửa" : "Chế biến"}
                                                 </Button>
                                             </td>
                                         </tr>
@@ -865,7 +865,7 @@ export function ProcessingProductionView({
                             <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
                                 <div>
                                     <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700">Chế biến sâu</span>
-                                    <h2 className="text-xl font-black text-slate-900">MẺ CHẾ BIẾN</h2>
+                                    <h2 className="text-xl font-black text-slate-900">CHẾ BIẾN SẢN PHẨM LÔ CHẾ BIẾN</h2>
                                 </div>
                                 <button
                                     type="button"
@@ -929,10 +929,10 @@ export function ProcessingProductionView({
                                                 onChange={(e) => setProcMethod(e.target.value)}
                                                 className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-indigo-500 focus:outline-none"
                                             >
-                                                <option value="Bóc múi / Tách múi">Bóc múi / Tách múi</option>
-                                                <option value="Cấp đông nhanh (IQF)">Cấp đông nhanh (IQF)</option>
-                                                <option value="Sấy thăng hoa (Freeze Drying)">Sấy thăng hoa (Freeze Drying)</option>
-                                                <option value="Chế biến sâu khác">Chế biến sâu khác</option>
+                                                <option value="Bóc múi & cấp đông">Bóc múi & cấp đông</option>
+                                                <option value="Cấp đông nguyên trái">Cấp đông nguyên trái</option>
+                                                <option value="Sấy thăng hoa">Sấy thăng hoa</option>
+                                                <option value="Chế biến khác">Chế biến khác</option>
                                             </select>
                                         </div>
                                     </div>
