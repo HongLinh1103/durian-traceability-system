@@ -260,7 +260,7 @@ export function ProcessingProductionView({
         setFreshOutputWeight(w);
         setFreshBoxCount(item.boxCount || Math.max(1, Math.round(w / 18)));
         setFreshPackagingSpec(item.packagingSpec || "Thùng 5-6 trái / 18kg");
-        setFreshCompleteDate(getLocalDateTimeString(item.packagingDate));
+        setFreshCompleteDate(getLocalDateTimeString(item.status === "READY_FOR_EXPORT" && item.packagingDate ? item.packagingDate : new Date()));
         setFreshNote("");
     };
 
@@ -356,7 +356,7 @@ export function ProcessingProductionView({
         setProcMethod(item.method || "Bóc múi & cấp đông");
         setProcProductName(item.outputProduct || "Cơm sầu riêng bóc múi");
         setProcOutputWeight(item.outputWeight || Math.round(item.inputWeight * 0.32));
-        setProcDate(getLocalDateTimeString(item.completedAt));
+        setProcDate(getLocalDateTimeString(item.status === "COMPLETED" && item.completedAt ? item.completedAt : new Date()));
         setProcNote("");
     };
 
@@ -809,6 +809,17 @@ export function ProcessingProductionView({
 
                             {/* Body */}
                             <div className="overflow-y-auto p-5 sm:p-6 space-y-4">
+                                {/* Thời gian hoàn tất (Tự động) */}
+                                <div className="flex items-center justify-between rounded-2xl bg-emerald-50 border border-emerald-200/80 px-4 py-3 text-xs">
+                                    <span className="flex items-center gap-2 font-bold text-emerald-800">
+                                        <Clock className="h-4 w-4 text-emerald-600" />
+                                        Thời gian hoàn tất:
+                                    </span>
+                                    <span className="font-mono font-black text-emerald-950 text-xs sm:text-sm">
+                                        {formatVietnameseDateTime(freshCompleteDate)}
+                                    </span>
+                                </div>
+
                                 <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700 border border-slate-200">
                                     <p className="flex justify-between">
                                         <span className="text-slate-500">Mã lô nguồn:</span>
@@ -863,27 +874,6 @@ export function ProcessingProductionView({
                                             placeholder="Ví dụ: Thùng 5-6 trái / 18kg"
                                             className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
                                         />
-                                    </div>
-
-                                    <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <label className="block text-xs font-bold text-slate-700">
-                                                Ngày giờ hoàn tất <span className="text-rose-500">*</span>
-                                            </label>
-                                            <span className="text-[10px] font-medium text-slate-400 font-mono">dd/MM/yyyy HH:mm</span>
-                                        </div>
-                                        <input
-                                            type="datetime-local"
-                                            value={freshCompleteDate}
-                                            onChange={(e) => setFreshCompleteDate(e.target.value)}
-                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-semibold text-slate-900 focus:border-emerald-500 focus:outline-none"
-                                        />
-                                        {freshCompleteDate && (
-                                            <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
-                                                <Clock className="h-3.5 w-3.5 text-emerald-600" />
-                                                <span>Hoàn tất lúc: {formatVietnameseDateTime(freshCompleteDate)}</span>
-                                            </p>
-                                        )}
                                     </div>
 
                                     <div>
@@ -944,6 +934,17 @@ export function ProcessingProductionView({
 
                             {/* Body */}
                             <div className="overflow-y-auto p-5 sm:p-6 space-y-4">
+                                {/* Thời gian hoàn tất (Tự động) */}
+                                <div className="flex items-center justify-between rounded-2xl bg-indigo-50 border border-indigo-200/80 px-4 py-3 text-xs">
+                                    <span className="flex items-center gap-2 font-bold text-indigo-800">
+                                        <Clock className="h-4 w-4 text-indigo-600" />
+                                        Thời gian hoàn tất:
+                                    </span>
+                                    <span className="font-mono font-black text-indigo-950 text-xs sm:text-sm">
+                                        {formatVietnameseDateTime(procDate)}
+                                    </span>
+                                </div>
+
                                 <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700 border border-slate-200">
                                     <p className="flex justify-between">
                                         <span className="text-slate-500">Mã lô nguồn:</span>
@@ -1001,27 +1002,6 @@ export function ProcessingProductionView({
                                                 <option value="Chế biến khác">Chế biến khác</option>
                                             </select>
                                         </div>
-                                    </div>
-
-                                    <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <label className="block text-xs font-bold text-slate-700">
-                                                Ngày giờ hoàn tất chế biến <span className="text-rose-500">*</span>
-                                            </label>
-                                            <span className="text-[10px] font-medium text-slate-400 font-mono">dd/MM/yyyy HH:mm</span>
-                                        </div>
-                                        <input
-                                            type="datetime-local"
-                                            value={procDate}
-                                            onChange={(e) => setProcDate(e.target.value)}
-                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-semibold text-slate-900 focus:border-indigo-500 focus:outline-none"
-                                        />
-                                        {procDate && (
-                                            <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-indigo-700">
-                                                <Clock className="h-3.5 w-3.5 text-indigo-600" />
-                                                <span>Hoàn tất lúc: {formatVietnameseDateTime(procDate)}</span>
-                                            </p>
-                                        )}
                                     </div>
 
                                     <div>
