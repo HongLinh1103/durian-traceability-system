@@ -239,14 +239,14 @@ export function ProcessingProductionView({
     const [selectedFresh, setSelectedFresh] = useState<FreshProductItem | null>(null);
     const [freshOutputWeight, setFreshOutputWeight] = useState<number | string>("");
     const [freshBoxCount, setFreshBoxCount] = useState<number | string>("");
-    const [freshPackagingSpec, setFreshPackagingSpec] = useState("Thùng 5-6 trái / 18kg");
+    const [freshPackagingSpec, setFreshPackagingSpec] = useState("");
     const [freshCompleteDate, setFreshCompleteDate] = useState(() => getLocalDateTimeString());
     const [freshNote, setFreshNote] = useState("");
     const [submittingFresh, setSubmittingFresh] = useState(false);
 
     // Processing batch drawer
     const [selectedProc, setSelectedProc] = useState<ProcessedBatchItem | null>(null);
-    const [procProductName, setProcProductName] = useState("Cơm sầu riêng bóc múi");
+    const [procProductName, setProcProductName] = useState("");
     const [procMethod, setProcMethod] = useState("Bóc múi & cấp đông");
     const [procOutputWeight, setProcOutputWeight] = useState<number | string>("");
     const [procDate, setProcDate] = useState(() => getLocalDateTimeString());
@@ -259,7 +259,7 @@ export function ProcessingProductionView({
         const isDone = item.status === "READY_FOR_EXPORT";
         setFreshOutputWeight(isDone && item.outputWeight ? item.outputWeight : "");
         setFreshBoxCount(isDone && item.boxCount ? item.boxCount : "");
-        setFreshPackagingSpec(item.packagingSpec || "Thùng 5-6 trái / 18kg");
+        setFreshPackagingSpec(isDone && item.packagingSpec ? item.packagingSpec : "");
         setFreshCompleteDate(getLocalDateTimeString(isDone && item.packagingDate ? item.packagingDate : new Date()));
         setFreshNote("");
     };
@@ -355,7 +355,7 @@ export function ProcessingProductionView({
         setSelectedProc(item);
         const isDone = item.status === "COMPLETED";
         setProcMethod(item.method || "Bóc múi & cấp đông");
-        setProcProductName(item.outputProduct || "Cơm sầu riêng bóc múi");
+        setProcProductName(isDone && item.outputProduct ? item.outputProduct : "");
         setProcOutputWeight(isDone && item.outputWeight ? item.outputWeight : "");
         setProcDate(getLocalDateTimeString(isDone && item.completedAt ? item.completedAt : new Date()));
         setProcNote("");
@@ -364,6 +364,10 @@ export function ProcessingProductionView({
     // Handler: Confirm Processing Batch
     const handleConfirmProcBatch = async () => {
         if (!selectedProc) return;
+        if (!procProductName.trim()) {
+            toast({ title: "Thiếu thông tin", description: "Vui lòng nhập tên thành phẩm sau chế biến.", variant: "destructive" });
+            return;
+        }
         const outW = Number(procOutputWeight);
         if (!outW || outW <= 0) {
             toast({ title: "Khối lượng không hợp lệ", description: "Vui lòng nhập khối lượng thành phẩm.", variant: "destructive" });
