@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 const transitions: Record<string, Record<string, string[]>> = {
     COLLECTOR: { CONFIRM: ["WAITING_CONFIRMATION"], REJECT: ["WAITING_CONFIRMATION"], RECEIVE: ["DELIVERY_CONFIRMED", "HARVESTED"] },
-    PROCESSING_FACILITY: { CONFIRM: ["WAITING_CONFIRMATION"], REJECT: ["WAITING_CONFIRMATION"], RECEIVE: ["DELIVERY_CONFIRMED", "HARVESTED", "CONFIRMED"] },
+    PROCESSING_FACILITY: { CONFIRM: ["WAITING_CONFIRMATION"], REJECT: ["WAITING_CONFIRMATION"], RECEIVE: ["DELIVERY_CONFIRMED", "HARVESTED", "CONFIRMED", "COMPLETED"] },
     FARMER: { START: ["CONFIRMED", "DRAFT"], FINISH: ["HARVESTING"], DELIVER: ["HARVESTED"] },
 };
 const targets: Record<string, HarvestStatus> = { CONFIRM: "CONFIRMED", REJECT: "REJECTED", START: "HARVESTING", FINISH: "HARVESTED", DELIVER: "DELIVERY_CONFIRMED", RECEIVE: "COMPLETED" };
@@ -16,7 +16,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (!session?.user?.id) return NextResponse.json({ success: false, message: "Chưa đăng nhập." }, { status: 401 });
     const body = await request.json();
     const action = String(body.action || "");
-    const record = await prisma.harvestRecord.findUnique({ where: { id: params.id }, include: { farm: true, harvestLot: true, buyerFacility: true } });
+    const record = await prisma.harvestRecord.findFirst({
+        where: { OR: [{ id: params.id }, { code: params.id }] },
+        include: { farm: true, harvestLot: true, buyerFacility: true },
+    });
     if (!record) return NextResponse.json({ success: false, message: "Không tìm thấy phiếu thu hoạch." }, { status: 404 });
     const owns = session.user.role === "FARMER"
         ? record.farmerId === session.user.id
