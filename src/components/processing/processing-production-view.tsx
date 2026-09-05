@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ModalPortal } from "@/components/ui/modal-portal";
+import { formatVietnameseDateTime } from "@/lib/date-format";
 
 export type FreshProductItem = {
     id: string;
@@ -48,6 +49,7 @@ export type ProcessedBatchItem = {
     fruitCount?: number;
     outputProduct?: string;
     outputWeight?: number;
+    completedAt?: string | Date | null;
     status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "NOT_READY_FOR_EXPORT";
 };
 
@@ -223,12 +225,22 @@ export function ProcessingProductionView({
         } catch { }
     }, [freshItems, processedItems]);
 
+    // Helper for datetime-local strings
+    const getLocalDateTimeString = (dateInput?: Date | string | null) => {
+        const d = dateInput ? new Date(dateInput) : new Date();
+        if (Number.isNaN(d.getTime())) {
+            const now = new Date();
+            return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        }
+        return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    };
+
     // Fresh packaging drawer
     const [selectedFresh, setSelectedFresh] = useState<FreshProductItem | null>(null);
     const [freshOutputWeight, setFreshOutputWeight] = useState<number | string>("");
     const [freshBoxCount, setFreshBoxCount] = useState<number | string>("");
     const [freshPackagingSpec, setFreshPackagingSpec] = useState("Thùng 5-6 trái / 18kg");
-    const [freshCompleteDate, setFreshCompleteDate] = useState(new Date().toISOString().slice(0, 10));
+    const [freshCompleteDate, setFreshCompleteDate] = useState(() => getLocalDateTimeString());
     const [freshNote, setFreshNote] = useState("");
     const [submittingFresh, setSubmittingFresh] = useState(false);
 
@@ -237,7 +249,7 @@ export function ProcessingProductionView({
     const [procProductName, setProcProductName] = useState("Cơm sầu riêng bóc múi");
     const [procMethod, setProcMethod] = useState("Bóc múi & cấp đông");
     const [procOutputWeight, setProcOutputWeight] = useState<number | string>("");
-    const [procDate, setProcDate] = useState(new Date().toISOString().slice(0, 10));
+    const [procDate, setProcDate] = useState(() => getLocalDateTimeString());
     const [procNote, setProcNote] = useState("");
     const [submittingProc, setSubmittingProc] = useState(false);
 
@@ -248,7 +260,7 @@ export function ProcessingProductionView({
         setFreshOutputWeight(w);
         setFreshBoxCount(item.boxCount || Math.max(1, Math.round(w / 18)));
         setFreshPackagingSpec(item.packagingSpec || "Thùng 5-6 trái / 18kg");
-        setFreshCompleteDate(new Date().toISOString().slice(0, 10));
+        setFreshCompleteDate(getLocalDateTimeString(item.packagingDate));
         setFreshNote("");
     };
 
@@ -344,7 +356,7 @@ export function ProcessingProductionView({
         setProcMethod(item.method || "Bóc múi & cấp đông");
         setProcProductName(item.outputProduct || "Cơm sầu riêng bóc múi");
         setProcOutputWeight(item.outputWeight || Math.round(item.inputWeight * 0.32));
-        setProcDate(new Date().toISOString().slice(0, 10));
+        setProcDate(getLocalDateTimeString(item.completedAt));
         setProcNote("");
     };
 
@@ -396,6 +408,7 @@ export function ProcessingProductionView({
                             outputProduct: procProductName,
                             outputWeight: outW,
                             method: procMethod,
+                            completedAt: procDate,
                             status: "COMPLETED",
                         }
                         : item
@@ -527,6 +540,7 @@ export function ProcessingProductionView({
                                     <th className="px-5 py-4 whitespace-nowrap text-right">KL đầu vào</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-right">KL thành phẩm</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-center">Số thùng</th>
+                                    <th className="px-5 py-4 whitespace-nowrap text-center">Hoàn tất lúc</th>
                                     <th className="px-5 py-4 text-center whitespace-nowrap">Trạng thái</th>
                                     <th className="px-5 py-4 text-right whitespace-nowrap">Thao tác</th>
                                 </tr>
@@ -577,6 +591,18 @@ export function ProcessingProductionView({
                                                 {isReady && item.boxCount ? `${item.boxCount} thùng` : "-"}
                                             </td>
 
+                                            {/* Hoàn tất lúc */}
+                                            <td className="px-5 py-3 text-center whitespace-nowrap text-xs font-semibold text-slate-700">
+                                                {isReady && item.packagingDate ? (
+                                                    <span className="inline-flex items-center gap-1 font-mono font-medium text-slate-800">
+                                                        <Clock className="h-3.5 w-3.5 text-slate-400" />
+                                                        {formatVietnameseDateTime(item.packagingDate)}
+                                                    </span>
+                                                ) : (
+                                                    "-"
+                                                )}
+                                            </td>
+
                                             {/* Trạng thái */}
                                             <td className="px-5 py-3 text-center whitespace-nowrap">
                                                 {isReady ? (
@@ -619,7 +645,7 @@ export function ProcessingProductionView({
 
                                 {filteredFresh.length === 0 && (
                                     <tr>
-                                        <td colSpan={7} className="py-12 text-center text-xs text-slate-400">
+                                        <td colSpan={8} className="py-12 text-center text-xs text-slate-400">
                                             Chưa có lô trái tươi xuất khẩu nào. Vui lòng phân loại lô ở bước Tiếp nhận & Phân loại.
                                         </td>
                                     </tr>
@@ -642,6 +668,7 @@ export function ProcessingProductionView({
                                     <th className="px-5 py-4 whitespace-nowrap">Hướng xử lý</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-right">KL đầu vào</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-right">Thành phẩm thu được</th>
+                                    <th className="px-5 py-4 whitespace-nowrap text-center">Hoàn tất lúc</th>
                                     <th className="px-5 py-4 text-center whitespace-nowrap">Trạng thái</th>
                                     <th className="px-5 py-4 text-right whitespace-nowrap">Thao tác</th>
                                 </tr>
@@ -700,6 +727,18 @@ export function ProcessingProductionView({
                                                 )}
                                             </td>
 
+                                            {/* Hoàn tất lúc */}
+                                            <td className="px-5 py-3 text-center whitespace-nowrap text-xs font-semibold text-slate-700">
+                                                {isDone && item.completedAt ? (
+                                                    <span className="inline-flex items-center gap-1 font-mono font-medium text-slate-800">
+                                                        <Clock className="h-3.5 w-3.5 text-slate-400" />
+                                                        {formatVietnameseDateTime(item.completedAt)}
+                                                    </span>
+                                                ) : (
+                                                    "-"
+                                                )}
+                                            </td>
+
                                             {/* Trạng thái */}
                                             <td className="px-5 py-3 text-center whitespace-nowrap">
                                                 {isDone ? (
@@ -738,7 +777,7 @@ export function ProcessingProductionView({
 
                                 {filteredProc.length === 0 && (
                                     <tr>
-                                        <td colSpan={7} className="py-12 text-center text-xs text-slate-400">
+                                        <td colSpan={8} className="py-12 text-center text-xs text-slate-400">
                                             Chưa có lô chuyển chế biến nào. Vui lòng phân loại lô ở bước Tiếp nhận & Phân loại.
                                         </td>
                                     </tr>
@@ -827,13 +866,24 @@ export function ProcessingProductionView({
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-700 mb-1">Ngày hoàn tất</label>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="block text-xs font-bold text-slate-700">
+                                                Ngày giờ hoàn tất <span className="text-rose-500">*</span>
+                                            </label>
+                                            <span className="text-[10px] font-medium text-slate-400 font-mono">dd/MM/yyyy HH:mm</span>
+                                        </div>
                                         <input
-                                            type="date"
+                                            type="datetime-local"
                                             value={freshCompleteDate}
                                             onChange={(e) => setFreshCompleteDate(e.target.value)}
-                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-semibold text-slate-900 focus:border-emerald-500 focus:outline-none"
                                         />
+                                        {freshCompleteDate && (
+                                            <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
+                                                <Clock className="h-3.5 w-3.5 text-emerald-600" />
+                                                <span>Hoàn tất lúc: {formatVietnameseDateTime(freshCompleteDate)}</span>
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div>
@@ -954,13 +1004,24 @@ export function ProcessingProductionView({
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-700 mb-1">Ngày sản xuất</label>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="block text-xs font-bold text-slate-700">
+                                                Ngày giờ hoàn tất chế biến <span className="text-rose-500">*</span>
+                                            </label>
+                                            <span className="text-[10px] font-medium text-slate-400 font-mono">dd/MM/yyyy HH:mm</span>
+                                        </div>
                                         <input
-                                            type="date"
+                                            type="datetime-local"
                                             value={procDate}
                                             onChange={(e) => setProcDate(e.target.value)}
-                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-indigo-500 focus:outline-none"
+                                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-semibold text-slate-900 focus:border-indigo-500 focus:outline-none"
                                         />
+                                        {procDate && (
+                                            <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-indigo-700">
+                                                <Clock className="h-3.5 w-3.5 text-indigo-600" />
+                                                <span>Hoàn tất lúc: {formatVietnameseDateTime(procDate)}</span>
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div>

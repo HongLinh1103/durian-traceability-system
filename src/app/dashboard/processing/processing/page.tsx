@@ -167,6 +167,7 @@ export default async function Page() {
                     inputWeight: inW,
                     outputProduct: lot.productName || "Cơm sầu riêng bóc múi",
                     outputWeight: outW,
+                    completedAt: lot.manufacturedAt || lot.createdAt,
                     status: isReady ? "COMPLETED" : "NOT_READY_FOR_EXPORT",
                 });
             });
@@ -189,6 +190,7 @@ export default async function Page() {
                     inputWeight: inputW,
                     outputProduct: batch?.targetProduct,
                     outputWeight: batch ? Number(batch.totalOutputWeight || 0) : undefined,
+                    completedAt: batch?.completedAt || (batch?.status === "COMPLETED" ? batch.updatedAt : undefined),
                     status: batch ? "IN_PROGRESS" : "PENDING",
                 });
             });
