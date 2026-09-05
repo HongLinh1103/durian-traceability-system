@@ -739,8 +739,7 @@ export function ProcessingProductionView({
                             {/* Header */}
                             <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
                                 <div>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Đóng gói thành phẩm</span>
-                                    <h2 className="text-xl font-black text-slate-900">HOÀN TẤT ĐÓNG GÓI</h2>
+                                    <h2 className="text-xl font-black text-slate-900">ĐÓNG GÓI LÔ THÀNH PHẨM</h2>
                                 </div>
                                 <button
                                     type="button"
