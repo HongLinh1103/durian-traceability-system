@@ -43,7 +43,7 @@ export type ProcessedBatchItem = {
     sourceRawCode: string;
     rawLotId: string;
     farmName: string;
-    method: "PEELING" | "FREEZING" | "FURTHER_PROCESSING" | string;
+    method?: "PEELING" | "FREEZING" | "FURTHER_PROCESSING" | string;
     inputWeight: number;
     fruitCount?: number;
     outputProduct?: string;
@@ -99,9 +99,9 @@ export function ProcessingProductionView({
                             farmName: lot.farmName || "Vườn liên kết",
                             inputWeight: freshW,
                             fruitCount: Number(lot.freshExportFruitCount) || (freshW > 0 ? Math.round(freshW / 3) : undefined),
-                            outputWeight: freshW,
+                            outputWeight: undefined,
                             packagingDate: lot.classifiedAt || new Date().toISOString().slice(0, 10),
-                            boxCount: Math.round(freshW / 18) || 1,
+                            boxCount: undefined,
                             packagingSpec: "Thùng 5-6 trái / 18kg",
                             status: "PENDING_PACKAGING",
                         });
@@ -124,10 +124,10 @@ export function ProcessingProductionView({
                             sourceRawCode: lot.code,
                             rawLotId: lot.id,
                             farmName: lot.farmName || "Vườn liên kết",
-                            method: "Bóc múi & cấp đông",
+                            method: undefined,
                             inputWeight: procW,
                             fruitCount: Number(lot.processingFruitCount) || (procW > 0 ? Math.round(procW / 3) : undefined),
-                            outputProduct: "Cơm sầu riêng bóc múi",
+                            outputProduct: undefined,
                             status: "PENDING",
                         });
                     }
@@ -562,13 +562,19 @@ export function ProcessingProductionView({
                                             </td>
 
                                             {/* KL thành phẩm */}
-                                            <td className="px-5 py-3 whitespace-nowrap text-right font-black text-emerald-700 text-xs sm:text-sm">
-                                                {(item.outputWeight || item.inputWeight).toLocaleString("vi-VN")} kg
+                                            <td className="px-5 py-3 whitespace-nowrap text-right font-bold text-slate-700 text-xs sm:text-sm">
+                                                {isReady && item.outputWeight ? (
+                                                    <span className="font-black text-emerald-700">
+                                                        {item.outputWeight.toLocaleString("vi-VN")} kg
+                                                    </span>
+                                                ) : (
+                                                    "-"
+                                                )}
                                             </td>
 
                                             {/* Số thùng */}
                                             <td className="px-5 py-3 text-center whitespace-nowrap font-bold text-slate-700 text-xs">
-                                                {item.boxCount ? `${item.boxCount} thùng` : "—"}
+                                                {isReady && item.boxCount ? `${item.boxCount} thùng` : "-"}
                                             </td>
 
                                             {/* Trạng thái */}
@@ -659,12 +665,18 @@ export function ProcessingProductionView({
                                             </td>
 
                                             {/* Hướng xử lý */}
-                                            <td className="px-5 py-3 whitespace-nowrap text-xs font-bold text-indigo-800">
-                                                {item.method === "PEELING" || item.method === "Bóc múi / Tách múi"
-                                                    ? "Bóc múi & cấp đông"
-                                                    : item.method === "FREEZING" || item.method === "Cơm sầu đông lạnh IQF"
-                                                        ? "Cấp đông nguyên trái"
-                                                        : item.method || "Bóc múi & cấp đông"}
+                                            <td className="px-5 py-3 whitespace-nowrap text-xs font-bold text-slate-700">
+                                                {isDone ? (
+                                                    <span className="text-indigo-800">
+                                                        {item.method === "PEELING" || item.method === "Bóc múi / Tách múi"
+                                                            ? "Bóc múi & cấp đông"
+                                                            : item.method === "FREEZING" || item.method === "Cơm sầu đông lạnh IQF"
+                                                                ? "Cấp đông nguyên trái"
+                                                                : item.method || "Bóc múi & cấp đông"}
+                                                    </span>
+                                                ) : (
+                                                    "-"
+                                                )}
                                             </td>
 
                                             {/* KL đầu vào */}
@@ -678,8 +690,14 @@ export function ProcessingProductionView({
                                             </td>
 
                                             {/* Thành phẩm thu được */}
-                                            <td className="px-5 py-3 whitespace-nowrap text-right font-black text-emerald-700 text-xs sm:text-sm">
-                                                {item.outputWeight ? `${item.outputWeight.toLocaleString("vi-VN")} kg (${item.outputProduct || "Cơm sầu"})` : "—"}
+                                            <td className="px-5 py-3 whitespace-nowrap text-right font-bold text-slate-700 text-xs sm:text-sm">
+                                                {isDone && item.outputWeight ? (
+                                                    <span className="font-black text-emerald-700">
+                                                        {item.outputWeight.toLocaleString("vi-VN")} kg ({item.outputProduct || "Cơm sầu"})
+                                                    </span>
+                                                ) : (
+                                                    "-"
+                                                )}
                                             </td>
 
                                             {/* Trạng thái */}
@@ -863,7 +881,6 @@ export function ProcessingProductionView({
                             {/* Header */}
                             <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
                                 <div>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700">Chế biến sâu</span>
                                     <h2 className="text-xl font-black text-slate-900">CHẾ BIẾN SẢN PHẨM LÔ CHẾ BIẾN</h2>
                                 </div>
                                 <button

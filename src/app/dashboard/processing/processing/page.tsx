@@ -133,9 +133,9 @@ export default async function Page() {
                     rawLotId: raw.id,
                     farmName: farm?.farmName || "Vườn liên kết",
                     inputWeight: freshW,
-                    outputWeight: freshW,
+                    outputWeight: undefined,
                     packagingDate: raw.classifiedAt || raw.createdAt,
-                    boxCount: Math.round(freshW / 18) || 1,
+                    boxCount: undefined,
                     packagingSpec: "Thùng 5-6 trái / 18kg",
                     status: "PENDING_PACKAGING",
                 });
@@ -185,9 +185,9 @@ export default async function Page() {
                     sourceRawCode: raw.lotCode || hr?.code || "NVL-001",
                     rawLotId: raw.id,
                     farmName: farm?.farmName || "Vườn liên kết",
-                    method: batch?.method || "Bóc múi & cấp đông",
+                    method: batch?.method,
                     inputWeight: inputW,
-                    outputProduct: batch?.targetProduct || "Cơm sầu riêng bóc múi",
+                    outputProduct: batch?.targetProduct,
                     outputWeight: batch ? Number(batch.totalOutputWeight || 0) : undefined,
                     status: batch ? "IN_PROGRESS" : "PENDING",
                 });
