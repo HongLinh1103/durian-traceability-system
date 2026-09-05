@@ -771,39 +771,24 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                                         <Scale className="mr-1 h-3.5 w-3.5" />
                                                         Tiếp nhận
                                                     </Button>
+                                                ) : isWaitingClassification ? (
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleOpenClassify(item)}
+                                                        className="h-8 rounded-xl bg-sky-600 text-xs font-bold text-white hover:bg-sky-700 shadow-soft"
+                                                    >
+                                                        <SlidersHorizontal className="mr-1 h-3.5 w-3.5" />
+                                                        Phân loại
+                                                    </Button>
                                                 ) : (
-                                                    <>
-                                                        <Button
-                                                            size="sm"
-                                                            onClick={() => handleOpenReceive(item)}
-                                                            variant="outline"
-                                                            className="h-8 rounded-xl border-emerald-300 bg-emerald-50/70 text-xs font-bold text-emerald-800 hover:bg-emerald-100"
-                                                            title="Xem và cập nhật thông tin tiếp nhận cân thực tế"
-                                                        >
-                                                            <Scale className="mr-1 h-3.5 w-3.5 text-emerald-700" />
-                                                            Phiếu tiếp nhận
-                                                        </Button>
-
-                                                        {isWaitingClassification ? (
-                                                            <Button
-                                                                size="sm"
-                                                                onClick={() => handleOpenClassify(item)}
-                                                                className="h-8 rounded-xl bg-sky-600 text-xs font-bold text-white hover:bg-sky-700 shadow-soft"
-                                                            >
-                                                                <SlidersHorizontal className="mr-1 h-3.5 w-3.5" />
-                                                                Phân loại
-                                                            </Button>
-                                                        ) : (
-                                                            <Button
-                                                                size="sm"
-                                                                onClick={() => handleOpenClassify(item)}
-                                                                variant="outline"
-                                                                className="h-8 rounded-xl border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                                                            >
-                                                                Xem / Đổi phân loại
-                                                            </Button>
-                                                        )}
-                                                    </>
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleOpenClassify(item)}
+                                                        variant="outline"
+                                                        className="h-8 rounded-xl border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                                                    >
+                                                        Xem / Đổi phân loại
+                                                    </Button>
                                                 )}
                                             </div>
                                         </td>
@@ -1315,43 +1300,6 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                     </div>
                                 </div>
 
-                                {/* BẢNG KIỂM TRA TỔNG (VALIDATION BOX) */}
-                                <div className={`rounded-2xl p-4 border transition ${classificationValidation.isValid ? "border-emerald-300 bg-emerald-50/70" : "border-rose-300 bg-rose-50/70"}`}>
-                                    <div className="space-y-2 text-xs">
-                                        {/* Khối lượng */}
-                                        <div className="flex justify-between items-center font-medium">
-                                            <span className="text-slate-600">Khối lượng:</span>
-                                            <span className="font-mono">
-                                                Tổng 3 phần: <strong className={classificationValidation.isWeightValid ? "text-emerald-700" : "text-rose-700"}>{classificationValidation.currentSum.toLocaleString("vi-VN")} kg</strong> / Thực nhận: <strong>{classificationValidation.totalInput.toLocaleString("vi-VN")} kg</strong>
-                                            </span>
-                                        </div>
-
-                                        {/* Số lượng trái */}
-                                        <div className="flex justify-between items-center font-medium border-t border-slate-200/60 pt-1.5">
-                                            <span className="text-slate-600">Số lượng trái:</span>
-                                            <span className="font-mono">
-                                                Tổng 3 phần: <strong className={classificationValidation.isFruitValid ? "text-emerald-700" : "text-rose-700"}>{classificationValidation.currentFruitSum.toLocaleString("vi-VN")} trái</strong> / Thực nhận: <strong>{classificationValidation.totalFruits.toLocaleString("vi-VN")} trái</strong>
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-2.5 pt-2 border-t border-slate-200/60 text-xs">
-                                        {classificationValidation.isValid ? (
-                                            <p className="flex items-center gap-1.5 font-bold text-emerald-800">
-                                                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                                                <span>Khối lượng và số lượng trái khớp chính xác 100%. Lô hợp lệ sẽ chuyển sang Chế biến & Đóng gói.</span>
-                                            </p>
-                                        ) : (
-                                            <p className="flex items-center gap-1.5 font-bold text-rose-800">
-                                                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-                                                <span>
-                                                    {!classificationValidation.isWeightValid && `Khối lượng chưa khớp (${classificationValidation.diff > 0 ? `vượt +${classificationValidation.diff}` : `thiếu ${classificationValidation.diff}`} kg). `}
-                                                    {!classificationValidation.isFruitValid && `Số lượng trái chưa khớp (${classificationValidation.fruitDiff > 0 ? `vượt +${classificationValidation.fruitDiff}` : `thiếu ${classificationValidation.fruitDiff}`} trái).`}
-                                                </span>
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
                             </div>
 
                             {/* Footer */}
@@ -1367,8 +1315,8 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                 <Button
                                     type="button"
                                     onClick={handleConfirmClassify}
-                                    disabled={submittingClassify || !classificationValidation.isValid}
-                                    className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft disabled:opacity-50"
+                                    disabled={submittingClassify}
+                                    className="flex-1 rounded-2xl h-11 bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
                                 >
                                     {submittingClassify ? <Loader2 className="h-4 w-4 animate-spin" /> : "Xác nhận phân loại"}
                                 </Button>
