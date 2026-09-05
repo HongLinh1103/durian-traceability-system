@@ -12,6 +12,7 @@ import {
     X,
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { formatVietnameseDate, formatVietnameseDateTime } from "@/lib/date-format";
 
 type FarmRow = {
     id: string;
@@ -295,7 +296,7 @@ export default function FarmingManagementPage() {
                                     <MobileFarmDetail label="Diện tích" value={`${farm.areaSize.toLocaleString("vi-VN")} ha`} />
                                     <MobileFarmDetail label="Giống" value={farm.durianVariety} />
                                 </div>
-                                <MobileFarmDetail label="Nhật ký gần nhất" value={farm.latestLogDate ? new Date(farm.latestLogDate).toLocaleDateString("vi-VN") : "Chưa có nhật ký"} />
+                                <MobileFarmDetail label="Nhật ký gần nhất" value={farm.latestLogDate ? formatVietnameseDate(farm.latestLogDate) : "Chưa có nhật ký"} />
                             </dl>
 
                             <div className="mt-4 grid grid-cols-[1fr_auto] gap-2 border-t border-slate-100 pt-4">
@@ -329,7 +330,7 @@ export default function FarmingManagementPage() {
                                     <td className="max-w-48 px-4 py-4 font-semibold text-slate-900">{farm.farmName}</td>
                                     <td className="px-4 py-4">{farm.ownerName}</td>
                                     <td className="px-4 py-4">{farm.growingRegion}</td>
-                                    <td className="whitespace-nowrap px-4 py-4 text-slate-600">{farm.latestLogDate ? new Date(farm.latestLogDate).toLocaleDateString("vi-VN") : "Chưa có nhật ký"}</td>
+                                    <td className="whitespace-nowrap px-4 py-4 text-slate-600">{farm.latestLogDate ? formatVietnameseDate(farm.latestLogDate) : "Chưa có nhật ký"}</td>
                                     <td className="px-4 py-4">
                                         <div className="flex items-center gap-1">
                                             <ActionButton label="Xem thông tin vườn và nhật ký" onClick={() => void openLogs(farm)}><Eye className="h-4 w-4" /></ActionButton>
@@ -380,8 +381,8 @@ export default function FarmingManagementPage() {
                                         <DetailItem label="Địa bàn" value={[farmDetail.region?.ward, farmDetail.region?.district, farmDetail.region?.province].filter(Boolean).join(", ")} />
                                         <DetailItem label="Hoạt động" value={farmDetail.isActive ? "Đang hoạt động" : "Ngừng hoạt động"} />
                                         <DetailItem label="Mùa vụ" value={farmDetail.isInSeason ? "Đang trong mùa vụ" : "Ngoài mùa vụ"} />
-                                        <DetailItem label="Ngày đăng ký" value={new Date(farmDetail.createdAt).toLocaleDateString("vi-VN")} />
-                                        <DetailItem label="Cập nhật" value={new Date(farmDetail.updatedAt).toLocaleString("vi-VN")} />
+                                        <DetailItem label="Ngày đăng ký" value={formatVietnameseDate(farmDetail.createdAt)} />
+                                        <DetailItem label="Cập nhật" value={formatVietnameseDateTime(farmDetail.updatedAt)} />
                                     </DetailPanel>
                                 </div>
                             )}

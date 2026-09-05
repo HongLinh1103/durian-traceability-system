@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 const varietyItemSchema = z.object({
     durianVariety: z.string().trim().min(1, "Vui lòng chọn giống sầu riêng."),
@@ -206,7 +207,7 @@ export async function POST(request: Request) {
                     type: "HARVEST_REQUEST",
                     title: safeBuyerType === "PROCESSING_FACILITY" ? "Có nguồn nguyên liệu mới" : "Phiếu thu hoạch mới",
                     message: safeBuyerType === "PROCESSING_FACILITY"
-                        ? `${farm.farmName} gửi phiếu ${code}, dự kiến thu hoạch ${totalExpectedWeight} kg ${selectedVarieties.join(", ")} ngày ${harvestDate.toLocaleDateString("vi-VN")}.`
+                        ? `${farm.farmName} gửi phiếu ${code}, dự kiến thu hoạch ${totalExpectedWeight} kg ${selectedVarieties.join(", ")} ngày ${formatVietnameseDate(harvestDate)}.`
                         : `${farm.farmName} gửi phiếu ${code}, dự kiến ${totalExpectedWeight} kg.`,
                 },
             }).catch(() => {});

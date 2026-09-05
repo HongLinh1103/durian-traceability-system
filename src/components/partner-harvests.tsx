@@ -31,6 +31,7 @@ import {
     FREEZING_METHODS,
     formatStatusLabel,
 } from "@/lib/processing-facility";
+import { formatVietnameseDate, formatVietnameseDateTime } from "@/lib/date-format";
 
 export type HarvestRow = {
     id: string;
@@ -465,8 +466,8 @@ export function PartnerHarvests({
                                         label={isDispatched ? "Giao lúc" : "Ngày giao dự kiến"}
                                         value={
                                             item.farmerDeliveredAt
-                                                ? new Date(item.farmerDeliveredAt).toLocaleString("vi-VN")
-                                                : new Date(item.expectedHarvestDate).toLocaleDateString("vi-VN")
+                                                ? formatVietnameseDateTime(item.farmerDeliveredAt)
+                                                : formatVietnameseDate(item.expectedHarvestDate)
                                         }
                                     />
                                     <Info
@@ -1393,7 +1394,7 @@ function LotDetailModal({
                     </div>
                     <div className="flex justify-between">
                         <span className="text-slate-500">Thời gian nhận:</span>
-                        <b className="text-slate-800">{new Date(lot.receivedAt).toLocaleString("vi-VN")}</b>
+                        <b className="text-slate-800">{formatVietnameseDateTime(lot.receivedAt)}</b>
                     </div>
                     <div className="flex justify-between">
                         <span className="text-slate-500">Khối lượng thực nhận:</span>
@@ -1533,7 +1534,7 @@ function HarvestRowDetailModal({ row, onClose }: { row: HarvestRow; onClose: () 
                     </div>
                     <div className="flex justify-between">
                         <span className="text-slate-500">Ngày thu hoạch / giao dự kiến:</span>
-                        <b className="text-slate-800">{new Date(row.expectedHarvestDate).toLocaleDateString("vi-VN")}</b>
+                        <b className="text-slate-800">{formatVietnameseDate(row.expectedHarvestDate)}</b>
                     </div>
                 </div>
 

@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/order-status";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 type DetailItem = {
     id: string;
@@ -882,7 +883,7 @@ export function FarmerStatisticsView({ initialData }: FarmerStatisticsViewProps 
                                 >
                                     <div className="flex justify-between items-center">
                                         <span className="font-bold text-slate-900 text-sm">
-                                            {new Date(d.actionDate).toLocaleDateString("vi-VN")} • {d.activityLabel}
+                                            {formatVietnameseDate(d.actionDate)} • {d.activityLabel}
                                         </span>
                                         <span className="font-bold text-brand-700 text-sm">
                                             {formatPrice(d.totalAmount)}
@@ -943,7 +944,7 @@ export function FarmerStatisticsView({ initialData }: FarmerStatisticsViewProps 
                                     <div>
                                         <p className="font-bold text-slate-900 text-sm">{item.title}</p>
                                         <p className="text-slate-400 mt-0.5">
-                                            {new Date(item.date).toLocaleDateString("vi-VN")} • Giai đoạn: {item.stageLabel || "Chung"}
+                                            {formatVietnameseDate(item.date)} • Giai đoạn: {item.stageLabel || "Chung"}
                                         </p>
                                         {item.notes && <p className="text-slate-500 italic mt-0.5">{item.notes}</p>}
                                     </div>

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 type Row = {
     id: string;
@@ -149,7 +150,7 @@ export function FarmerHarvests({ initial }: { initial: Row[] }) {
                                 </p>
                                 <p className="flex items-center gap-1 text-slate-500">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    {item.expectedHarvestDate ? new Date(item.expectedHarvestDate).toLocaleDateString("vi-VN") : "—"}
+                                    {formatVietnameseDate(item.expectedHarvestDate) || "—"}
                                 </p>
                                 <p className="font-semibold text-brand-700">
                                     Dự kiến: {item.expectedWeight} {item.weightUnit}

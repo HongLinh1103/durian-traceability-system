@@ -17,6 +17,7 @@ import {
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureCompletedHarvestCollectionLots } from "@/lib/traceability";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 export const dynamic = "force-dynamic";
 
@@ -121,7 +122,7 @@ export default async function Page() {
                                             {lot.lotCode}
                                         </span>
                                         <p className="text-[11px] text-slate-400 mt-0.5">
-                                            {lot.createdAt ? new Date(lot.createdAt).toLocaleDateString("vi-VN") : "—"}
+                                            {lot.createdAt ? formatVietnameseDate(lot.createdAt) : "—"}
                                         </p>
                                     </div>
                                 </div>

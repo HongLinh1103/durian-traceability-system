@@ -1,4 +1,5 @@
 import type { WeatherData } from "@/lib/weather";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 export type WeatherAdvice = {
     riskLevel: "LOW" | "MEDIUM" | "HIGH";
@@ -55,7 +56,7 @@ function fallbackAdvice(weather: WeatherData, regional: boolean, farm?: FarmAdvi
     const stage = farm?.latestStage ? (stageLabels[farm.latestStage] ?? farm.latestStage) : null;
     const latestLog = farm?.recentLogs?.[0];
     const latestActivity = latestLog ? (activityLabels[latestLog.activityType] ?? latestLog.activityType) : null;
-    const latestDate = latestLog ? latestLog.actionDate.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : null;
+    const latestDate = latestLog ? formatVietnameseDate(latestLog.actionDate) : null;
     const recommendations: string[] = [];
     const monitor = ["Ghi nhận lượng mưa thực tế tại vườn và so sánh với dự báo", "Kiểm tra độ ẩm đất ở vùng rễ trước khi quyết định tưới", "Quan sát tán, cành và trái sầu riêng sau mỗi đợt mưa hoặc gió"];
 
@@ -90,7 +91,7 @@ function fallbackAdvice(weather: WeatherData, regional: boolean, farm?: FarmAdvi
                 `Giống sầu riêng: ${farm?.durianVariety ?? "chưa cập nhật"}`,
                 `Giai đoạn: ${stage ?? "chưa có nhật ký xác định giai đoạn"}`,
                 ...(farm?.recentLogs?.length
-                    ? farm.recentLogs.slice(0, 3).map((log) => `Nhật ký ${log.actionDate.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}: ${activityLabels[log.activityType] ?? log.activityType} · ${stageLabels[log.stage] ?? log.stage}`)
+                    ? farm.recentLogs.slice(0, 3).map((log) => `Nhật ký ${formatVietnameseDate(log.actionDate)}: ${activityLabels[log.activityType] ?? log.activityType} · ${stageLabels[log.stage] ?? log.stage}`)
                     : ["Nhật ký gần nhất: chưa có"]),
                 "Thời tiết hiện tại và dự báo 72 giờ",
             ],

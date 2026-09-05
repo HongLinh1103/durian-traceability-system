@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { VietnameseDatePicker } from "@/components/ui/vietnamese-date-picker";
 import { useToast } from "@/components/ui/toast";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 type Farm = { id: string; farmCode: string; farmName: string };
 type Observation = {
@@ -298,7 +299,7 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
     }
 
     async function remove(row: Observation) {
-        const formattedDate = new Date(row.observedAt).toLocaleDateString("vi-VN");
+        const formattedDate = formatVietnameseDate(row.observedAt);
         if (!confirm(`Bạn có chắc muốn xóa nhật ký thời tiết ngày ${formattedDate}?`)) return;
         const response = await fetch(`/api/weather-observations/${row.id}`, { method: "DELETE" });
         if (response.ok) {
@@ -402,7 +403,7 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
                                                 </span>
                                             )}
                                             <span className="text-sm font-medium text-slate-500">
-                                                {new Date(row.observedAt).toLocaleDateString("vi-VN")}
+                                                {formatVietnameseDate(row.observedAt)}
                                             </span>
                                         </div>
 

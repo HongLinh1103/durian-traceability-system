@@ -15,6 +15,7 @@ import {
     Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 interface PestMonitoringTabProps {
     farmId?: string;
@@ -575,7 +576,7 @@ export function PestMonitoringTab({
                         </div>
                         <p className="mt-2 text-2xl font-black text-slate-900">{summary.inspectionsCount}</p>
                         <p className="text-xs text-slate-400 mt-0.5">
-                            Gần nhất: {summary.lastInspectionDate ? new Date(summary.lastInspectionDate).toLocaleDateString("vi-VN") : "Chưa có"}
+                            Gần nhất: {formatVietnameseDate(summary.lastInspectionDate) || "Chưa có"}
                         </p>
                     </div>
 
@@ -644,7 +645,7 @@ export function PestMonitoringTab({
                         </div>
                         <div className="flex items-center justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
                             <span className="font-bold text-slate-700 min-w-[140px]">Ngày bắt đầu:</span>
-                            <span className="font-semibold text-slate-900">{new Date(bookDetail.startDate).toLocaleDateString("vi-VN")}</span>
+                            <span className="font-semibold text-slate-900">{formatVietnameseDate(bookDetail.startDate)}</span>
                         </div>
                         <div className="flex items-center justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
                             <span className="font-bold text-slate-700 min-w-[140px]">Tần suất kiểm tra:</span>
@@ -756,7 +757,7 @@ export function PestMonitoringTab({
                                     {detailedInspectionRows.map((row) => (
                                         <tr key={row.id} className="hover:bg-slate-50/60">
                                             <td className="px-4 py-3 text-xs font-semibold text-slate-900 whitespace-nowrap">
-                                                {new Date(row.inspectionDate).toLocaleDateString("vi-VN")}
+                                                {formatVietnameseDate(row.inspectionDate)}
                                             </td>
                                             <td className="px-4 py-3 font-mono font-bold text-brand-700 text-xs whitespace-nowrap">
                                                 {row.trapCode}
@@ -827,7 +828,7 @@ export function PestMonitoringTab({
                                     {bookDetail.treatments.map((tr) => (
                                         <tr key={tr.id} className="hover:bg-slate-50/60">
                                             <td className="px-4 py-3 text-xs font-semibold text-slate-900 whitespace-nowrap">
-                                                {new Date(tr.treatmentDate).toLocaleDateString("vi-VN")}
+                                                {formatVietnameseDate(tr.treatmentDate)}
                                             </td>
                                             <td className="px-4 py-3 text-xs font-bold text-purple-700 whitespace-nowrap">
                                                 {tr.treatmentType}
@@ -1296,7 +1297,7 @@ export function PestMonitoringTab({
                                         <div className="flex items-center justify-between">
                                             <span className="text-slate-400">Lần điều tra gần nhất:</span>
                                             <span className="font-semibold text-slate-700">
-                                                {lastIns ? new Date(lastIns.inspectionDate).toLocaleDateString("vi-VN") : "Chưa kiểm tra"}
+                                                {lastIns ? formatVietnameseDate(lastIns.inspectionDate) : "Chưa kiểm tra"}
                                             </span>
                                         </div>
                                         <div className="flex items-center justify-between">

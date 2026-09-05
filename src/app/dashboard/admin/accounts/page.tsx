@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 type AccountUser = {
     id: string;
@@ -357,7 +358,7 @@ export default function AdminAccountsPage() {
                                             </div>
                                             <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-slate-100 py-3 text-sm">
                                                 <div><dt className="text-xs text-slate-500">Vai trò</dt><dd className="mt-1 font-semibold text-slate-800">{roleLabels[account.role] ?? account.role}</dd></div>
-                                                <div><dt className="text-xs text-slate-500">Ngày đăng ký</dt><dd className="mt-1 font-semibold text-slate-800">{new Date(account.createdAt).toLocaleDateString("vi-VN")}</dd></div>
+                                                <div><dt className="text-xs text-slate-500">Ngày đăng ký</dt><dd className="mt-1 font-semibold text-slate-800">{formatVietnameseDate(account.createdAt)}</dd></div>
                                             </dl>
                                             <Button type="button" variant="outline" className="mt-3 w-full" onClick={() => setSelectedAccount(account)}>
                                                 <Eye className="mr-2 h-4 w-4" />Xem chi tiết
@@ -558,8 +559,8 @@ function AccountDetailModal({
                     <p><span className="text-slate-500">Điện thoại:</span><strong className="ml-1">{account.phone}</strong></p>
                     <p><span className="text-slate-500">Email:</span><strong className="ml-1">{account.email || "—"}</strong></p>
                     <p className="sm:col-span-2"><span className="text-slate-500">Địa chỉ:</span><strong className="ml-1">{displayAddress || "—"}</strong></p>
-                    <p><span className="text-slate-500">Ngày đăng ký:</span><strong className="ml-1">{new Date(account.createdAt).toLocaleDateString("vi-VN")}</strong></p>
-                    <p><span className="text-slate-500">Ngày duyệt tài khoản:</span><strong className="ml-1">{account.approvedAt ? new Date(account.approvedAt).toLocaleDateString("vi-VN") : "Chưa duyệt"}</strong></p>
+                    <p><span className="text-slate-500">Ngày đăng ký:</span><strong className="ml-1">{formatVietnameseDate(account.createdAt)}</strong></p>
+                    <p><span className="text-slate-500">Ngày duyệt tài khoản:</span><strong className="ml-1">{account.approvedAt ? formatVietnameseDate(account.approvedAt) : "Chưa duyệt"}</strong></p>
                 </section>
 
                 {account.role === "AREA_MANAGER" && account.areaManagerApplication && (
@@ -570,7 +571,7 @@ function AccountDetailModal({
                             <p><span className="text-slate-500">Chức vụ:</span> {account.areaManagerApplication.position}</p>
                             <p><span className="text-slate-500">Mã số thuế:</span> {account.areaManagerApplication.taxCode || "—"}</p>
                             <p><span className="text-slate-500">CCCD/CMND:</span> {account.areaManagerApplication.identityNumber}</p>
-                            <p><span className="text-slate-500">Ngày cấp:</span> {new Date(account.areaManagerApplication.identityIssuedDate).toLocaleDateString("vi-VN")}</p>
+                            <p><span className="text-slate-500">Ngày cấp:</span> {formatVietnameseDate(account.areaManagerApplication.identityIssuedDate)}</p>
                             <p><span className="text-slate-500">Nơi cấp:</span> {account.areaManagerApplication.identityIssuedPlace}</p>
                         </div>
                     </section>

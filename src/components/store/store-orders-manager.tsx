@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
+import { formatVietnameseDateTime } from "@/lib/date-format";
 
 type OrderItem = {
     id: string;
@@ -489,13 +490,7 @@ export function StoreOrdersManager() {
                                         </span>
                                         <span className="text-xs text-slate-400">·</span>
                                         <span className="text-xs text-slate-500">
-                                            {new Date(order.createdAt).toLocaleString("vi-VN", {
-                                                day: "2-digit",
-                                                month: "2-digit",
-                                                year: "numeric",
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                            })}
+                                            {formatVietnameseDateTime(order.createdAt)}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2">

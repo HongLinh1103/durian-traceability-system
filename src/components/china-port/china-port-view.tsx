@@ -18,6 +18,7 @@ import {
     Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 // Types
 export type ChinaPortCountry = {
@@ -83,7 +84,12 @@ const DEFAULT_COLUMNS = [
 ];
 
 const clean = (value: any) => String(value ?? "").replace(/\n+$/g, "").trim();
-const fmtDate = (value: any) => clean(value).slice(0, 10) || "—";
+const fmtDate = (value: any) => {
+    const s = clean(value).slice(0, 10);
+    if (!s) return "—";
+    const d = new Date(s);
+    return !Number.isNaN(d.getTime()) ? formatVietnameseDate(d) : s;
+};
 const statusLabel = (value: any) => (value === "1" ? "Còn hiệu lực" : value === "2" ? "Tạm dừng" : clean(value) || "—");
 
 export function ChinaPortView() {

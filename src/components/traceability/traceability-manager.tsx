@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { TraceValidation } from "@/lib/traceability";
 import { SalesDispatchSlip, SalesDispatchData } from "@/components/partner/sales-dispatch-slip";
 import { QrCodeViewerModal, QrModalData } from "@/components/traceability/qr-code-viewer-modal";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 type IssuerRole = "FARMER" | "COLLECTOR" | "PROCESSING_FACILITY";
 
@@ -1002,7 +1003,7 @@ export function TraceabilityManager({
                                                 {lot.lotCode}
                                             </span>
                                             <p className="text-[11px] text-slate-400 mt-0.5">
-                                                {lot.dispatchedAt ? new Date(lot.dispatchedAt).toLocaleDateString("vi-VN") : "—"}
+                                                {formatVietnameseDate(lot.dispatchedAt) || "—"}
                                             </p>
                                         </div>
                                     </div>

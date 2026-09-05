@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
+import { formatVietnameseDate, formatVietnameseDateTime } from "@/lib/date-format";
 
 type Region = { id: string; code: string; name: string };
 type History = { id: string; action: string; reason: string | null; createdAt: string; actor: { fullName: string | null; role: string } };
@@ -204,7 +205,7 @@ export function FarmerAccountsManager() {
                                     <td className="whitespace-nowrap px-3 py-3">{farmer.phone}</td><td className="break-all px-3 py-3">{farmer.email || "—"}</td>
                                     <td className="px-3 py-3 text-center font-semibold">{farmer.farms.length}</td>
                                     <td className="px-3 py-3">{Array.from(new Set(farmer.farms.map((farm) => farm.region?.code).filter(Boolean))).join(", ") || "—"}</td>
-                                    <td className="whitespace-nowrap px-3 py-3 text-center">{new Date(farmer.createdAt).toLocaleDateString("vi-VN")}</td>
+                                    <td className="whitespace-nowrap px-3 py-3 text-center">{formatVietnameseDate(farmer.createdAt)}</td>
                                     <td className="px-3 py-3 text-center"><Badge className={`${state.className} h-7 whitespace-nowrap rounded-full px-2.5 py-0 text-xs`}>{state.label}</Badge></td>
                                     <td className="sticky right-0 bg-white px-2 py-3 text-center shadow-[-6px_0_10px_-10px_rgba(15,23,42,0.5)]"><Button size="sm" variant="outline" className="h-8 whitespace-nowrap px-2.5" onClick={() => setSelected(farmer)}><Eye className="mr-1 h-3.5 w-3.5" />Xem hồ sơ</Button></td>
                                 </tr>;
@@ -252,10 +253,10 @@ function FarmerDetail({ farmer, onClose, onAction, onEdit, onDecision }: { farme
         <div className="flex items-start justify-between"><div><p className="text-sm font-semibold text-emerald-700">Hồ sơ {farmer.id.slice(-10).toUpperCase()}</p><h2 className="text-2xl font-black">{farmer.fullName}</h2></div><button onClick={onClose}><X /></button></div>
         <div className="mt-6 grid gap-5 md:grid-cols-2">
             <section className="rounded-2xl border p-4 text-sm"><h3 className="mb-3 font-bold">Thông tin cá nhân</h3><p><b>Điện thoại:</b> {farmer.phone}</p><p><b>Email:</b> {farmer.email || "—"}</p><p><b>Địa chỉ:</b> {[farmer.address, farmer.ward, farmer.district, farmer.province].filter(Boolean).join(", ") || "—"}</p></section>
-            <section className="rounded-2xl border p-4 text-sm"><h3 className="mb-3 font-bold">Trạng thái</h3><p><b>Hồ sơ:</b> {statuses[farmer.accountStatus]?.label}</p><p><b>Tài khoản:</b> {farmer.deletedAt ? "Đã xóa mềm" : farmer.isLocked ? "Tạm khóa" : farmer.isApproved ? "Đang hoạt động" : "Chưa kích hoạt"}</p><p><b>Ngày đăng ký:</b> {new Date(farmer.createdAt).toLocaleString("vi-VN")}</p></section>
+            <section className="rounded-2xl border p-4 text-sm"><h3 className="mb-3 font-bold">Trạng thái</h3><p><b>Hồ sơ:</b> {statuses[farmer.accountStatus]?.label}</p><p><b>Tài khoản:</b> {farmer.deletedAt ? "Đã xóa mềm" : farmer.isLocked ? "Tạm khóa" : farmer.isApproved ? "Đang hoạt động" : "Chưa kích hoạt"}</p><p><b>Ngày đăng ký:</b> {formatVietnameseDateTime(farmer.createdAt)}</p></section>
         </div>
         <section className="mt-5"><h3 className="mb-3 font-bold">Danh sách vườn</h3><div className="space-y-3">{farmer.farms.map((farm) => <div key={farm.id} className="rounded-2xl bg-slate-50 p-4 text-sm"><div className="font-bold">{farm.farmName} · {farm.farmCode}</div><p>{farm.region?.code} - {farm.region?.name}</p><p>{farm.areaSize} ha · {farm.totalTrees} cây · {farm.durianVariety}</p><p>{farm.address}</p><p>Tọa độ: {farm.latitude != null && farm.longitude != null ? `${farm.latitude}, ${farm.longitude}` : "Chưa cung cấp"}</p></div>)}</div></section>
-        <section className="mt-5"><h3 className="mb-3 font-bold">Lịch sử xử lý</h3><div className="space-y-2">{farmer.approvalHistories.map((history) => <div key={history.id} className="rounded-xl border p-3 text-sm"><b>{history.action}</b> · {new Date(history.createdAt).toLocaleString("vi-VN")}<p className="text-slate-500">{history.actor.fullName || history.actor.role}{history.reason ? ` — ${history.reason}` : ""}</p></div>)}{farmer.approvalHistories.length === 0 && <p className="text-sm text-slate-500">Chưa có lịch sử xử lý.</p>}</div></section>
+        <section className="mt-5"><h3 className="mb-3 font-bold">Lịch sử xử lý</h3><div className="space-y-2">{farmer.approvalHistories.map((history) => <div key={history.id} className="rounded-xl border p-3 text-sm"><b>{history.action}</b> · {formatVietnameseDateTime(history.createdAt)}<p className="text-slate-500">{history.actor.fullName || history.actor.role}{history.reason ? ` — ${history.reason}` : ""}</p></div>)}{farmer.approvalHistories.length === 0 && <p className="text-sm text-slate-500">Chưa có lịch sử xử lý.</p>}</div></section>
         <div className="mt-6 flex flex-wrap gap-2 border-t pt-5">
             {!farmer.deletedAt && <Button variant="outline" onClick={onEdit}><Pencil className="mr-2 h-4 w-4" />Cập nhật thông tin</Button>}
             {!farmer.deletedAt && ["PENDING", "NEEDS_SUPPLEMENT"].includes(farmer.accountStatus) && <><Button onClick={() => onAction("approve")}><CheckCircle2 className="mr-2 h-4 w-4" />Phê duyệt</Button><Button variant="outline" onClick={() => onDecision("supplement")}>Yêu cầu bổ sung</Button><Button variant="outline" className="text-red-600" onClick={() => onDecision("reject")}>Từ chối</Button></>}

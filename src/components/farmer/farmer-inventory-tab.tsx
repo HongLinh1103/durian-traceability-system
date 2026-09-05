@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/order-status";
+import { formatVietnameseDateTime } from "@/lib/date-format";
 
 type SupplyItem = {
     id: string;
@@ -506,7 +507,7 @@ export function FarmerInventoryTab({
                                         return (
                                             <tr key={tx.id} className="hover:bg-slate-50/50">
                                                 <td className="px-5 py-3 text-xs text-slate-500 font-mono">
-                                                    {new Date(tx.actionDate).toLocaleString("vi-VN")}
+                                                    {formatVietnameseDateTime(tx.actionDate)}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span

@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TraceMilestone } from "@/lib/traceability";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 export type PublicTraceData = {
     qrStatus: string;
@@ -184,9 +185,7 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
             return;
         }
 
-        const issuedDateStr = trace.issuedAt
-            ? new Date(trace.issuedAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })
-            : new Date().toLocaleDateString("vi-VN");
+        const issuedDateStr = formatVietnameseDate(trace.issuedAt) || formatVietnameseDate(new Date());
 
         printWindow.document.write(`
             <!DOCTYPE html>
@@ -736,7 +735,7 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                                                         className="grid grid-cols-[85px_1fr] sm:grid-cols-[100px_1fr] gap-2.5 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100"
                                                     >
                                                         <time className="font-mono font-semibold text-slate-500 whitespace-nowrap shrink-0">
-                                                            {new Date(log.actionDate).toLocaleDateString("vi-VN")}
+                                                            {formatVietnameseDate(log.actionDate)}
                                                         </time>
                                                         <div>
                                                             <b className="text-slate-900 block">

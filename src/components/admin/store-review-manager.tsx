@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 type StoreStatus = "DRAFT" | "PENDING_REVIEW" | "NEED_SUPPLEMENT" | "APPROVED" | "REJECTED" | "SUSPENDED";
 type StoreRecord = {
@@ -118,7 +119,7 @@ export function StoreReviewManager() {
             : filteredItems.length === 0 ? <div className="rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center"><StoreIcon className="mx-auto h-12 w-12 text-slate-300" /><p className="mt-4 font-semibold text-slate-700">Không có cửa hàng phù hợp</p></div>
                 : <div className="space-y-3">{filteredItems.map((store) => <article key={store.id} className="rounded-2xl border border-slate-200 bg-white p-5">
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div><h3 className="font-bold text-slate-900">{store.name}</h3><p className="mt-1 text-sm text-slate-500">Đăng ký ngày {new Date(store.createdAt).toLocaleDateString("vi-VN")}</p></div>
+                        <div><h3 className="font-bold text-slate-900">{store.name}</h3><p className="mt-1 text-sm text-slate-500">Đăng ký ngày {formatVietnameseDate(store.createdAt)}</p></div>
                         <Badge className={statusMeta[store.status].className}>{statusMeta[store.status].label}</Badge>
                     </div>
                     <div className="mt-4 grid gap-2 text-sm text-slate-700 md:grid-cols-2"><p><span className="text-slate-500">Đại diện:</span> {store.representativeName}</p><p><span className="text-slate-500">Điện thoại:</span> {store.representativePhone}</p><p><span className="text-slate-500">Chủ tài khoản:</span> {store.owner.fullName || store.owner.phone}</p><p><span className="text-slate-500">Mã số thuế:</span> {store.taxCode || "Chưa cung cấp"}</p><p className="md:col-span-2"><span className="text-slate-500">Địa chỉ:</span> {store.address}</p></div>

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DeleteNewsButton } from "@/components/news/delete-news-button";
 import { getContentId, NEW_NEWS_TYPE } from "@/lib/content-notifications";
 import { ContentReadLink } from "@/components/content-read-link";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ export default async function NewsPage() {
             imageUrl: article.imageUrl,
             sourceName: article.sourceName,
             originalUrl: article.originalUrl,
-            sourcePublishedDate: article.sourcePublishedAt?.toLocaleDateString("vi-VN") ?? null,
+            sourcePublishedDate: article.sourcePublishedAt ? formatVietnameseDate(article.sourcePublishedAt) : null,
             isNew: newArticleIds.has(article.id),
         }));
 

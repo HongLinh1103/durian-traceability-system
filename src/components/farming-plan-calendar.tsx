@@ -10,6 +10,7 @@ import {
   growthStages,
   type GrowthStageLabel,
 } from "@/lib/constants";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 type Farm = { id: string; farmName: string; farmCode: string };
 type Plan = {
@@ -670,9 +671,7 @@ function PlanRow({ plan, toggle, edit, remove }: PlanActions) {
       <td
         className={`p-4 text-center font-semibold ${overdue ? "text-rose-700" : ""}`}
       >
-        {new Date(`${dateKey(plan.plannedDate)}T00:00:00`).toLocaleDateString(
-          "vi-VN",
-        )}
+        {formatVietnameseDate(new Date(`${dateKey(plan.plannedDate)}T00:00:00`))}
         {overdue && <small className="block text-[10px]">Quá hạn</small>}
       </td>
       <td className="p-4 text-center">{timeText(plan.plannedDate)}</td>
@@ -712,9 +711,7 @@ function PlanCard({ plan, toggle, edit, remove }: PlanActions) {
           <p
             className={`text-xs font-bold ${overdue ? "text-rose-600" : "text-slate-400"}`}
           >
-            {new Date(
-              `${dateKey(plan.plannedDate)}T00:00:00`,
-            ).toLocaleDateString("vi-VN")}{" "}
+            {formatVietnameseDate(new Date(`${dateKey(plan.plannedDate)}T00:00:00`))}{" "}
             · {timeText(plan.plannedDate)}
             {overdue ? " · Quá hạn" : ""}
           </p>

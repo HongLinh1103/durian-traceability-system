@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
-import { formatVietnameseDateTime } from "@/lib/date-format";
+import { formatVietnameseDate, formatVietnameseDateTime } from "@/lib/date-format";
 
 const statusLabels: Record<string, { label: string; color: string; badgeBg: string }> = {
     DRAFT: { label: "Bản nháp", color: "text-slate-700", badgeBg: "bg-slate-100 text-slate-700 border-slate-200" },
@@ -252,7 +252,7 @@ export function HarvestDetailView({ harvest: initialData }: { harvest: HarvestDa
                             </CardTitle>
                         </div>
                         <div className="text-right text-xs text-slate-500">
-                            <p>Tạo ngày: <b>{new Date(harvest.createdAt).toLocaleDateString("vi-VN")}</b></p>
+                            <p>Tạo ngày: <b>{formatVietnameseDate(harvest.createdAt)}</b></p>
                         </div>
                     </div>
                 </CardHeader>
@@ -324,7 +324,7 @@ export function HarvestDetailView({ harvest: initialData }: { harvest: HarvestDa
                                 <p className="text-slate-500">Ngày dự kiến thu hoạch:</p>
                                 <p className="font-bold text-slate-900 flex items-center gap-1.5">
                                     <Calendar className="h-4 w-4 text-brand-600" />
-                                    {new Date(harvest.expectedHarvestDate).toLocaleDateString("vi-VN")}
+                                    {formatVietnameseDate(harvest.expectedHarvestDate)}
                                 </p>
                             </div>
                             <div>

@@ -5,6 +5,7 @@ import { ArrowLeft, CheckCircle2, FileText, Package, Printer, Store } from "luci
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { numberToVietnameseWords } from "@/lib/vietnamese-number-to-words";
+import { formatVietnameseDate, formatVietnameseDateTime } from "@/lib/date-format";
 
 type DocumentData = {
     id: string;
@@ -85,22 +86,12 @@ export function InventoryDocumentView({ document }: { document: DocumentData }) 
     }, 0);
 
     const createdDateObj = new Date(document.createdAt);
-    const formattedCreatedDate = createdDateObj.toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    });
+    const formattedCreatedDate = formatVietnameseDate(createdDateObj);
     const formattedCreatedTime = createdDateObj.toLocaleTimeString("vi-VN", {
         hour: "2-digit",
         minute: "2-digit",
     });
-    const nowFormatted = new Date().toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
+    const nowFormatted = formatVietnameseDateTime(new Date());
 
     const wordsAmount = totalValue > 0 ? numberToVietnameseWords(totalValue) : null;
 

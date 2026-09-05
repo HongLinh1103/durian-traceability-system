@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ModalPortal } from "@/components/ui/modal-portal";
 import { encodePreviewPayload, PreviewTraceData } from "@/lib/trace-preview";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 export type ShipmentItemRow = {
     id: string;
@@ -1153,7 +1154,7 @@ export function ProcessingShipmentsView({
 
                                         {/* Ngày xuất */}
                                         <td className="px-5 py-3 whitespace-nowrap text-xs text-slate-600">
-                                            {s.dispatchDate ? new Date(s.dispatchDate).toLocaleDateString("vi-VN") : "—"}
+                                            {formatVietnameseDate(s.dispatchDate) || "—"}
                                         </td>
 
                                         {/* Trạng thái QR */}

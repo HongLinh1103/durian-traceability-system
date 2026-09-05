@@ -41,6 +41,7 @@ import { SalesDispatchSlip, SalesDispatchData } from "./sales-dispatch-slip";
 import { PartnerFinanceCharts, PartnerChartData } from "./partner-finance-charts";
 import { computePartnerChartData } from "@/lib/partner-finance-analytics";
 import { QrCodeViewerModal, QrModalData } from "@/components/traceability/qr-code-viewer-modal";
+import { formatVietnameseDate, formatVietnameseDateTime } from "@/lib/date-format";
 
 export type FinanceData = {
     facility: {
@@ -1061,7 +1062,7 @@ export function PartnerFinanceManager({
                                                     {rec.farmerPhone && ` (${rec.farmerPhone})`}
                                                 </h4>
                                                 <p className="text-slate-500 mt-0.5">
-                                                    Giống sầu riêng: <b>{rec.durianVariety}</b> · Ngày nhận xưởng: {new Date(rec.date).toLocaleDateString("vi-VN")}
+                                                    Giống sầu riêng: <b>{rec.durianVariety}</b> · Ngày nhận xưởng: {formatVietnameseDate(rec.date)}
                                                 </p>
                                             </div>
 
@@ -1217,7 +1218,7 @@ export function PartnerFinanceManager({
                                             </div>
                                             <h4 className="mt-1 font-bold text-slate-900 text-sm">{exp.title}</h4>
                                             <p className="text-slate-500 mt-0.5">
-                                                Người nhận: <b className="text-slate-800">{exp.recipient || "—"}</b> · Ngày chi: {new Date(exp.expenseDate).toLocaleDateString("vi-VN")} · {exp.paymentMethod}
+                                                Người nhận: <b className="text-slate-800">{exp.recipient || "—"}</b> · Ngày chi: {formatVietnameseDate(exp.expenseDate)} · {exp.paymentMethod}
                                             </p>
                                         </div>
 
@@ -1445,7 +1446,7 @@ export function PartnerFinanceManager({
                                                 {isReceipt ? "+" : "-"}{pm.amount.toLocaleString("vi-VN")} đ
                                             </p>
                                             <p className="text-slate-400 text-[11px] mt-0.5">
-                                                {new Date(pm.paymentDate).toLocaleDateString("vi-VN")} · {pm.paymentMethod}
+                                                {formatVietnameseDate(pm.paymentDate)} · {pm.paymentMethod}
                                             </p>
                                         </div>
                                     </div>
@@ -1810,7 +1811,7 @@ export function PartnerFinanceManager({
                                                     Đợt {idx + 1}: {Number(p.amount).toLocaleString("vi-VN")} đ
                                                 </p>
                                                 <p className="text-slate-400 text-[11px]">
-                                                    {new Date(p.paymentDate).toLocaleDateString("vi-VN")} · {p.paymentMethod}
+                                                    {formatVietnameseDate(p.paymentDate)} · {p.paymentMethod}
                                                     {p.referenceCode && ` · Mã: ${p.referenceCode}`}
                                                 </p>
                                                 {p.note && <p className="text-slate-500 italic text-[11px]">"{p.note}"</p>}

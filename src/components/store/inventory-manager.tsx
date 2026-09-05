@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { VietnameseDatePicker } from "@/components/ui/vietnamese-date-picker";
 import { useToast } from "@/components/ui/toast";
 import { numberToVietnameseWords } from "@/lib/vietnamese-number-to-words";
+import { formatVietnameseDateTime } from "@/lib/date-format";
 
 type Product = {
     id: string;
@@ -901,7 +902,7 @@ function InventoryManagerContent() {
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
                                             <h3 className="font-bold leading-snug text-slate-900">{movement.product.name}</h3>
-                                            <p className="mt-1 text-xs text-slate-500">{new Date(document.createdAt).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                                            <p className="mt-1 text-xs text-slate-500">{formatVietnameseDateTime(document.createdAt)}</p>
                                         </div>
                                         <span className={`shrink-0 text-lg font-black tabular-nums ${incoming ? "text-emerald-700" : "text-amber-700"}`}>{incoming ? "+" : "−"}{movement.quantity}</span>
                                     </div>
@@ -938,13 +939,7 @@ function InventoryManagerContent() {
                                         return (
                                             <tr key={movement.id} className="hover:bg-slate-50/70 transition">
                                                 <td className="whitespace-nowrap px-3.5 py-2.5 text-slate-600">
-                                                    {new Date(document.createdAt).toLocaleString("vi-VN", {
-                                                        day: "2-digit",
-                                                        month: "2-digit",
-                                                        year: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    })}
+                                                    {formatVietnameseDateTime(document.createdAt)}
                                                 </td>
                                                 <td className="px-3.5 py-2.5">
                                                     <div className="font-semibold text-slate-900">{movement.product.name}</div>

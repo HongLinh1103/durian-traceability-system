@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { markContentAsRead } from "@/lib/content-notifications";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,7 @@ export default async function DocumentDetailPage({ params }: { params: { slug: s
                             <p className="break-all font-semibold text-slate-900">{document.fileName}</p>
                             <p className="mt-1 text-sm text-slate-500">
                                 {formatBytes(document.fileSize)}
-                                {document.publishedAt ? ` · Xuất bản ${document.publishedAt.toLocaleDateString("vi-VN")}` : ""}
+                                {document.publishedAt ? ` · Xuất bản ${formatVietnameseDate(document.publishedAt)}` : ""}
                             </p>
                         </div>
                     </div>

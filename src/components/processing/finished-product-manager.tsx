@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { getStatusBadgeVariant } from "@/lib/processing-facility";
 import { QrCodeViewerModal, QrModalData } from "@/components/traceability/qr-code-viewer-modal";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 export type FinishedProductLotItem = {
     id: string;
@@ -329,7 +330,7 @@ export function FinishedProductManager({
                                             {" · "}
                                             Ngày sản xuất:{" "}
                                             <span className="font-semibold text-slate-800">
-                                                {new Date(lot.manufacturedAt).toLocaleDateString("vi-VN")}
+                                                {formatVietnameseDate(lot.manufacturedAt)}
                                             </span>
                                         </p>
                                     </div>
@@ -1003,7 +1004,7 @@ function FinishedLotDetailModal({
                     <div className="flex justify-between">
                         <span className="text-slate-500">Ngày SX / Hạn SD:</span>
                         <b className="text-slate-800">
-                            {new Date(lot.manufacturedAt).toLocaleDateString("vi-VN")} - {lot.expiryDate ? new Date(lot.expiryDate).toLocaleDateString("vi-VN") : "12 tháng"}
+                            {formatVietnameseDate(lot.manufacturedAt)} - {lot.expiryDate ? formatVietnameseDate(lot.expiryDate) : "12 tháng"}
                         </b>
                     </div>
                 </div>

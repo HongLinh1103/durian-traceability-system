@@ -13,7 +13,7 @@ import {
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getManagedRegionScope } from "@/lib/region-manager-scope";
-import { formatVietnameseDate } from "@/lib/date-format";
+import { formatVietnameseDate, formatVietnameseDateTime } from "@/lib/date-format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -149,7 +149,7 @@ export default async function GardenDetailPage({ params }: { params: { gardenId:
                     <Info label="Email" value={garden.farmer.email} />
                     <Info label="Địa chỉ" value={[garden.farmer.address, garden.farmer.ward, garden.farmer.district, garden.farmer.province].filter(Boolean).join(", ")} />
                     <Info label="Trạng thái" value={garden.farmer.accountStatus === "APPROVED" ? "Đã phê duyệt" : garden.farmer.accountStatus} />
-                    <Info label="Ngày phê duyệt" value={garden.farmer.approvedAt?.toLocaleDateString("vi-VN")} />
+                    <Info label="Ngày phê duyệt" value={garden.farmer.approvedAt ? formatVietnameseDate(garden.farmer.approvedAt) : undefined} />
                 </DetailCard>
 
                 <DetailCard title="Vùng trồng trực thuộc" icon={MapPinned}>
@@ -158,12 +158,12 @@ export default async function GardenDetailPage({ params }: { params: { gardenId:
                     <Info label="Địa bàn" value={[garden.region?.ward, garden.region?.district, garden.region?.province].filter(Boolean).join(", ")} />
                     <Info label="Giống được quản lý" value={garden.region?.cropVarieties.join(", ")} />
                     <Info label="Trạng thái" value={garden.region?.isActive ? "Đang hoạt động" : "Tạm ngừng"} />
-                    <Info label="Hiệu lực đến" value={garden.region?.validUntil?.toLocaleDateString("vi-VN")} />
+                    <Info label="Hiệu lực đến" value={garden.region?.validUntil ? formatVietnameseDate(garden.region?.validUntil) : undefined} />
                 </DetailCard>
 
                 <DetailCard title="Thông tin hệ thống" icon={CalendarDays}>
-                    <Info label="Ngày liên kết" value={garden.createdAt.toLocaleDateString("vi-VN")} />
-                    <Info label="Cập nhật gần nhất" value={garden.updatedAt.toLocaleString("vi-VN")} />
+                    <Info label="Ngày liên kết" value={formatVietnameseDate(garden.createdAt)} />
+                    <Info label="Cập nhật gần nhất" value={formatVietnameseDateTime(garden.updatedAt)} />
                     <Info label="Số nhật ký" value={garden._count.farmingLogs.toLocaleString("vi-VN")} />
                     <Info label="Nhật ký gần nhất" value={latestLog ? formatVietnameseDate(latestLog) : null} />
                 </DetailCard>

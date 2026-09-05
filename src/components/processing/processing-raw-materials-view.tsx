@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ModalPortal } from "@/components/ui/modal-portal";
+import { formatVietnameseDate, formatVietnameseDateTime } from "@/lib/date-format";
 
 export type RawMaterialItem = {
     id: string;
@@ -664,7 +665,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
 
                                         {/* Ngày thu hoạch */}
                                         <td className="px-5 py-3 whitespace-nowrap text-xs text-slate-600">
-                                            {item.harvestDate ? new Date(item.harvestDate).toLocaleDateString("vi-VN") : "—"}
+                                            {formatVietnameseDate(item.harvestDate) || "—"}
                                         </td>
 
                                         {/* Giống */}
@@ -817,9 +818,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                         <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
                                             <span className="text-[10px] font-semibold text-slate-400 block">Ngày dự kiến thu hoạch</span>
                                             <span className="font-bold text-slate-800">
-                                                {confirmingItem.harvestDate
-                                                    ? new Date(confirmingItem.harvestDate).toLocaleDateString("vi-VN")
-                                                    : "—"}
+                                                {formatVietnameseDate(confirmingItem.harvestDate) || "—"}
                                             </span>
                                         </div>
                                         <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">

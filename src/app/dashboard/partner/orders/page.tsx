@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 const labels: Record<string, string> = {
     CONFIRMED: "Chờ thực hiện", HARVESTING: "Đang thu mua", HARVESTED: "Chờ giao nhận",
@@ -25,7 +26,7 @@ export default async function Page() {
                 <p className="mt-3 font-semibold">{record.farm.farmName}</p>
                 <p className="mt-1 text-sm text-slate-500">Nhà vườn: {record.farmer.fullName} · {record.farm.durianVariety}</p>
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <Metric label={actualDate ? "Ngày thực nhận" : "Ngày thu mua dự kiến"} value={(actualDate ?? record.expectedHarvestDate).toLocaleDateString("vi-VN")} />
+                    <Metric label={actualDate ? "Ngày thực nhận" : "Ngày thu mua dự kiến"} value={formatVietnameseDate(actualDate ?? record.expectedHarvestDate)} />
                     <Metric label="Khối lượng dự kiến" value={`${Number(record.expectedWeight).toLocaleString("vi-VN")} ${record.weightUnit}`} />
                     <Metric label="Khối lượng thực nhận" value={actualWeight != null ? `${Number(actualWeight).toLocaleString("vi-VN")} ${record.weightUnit}` : "Chưa ghi nhận"} emphasize={actualWeight != null} />
                     <Metric label="Số trái thực tế" value={record.actualFruitCount != null ? `${record.actualFruitCount.toLocaleString("vi-VN")} trái` : "Chưa ghi nhận"} emphasize={record.actualFruitCount != null} />

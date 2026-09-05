@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { WeatherJournal } from "@/components/weather/weather-journal";
 import { PestMonitoringTab } from "@/components/farmer/pest-monitoring-tab";
 import { CultivationLogsTab } from "@/components/farmer/cultivation-logs-tab";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 const STAGES = [
     ["POST_HARVEST_RECOVERY", "Phục hồi sau thu hoạch"],
@@ -252,7 +253,7 @@ export function FarmerJournalUnifiedView({
                             )}
                             {currentSeason.startedAt && (
                                 <span className="text-slate-500 text-xs">
-                                    Bắt đầu: {new Date(currentSeason.startedAt).toLocaleDateString("vi-VN")}
+                                    Bắt đầu: {formatVietnameseDate(currentSeason.startedAt)}
                                 </span>
                             )}
                             {!isSeasonActive && (

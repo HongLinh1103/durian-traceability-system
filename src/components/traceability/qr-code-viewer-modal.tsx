@@ -21,6 +21,7 @@ import {
     Package
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 export interface QrModalData {
     token: string;
@@ -123,9 +124,7 @@ export function QrCodeViewerModal({ data, onClose }: QrCodeViewerModalProps) {
             return;
         }
 
-        const issuedDateStr = data.issuedAt
-            ? new Date(data.issuedAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })
-            : new Date().toLocaleDateString("vi-VN");
+        const issuedDateStr = formatVietnameseDate(data.issuedAt) || formatVietnameseDate(new Date());
 
         printWindow.document.write(`
             <!DOCTYPE html>

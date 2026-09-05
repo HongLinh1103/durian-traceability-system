@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getPreviewTrace, PreviewTraceData } from "@/lib/trace-preview";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 export type TraceValidation = {
     traceCompleteness: number;
@@ -36,13 +37,8 @@ export type TraceMilestone = {
 
 function formatVnDate(dateInput: Date | string | null | undefined): string {
     if (!dateInput) return "—";
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    });
+    const formatted = formatVietnameseDate(dateInput);
+    return formatted || "—";
 }
 
 export async function ensureCompletedHarvestCollectionLots(buyerUserId: string) {

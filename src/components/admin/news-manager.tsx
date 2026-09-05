@@ -11,6 +11,7 @@ import { VietnameseDatePicker } from "@/components/ui/vietnamese-date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 type Article = {
     id: string;
@@ -162,7 +163,7 @@ export function NewsManager() {
                                     </Badge>
                                 </div>
                                 <h2 className="mt-3 line-clamp-2 font-bold text-slate-900">{article.title}</h2>
-                                {article.sourcePublishedAt && <p className="mt-1 text-xs text-slate-400">Ngày đăng: {new Date(article.sourcePublishedAt).toLocaleDateString("vi-VN")}</p>}
+                                {article.sourcePublishedAt && <p className="mt-1 text-xs text-slate-400">Ngày đăng: {formatVietnameseDate(article.sourcePublishedAt)}</p>}
                                 <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">{article.description || "Chưa có mô tả."}</p>
                                 <div className="mt-auto flex gap-2 pt-3">
                                     <Button type="button" variant="outline" className="flex-1" onClick={() => openEditor(article)}><FilePenLine className="mr-2 h-4 w-4" />Xem và sửa</Button>
@@ -215,7 +216,7 @@ export function NewsManager() {
                                     <NewsImage src={edit.imageUrl} title={edit.title} />
                                     <div className="flex flex-1 flex-col p-4">
                                         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-600">{edit.sourceName || "TÊN NGUỒN"}</p>
-                                        {edit.sourcePublishedAt && <p className="mt-1 text-xs text-slate-400">{new Date(`${edit.sourcePublishedAt}T00:00:00`).toLocaleDateString("vi-VN")}</p>}
+                                        {edit.sourcePublishedAt && <p className="mt-1 text-xs text-slate-400">{formatVietnameseDate(edit.sourcePublishedAt)}</p>}
                                         <h3 className="mt-3 line-clamp-2 font-bold text-slate-900">{edit.title || "Tiêu đề bài viết"}</h3>
                                         <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">{edit.description || "Mô tả bài viết"}</p>
                                         <span className="mt-auto inline-flex items-center font-semibold text-emerald-700">Đọc bài viết<ExternalLink className="ml-2 h-4 w-4" /></span>

@@ -42,7 +42,8 @@ export function toIsoDateTime(dateValue: string, timeValue: string): string {
     ).toISOString();
 }
 
-export function formatVietnameseDate(date: Date | string | number): string {
+export function formatVietnameseDate(date: Date | string | number | null | undefined): string {
+    if (!date) return "";
     const d = typeof date === "object" && date instanceof Date ? date : new Date(date);
     if (Number.isNaN(d.getTime())) return String(date);
     const day = String(d.getDate()).padStart(2, "0");
@@ -50,15 +51,13 @@ export function formatVietnameseDate(date: Date | string | number): string {
     return `${day}/${month}/${d.getFullYear()}`;
 }
 
-export function formatVietnameseDateTime(date: Date | string | number): string {
+export function formatVietnameseDateTime(date: Date | string | number | null | undefined): string {
+    if (!date) return "";
     const d = typeof date === "object" && date instanceof Date ? date : new Date(date);
     if (Number.isNaN(d.getTime())) return String(date);
-    return d.toLocaleString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-    });
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes} ${day}/${month}/${d.getFullYear()}`;
 }

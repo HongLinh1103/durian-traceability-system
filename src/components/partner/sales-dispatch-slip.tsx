@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QrCodeViewerModal, QrModalData } from "@/components/traceability/qr-code-viewer-modal";
+import { formatVietnameseDate } from "@/lib/date-format";
 
 export type SalesDispatchData = {
     id: string;
@@ -145,13 +146,7 @@ export function SalesDispatchSlip({
     const paymentMethodText = data.paymentMethod || "Chuyển khoản";
 
     const dispatchDate = data.dispatchedAt ? new Date(data.dispatchedAt) : new Date();
-    const formattedDate = !isNaN(dispatchDate.getTime())
-        ? dispatchDate.toLocaleDateString("vi-VN", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-          })
-        : new Date().toLocaleDateString("vi-VN");
+    const formattedDate = formatVietnameseDate(dispatchDate) || formatVietnameseDate(new Date());
 
     function handlePrint() {
         const printWindow = window.open("", "_blank", "width=800,height=900");
