@@ -58,6 +58,24 @@ export default async function Page() {
                 : [],
         ]);
 
+        const lotIds = rawRows.map((r) => r.id);
+        const classificationEvents = lotIds.length > 0
+            ? await prisma.traceEvent.findMany({
+                  where: {
+                      entityType: "RAW_MATERIAL_LOT",
+                      entityId: { in: lotIds },
+                      eventType: "RAW_MATERIAL_CLASSIFIED",
+                  },
+                  orderBy: { createdAt: "desc" },
+              }).catch(() => [])
+            : [];
+        const eventByLotId = new Map<string, any>();
+        for (const ev of classificationEvents) {
+            if (!eventByLotId.has(ev.entityId)) {
+                eventByLotId.set(ev.entityId, ev);
+            }
+        }
+
         // Keep track of harvest records that are already converted to RawMaterialLots
         const existingHarvestIds = new Set<string>();
         rawRows.forEach((row) => {
@@ -115,6 +133,19 @@ export default async function Page() {
             const isClassified = row.direction !== "UNCLASSIFIED" || freshW > 0 || procW > 0;
             const rejectedW = Math.max(0, actualReceivedWeight - (freshW + procW));
 
+            const ev = eventByLotId.get(row.id);
+            const meta = (ev?.metadata as any) || {};
+
+            const freshFruitCount = typeof meta.freshExportFruitCount === "number"
+                ? meta.freshExportFruitCount
+                : (freshW > 0 ? Math.round(freshW / 3) : undefined);
+            const procFruitCount = typeof meta.processingFruitCount === "number"
+                ? meta.processingFruitCount
+                : (procW > 0 ? Math.round(procW / 3) : undefined);
+            const rejFruitCount = typeof meta.rejectedFruitCount === "number"
+                ? meta.rejectedFruitCount
+                : (isClassified && rejectedW > 0 ? Math.round(rejectedW / 3) : undefined);
+
             formattedItems.push({
                 id: row.id,
                 rawLotId: row.id,
@@ -137,11 +168,11 @@ export default async function Page() {
                 status: isClassified ? "CLASSIFIED" : "WAITING_CLASSIFICATION",
                 direction: (row.direction || (isClassified ? (freshW > 0 && procW > 0 ? "SPLIT" : freshW > 0 ? "FRESH_EXPORT" : "PROCESSING") : "UNCLASSIFIED")) as any,
                 freshExportWeight: freshW > 0 ? freshW : undefined,
-                freshExportFruitCount: freshW > 0 ? Math.round(freshW / 3) : undefined,
+                freshExportFruitCount: freshFruitCount,
                 processingWeight: procW > 0 ? procW : undefined,
-                processingFruitCount: procW > 0 ? Math.round(procW / 3) : undefined,
+                processingFruitCount: procFruitCount,
                 rejectedWeight: isClassified && rejectedW > 0 ? rejectedW : undefined,
-                rejectedFruitCount: isClassified && rejectedW > 0 ? Math.round(rejectedW / 3) : undefined,
+                rejectedFruitCount: rejFruitCount,
                 note: row.rawMaterialReceipt?.note || undefined,
             });
         });
