@@ -256,11 +256,11 @@ export function ProcessingProductionView({
     // Handler: Open Fresh Packaging Drawer
     const handleOpenFreshDrawer = (item: FreshProductItem) => {
         setSelectedFresh(item);
-        const w = item.outputWeight || item.inputWeight;
-        setFreshOutputWeight(w);
-        setFreshBoxCount(item.boxCount || Math.max(1, Math.round(w / 18)));
+        const isDone = item.status === "READY_FOR_EXPORT";
+        setFreshOutputWeight(isDone && item.outputWeight ? item.outputWeight : "");
+        setFreshBoxCount(isDone && item.boxCount ? item.boxCount : "");
         setFreshPackagingSpec(item.packagingSpec || "Thùng 5-6 trái / 18kg");
-        setFreshCompleteDate(getLocalDateTimeString(item.status === "READY_FOR_EXPORT" && item.packagingDate ? item.packagingDate : new Date()));
+        setFreshCompleteDate(getLocalDateTimeString(isDone && item.packagingDate ? item.packagingDate : new Date()));
         setFreshNote("");
     };
 
@@ -353,10 +353,11 @@ export function ProcessingProductionView({
     // Handler: Open Processing Drawer
     const handleOpenProcDrawer = (item: ProcessedBatchItem) => {
         setSelectedProc(item);
+        const isDone = item.status === "COMPLETED";
         setProcMethod(item.method || "Bóc múi & cấp đông");
         setProcProductName(item.outputProduct || "Cơm sầu riêng bóc múi");
-        setProcOutputWeight(item.outputWeight || Math.round(item.inputWeight * 0.32));
-        setProcDate(getLocalDateTimeString(item.status === "COMPLETED" && item.completedAt ? item.completedAt : new Date()));
+        setProcOutputWeight(isDone && item.outputWeight ? item.outputWeight : "");
+        setProcDate(getLocalDateTimeString(isDone && item.completedAt ? item.completedAt : new Date()));
         setProcNote("");
     };
 
@@ -838,11 +839,8 @@ export function ProcessingProductionView({
                                         <input
                                             type="number"
                                             value={freshOutputWeight}
-                                            onChange={(e) => {
-                                                setFreshOutputWeight(e.target.value);
-                                                const w = Number(e.target.value);
-                                                if (w > 0) setFreshBoxCount(Math.max(1, Math.round(w / 18)));
-                                            }}
+                                            onChange={(e) => setFreshOutputWeight(e.target.value)}
+                                            placeholder="Nhập khối lượng thành phẩm..."
                                             className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
                                         />
                                     </div>
@@ -853,6 +851,7 @@ export function ProcessingProductionView({
                                             type="number"
                                             value={freshBoxCount}
                                             onChange={(e) => setFreshBoxCount(e.target.value)}
+                                            placeholder="Nhập số thùng..."
                                             className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
                                         />
                                     </div>
@@ -970,6 +969,7 @@ export function ProcessingProductionView({
                                                 type="number"
                                                 value={procOutputWeight}
                                                 onChange={(e) => setProcOutputWeight(e.target.value)}
+                                                placeholder="Nhập khối lượng thành phẩm..."
                                                 className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
                                             />
                                         </div>
