@@ -797,6 +797,9 @@ export function ProcessingProductionView({
                             <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
                                 <div>
                                     <h2 className="text-xl font-black text-slate-900">ĐÓNG GÓI LÔ THÀNH PHẨM</h2>
+                                    <p className="mt-1 text-xs italic font-bold text-red-600">
+                                        {formatVietnameseDateTime(freshCompleteDate)}
+                                    </p>
                                 </div>
                                 <button
                                     type="button"
@@ -809,17 +812,6 @@ export function ProcessingProductionView({
 
                             {/* Body */}
                             <div className="overflow-y-auto p-5 sm:p-6 space-y-4">
-                                {/* Thời gian hoàn tất (Tự động) */}
-                                <div className="flex items-center justify-between rounded-2xl bg-emerald-50 border border-emerald-200/80 px-4 py-3 text-xs">
-                                    <span className="flex items-center gap-2 font-bold text-emerald-800">
-                                        <Clock className="h-4 w-4 text-emerald-600" />
-                                        Thời gian hoàn tất:
-                                    </span>
-                                    <span className="font-mono font-black text-emerald-950 text-xs sm:text-sm">
-                                        {formatVietnameseDateTime(freshCompleteDate)}
-                                    </span>
-                                </div>
-
                                 <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700 border border-slate-200">
                                     <p className="flex justify-between">
                                         <span className="text-slate-500">Mã lô nguồn:</span>
@@ -922,6 +914,9 @@ export function ProcessingProductionView({
                             <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6">
                                 <div>
                                     <h2 className="text-xl font-black text-slate-900">CHẾ BIẾN SẢN PHẨM LÔ CHẾ BIẾN</h2>
+                                    <p className="mt-1 text-xs italic font-bold text-red-600">
+                                        {formatVietnameseDateTime(procDate)}
+                                    </p>
                                 </div>
                                 <button
                                     type="button"
@@ -934,17 +929,6 @@ export function ProcessingProductionView({
 
                             {/* Body */}
                             <div className="overflow-y-auto p-5 sm:p-6 space-y-4">
-                                {/* Thời gian hoàn tất (Tự động) */}
-                                <div className="flex items-center justify-between rounded-2xl bg-indigo-50 border border-indigo-200/80 px-4 py-3 text-xs">
-                                    <span className="flex items-center gap-2 font-bold text-indigo-800">
-                                        <Clock className="h-4 w-4 text-indigo-600" />
-                                        Thời gian hoàn tất:
-                                    </span>
-                                    <span className="font-mono font-black text-indigo-950 text-xs sm:text-sm">
-                                        {formatVietnameseDateTime(procDate)}
-                                    </span>
-                                </div>
-
                                 <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs text-slate-700 border border-slate-200">
                                     <p className="flex justify-between">
                                         <span className="text-slate-500">Mã lô nguồn:</span>
