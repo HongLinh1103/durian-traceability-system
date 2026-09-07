@@ -131,7 +131,7 @@ const activityLabels: Record<string, string> = {
 };
 
 export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
-    const [sortNewestFirst, setSortNewestFirst] = useState(false);
+    const [sortNewestFirst, setSortNewestFirst] = useState(true);
     const [expandedProcessing, setExpandedProcessing] = useState(false);
     const [expandedFarmIndex, setExpandedFarmIndex] = useState<number | null>(null);
     const [qrDataUrl, setQrDataUrl] = useState<string>("");
@@ -426,11 +426,10 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
 
                     {!active && !trace.isPreview && (
                         <div
-                            className={`rounded-2xl p-4 text-xs font-semibold flex items-center gap-3 border ${
-                                trace.qrStatus === "REVOKED"
-                                    ? "bg-red-50 text-red-800 border-red-200"
-                                    : "bg-amber-50 text-amber-900 border-amber-200"
-                            }`}
+                            className={`rounded-2xl p-4 text-xs font-semibold flex items-center gap-3 border ${trace.qrStatus === "REVOKED"
+                                ? "bg-red-50 text-red-800 border-red-200"
+                                : "bg-amber-50 text-amber-900 border-amber-200"
+                                }`}
                         >
                             <AlertTriangle className="h-5 w-5 shrink-0" />
                             <span>
@@ -461,15 +460,33 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                             </p>
                         </div>
 
-                        {/* Toggle Sort Order Button */}
-                        <button
-                            type="button"
-                            onClick={() => setSortNewestFirst(!sortNewestFirst)}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition self-start sm:self-auto shrink-0"
-                        >
-                            <ArrowDownUp className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
-                            <span>{sortNewestFirst ? "Mới nhất trước" : "Theo trình tự (Bước 1 ➔ 5)"}</span>
-                        </button>
+                        {/* Bộ lọc 2 chế độ: Mới nhất trước / Cũ nhất trước */}
+                        <div className="inline-flex items-center rounded-xl bg-slate-100 p-1 border border-slate-200 self-start sm:self-auto shrink-0 shadow-2xs">
+                            <button
+                                type="button"
+                                onClick={() => setSortNewestFirst(true)}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition ${
+                                    sortNewestFirst
+                                        ? "bg-white text-emerald-800 shadow-xs ring-1 ring-slate-200/80"
+                                        : "text-slate-600 hover:text-slate-900"
+                                }`}
+                            >
+                                <ArrowUp className="h-3.5 w-3.5 text-emerald-700" />
+                                <span>Mới nhất trước</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setSortNewestFirst(false)}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition ${
+                                    !sortNewestFirst
+                                        ? "bg-white text-emerald-800 shadow-xs ring-1 ring-slate-200/80"
+                                        : "text-slate-600 hover:text-slate-900"
+                                }`}
+                            >
+                                <ArrowDown className="h-3.5 w-3.5 text-emerald-700" />
+                                <span>Cũ nhất trước</span>
+                            </button>
+                        </div>
                     </div>
 
                     {/* DÂY CHUYỀN LIÊN TỤC (CONTINUOUS CHAIN TRACK) */}
@@ -481,9 +498,8 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                             return (
                                 <div
                                     key={milestone.id}
-                                    className={`group grid grid-cols-[2.75rem_minmax(0,1fr)] sm:grid-cols-[3.5rem_minmax(0,1fr)] min-w-0 ${
-                                        isLast ? "" : "pb-7 sm:pb-9"
-                                    }`}
+                                    className={`group grid grid-cols-[2.75rem_minmax(0,1fr)] sm:grid-cols-[3.5rem_minmax(0,1fr)] min-w-0 ${isLast ? "" : "pb-7 sm:pb-9"
+                                        }`}
                                 >
                                     {/* Dedicated timeline column: the node never shares space with text. */}
                                     <div className="relative flex justify-center">
@@ -501,9 +517,8 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
 
                                     {/* Milestone Content */}
                                     <div
-                                        className={`min-w-0 pl-2 sm:pl-3 ${
-                                            isLast ? "" : "border-b border-slate-200/80 pb-7 sm:pb-9"
-                                        }`}
+                                        className={`min-w-0 pl-2 sm:pl-3 ${isLast ? "" : "border-b border-slate-200/80 pb-7 sm:pb-9"
+                                            }`}
                                     >
                                         {/* Milestone Header Line: Title + Date */}
                                         <div className="flex flex-col sm:flex-row sm:items-start gap-1.5 sm:gap-4 min-w-0">
@@ -531,11 +546,10 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                                                             </span>
                                                         ) : (
                                                             <span
-                                                                className={`break-words text-xs sm:text-sm min-w-0 ${
-                                                                    field.highlight
-                                                                        ? "font-black text-slate-900"
-                                                                        : "font-semibold text-slate-800"
-                                                                }`}
+                                                                className={`break-words text-xs sm:text-sm min-w-0 ${field.highlight
+                                                                    ? "font-black text-slate-900"
+                                                                    : "font-semibold text-slate-800"
+                                                                    }`}
                                                             >
                                                                 {field.value}
                                                             </span>
