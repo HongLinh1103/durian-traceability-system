@@ -963,18 +963,7 @@ export function ProcessingShipmentsView({
                                     <tr key={s.id} className="h-14 hover:bg-slate-50/70 transition">
                                         {/* Mã lô xuất */}
                                         <td className="px-5 py-3 whitespace-nowrap">
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="font-mono font-bold text-slate-900 text-xs">{s.shipmentCode}</span>
-                                                {isDomestic ? (
-                                                    <span className="rounded-md bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 text-[9px] font-black text-emerald-800">
-                                                        Nội địa
-                                                    </span>
-                                                ) : (
-                                                    <span className="rounded-md bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 text-[9px] font-black text-indigo-800">
-                                                        Xuất khẩu
-                                                    </span>
-                                                )}
-                                            </div>
+                                            <span className="font-mono font-bold text-slate-900 text-xs">{s.shipmentCode}</span>
                                         </td>
 
                                         {/* Sản phẩm & Điểm đến */}

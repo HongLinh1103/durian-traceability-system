@@ -148,7 +148,9 @@ export function PartnerFinanceCharts({ data, role }: { data: PartnerChartData; r
                             {isCollector ? "Biểu Đồ Thống Kê Tài Chính Vựa Thu Mua" : "Biểu Đồ Thống Kê Tài Chính Cơ Sở Chế Biến"}
                         </h2>
                         <p className="text-xs text-slate-500">
-                            6 biểu đồ phân tích trực quan: Doanh thu, Thu - Chi, Công nợ, Cơ cấu chi phí và Khối lượng vận hành
+                            {isCollector
+                                ? "6 biểu đồ phân tích trực quan: Doanh thu, Thu - Chi, Công nợ, Cơ cấu chi phí và Khối lượng vận hành"
+                                : "Phân tích trực quan: Doanh thu, Thu - Chi, Công nợ, Cơ cấu chi phí và Doanh thu theo sản phẩm"}
                         </p>
                     </div>
                 </div>
@@ -373,58 +375,58 @@ export function PartnerFinanceCharts({ data, role }: { data: PartnerChartData; r
                     </div>
                 </div>
 
-                {/* ----------------- CHART 5: KHỐI LƯỢNG MUA - BÁN / SẢN LƯỢNG CHẾ BIẾN ----------------- */}
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                        <div className="flex items-center gap-2">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-                                {isCollector ? <Scale className="h-4 w-4" /> : <Factory className="h-4 w-4" />}
+                {/* ----------------- CHART 5: KHỐI LƯỢNG MUA - BÁN (CHỈ CHO VỰA THU MUA) ----------------- */}
+                {isCollector && (
+                    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div className="flex items-center gap-2">
+                                <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+                                    <Scale className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-900">
+                                        5. Khối Lượng Thu Mua vs Xuất Bán (kg)
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500">
+                                        Cân đối sản lượng kg nông sản nhập và xuất theo tháng
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="text-sm font-black text-slate-900">
-                                    {isCollector
-                                        ? "5. Khối Lượng Thu Mua vs Xuất Bán (kg)"
-                                        : "5. Sản Lượng Đầu Vào vs Thành Phẩm Thu Hồi (kg)"}
-                                </h3>
-                                <p className="text-[11px] text-slate-500">
-                                    {isCollector ? "Cân đối sản lượng kg nông sản nhập và xuất theo tháng" : "So sánh kg nguyên liệu và thành phẩm đạt chuẩn"}
-                                </p>
-                            </div>
+                            <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-xl">
+                                Đơn vị: kg
+                            </span>
                         </div>
-                        <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-xl">
-                            Đơn vị: kg
-                        </span>
-                    </div>
 
-                    <div className="h-72 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={data.monthlyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b" }} />
-                                <YAxis tick={{ fontSize: 10, fill: "#64748b" }} tickFormatter={(v) => `${(v / 1000).toFixed(0)} tấn`} />
-                                <Tooltip content={<CustomTooltip unit="kg" />} />
-                                <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-                                <Bar
-                                    dataKey={isCollector ? "purchaseWeight" : "inputWeight"}
-                                    name={isCollector ? "Khối lượng thu mua" : "Nguyên liệu đầu vào"}
-                                    fill="#0ea5e9"
-                                    radius={[6, 6, 0, 0]}
-                                    barSize={22}
-                                />
-                                <Bar
-                                    dataKey={isCollector ? "salesWeight" : "outputWeight"}
-                                    name={isCollector ? "Khối lượng xuất bán" : "Thành phẩm thu hồi"}
-                                    fill="#10b981"
-                                    radius={[6, 6, 0, 0]}
-                                    barSize={22}
-                                />
-                            </BarChart>
-                        </ResponsiveContainer>
+                        <div className="h-72 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={data.monthlyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b" }} />
+                                    <YAxis tick={{ fontSize: 10, fill: "#64748b" }} tickFormatter={(v) => `${(v / 1000).toFixed(0)} tấn`} />
+                                    <Tooltip content={<CustomTooltip unit="kg" />} />
+                                    <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
+                                    <Bar
+                                        dataKey="purchaseWeight"
+                                        name="Khối lượng thu mua"
+                                        fill="#0ea5e9"
+                                        radius={[6, 6, 0, 0]}
+                                        barSize={22}
+                                    />
+                                    <Bar
+                                        dataKey="salesWeight"
+                                        name="Khối lượng xuất bán"
+                                        fill="#10b981"
+                                        radius={[6, 6, 0, 0]}
+                                        barSize={22}
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* ----------------- CHART 6: TOP KHÁCH HÀNG / DOANH THU THEO SẢN PHẨM ----------------- */}
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+                <div className={`rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4 ${isCollector ? "" : "lg:col-span-2"}`}>
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div className="flex items-center gap-2">
                             <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
@@ -432,7 +434,7 @@ export function PartnerFinanceCharts({ data, role }: { data: PartnerChartData; r
                             </div>
                             <div>
                                 <h3 className="text-sm font-black text-slate-900">
-                                    {isCollector ? "6. Doanh Thu Theo Bên Mua / Điểm Bán" : "6. Doanh Thu Theo Loại Thành Phẩm"}
+                                    {isCollector ? "6. Doanh Thu Theo Bên Mua / Điểm Bán" : "5. Doanh Thu Theo Loại Thành Phẩm"}
                                 </h3>
                                 <p className="text-[11px] text-slate-500">
                                     {isCollector ? "Các đối tác mua hàng tạo doanh thu cao nhất cho vựa" : "Doanh thu từ từng mặt hàng sầu riêng chế biến"}
@@ -454,7 +456,7 @@ export function PartnerFinanceCharts({ data, role }: { data: PartnerChartData; r
                                 >
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                                     <XAxis type="number" tick={{ fontSize: 10, fill: "#64748b" }} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}M`} />
-                                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11, fill: "#334155" }} />
+                                    <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 11, fill: "#334155" }} />
                                     <Tooltip content={<CustomTooltip unit="đ" />} />
                                     <Bar dataKey="revenue" name="Doanh thu" fill="#6366f1" radius={[0, 6, 6, 0]} barSize={20} />
                                 </BarChart>
@@ -468,60 +470,60 @@ export function PartnerFinanceCharts({ data, role }: { data: PartnerChartData; r
                 </div>
             </div>
 
-            {/* ----------------- EXTRA SECTION: PHƯƠNG THỨC THANH TOÁN & HAO HỤT CHẾ BIẾN ----------------- */}
-            <div className="grid gap-6 lg:grid-cols-2">
-                {/* Phương thức thanh toán */}
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                        <div className="flex items-center gap-2">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-                                <CreditCard className="h-4 w-4" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-black text-slate-900">Phương Thức Thanh Toán</h3>
-                                <p className="text-[11px] text-slate-500">Tỷ trọng tiền mặt, chuyển khoản và ghi nhận công nợ</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center h-56">
-                        <div className="h-full w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={data.paymentMethods}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={40}
-                                        outerRadius={70}
-                                        paddingAngle={4}
-                                        dataKey="value"
-                                    >
-                                        {data.paymentMethods.map((entry, index) => (
-                                            <Cell key={`cell-pm-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip content={<CustomTooltip unit="đ" />} />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-
-                        <div className="space-y-2">
-                            {data.paymentMethods.map((item, idx) => (
-                                <div key={idx} className="flex items-center justify-between text-xs p-2 rounded-xl bg-slate-50">
-                                    <span className="flex items-center gap-2 font-medium text-slate-700">
-                                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                                        {item.name} ({item.count} giao dịch)
-                                    </span>
-                                    <span className="font-bold text-slate-900">{formatVND(item.value)}</span>
+            {/* ----------------- EXTRA SECTION: PHƯƠNG THỨC THANH TOÁN & CÔNG NỢ (CHỈ DÀNH CHO VỰA THU MUA) ----------------- */}
+            {isCollector && (
+                <div className="grid gap-6 lg:grid-cols-2">
+                    {/* Phương thức thanh toán */}
+                    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div className="flex items-center gap-2">
+                                <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                                    <CreditCard className="h-4 w-4" />
                                 </div>
-                            ))}
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-900">Phương Thức Thanh Toán</h3>
+                                    <p className="text-[11px] text-slate-500">Tỷ trọng tiền mặt, chuyển khoản và ghi nhận công nợ</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center h-56">
+                            <div className="h-full w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={data.paymentMethods}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={40}
+                                            outerRadius={70}
+                                            paddingAngle={4}
+                                            dataKey="value"
+                                        >
+                                            {data.paymentMethods.map((entry, index) => (
+                                                <Cell key={`cell-pm-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip content={<CustomTooltip unit="đ" />} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+
+                            <div className="space-y-2">
+                                {data.paymentMethods.map((item, idx) => (
+                                    <div key={idx} className="flex items-center justify-between text-xs p-2 rounded-xl bg-slate-50">
+                                        <span className="flex items-center gap-2 font-medium text-slate-700">
+                                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                            {item.name} ({item.count} giao dịch)
+                                        </span>
+                                        <span className="font-bold text-slate-900">{formatVND(item.value)}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Hao hụt chế biến hoặc Công nợ phải trả */}
-                {isCollector ? (
+                    {/* Công nợ phải trả Nhà cung cấp & Nông dân */}
                     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <div className="flex items-center gap-2">
@@ -557,42 +559,8 @@ export function PartnerFinanceCharts({ data, role }: { data: PartnerChartData; r
                             )}
                         </div>
                     </div>
-                ) : (
-                    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <div className="flex items-center gap-2">
-                                <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-                                    <Factory className="h-4 w-4" />
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-black text-slate-900">Tỷ Lệ Thu Hồi & Hao Hụt Chế Biến (%)</h3>
-                                    <p className="text-[11px] text-slate-500">Hiệu suất thu hồi thành phẩm sầu riêng theo từng mẻ / tháng</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="h-56 w-full">
-                            {data.processingBatches && data.processingBatches.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={data.processingBatches} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                        <XAxis dataKey="batchCode" tick={{ fontSize: 10, fill: "#64748b" }} />
-                                        <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "#64748b" }} tickFormatter={(v) => `${v}%`} />
-                                        <Tooltip content={<CustomTooltip unit="%" />} />
-                                        <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-                                        <Line type="monotone" dataKey="yieldPercent" name="Tỷ lệ thu hồi (%)" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4 }} />
-                                        <Line type="monotone" dataKey="lossPercent" name="Tỷ lệ hao hụt (%)" stroke="#f43f5e" strokeWidth={2.5} dot={{ r: 4 }} />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="flex h-full items-center justify-center text-xs text-slate-400">
-                                    Chưa có dữ liệu mẻ chế biến
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 }
