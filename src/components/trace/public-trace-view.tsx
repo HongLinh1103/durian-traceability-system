@@ -39,6 +39,7 @@ import { TraceMilestone } from "@/lib/traceability";
 import { formatVietnameseDate } from "@/lib/date-format";
 
 export type PublicTraceData = {
+    isPreview?: boolean;
     qrStatus: string;
     code: string;
     publicToken: string;
@@ -421,7 +422,7 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                         </div>
                     </div>
 
-                    {!active && (
+                    {!active && !trace.isPreview && (
                         <div
                             className={`rounded-2xl p-4 text-xs font-semibold flex items-center gap-3 border ${
                                 trace.qrStatus === "REVOKED"
@@ -438,6 +439,12 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                         </div>
                     )}
                 </header>
+
+                {trace.isPreview && (
+                    <p role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                        Bản xem trước từ form. Lô xuất và mã QR chỉ được phát hành sau khi lưu thành công.
+                    </p>
+                )}
 
                 {/* 2. DÂY CHUYỀN HÀNH TRÌNH SẢN PHẨM (PIPELINE SUPPLY CHAIN) */}
                 <section className="rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-8 shadow-sm space-y-6 overflow-hidden">

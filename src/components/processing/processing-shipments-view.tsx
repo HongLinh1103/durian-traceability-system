@@ -400,78 +400,6 @@ export function ProcessingShipmentsView({
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
-    // Hydrate packaged lots from Step 3 (Chế biến & Đóng gói)
-    useEffect(() => {
-        try {
-            const raw = localStorage.getItem("processing_packaged_lots");
-            if (!raw) return;
-            const packaged: any[] = JSON.parse(raw);
-            if (!Array.isArray(packaged) || packaged.length === 0) return;
-
-            // Purge ghost lots like FPL-20260826-001 or deleted demo / old harvest lots
-            const cleaned = packaged.filter(
-                (p) =>
-                    p &&
-                    p.lotCode !== "FPL-20260826-001" &&
-                    p.id !== "FPL-20260826-001" &&
-                    !String(p.id).startsWith("demo-") &&
-                    !String(p.lotCode).startsWith("demo-") &&
-                    !String(p.sourceRawCode).includes("TH-DEMO-20260817-002")
-            );
-            if (cleaned.length !== packaged.length) {
-                localStorage.setItem("processing_packaged_lots", JSON.stringify(cleaned));
-            }
-
-            setAvailableLots((prev) => {
-                const filteredPrev = prev.filter(
-                    (l) =>
-                        l.lotCode !== "FPL-20260826-001" &&
-                        l.id !== "FPL-20260826-001" &&
-                        !String(l.id).startsWith("demo-") &&
-                        !String(l.lotCode).startsWith("demo-")
-                );
-                const existingIds = new Set(filteredPrev.map((l) => l.id));
-                const existingCodes = new Set(filteredPrev.map((l) => l.lotCode));
-                const newLots: AvailableFinishedLot[] = [];
-
-                cleaned.forEach((p) => {
-                    const statusStr = p.status || "";
-                    const isReady =
-                        !statusStr ||
-                        [
-                            "READY_FOR_DISTRIBUTION",
-                            "AVAILABLE",
-                            "PARTIALLY_DISTRIBUTED",
-                            "READY_FOR_EXPORT",
-                            "COMPLETED",
-                        ].includes(statusStr);
-                    const weight = Number(p.remainingWeight || 0);
-
-                    if (
-                        isReady &&
-                        weight > 0 &&
-                        !existingIds.has(p.id) &&
-                        !existingCodes.has(p.lotCode)
-                    ) {
-                        newLots.push({
-                            id: p.id,
-                            lotCode: p.lotCode,
-                            productName: p.productName || "Sầu riêng tươi xuất khẩu",
-                            remainingWeight: weight,
-                            packaging: p.packaging || undefined,
-                            farmName: p.farmName || "Vườn sầu riêng liên kết",
-                            regionCode: p.regionCode || "MSVT-VN",
-                            rawLotCode: p.rawLotCode || "TH-2026",
-                            status: "READY_FOR_DISTRIBUTION",
-                        });
-                    }
-                });
-
-                return newLots.length > 0 ? [...newLots, ...filteredPrev] : filteredPrev;
-            });
-        } catch { }
-    }, []);
-
     // Modal Create Shipment
     const [openCreateModal, setOpenCreateModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -618,6 +546,7 @@ export function ProcessingShipmentsView({
             productName: productName.trim() || selectedLot.productName,
             lotCode: selectedLot.lotCode,
             packaging: selectedLot.packaging,
+            exportDate,
             weight: Number(weightInput) || 0,
             boxCount: Number(boxCountInput) || undefined,
             destinationCountry: shipmentType === "EXPORT" ? (destinationCountry || "Trung Quốc") : "Việt Nam",
@@ -650,6 +579,7 @@ export function ProcessingShipmentsView({
         productName,
         weightInput,
         boxCountInput,
+        exportDate,
         destinationCountry,
         portOfDestination,
         portOfLoading,
@@ -683,72 +613,6 @@ export function ProcessingShipmentsView({
         return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(liveTraceUrl)}`;
     }, [liveTraceUrl]);
 
-    // Live background sync to Preview Store so QR can be scanned immediately
-    useEffect(() => {
-        if (!isFormReadyForQr || !shipmentCode) return;
-        const timer = setTimeout(() => {
-            fetch("/api/trace/preview", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    shipmentCode,
-                    shipmentType,
-                    productName: productName || selectedLot?.productName || "Sầu riêng tươi xuất khẩu",
-                    lotCode: selectedLot?.lotCode,
-                    finishedProductLotId: selectedLot?.id,
-                    packaging: selectedLot?.packaging,
-                    weight: Number(weightInput) || 0,
-                    boxCount: Number(boxCountInput) || undefined,
-                    destinationCountry: shipmentType === "EXPORT" ? (destinationCountry || "Trung Quốc") : "Việt Nam",
-                    portOfDestination: shipmentType === "EXPORT" ? (portOfDestination || "Côn Minh, Vân Nam") : (deliveryAddress || "Nội địa Việt Nam"),
-                    portOfLoading: shipmentType === "EXPORT" ? portOfLoading : undefined,
-                    containerNumber: shipmentType === "EXPORT" ? containerNumber : undefined,
-                    sealNumber: shipmentType === "EXPORT" ? sealNumber : undefined,
-                    truckPlate: truckPlate || undefined,
-                    carrierName: shipmentType === "EXPORT" ? carrierName : transportMethod,
-                    distributionChannel: shipmentType === "DOMESTIC" ? distributionChannel : undefined,
-                    partnerSystem: shipmentType === "DOMESTIC" ? partnerSystem : undefined,
-                    partnerBranch: shipmentType === "DOMESTIC" ? partnerBranch : undefined,
-                    customerName: shipmentType === "DOMESTIC" ? (partnerBranch || customerName || partnerSystem) : undefined,
-                    contactPerson: shipmentType === "DOMESTIC" ? contactPerson : undefined,
-                    customerPhone: shipmentType === "DOMESTIC" ? customerPhone : undefined,
-                    deliveryAddress: shipmentType === "DOMESTIC" ? deliveryAddress : undefined,
-                    transportMethod: shipmentType === "DOMESTIC" ? transportMethod : undefined,
-                    driverName: shipmentType === "DOMESTIC" ? driverName : undefined,
-                    farmName: selectedLot?.farmName,
-                    regionCode: selectedLot?.regionCode,
-                    rawLotCode: selectedLot?.rawLotCode,
-                    facilityName,
-                }),
-            }).catch(() => { });
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [
-        isFormReadyForQr,
-        shipmentCode,
-        shipmentType,
-        productName,
-        selectedLot,
-        weightInput,
-        boxCountInput,
-        destinationCountry,
-        portOfDestination,
-        portOfLoading,
-        containerNumber,
-        sealNumber,
-        truckPlate,
-        carrierName,
-        distributionChannel,
-        partnerSystem,
-        partnerBranch,
-        customerName,
-        contactPerson,
-        customerPhone,
-        deliveryAddress,
-        transportMethod,
-        driverName,
-        facilityName,
-    ]);
 
     // KPIs
     const kpis = useMemo(() => {
@@ -878,28 +742,17 @@ export function ProcessingShipmentsView({
                 payload.carrierName = carrierName.trim() || undefined;
             }
 
-            let createdId = `SHP-${Date.now()}`;
-            let token = "";
-
-            try {
-                const res = await fetch("/api/processing/shipments", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-
-                const data = await res.json();
-                if (res.ok && data?.success && data?.data?.shipment) {
-                    createdId = data.data.shipment.id;
-                    token = data.data.traceCode?.publicToken || "";
-                }
-            } catch {
-                // Fallback for demo / offline mode
+            const res = await fetch("/api/processing/shipments", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success || !data?.data?.shipment?.id || !data?.data?.traceCode?.publicToken) {
+                throw new Error(data?.message || "Không thể lưu lô xuất hàng. Vui lòng thử lại; mã QR chưa được phát hành.");
             }
-
-            if (!token) {
-                token = `TRC-${Math.random().toString(36).slice(-8).toUpperCase()}`;
-            }
+            const createdId = data.data.shipment.id;
+            const token = data.data.traceCode.publicToken;
 
             const newRow: ShipmentItemRow = {
                 id: createdId,
@@ -932,7 +785,7 @@ export function ProcessingShipmentsView({
                 regionCode: selectedLot.regionCode || "MSVT-VN-DL",
                 rawLotCode: selectedLot.rawLotCode || "NVL-001",
                 facilityName,
-                previewPayload: previewPayload || undefined,
+
             };
 
             setShipments((prev) => [newRow, ...prev]);

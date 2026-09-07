@@ -100,54 +100,8 @@ export async function POST(request: Request) {
         });
     }
 
-    if (!finishedLot) {
-        // If demo lot (e.g. demo-fp-001, demo-pb-001) or local raw-fresh lot
-        const demoCode = v.finishedProductLotId === "demo-fp-001" ? "FP-FRESH-20260830-001"
-            : v.finishedProductLotId === "demo-pb-001" ? "PB-20260830-001"
-            : v.finishedProductLotId;
-
-        finishedLot = await prisma.finishedProductLot.findFirst({
-            where: { lotCode: demoCode },
-        });
-
-        if (!finishedLot) {
-            // Auto-create a FinishedProductLot for this facility so trace and shipment persist seamlessly
-            const dateCode = new Date().toISOString().slice(0, 10).replaceAll("-", "");
-            const suffix = Date.now().toString().slice(-6);
-            const batch = await prisma.processingBatch.create({
-                data: {
-                    batchCode: `PB-EXP-${suffix}`,
-                    facilityId: facility.id,
-                    method: "Đóng gói tiêu chuẩn xuất khẩu",
-                    targetProduct: v.productName || "Sầu riêng tươi xuất khẩu",
-                    startedAt: new Date(),
-                    completedAt: new Date(),
-                    supervisorId: session.user.id,
-                    totalInputWeight: v.weight,
-                    totalOutputWeight: v.weight,
-                    lossWeight: 0,
-                    yieldPercent: 100,
-                    status: "COMPLETED",
-                },
-            });
-
-            finishedLot = await prisma.finishedProductLot.create({
-                data: {
-                    lotCode: `FP-${dateCode}-${suffix}`,
-                    processingBatchId: batch.id,
-                    facilityId: facility.id,
-                    productName: v.productName || "Sầu riêng tươi xuất khẩu",
-                    productType: "FRESH_DURIAN",
-                    branch: "FRESH_PACKED",
-                    quantity: v.weight,
-                    netWeight: v.weight,
-                    remainingWeight: v.weight,
-                    manufacturedAt: new Date(),
-                    packaging: "Thùng 5-6 trái / 18kg",
-                    status: "READY_FOR_DISTRIBUTION",
-                },
-            });
-        }
+    if (!finishedLot || finishedLot.facilityId !== facility.id) {
+        return NextResponse.json({ success: false, message: "Không tìm thấy lô thành phẩm đã lưu của cơ sở. Vui lòng tải lại danh sách lô." }, { status: 404 });
     }
 
     const allowedStatuses = ["READY_FOR_DISTRIBUTION", "AVAILABLE", "PARTIALLY_DISTRIBUTED"];
@@ -170,7 +124,7 @@ export async function POST(request: Request) {
         : (v.deliveryAddress || "Nội địa Việt Nam");
 
     let destination = await prisma.distributionDestination.findFirst({
-        where: { name: destName },
+        where: { name: destName, country: destCountry, address: destAddress },
     });
 
     if (!destination) {

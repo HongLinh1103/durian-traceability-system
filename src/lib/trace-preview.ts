@@ -7,6 +7,7 @@ export interface PreviewTraceData {
     weight: number;
     boxCount?: number;
     packaging?: string;
+    exportDate?: string;
     destinationCountry?: string;
     portOfDestination?: string;
     portOfLoading?: string;
@@ -69,7 +70,11 @@ export function decodePreviewPayload(encoded: string): PreviewTraceData | undefi
             json = decodeURIComponent(escape(atob(base64)));
         }
         const parsed = JSON.parse(json);
-        if (parsed && (parsed.shipmentCode || parsed.productName || parsed.weight)) {
+        if (parsed && typeof parsed.shipmentCode === "string" && parsed.shipmentCode.trim()
+            && typeof parsed.productName === "string" && parsed.productName.trim()
+            && typeof parsed.weight === "number" && Number.isFinite(parsed.weight) && parsed.weight > 0
+            && ["EXPORT", "DOMESTIC"].includes(parsed.shipmentType)
+            && (parsed.boxCount == null || (Number.isInteger(parsed.boxCount) && parsed.boxCount > 0))) {
             return parsed as PreviewTraceData;
         }
         return undefined;
@@ -88,14 +93,10 @@ export function savePreviewTrace(data: PreviewTraceData) {
 export function getPreviewTrace(codeOrToken: string, encodedPayload?: string): PreviewTraceData | undefined {
     if (encodedPayload) {
         const decoded = decodePreviewPayload(encodedPayload);
-        if (decoded) {
-            savePreviewTrace(decoded);
+        if (decoded && decoded.shipmentCode.trim().toUpperCase() === codeOrToken.trim().toUpperCase()) {
             return decoded;
         }
     }
 
-    if (!codeOrToken) return undefined;
-    const map = globalPreview.__tracePreviewMap;
-    if (!map) return undefined;
-    return map.get(codeOrToken.toUpperCase()) || map.get(codeOrToken.trim());
+    return undefined;
 }
