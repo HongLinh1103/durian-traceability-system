@@ -191,13 +191,15 @@ const EXPENSE_CATEGORY_NAMES: Record<string, string> = {
 export function PartnerFinanceManager({
     initialData,
     role = "COLLECTOR",
+    defaultTab,
 }: {
     initialData: FinanceData;
     role?: "COLLECTOR" | "PROCESSING_FACILITY";
+    defaultTab?: "ANALYTICS" | "SALES" | "EXPENSES" | "HISTORY";
 }) {
     const [data, setData] = useState<FinanceData>(initialData);
     const [activeTab, setActiveTab] = useState<"ANALYTICS" | "SALES" | "EXPENSES" | "HISTORY">(
-        role === "PROCESSING_FACILITY" ? "SALES" : "ANALYTICS"
+        defaultTab || (role === "PROCESSING_FACILITY" ? "SALES" : "ANALYTICS")
     );
     
     // Slips & QR modals
@@ -208,7 +210,8 @@ export function PartnerFinanceManager({
     // Filter states
     const [salesFilterStatus, setSalesFilterStatus] = useState<string>("ALL");
     const [salesSearchQuery, setSalesSearchQuery] = useState("");
-    const [expenseFilterStatus, setExpenseFilterStatus] = useState<string>("UNPAID");
+    const [expenseFilterStatus, setExpenseFilterStatus] = useState<string>("ALL");
+    const [expenseCategoryFilter, setExpenseCategoryFilter] = useState<string>("ALL");
     const [expenseSearchQuery, setExpenseSearchQuery] = useState("");
     const [historyFilterType, setHistoryFilterType] = useState<"ALL" | "RECEIPT" | "PAYMENT">("ALL");
 
@@ -482,8 +485,34 @@ export function PartnerFinanceManager({
         });
     }, [data.sales, salesFilterStatus, salesSearchQuery]);
 
+    // Expense status counts
+    const expenseCounts = useMemo(() => {
+        const all = data.harvestPurchases.length + data.expenses.length;
+        let unpaid = 0;
+        let partial = 0;
+        let paid = 0;
+
+        data.harvestPurchases.forEach((p) => {
+            const status = p.paymentStatus || (p.debtAmount && p.debtAmount > 0 ? (p.paidAmount && p.paidAmount > 0 ? "PARTIAL" : "UNPAID") : "PAID");
+            if (status === "PAID") paid++;
+            else if (status === "PARTIAL") partial++;
+            else unpaid++;
+        });
+
+        data.expenses.forEach((e) => {
+            if (e.status === "PAID") paid++;
+            else if (e.status === "PARTIAL") partial++;
+            else unpaid++;
+        });
+
+        return { all, unpaid, partial, paid };
+    }, [data.harvestPurchases, data.expenses]);
+
     // Filter Harvest Purchases
     const filteredHarvestPurchases = useMemo(() => {
+        if (expenseCategoryFilter !== "ALL" && expenseCategoryFilter !== "RAW_MATERIAL") {
+            return [];
+        }
         return data.harvestPurchases.filter((hp) => {
             const status = hp.paymentStatus || (hp.debtAmount && hp.debtAmount > 0 ? (hp.paidAmount && hp.paidAmount > 0 ? "PARTIAL" : "UNPAID") : "PAID");
             if (expenseFilterStatus !== "ALL" && status !== expenseFilterStatus) return false;
@@ -496,21 +525,23 @@ export function PartnerFinanceManager({
             }
             return true;
         });
-    }, [data.harvestPurchases, expenseFilterStatus, expenseSearchQuery]);
+    }, [data.harvestPurchases, expenseFilterStatus, expenseCategoryFilter, expenseSearchQuery]);
 
     // Filter Operating Expenses
     const filteredExpenses = useMemo(() => {
         return data.expenses.filter((exp) => {
             if (expenseFilterStatus !== "ALL" && exp.status !== expenseFilterStatus) return false;
+            if (expenseCategoryFilter !== "ALL" && exp.category !== expenseCategoryFilter) return false;
             if (expenseSearchQuery.trim()) {
                 const q = expenseSearchQuery.toLowerCase().trim();
                 const matchTitle = exp.title.toLowerCase().includes(q);
                 const matchRecipient = (exp.recipient || "").toLowerCase().includes(q);
-                if (!matchTitle && !matchRecipient) return false;
+                const matchCategory = (EXPENSE_CATEGORY_NAMES[exp.category] || "").toLowerCase().includes(q);
+                if (!matchTitle && !matchRecipient && !matchCategory) return false;
             }
             return true;
         });
-    }, [data.expenses, expenseFilterStatus, expenseSearchQuery]);
+    }, [data.expenses, expenseFilterStatus, expenseCategoryFilter, expenseSearchQuery]);
 
     // Filter History (Cashflow)
     const filteredHistory = useMemo(() => {
@@ -616,18 +647,27 @@ export function PartnerFinanceManager({
                 </div>
 
                 {/* 3. Tổng chi phí */}
-                <div className="rounded-2xl sm:rounded-3xl border border-rose-100 bg-white p-3.5 sm:p-5 shadow-xs transition hover:shadow-md">
+                <div 
+                    onClick={() => setActiveTab("EXPENSES")}
+                    className="rounded-2xl sm:rounded-3xl border border-rose-100 bg-white p-3.5 sm:p-5 shadow-xs transition hover:shadow-md cursor-pointer hover:border-rose-300 group"
+                    title="Nhấp để xem chi tiết Chi phí & Thanh toán"
+                >
                     <div className="flex items-center justify-between">
-                        <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-rose-50 text-rose-600">
+                        <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-rose-50 text-rose-600 group-hover:bg-rose-100 transition">
                             <Receipt className="h-4 w-4 sm:h-6 sm:w-6" />
                         </div>
                         <span className="rounded-full bg-rose-100 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold text-rose-800">
                             {kpis.totalPayable > 0 ? `Nợ ${kpis.totalPayable.toLocaleString("vi-VN")} đ` : "Đã trả hết"}
                         </span>
                     </div>
-                    <p className="mt-3 sm:mt-4 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
-                        3. Tổng chi phí
-                    </p>
+                    <div className="flex items-center justify-between mt-3 sm:mt-4">
+                        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
+                            3. Tổng chi phí
+                        </p>
+                        <span className="text-[10px] font-bold text-rose-600 flex items-center gap-0.5">
+                            Xem chi tiết <ArrowRight className="h-3 w-3" />
+                        </span>
+                    </div>
                     <p className="mt-1 text-base sm:text-2xl font-black text-slate-900 truncate">
                         {kpis.totalExpense.toLocaleString("vi-VN")} đ
                     </p>
@@ -696,6 +736,11 @@ export function PartnerFinanceManager({
                     >
                         <FileText className="h-4 w-4" />
                         Bán hàng & Thu tiền
+                        <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${
+                            activeTab === "SALES" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
+                        }`}>
+                            {data.sales.length}
+                        </span>
                     </button>
 
                     {/* Tab 2: Chi phí & Thanh toán */}
@@ -710,6 +755,11 @@ export function PartnerFinanceManager({
                     >
                         <Receipt className="h-4 w-4" />
                         Chi phí & Thanh toán
+                        <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${
+                            activeTab === "EXPENSES" ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-800"
+                        }`}>
+                            {data.harvestPurchases.length + data.expenses.length}
+                        </span>
                     </button>
 
                     {/* Tab 3: Nhật ký dòng tiền */}
@@ -932,48 +982,104 @@ export function PartnerFinanceManager({
             {activeTab === "EXPENSES" && (
                 <div className="space-y-6">
                     {/* Header Filter Chips & Search Bar */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-3xl border shadow-2xs">
-                        <div className="relative flex-1 max-w-md">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <Input
-                                value={expenseSearchQuery}
-                                onChange={(e) => setExpenseSearchQuery(e.target.value)}
-                                placeholder="Tìm theo tên khoản chi, nhà vườn, đối tác..."
-                                className="pl-9 rounded-2xl text-sm"
-                            />
+                    <div className="space-y-3 bg-white p-4 rounded-3xl border shadow-2xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="relative flex-1 max-w-md">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Input
+                                    value={expenseSearchQuery}
+                                    onChange={(e) => setExpenseSearchQuery(e.target.value)}
+                                    placeholder="Tìm theo tên khoản chi, nhà vườn, đối tác..."
+                                    className="pl-9 rounded-2xl text-sm"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-1.5 overflow-x-auto">
+                                <span className="text-xs font-bold text-slate-400 shrink-0 mr-1">Trạng thái:</span>
+                                {[
+                                    { key: "ALL", label: "Tất cả", count: expenseCounts.all },
+                                    { key: "UNPAID", label: "Chưa thanh toán", count: expenseCounts.unpaid },
+                                    { key: "PARTIAL", label: "Thanh toán một phần", count: expenseCounts.partial },
+                                    { key: "PAID", label: "Đã thanh toán", count: expenseCounts.paid },
+                                ].map((tab) => (
+                                    <button
+                                        key={tab.key}
+                                        type="button"
+                                        onClick={() => setExpenseFilterStatus(tab.key)}
+                                        className={`rounded-xl px-3 py-1.5 text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
+                                            expenseFilterStatus === tab.key
+                                                ? "bg-slate-900 text-white"
+                                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                        }`}
+                                    >
+                                        <span>{tab.label}</span>
+                                        <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
+                                            expenseFilterStatus === tab.key ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                                        }`}>
+                                            {tab.count}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            <Button
+                                type="button"
+                                onClick={() => setShowAddExpenseModal(true)}
+                                className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-2xl text-xs sm:text-sm h-10 px-4 flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-xs"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Thêm Chi Phí Mới
+                            </Button>
                         </div>
 
-                        <div className="flex items-center gap-1.5 overflow-x-auto">
-                            <span className="text-xs font-bold text-slate-400 shrink-0 mr-1">Bộ lọc:</span>
+                        {/* Category quick filters */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto pt-2 border-t border-slate-100">
+                            <span className="text-xs font-bold text-slate-400 shrink-0 mr-1">Phân loại:</span>
                             {[
-                                { key: "ALL", label: "Tất cả" },
-                                { key: "UNPAID", label: "Chưa thanh toán" },
-                                { key: "PARTIAL", label: "Thanh toán một phần" },
-                                { key: "PAID", label: "Đã thanh toán" },
-                            ].map((tab) => (
+                                { key: "ALL", label: "Tất cả danh mục", count: data.expenses.length + (expenseCategoryFilter === "ALL" ? data.harvestPurchases.length : 0) },
+                                { key: "OTHER", label: "Chi phí khác", highlight: true, count: data.expenses.filter(e => e.category === "OTHER").length },
+                                { key: "RAW_MATERIAL", label: "Mua sầu từ vườn", count: data.harvestPurchases.length },
+                                { key: "PROCESSING_LABOR", label: "Nhân công", count: data.expenses.filter(e => e.category === "PROCESSING_LABOR").length },
+                                { key: "PACKAGING", label: "Bao bì đóng gói", count: data.expenses.filter(e => e.category === "PACKAGING").length },
+                                { key: "COLD_STORAGE_ELECTRICITY", label: "Điện kho lạnh", count: data.expenses.filter(e => e.category === "COLD_STORAGE_ELECTRICITY").length },
+                                { key: "LOGISTICS_TRANSPORT", label: "Vận chuyển", count: data.expenses.filter(e => e.category === "LOGISTICS_TRANSPORT").length },
+                                { key: "EQUIPMENT_MAINTENANCE", label: "Bảo dưỡng & Kiểm nghiệm", count: data.expenses.filter(e => e.category === "EQUIPMENT_MAINTENANCE").length },
+                                { key: "FACTORY_OVERHEAD", label: "Vận hành xưởng", count: data.expenses.filter(e => e.category === "FACTORY_OVERHEAD").length },
+                            ].filter(cat => cat.count > 0).map((cat) => (
                                 <button
-                                    key={tab.key}
+                                    key={cat.key}
                                     type="button"
-                                    onClick={() => setExpenseFilterStatus(tab.key)}
-                                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition shrink-0 ${
-                                        expenseFilterStatus === tab.key
-                                            ? "bg-slate-900 text-white"
+                                    onClick={() => setExpenseCategoryFilter(cat.key)}
+                                    className={`rounded-xl px-2.5 py-1 text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
+                                        expenseCategoryFilter === cat.key
+                                            ? "bg-emerald-700 text-white shadow-xs"
+                                            : cat.highlight
+                                            ? "bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100"
                                             : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                                     }`}
                                 >
-                                    {tab.label}
+                                    <span>{cat.label}</span>
+                                    <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
+                                        expenseCategoryFilter === cat.key ? "bg-white/20 text-white" : (cat.highlight ? "bg-emerald-200 text-emerald-900" : "bg-slate-200 text-slate-700")
+                                    }`}>
+                                        {cat.count}
+                                    </span>
                                 </button>
                             ))}
+                            {(expenseCategoryFilter !== "ALL" || expenseFilterStatus !== "ALL" || expenseSearchQuery) && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setExpenseFilterStatus("ALL");
+                                        setExpenseCategoryFilter("ALL");
+                                        setExpenseSearchQuery("");
+                                    }}
+                                    className="text-xs text-rose-600 font-bold hover:underline shrink-0 ml-2"
+                                >
+                                    Đặt lại bộ lọc
+                                </button>
+                            )}
                         </div>
-
-                        <Button
-                            type="button"
-                            onClick={() => setShowAddExpenseModal(true)}
-                            className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-2xl text-xs sm:text-sm h-10 px-4 flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-xs"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Thêm Chi Phí Mới
-                        </Button>
                     </div>
 
                     {/* SECTION 1: TIỀN MUA SẦU RIÊNG TỪ NHÀ VƯỜN */}
@@ -1135,7 +1241,11 @@ export function PartnerFinanceManager({
                             })}
 
                             {!filteredHarvestPurchases.length && (
-                                <p className="py-6 text-center text-slate-400">Không có giao dịch mua sầu riêng nào trong bộ lọc này.</p>
+                                <p className="py-4 text-center text-xs text-slate-400">
+                                    {expenseCategoryFilter !== "ALL" && expenseCategoryFilter !== "RAW_MATERIAL"
+                                        ? "Đang lọc theo danh mục vận hành khác (không thuộc nhóm sầu riêng thu mua)."
+                                        : "Không có giao dịch mua sầu riêng nào trong bộ lọc này."}
+                                </p>
                             )}
                         </div>
                     </div>
@@ -1167,7 +1277,11 @@ export function PartnerFinanceManager({
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <span className="rounded-lg bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-700">
+                                                <span className={`rounded-lg px-2.5 py-0.5 text-[10px] font-bold ${
+                                                    exp.category === "OTHER"
+                                                        ? "bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold"
+                                                        : "bg-slate-100 text-slate-700"
+                                                }`}>
                                                     {EXPENSE_CATEGORY_NAMES[exp.category] || exp.category}
                                                 </span>
                                                 <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
@@ -1284,7 +1398,22 @@ export function PartnerFinanceManager({
                             ))}
 
                             {!filteredExpenses.length && (
-                                <p className="py-6 text-center text-slate-400">Không có khoản chi phí nào trong bộ lọc này.</p>
+                                <div className="py-8 text-center space-y-2">
+                                    <p className="text-slate-500 font-medium">Không có khoản chi phí nào phù hợp với bộ lọc hiện tại.</p>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            setExpenseFilterStatus("ALL");
+                                            setExpenseCategoryFilter("ALL");
+                                            setExpenseSearchQuery("");
+                                        }}
+                                        className="rounded-xl text-xs"
+                                    >
+                                        Xem tất cả {data.expenses.length} khoản chi phí
+                                    </Button>
+                                </div>
                             )}
                         </div>
                     </div>

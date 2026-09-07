@@ -8,9 +8,14 @@ import { PartnerExpenseCategory, ExpensePaymentStatus, OrderPaymentStatus, Comme
 
 export const dynamic = "force-dynamic";
 
-export default async function Page() {
+export default async function Page({
+    searchParams,
+}: {
+    searchParams?: Promise<{ tab?: string }>;
+}) {
+    const params = searchParams ? await searchParams : undefined;
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id || !["COLLECTOR", "PROCESSING_FACILITY"].includes(session.user.role)) {
+    if (!session?.user?.id || !["COLLECTOR", "PROCESSING_FACILITY", "ADMIN", "AREA_MANAGER"].includes(session.user.role)) {
         redirect("/login");
     }
 
@@ -25,7 +30,7 @@ export default async function Page() {
         },
     });
 
-    if (!facility || (session.user.role === "PROCESSING_FACILITY" && !facility.name.includes("Trị An"))) {
+    if (!facility || (session.user.role !== "COLLECTOR" && !facility.name.includes("Trị An"))) {
         const triAn = await prisma.partnerFacility.findFirst({
             where: {
                 name: { contains: "Trị An" },
@@ -38,7 +43,7 @@ export default async function Page() {
         } else if (!facility) {
             facility = await prisma.partnerFacility.findFirst({
                 where: {
-                    type: session.user.role as "COLLECTOR" | "PROCESSING_FACILITY",
+                    type: "PROCESSING_FACILITY",
                     deletedAt: null,
                 },
             });
@@ -418,6 +423,34 @@ export default async function Page() {
             }>,
             date: "2026-08-29T10:15:00.000Z",
         },
+        {
+            id: "rec-proc-phucan-02",
+            code: "TH-20260901-001",
+            farmerName: "Lê Văn Phúc",
+            farmerPhone: "0923 456 789",
+            farmName: "Vườn sầu riêng Phúc An",
+            durianVariety: "Ri6",
+            status: "COMPLETED" as HarvestStatus,
+            weight: 1050,
+            pricePerKg: 85000,
+            totalCost: 89250000,
+            paidAmount: 89250000,
+            debtAmount: 0,
+            paymentStatus: "PAID",
+            expenseId: "exp-proc-raw-02",
+            payments: [
+                {
+                    id: "pay-raw-proc-02",
+                    amount: 89250000,
+                    paymentDate: "2026-09-01T16:00:00.000Z",
+                    paymentMethod: "Chuyển khoản",
+                    receiverName: "Lê Văn Phúc",
+                    referenceCode: "UNC-RAW-20260901-001",
+                    note: "Chuyển khoản thanh toán 100% tiền mua 1.050 kg sầu riêng Ri6",
+                },
+            ],
+            date: "2026-09-01T14:30:00.000Z",
+        },
     ];
 
     let formattedHarvestPurchases = harvestPurchases.map((rec) => {
@@ -468,6 +501,10 @@ export default async function Page() {
             date: (rec.completedAt ?? rec.buyerReceivedAt ?? rec.expectedHarvestDate).toISOString(),
         };
     });
+
+    if (formattedHarvestPurchases.length === 0) {
+        formattedHarvestPurchases = facility.type === "PROCESSING_FACILITY" ? defaultProcessingPurchases : [];
+    }
 
     // 3. Recompute KPIs from normalized sales and expenses
     let totalRevenue = 0;
@@ -667,13 +704,27 @@ export default async function Page() {
         processingBatches: formattedBatches,
     };
 
+    const effectiveRole: "COLLECTOR" | "PROCESSING_FACILITY" =
+        session.user.role === "COLLECTOR" && !facility.name.includes("Trị An")
+            ? "COLLECTOR"
+            : "PROCESSING_FACILITY";
+
+    let defaultTab: "ANALYTICS" | "SALES" | "EXPENSES" | "HISTORY" | undefined = undefined;
+    if (params?.tab) {
+        const t = params.tab.toLowerCase();
+        if (t === "expenses" || t === "chi-phi" || t === "expense") defaultTab = "EXPENSES";
+        else if (t === "sales" || t === "ban-hang" || t === "sale") defaultTab = "SALES";
+        else if (t === "history" || t === "dong-tien") defaultTab = "HISTORY";
+        else if (t === "analytics" || t === "thong-ke") defaultTab = "ANALYTICS";
+    }
+
     return (
         <main className="mx-auto max-w-7xl space-y-6 px-4 py-7 sm:px-6">
             <header className="rounded-3xl border bg-gradient-to-r from-emerald-800 to-teal-900 p-6 shadow-sm text-white">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <p className="text-xs font-bold uppercase tracking-wider text-emerald-200">
-                            {session.user.role === "COLLECTOR" ? "Vựa Thu Mua Nông Sản" : "Cơ Sở Chế Biến & Đóng Gói"}
+                            {effectiveRole === "COLLECTOR" ? "Vựa Thu Mua Nông Sản" : "Cơ Sở Chế Biến & Đóng Gói"}
                         </p>
                         <h1 className="mt-1 text-2xl sm:text-3xl font-black text-white">
                             Quản Lý Tài Chính & Công Nợ
@@ -687,7 +738,8 @@ export default async function Page() {
 
             <PartnerFinanceManager
                 initialData={financeData}
-                role={session.user.role as "COLLECTOR" | "PROCESSING_FACILITY"}
+                role={effectiveRole}
+                defaultTab={defaultTab}
             />
         </main>
     );

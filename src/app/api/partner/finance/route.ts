@@ -22,7 +22,7 @@ const createExpenseSchema = z.object({
 
 export async function GET() {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id || !["COLLECTOR", "PROCESSING_FACILITY"].includes(session.user.role)) {
+    if (!session?.user?.id || !["COLLECTOR", "PROCESSING_FACILITY", "ADMIN", "AREA_MANAGER"].includes(session.user.role)) {
         return NextResponse.json({ success: false, error: "Không có quyền truy cập" }, { status: 403 });
     }
 
@@ -37,7 +37,7 @@ export async function GET() {
         },
     });
 
-    if (!facility || (session.user.role === "PROCESSING_FACILITY" && !facility.name.includes("Trị An"))) {
+    if (!facility || (session.user.role !== "COLLECTOR" && !facility.name.includes("Trị An"))) {
         const triAn = await prisma.partnerFacility.findFirst({
             where: {
                 name: { contains: "Trị An" },
@@ -50,7 +50,7 @@ export async function GET() {
         } else if (!facility) {
             facility = await prisma.partnerFacility.findFirst({
                 where: {
-                    type: session.user.role as "COLLECTOR" | "PROCESSING_FACILITY",
+                    type: "PROCESSING_FACILITY",
                     deletedAt: null,
                 },
             });
@@ -427,6 +427,34 @@ export async function GET() {
                 note: string | null;
             }>,
             date: "2026-08-29T10:15:00.000Z",
+        },
+        {
+            id: "rec-proc-phucan-02",
+            code: "TH-20260901-001",
+            farmerName: "Lê Văn Phúc",
+            farmerPhone: "0923 456 789",
+            farmName: "Vườn sầu riêng Phúc An",
+            durianVariety: "Ri6",
+            status: "COMPLETED" as HarvestStatus,
+            weight: 1050,
+            pricePerKg: 85000,
+            totalCost: 89250000,
+            paidAmount: 89250000,
+            debtAmount: 0,
+            paymentStatus: "PAID",
+            expenseId: "exp-proc-raw-02",
+            payments: [
+                {
+                    id: "pay-raw-proc-02",
+                    amount: 89250000,
+                    paymentDate: "2026-09-01T16:00:00.000Z",
+                    paymentMethod: "Chuyển khoản",
+                    receiverName: "Lê Văn Phúc",
+                    referenceCode: "UNC-RAW-20260901-001",
+                    note: "Chuyển khoản thanh toán 100% tiền mua 1.050 kg sầu riêng Ri6",
+                },
+            ],
+            date: "2026-09-01T14:30:00.000Z",
         },
     ];
 
@@ -1045,7 +1073,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id || !["COLLECTOR", "PROCESSING_FACILITY"].includes(session.user.role)) {
+    if (!session?.user?.id || !["COLLECTOR", "PROCESSING_FACILITY", "ADMIN", "AREA_MANAGER"].includes(session.user.role)) {
         return NextResponse.json({ success: false, error: "Không có quyền truy cập" }, { status: 403 });
     }
 
@@ -1060,13 +1088,24 @@ export async function POST(request: Request) {
         },
     });
 
-    if (!facility) {
-        facility = await prisma.partnerFacility.findFirst({
+    if (!facility || (session.user.role !== "COLLECTOR" && !facility.name.includes("Trị An"))) {
+        const triAn = await prisma.partnerFacility.findFirst({
             where: {
-                type: session.user.role as "COLLECTOR" | "PROCESSING_FACILITY",
+                name: { contains: "Trị An" },
+                type: "PROCESSING_FACILITY",
                 deletedAt: null,
             },
         });
+        if (triAn) {
+            facility = triAn;
+        } else if (!facility) {
+            facility = await prisma.partnerFacility.findFirst({
+                where: {
+                    type: "PROCESSING_FACILITY",
+                    deletedAt: null,
+                },
+            });
+        }
     }
 
     if (!facility) {

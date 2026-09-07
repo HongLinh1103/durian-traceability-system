@@ -26,7 +26,7 @@ const paymentSchema = z.object({
 
 export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id || !["COLLECTOR", "PROCESSING_FACILITY"].includes(session.user.role)) {
+    if (!session?.user?.id || !["COLLECTOR", "PROCESSING_FACILITY", "ADMIN", "AREA_MANAGER"].includes(session.user.role)) {
         return NextResponse.json({ success: false, error: "Không có quyền truy cập" }, { status: 403 });
     }
 
@@ -41,14 +41,25 @@ export async function POST(request: Request) {
         },
     });
 
-    if (!facility) {
-        facility = await prisma.partnerFacility.findFirst({
+    if (!facility || (session.user.role !== "COLLECTOR" && !facility.name.includes("Trị An"))) {
+        const triAn = await prisma.partnerFacility.findFirst({
             where: {
-                type: session.user.role as any,
+                name: { contains: "Trị An" },
+                type: "PROCESSING_FACILITY",
                 deletedAt: null,
             },
-            orderBy: { createdAt: "asc" },
         });
+        if (triAn) {
+            facility = triAn;
+        } else if (!facility) {
+            facility = await prisma.partnerFacility.findFirst({
+                where: {
+                    type: "PROCESSING_FACILITY",
+                    deletedAt: null,
+                },
+                orderBy: { createdAt: "asc" },
+            });
+        }
     }
 
     if (!facility) {
