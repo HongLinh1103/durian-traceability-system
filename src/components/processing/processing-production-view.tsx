@@ -695,8 +695,10 @@ export function ProcessingProductionView({
                                     <th className="px-5 py-4 whitespace-nowrap">Mã lô</th>
                                     <th className="px-5 py-4 whitespace-nowrap">Nguồn</th>
                                     <th className="px-5 py-4 whitespace-nowrap">Hướng xử lý</th>
+                                    <th className="px-5 py-4 whitespace-nowrap">Tên thành phẩm</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-right">KL đầu vào</th>
-                                    <th className="px-5 py-4 whitespace-nowrap text-right">Thành phẩm thu được</th>
+                                    <th className="px-5 py-4 whitespace-nowrap text-right">KL Thành phẩm</th>
+                                    <th className="px-5 py-4 whitespace-nowrap text-center">SL Thành phẩm</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-center">Hoàn tất lúc</th>
                                     <th className="px-5 py-4 text-center whitespace-nowrap">Trạng thái</th>
                                     <th className="px-5 py-4 text-right whitespace-nowrap">Thao tác</th>
@@ -735,6 +737,15 @@ export function ProcessingProductionView({
                                                 )}
                                             </td>
 
+                                            {/* Tên thành phẩm */}
+                                            <td className="px-5 py-3 whitespace-nowrap text-xs font-bold text-slate-800">
+                                                {isDone && item.outputProduct ? (
+                                                    <span className="text-slate-900">{item.outputProduct}</span>
+                                                ) : (
+                                                    "-"
+                                                )}
+                                            </td>
+
                                             {/* KL đầu vào */}
                                             <td className="px-5 py-3 whitespace-nowrap text-right text-xs sm:text-sm">
                                                 <div className="font-mono font-bold text-slate-800">{item.inputWeight.toLocaleString("vi-VN")} kg</div>
@@ -745,17 +756,23 @@ export function ProcessingProductionView({
                                                 )}
                                             </td>
 
-                                            {/* Thành phẩm thu được */}
+                                            {/* KL Thành phẩm */}
                                             <td className="px-5 py-3 whitespace-nowrap text-right font-bold text-slate-700 text-xs sm:text-sm">
                                                 {isDone && item.outputWeight ? (
-                                                    <div>
-                                                        <span className="font-black text-emerald-700">
-                                                            {item.outputWeight.toLocaleString("vi-VN")} kg
-                                                        </span>
-                                                        <span className="block text-[11px] font-bold text-indigo-700">
-                                                            {item.packageCount ? `${item.packageCount} · ` : ""}{item.outputProduct || "Cơm sầu"}
-                                                        </span>
-                                                    </div>
+                                                    <span className="font-mono font-black text-emerald-700">
+                                                        {item.outputWeight.toLocaleString("vi-VN")} kg
+                                                    </span>
+                                                ) : (
+                                                    "-"
+                                                )}
+                                            </td>
+
+                                            {/* SL Thành phẩm */}
+                                            <td className="px-5 py-3 text-center whitespace-nowrap font-bold text-slate-700 text-xs sm:text-sm">
+                                                {isDone && item.packageCount ? (
+                                                    <span className="font-mono font-black text-indigo-700">
+                                                        {item.packageCount}
+                                                    </span>
                                                 ) : (
                                                     "-"
                                                 )}
@@ -811,7 +828,7 @@ export function ProcessingProductionView({
 
                                 {filteredProc.length === 0 && (
                                     <tr>
-                                        <td colSpan={8} className="py-12 text-center text-xs text-slate-400">
+                                        <td colSpan={10} className="py-12 text-center text-xs text-slate-400">
                                             Chưa có lô chuyển chế biến nào. Vui lòng phân loại lô ở bước Tiếp nhận & Phân loại.
                                         </td>
                                     </tr>
