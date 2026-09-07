@@ -1061,11 +1061,6 @@ export function ProcessingShipmentsView({
                                             <div className="font-black text-slate-900">
                                                 {s.weight >= 1000 ? `${(s.weight / 1000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tấn` : `${s.weight.toLocaleString("vi-VN")} kg`}
                                             </div>
-                                            {s.totalAmount && s.totalAmount > 0 ? (
-                                                <div className="text-[11px] font-bold text-emerald-700 mt-0.5">
-                                                    {s.totalAmount.toLocaleString("vi-VN")} đ
-                                                </div>
-                                            ) : null}
                                         </td>
 
                                         {/* Số thùng */}
