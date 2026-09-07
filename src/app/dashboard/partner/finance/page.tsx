@@ -212,9 +212,9 @@ export default async function Page() {
             subtotal: 30520000,
             discount: 0,
             totalAmount: 30520000,
-            paidAmount: 30520000,
-            debtAmount: 0,
-            paymentStatus: "PAID" as OrderPaymentStatus,
+            paidAmount: 0,
+            debtAmount: 30520000,
+            paymentStatus: "UNPAID" as OrderPaymentStatus,
             paymentMethod: "Chuyển khoản",
             dispatchedAt: "2026-09-04T17:45:00.000Z",
             status: "DISPATCHED" as CommercialLotStatus,
@@ -224,29 +224,20 @@ export default async function Page() {
                 publicToken: "DOM-20260904-001",
                 status: "ACTIVE" as TraceabilityCodeStatus,
             },
-            payments: [
-                {
-                    id: "pay-sale-proc-2",
-                    amount: 30520000,
-                    paymentDate: "2026-09-04T18:30:00.000Z",
-                    paymentMethod: "Chuyển khoản",
-                    payerName: "Hệ thống Siêu thị WinMart Miền Nam",
-                    note: "Thanh toán 100% lô cơm sầu riêng bóc múi 218 khay (109 kg)",
-                },
-            ],
+            payments: [],
         },
     ];
 
     // 1. Process and normalize Sales Dispatches
     let formattedSales = commercialLots.map((lot) => {
         const isCMCOL20260824 = lot.lotCode === "CM-COL-20260824-001";
-        const isEXP = lot.lotCode.startsWith("EXP-");
-        const isDOM = lot.lotCode.startsWith("DOM-");
+        const isEXP = lot.lotCode.startsWith("EXP-") || lot.lotCode.startsWith("CM-EXP-");
+        const isDOM = lot.lotCode.startsWith("DOM-") || lot.lotCode.startsWith("CM-DOM-");
         const relatedShipment = lot.shipmentItems?.[0]?.shipment;
 
         let boxCount: number | string | null = relatedShipment?.boxCount ?? null;
         if (!boxCount && lot.note) {
-            const m = lot.note.match(/(\d+)\s*(thùng|khay|hộp)/i);
+            const m = lot.note.match(/(\d+)\s*(thùng|khay|hộp|sọt|kiện)/i);
             if (m) boxCount = parseInt(m[1], 10);
         }
         if (!boxCount) {
@@ -257,7 +248,7 @@ export default async function Page() {
         const qty = Number(lot.quantity || (isCMCOL20260824 ? 1500 : 0));
         const unitPrice = lot.unitPrice
             ? Number(lot.unitPrice)
-            : (isCMCOL20260824 ? 85000 : (lot.lotCode === "EXP-20260904-001" ? 135000 : (lot.lotCode === "DOM-20260904-001" ? 280000 : 0)));
+            : (isCMCOL20260824 ? 85000 : (lot.lotCode === "EXP-20260904-001" ? 135000 : (lot.lotCode === "DOM-20260904-001" ? 280000 : (isEXP ? 130000 : 80000))));
         const subtotal = lot.subtotal
             ? Number(lot.subtotal)
             : (unitPrice > 0 ? unitPrice * qty : (isCMCOL20260824 ? 127500000 : 0));
@@ -265,12 +256,18 @@ export default async function Page() {
         const totalAmount = lot.totalAmount
             ? Number(lot.totalAmount)
             : (isCMCOL20260824 ? 125000000 : Math.max(0, subtotal - discount));
-        const paidAmount = lot.paidAmount !== null && lot.paidAmount !== undefined && Number(lot.paidAmount) > 0
-            ? Number(lot.paidAmount)
-            : (isCMCOL20260824 ? 80000000 : (isEXP || isDOM ? totalAmount : 0));
-        const debtAmount = lot.debtAmount !== null && lot.debtAmount !== undefined && Number(lot.debtAmount) > 0
-            ? Number(lot.debtAmount)
-            : Math.max(0, totalAmount - paidAmount);
+
+        const isUnpaidStatus = lot.paymentStatus === "UNPAID";
+        const paidAmount = isUnpaidStatus
+            ? 0
+            : (lot.paidAmount !== null && lot.paidAmount !== undefined && Number(lot.paidAmount) > 0
+                ? Number(lot.paidAmount)
+                : (isCMCOL20260824 ? 80000000 : (lot.lotCode === "EXP-20260904-001" ? totalAmount : 0)));
+        const debtAmount = isUnpaidStatus
+            ? totalAmount
+            : (lot.debtAmount !== null && lot.debtAmount !== undefined && Number(lot.debtAmount) > 0
+                ? Number(lot.debtAmount)
+                : Math.max(0, totalAmount - paidAmount));
 
         let destinationDisplay = lot.destination?.address || lot.destination?.name || lot.buyerAddress || lot.buyerName || "—";
         if (lot.lotCode === "EXP-20260904-001") {
@@ -289,7 +286,7 @@ export default async function Page() {
             buyerAddress = "Kho trung chuyển WinMart, TP. Dĩ An, Tỉnh Bình Dương";
         }
 
-        const paymentStatus = lot.paymentStatus || (debtAmount > 0 ? "PARTIAL" : "PAID");
+        const paymentStatus = lot.paymentStatus || (debtAmount > 0 ? (paidAmount > 0 ? "PARTIAL" : "UNPAID") : "PAID");
 
         return {
             id: lot.id,
@@ -384,8 +381,8 @@ export default async function Page() {
         })),
     }));
 
-    if (!formattedExpenses.length && facility.type !== "PROCESSING_FACILITY") {
-        formattedExpenses = defaultCollectorExpenses;
+    if (!formattedExpenses.length) {
+        formattedExpenses = facility.type === "PROCESSING_FACILITY" ? defaultProcessingExpenses : defaultCollectorExpenses;
     }
 
     // Default harvest purchases matching the processing facility
@@ -532,33 +529,10 @@ export default async function Page() {
         expenseCategory: p.expense?.category,
     }));
 
-    if (formattedPaymentHistory.length === 0) {
-        if (facility.type === "PROCESSING_FACILITY") {
-            formattedPaymentHistory = [
-                {
-                    id: "pay-hist-1",
-                    type: "RECEIPT",
-                    amount: 106380000,
-                    paymentDate: "2026-09-04T18:00:00.000Z",
-                    paymentMethod: "Chuyển khoản",
-                    payerName: "Công ty TNHH Nông sản Vân Nam",
-                    receiverName: facility.name,
-                    note: "Thanh toán 100% hợp đồng lô xuất khẩu EXP-20260904-001",
-                    commercialLotCode: "EXP-20260904-001",
-                    commercialProductName: "Sầu riêng tươi xuất khẩu (Ri6)",
-                },
-                {
-                    id: "pay-hist-2",
-                    type: "RECEIPT",
-                    amount: 30520000,
-                    paymentDate: "2026-09-04T18:30:00.000Z",
-                    paymentMethod: "Chuyển khoản",
-                    payerName: "Hệ thống Siêu thị WinMart Miền Nam",
-                    receiverName: facility.name,
-                    note: "Thanh toán 100% lô cơm sầu riêng DOM-20260904-001",
-                    commercialLotCode: "DOM-20260904-001",
-                    commercialProductName: "Cơm sầu riêng bóc múi hút chân không (Khay 500g)",
-                },
+    if (facility.type === "PROCESSING_FACILITY") {
+        const hasExpenses = formattedPaymentHistory.some((p) => p.type === "EXPENSE" || p.type === "PAYMENT");
+        if (!hasExpenses) {
+            const defaultExpensePayments = [
                 {
                     id: "pay-hist-3",
                     type: "EXPENSE",
@@ -608,6 +582,7 @@ export default async function Page() {
                     expenseCategory: "LOGISTICS_TRANSPORT" as PartnerExpenseCategory,
                 },
             ];
+            formattedPaymentHistory = [...formattedPaymentHistory, ...defaultExpensePayments];
         }
     }
 

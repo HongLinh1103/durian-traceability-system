@@ -469,7 +469,8 @@ export function PartnerFinanceManager({
     // Filter Sales
     const filteredSales = useMemo(() => {
         return data.sales.filter((sale) => {
-            if (salesFilterStatus !== "ALL" && sale.paymentStatus !== salesFilterStatus) return false;
+            const rawStatus = sale.paymentStatus || (sale.debtAmount && sale.debtAmount > 0 ? (sale.paidAmount && sale.paidAmount > 0 ? "PARTIAL" : "UNPAID") : "PAID");
+            if (salesFilterStatus !== "ALL" && rawStatus !== salesFilterStatus) return false;
             if (salesSearchQuery.trim()) {
                 const q = salesSearchQuery.toLowerCase().trim();
                 const matchCode = sale.lotCode.toLowerCase().includes(q);
@@ -882,21 +883,29 @@ export function PartnerFinanceManager({
                                                             Xem phiếu xuất
                                                         </Button>
 
-                                                        {sale.debtAmount > 0 && (
+                                                        {/* Nút thanh toán cho lô chưa thanh toán hoặc còn công nợ */}
+                                                        {(sale.paymentStatus === "UNPAID" || !sale.paymentStatus || sale.debtAmount > 0 || sale.paymentStatus === "PARTIAL") && (
                                                             <Button
                                                                 type="button"
                                                                 size="sm"
                                                                 onClick={() => {
                                                                     setSelectedSaleForCollect(sale);
-                                                                    setCollectAmount(sale.debtAmount.toLocaleString("vi-VN"));
+                                                                    const remaining = sale.debtAmount > 0 
+                                                                        ? sale.debtAmount 
+                                                                        : (sale.totalAmount > 0 ? Math.max(0, sale.totalAmount - (sale.paidAmount || 0)) : 0);
+                                                                    setCollectAmount((remaining > 0 ? remaining : sale.totalAmount).toLocaleString("vi-VN"));
                                                                     setCollectPayer(sale.buyerName || "");
                                                                     setCollectRef("");
                                                                     setCollectNote("");
                                                                 }}
-                                                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs h-8 shadow-xs inline-flex items-center gap-1"
+                                                                className={`text-white font-bold rounded-xl text-xs h-8 shadow-xs inline-flex items-center gap-1 shrink-0 ${
+                                                                    sale.paymentStatus === "UNPAID" || !sale.paymentStatus
+                                                                        ? "bg-emerald-600 hover:bg-emerald-700"
+                                                                        : "bg-amber-600 hover:bg-amber-700"
+                                                                }`}
                                                             >
-                                                                <Coins className="h-3.5 w-3.5" />
-                                                                Thu tiền
+                                                                <CreditCard className="h-3.5 w-3.5" />
+                                                                {sale.paymentStatus === "UNPAID" || !sale.paymentStatus ? "Thanh toán" : "Thu nợ"}
                                                             </Button>
                                                         )}
                                                     </div>
@@ -1574,8 +1583,16 @@ export function PartnerFinanceManager({
                         >
                             <div className="flex items-center justify-between border-b pb-3">
                                 <div>
-                                    <h3 className="text-lg font-black text-slate-900">GHI NHẬN THU TIỀN</h3>
-                                    <p className="text-xs text-slate-500">Thu tiền thanh toán từ khách hàng cho lô xuất bán</p>
+                                    <h3 className="text-lg font-black text-slate-900">
+                                        {selectedSaleForCollect.paymentStatus === "UNPAID" || !selectedSaleForCollect.paymentStatus
+                                            ? "THANH TOÁN LÔ XUẤT HÀNG"
+                                            : "GHI NHẬN THU TIỀN"}
+                                    </h3>
+                                    <p className="text-xs text-slate-500">
+                                        {selectedSaleForCollect.paymentStatus === "UNPAID" || !selectedSaleForCollect.paymentStatus
+                                            ? "Ghi nhận thanh toán từ khách hàng cho lô xuất bán"
+                                            : "Thu tiền thanh toán từ khách hàng cho lô xuất bán"}
+                                    </p>
                                 </div>
                                 <button
                                     type="button"
@@ -1605,7 +1622,12 @@ export function PartnerFinanceManager({
                                 </div>
                                 <div className="flex justify-between font-bold text-rose-600">
                                     <span>Còn phải thu:</span>
-                                    <span className="text-sm font-black">{selectedSaleForCollect.debtAmount.toLocaleString("vi-VN")} đ</span>
+                                    <span className="text-sm font-black">
+                                        {(selectedSaleForCollect.debtAmount > 0 
+                                            ? selectedSaleForCollect.debtAmount 
+                                            : Math.max(0, selectedSaleForCollect.totalAmount - (selectedSaleForCollect.paidAmount || 0))
+                                        ).toLocaleString("vi-VN")} đ
+                                    </span>
                                 </div>
                             </div>
 
@@ -1698,7 +1720,11 @@ export function PartnerFinanceManager({
                                     disabled={submittingCollect}
                                     className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl"
                                 >
-                                    {submittingCollect ? "Đang xử lý..." : "Xác nhận thu tiền"}
+                                    {submittingCollect 
+                                        ? "Đang xử lý..." 
+                                        : (selectedSaleForCollect.paymentStatus === "UNPAID" || !selectedSaleForCollect.paymentStatus
+                                            ? "Xác nhận thanh toán"
+                                            : "Xác nhận thu tiền")}
                                 </Button>
                             </div>
                         </form>

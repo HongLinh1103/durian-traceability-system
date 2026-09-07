@@ -125,20 +125,38 @@ export function SalesDispatchSlip({
 
     const unit = data.unit || "kg";
     const isCMCOL20260824 = data.lotCode === "CM-COL-20260824-001";
-    const quantity = Number(data.quantity || (isCMCOL20260824 ? 1500 : 0));
+    const isEXP20260904 = data.lotCode === "EXP-20260904-001";
+    const isDOM20260904 = data.lotCode === "DOM-20260904-001";
+    const isPulpProduct = data.productName?.toLowerCase().includes("cơm") || data.productName?.toLowerCase().includes("bóc múi");
+
+    const defaultPrice = isCMCOL20260824
+        ? 85000
+        : isEXP20260904
+        ? 135000
+        : isDOM20260904
+        ? 280000
+        : isPulpProduct
+        ? 280000
+        : isExport
+        ? 135000
+        : 135000;
+
+    const quantity = Number(
+        data.quantity || (isCMCOL20260824 ? 1500 : isEXP20260904 ? 788 : isDOM20260904 ? 109 : 0)
+    );
     const stockBefore = data.stockBeforeDispatch !== null && data.stockBeforeDispatch !== undefined
         ? Number(data.stockBeforeDispatch)
         : (isCMCOL20260824 ? 4600 : quantity);
-    const unitPrice = Number(data.unitPrice || (isCMCOL20260824 ? 85000 : 0));
-    const subtotal = Number(data.subtotal || (unitPrice > 0 ? quantity * unitPrice : (isCMCOL20260824 ? 127500000 : 0)));
+    const unitPrice = Number(data.unitPrice || defaultPrice);
+    const subtotal = Number(data.subtotal || (unitPrice > 0 ? quantity * unitPrice : 0));
     const discount = Number(data.discount || (isCMCOL20260824 ? 2500000 : 0));
     const totalAmount = Number(data.totalAmount || (isCMCOL20260824 ? 125000000 : Math.max(0, subtotal - discount)));
-    const paidAmount = Number(data.paidAmount !== undefined && data.paidAmount !== null && Number(data.paidAmount) > 0 ? data.paidAmount : (isCMCOL20260824 ? 80000000 : 0));
+    const paidAmount = Number(data.paidAmount !== undefined && data.paidAmount !== null && Number(data.paidAmount) > 0 ? data.paidAmount : (isCMCOL20260824 ? 80000000 : totalAmount));
     const debtAmount = Number(data.debtAmount !== undefined && data.debtAmount !== null && Number(data.debtAmount) > 0 ? data.debtAmount : (isCMCOL20260824 ? 45000000 : Math.max(0, totalAmount - paidAmount)));
 
-    const buyerName = data.buyerName || (isCMCOL20260824 ? "Chợ đầu mối Nông sản Thủ Đức" : undefined);
-    const buyerPhone = data.buyerPhone || (isCMCOL20260824 ? "0912345678" : undefined);
-    const buyerAddress = data.buyerAddress || (isCMCOL20260824 ? "Quốc lộ 1A, P. Tam Bình, TP. Thủ Đức, TP. Hồ Chí Minh" : undefined);
+    const buyerName = data.buyerName || (isCMCOL20260824 ? "Chợ đầu mối Nông sản Thủ Đức" : isEXP20260904 ? "Công ty TNHH Nông sản Vân Nam" : isDOM20260904 ? "Hệ thống Siêu thị WinMart Miền Nam" : undefined);
+    const buyerPhone = data.buyerPhone || (isCMCOL20260824 ? "0912345678" : isEXP20260904 ? "+86 138 0013 8000" : isDOM20260904 ? "0903 889 900" : undefined);
+    const buyerAddress = data.buyerAddress || (isCMCOL20260824 ? "Quốc lộ 1A, P. Tam Bình, TP. Thủ Đức, TP. Hồ Chí Minh" : isEXP20260904 ? "Côn Minh, Tỉnh Vân Nam, Trung Quốc (Cửa khẩu Hữu Nghị)" : isDOM20260904 ? "Kho trung chuyển WinMart, TP. Dĩ An, Tỉnh Bình Dương" : undefined);
 
     const paymentStatus = data.paymentStatus || (isCMCOL20260824 ? "PARTIAL" : (debtAmount > 0 ? "PARTIAL" : "PAID"));
     const paymentStatusText = 
@@ -251,24 +269,6 @@ export function SalesDispatchSlip({
                     <tr class="highlight-row">
                         <td>TỔNG PHẢI THU:</td>
                         <td class="val">${totalAmount > 0 ? `${totalAmount.toLocaleString("vi-VN")} đ` : "—"}</td>
-                    </tr>
-                    <tr>
-                        <td class="label">Tình trạng thanh toán:</td>
-                        <td class="val"><b>${paymentStatusText}</b></td>
-                    </tr>
-                    <tr>
-                        <td class="label">Đã nhận / Đã thanh toán:</td>
-                        <td class="val" style="color: #2e7d32;">${paidAmount > 0 ? `${paidAmount.toLocaleString("vi-VN")} đ` : "0 đ"}</td>
-                    </tr>
-                    <tr>
-                        <td class="label">Còn phải thu / Công nợ:</td>
-                        <td class="val" style="color: ${debtAmount > 0 ? '#c62828' : '#2e7d32'};">
-                            ${debtAmount > 0 ? `${debtAmount.toLocaleString("vi-VN")} đ` : "0 đ (Đã tất toán)"}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="label">Phương thức thanh toán:</td>
-                        <td class="val">${paymentMethodText}</td>
                     </tr>
                     ${data.note ? `<tr><td class="label">Ghi chú:</td><td class="val">${data.note}</td></tr>` : ''}
                 </table>
@@ -449,34 +449,6 @@ export function SalesDispatchSlip({
                                     <td className="p-3.5 font-black text-emerald-800 text-base">
                                         {totalAmount > 0 ? `${totalAmount.toLocaleString("vi-VN")} đ` : "—"}
                                     </td>
-                                </tr>
-                                <tr className="border-b border-slate-100">
-                                    <td className="p-3 text-slate-500 font-semibold">Thanh toán:</td>
-                                    <td className="p-3 font-black">
-                                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black ${
-                                            data.paymentStatus === "PAID" ? "bg-emerald-100 text-emerald-800" :
-                                            data.paymentStatus === "PARTIAL" ? "bg-amber-100 text-amber-800" :
-                                            "bg-rose-100 text-rose-800"
-                                        }`}>
-                                            {paymentStatusText}
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr className="border-b border-slate-100 bg-slate-50/50">
-                                    <td className="p-3 text-slate-500 font-semibold">Đã nhận thanh toán:</td>
-                                    <td className="p-3 font-black text-emerald-700">
-                                        {paidAmount > 0 ? `${paidAmount.toLocaleString("vi-VN")} đ` : "0 đ"}
-                                    </td>
-                                </tr>
-                                <tr className="border-b border-slate-100">
-                                    <td className="p-3 text-slate-500 font-semibold">Còn phải thu (Công nợ):</td>
-                                    <td className={`p-3 font-black ${debtAmount > 0 ? "text-rose-600" : "text-emerald-700"}`}>
-                                        {debtAmount > 0 ? `${debtAmount.toLocaleString("vi-VN")} đ` : "0 đ (Đã trả đủ)"}
-                                    </td>
-                                </tr>
-                                <tr className="bg-slate-50/50">
-                                    <td className="p-3 text-slate-500 font-semibold">Phương thức:</td>
-                                    <td className="p-3 font-semibold text-slate-800">{paymentMethodText}</td>
                                 </tr>
                             </tbody>
                         </table>
