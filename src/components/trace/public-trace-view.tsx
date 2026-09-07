@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import QRCode from "qrcode";
 import {
@@ -131,9 +131,9 @@ const activityLabels: Record<string, string> = {
 };
 
 export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
-    const [sortNewestFirst, setSortNewestFirst] = useState(true);
+    const [sortNewestFirst, setSortNewestFirst] = useState(false);
     const [expandedProcessing, setExpandedProcessing] = useState(false);
-    const [expandedFarmIndex, setExpandedFarmIndex] = useState<number | null>(0);
+    const [expandedFarmIndex, setExpandedFarmIndex] = useState<number | null>(null);
     const [qrDataUrl, setQrDataUrl] = useState<string>("");
     const [copied, setCopied] = useState(false);
     const [showQrCard, setShowQrCard] = useState(false);
@@ -308,10 +308,12 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
         setTimeout(() => printWindow.print(), 300);
     };
 
-    // Sorted milestones based on user toggle preference
-    const displayedMilestones = sortNewestFirst
-        ? [...trace.milestones].reverse()
-        : [...trace.milestones];
+    // Ensure milestones always strictly follow the supply chain sequence (Step 1 -> 5):
+    // BẮT ĐẦU VỤ MÙA -> THU HOẠCH -> TIẾP NHẬN & PHÂN LOẠI -> CHẾ BIẾN – ĐÓNG GÓI -> XUẤT BÁN TRONG NƯỚC / XUẤT KHẨU NƯỚC NGOÀI
+    const displayedMilestones = useMemo(() => {
+        const sorted = [...trace.milestones].sort((a, b) => (a.stepNumber || 0) - (b.stepNumber || 0));
+        return sortNewestFirst ? [...sorted].reverse() : sorted;
+    }, [trace.milestones, sortNewestFirst]);
 
     const getMilestoneIcon = (type: TraceMilestone["type"]) => {
         switch (type) {
@@ -466,7 +468,7 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition self-start sm:self-auto shrink-0"
                         >
                             <ArrowDownUp className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
-                            <span>{sortNewestFirst ? "Mới nhất trước" : "Cũ nhất trước"}</span>
+                            <span>{sortNewestFirst ? "Mới nhất trước" : "Theo trình tự (Bước 1 ➔ 5)"}</span>
                         </button>
                     </div>
 

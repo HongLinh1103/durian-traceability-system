@@ -35,6 +35,16 @@ export type TraceMilestone = {
     }>;
 };
 
+export const MILESTONE_ORDER_MAP: Record<string, number> = {
+    SEASON: 1,
+    HARVEST: 2,
+    COLLECTOR_RECEIPT: 3,
+    PROCESSING_RECEIPT: 3,
+    PROCESSING_PACKAGING: 4,
+    DISTRIBUTION: 5,
+    EXPORT: 5,
+};
+
 function formatVnDate(dateInput: Date | string | null | undefined): string {
     if (!dateInput) return "—";
     const formatted = formatVietnameseDate(dateInput);
@@ -652,7 +662,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
             id: "milestone-collector",
             stepNumber: 3,
             type: "COLLECTOR_RECEIPT",
-            title: "THU MUA / TIẾP NHẬN & PHÂN LOẠI",
+            title: "TIẾP NHẬN & PHÂN LOẠI",
             subtitle: "Tiếp nhận nông sản từ vườn, kiểm định chất lượng & phân loại quả tươi",
             date: receivedDate,
             dateText: formatVnDate(receivedDate),
@@ -838,7 +848,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
             id: "milestone-export",
             stepNumber: 5,
             type: "EXPORT",
-            title: "ĐÃ XUẤT KHẨU",
+            title: "XUẤT KHẨU NƯỚC NGOÀI",
             subtitle: "Hoàn tất kiểm dịch thực vật & vận chuyển xuất khẩu chính ngạch sang thị trường quốc tế",
             date: dispatchDate,
             dateText: formatVnDate(dispatchDate),
@@ -878,7 +888,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
             id: "milestone-distribution",
             stepNumber: 5,
             type: "DISTRIBUTION",
-            title: "XUẤT BÁN NỘI ĐỊA & GIAO HÀNG",
+            title: "XUẤT BÁN TRONG NƯỚC",
             subtitle: "Phân phối đến hệ thống siêu thị, chuỗi bán lẻ và chợ đầu mối trong nước",
             date: dispatchDate,
             dateText: formatVnDate(dispatchDate),
@@ -909,10 +919,16 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
         rawMilestones.push(milestoneDistribution);
     }
 
-    // Filter non-null and assign step numbers (1 .. N)
+    // Filter non-null and assign step numbers (1 .. N) strictly according to lifecycle sequence:
+    // BẮT ĐẦU VỤ MÙA -> THU HOẠCH -> TIẾP NHẬN & PHÂN LOẠI -> CHẾ BIẾN – ĐÓNG GÓI -> XUẤT BÁN TRONG NƯỚC / XUẤT KHẨU NƯỚC NGOÀI
     const validMilestones = rawMilestones
         .filter((m): m is TraceMilestone => Boolean(m))
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .sort((a, b) => {
+            const orderA = MILESTONE_ORDER_MAP[a.type] ?? 99;
+            const orderB = MILESTONE_ORDER_MAP[b.type] ?? 99;
+            if (orderA !== orderB) return orderA - orderB;
+            return new Date(a.date).getTime() - new Date(b.date).getTime();
+        })
         .map((m, index) => ({
             ...m,
             stepNumber: index + 1,
@@ -1100,62 +1116,201 @@ async function buildPreviewTraceObject(cleanToken: string, preview: PreviewTrace
 
     const dispatchDate = preview.exportDate ? new Date(preview.exportDate) : new Date(preview.updatedAt || Date.now());
     const packagingDate = previewFinishedLot?.manufacturedAt || previewFinishedLot?.processingBatch?.completedAt;
-    const milestones: TraceMilestone[] = [
-        {
-            id: "milestone-packaging-preview",
-            stepNumber: 4,
-            type: "PROCESSING_PACKAGING",
-            title: "ĐÓNG GÓI & CHẾ BIẾN",
-            subtitle: packaging,
-            date: packagingDate || dispatchDate,
-            dateText: packagingDate ? formatVnDate(packagingDate) : "Chưa cập nhật",
-            badgeText: "Hoàn tất đóng gói",
+    const previewMilestones: TraceMilestone[] = [];
+
+    if (uniquePreviewSources.length > 0) {
+        const firstSrc = uniquePreviewSources[0];
+        const seasonStartedAt = firstSrc.cropSeason?.startedAt || new Date(dispatchDate.getTime() - 90 * 24 * 3600 * 1000);
+        const seasonNames = [...new Set(uniquePreviewSources.map((s) => s.cropSeason?.name).filter(Boolean))].join(", ") || "Vụ sầu riêng 2026";
+        const farmNames = [...new Set(uniquePreviewSources.map((s) => s.farm?.farmName).filter(Boolean))].join(", ") || farmName;
+        const regionCodes = [...new Set(uniquePreviewSources.map((s) => s.farm?.region?.code || s.farm?.farmCode).filter(Boolean))].join(", ") || regionCode;
+        const farmLocations = [...new Set(uniquePreviewSources.map((s) => [s.farm?.district, s.farm?.province].filter(Boolean).join(", ") || s.farm?.address).filter(Boolean))].join("; ") || "Đồng Nai";
+        const varieties = [...new Set(uniquePreviewSources.map((s) => s.farm?.durianVariety).filter(Boolean))].join(", ") || "Ri6";
+
+        previewMilestones.push({
+            id: "milestone-season-preview",
+            stepNumber: 1,
+            type: "SEASON",
+            title: "BẮT ĐẦU VỤ MÙA",
+            subtitle: "Khởi đầu chu kỳ canh tác theo tiêu chuẩn VietGAP & mã số vùng trồng GACC",
+            date: seasonStartedAt,
+            dateText: formatVnDate(seasonStartedAt),
+            badgeText: "Chính vụ",
             badgeVariant: "emerald",
             fields: [
-                { label: "Lô thành phẩm", value: lotCode, highlight: true },
-                { label: "Sản phẩm", value: productName },
-                { label: "Số lượng thùng", value: boxCount != null ? `${boxCount.toLocaleString("vi-VN")} thùng` : "Chưa cập nhật" },
-                { label: "Quy cách đóng gói", value: packaging },
+                { label: "Vụ mùa", value: seasonNames },
+                { label: "Vườn", value: farmNames, highlight: true },
+                { label: "Mã số vùng sản xuất", value: regionCodes, highlight: true },
+                { label: "Địa phương", value: farmLocations },
+                { label: "Giống", value: varieties, highlight: true },
             ],
-        },
-        {
-            id: "milestone-dispatch-preview",
-            stepNumber: 5,
-            type: isExport ? "EXPORT" : "DISTRIBUTION",
-            title: isExport ? "XUẤT KHẨU & VẬN CHUYỂN" : "XUẤT BÁN NỘI ĐỊA & GIAO HÀNG",
-            subtitle: isExport ? "Vận chuyển container lạnh niêm phong chì xuất khẩu" : "Giao hàng trực tiếp đến đơn vị phân phối nội địa",
-            date: dispatchDate,
-            dateText: preview.exportDate ? formatVnDate(dispatchDate) : "Chưa cập nhật",
-            badgeText: isExport ? "Đã xuất cảng" : "Đang giao hàng",
-            badgeVariant: "indigo",
-            fields: isExport
-                ? [
-                    { label: "Khối lượng xuất", value: `${weight.toLocaleString("vi-VN")} kg`, highlight: true },
-                    { label: "Số thùng", value: boxCount != null ? `${boxCount.toLocaleString("vi-VN")} thùng` : "Chưa cập nhật" },
-                    { label: "Thị trường nhập khẩu", value: destCountry, highlight: true },
-                    { label: "Cửa khẩu / Cảng xuất", value: preview?.portOfLoading || "Chưa cập nhật" },
-                    { label: "Điểm đến", value: destAddress, highlight: true },
-                    { label: "Số Container", value: preview?.containerNumber || "Ch\u01b0a c\u1eadp nh\u1eadt" },
-                    { label: "Số Seal chì", value: preview?.sealNumber || "Ch\u01b0a c\u1eadp nh\u1eadt" },
-                    { label: "Biển số xe", value: preview?.truckPlate || "Ch\u01b0a c\u1eadp nh\u1eadt" },
-                    { label: "Đơn vị vận chuyển", value: preview?.carrierName || "Chưa cập nhật" },
-                ]
-                : [
-                    { label: "Tên sản phẩm xuất bán", value: productName, highlight: true },
-                    { label: "Khối lượng xuất", value: `${weight.toLocaleString("vi-VN")} kg`, highlight: true },
-                    { label: "Số thùng", value: boxCount != null ? `${boxCount.toLocaleString("vi-VN")} thùng` : "Chưa cập nhật" },
-                    ...(preview?.distributionChannel ? [{ label: "Kênh phân phối", value: preview.distributionChannel, highlight: true }] : []),
-                    ...(preview?.partnerSystem ? [{ label: "Hệ thống / Đối tác", value: preview.partnerSystem, highlight: true }] : []),
-                    { label: "Đơn vị / Chi nhánh nhận", value: destName, highlight: true },
-                    ...(preview?.contactPerson ? [{ label: "Người liên hệ", value: preview.contactPerson }] : (preview?.customerName && preview.customerName !== destName ? [{ label: "Người liên hệ", value: preview.customerName }] : [])),
-                    ...(preview?.customerPhone ? [{ label: "Số điện thoại", value: preview.customerPhone }] : []),
-                    { label: "Địa chỉ giao hàng", value: destAddress, highlight: true },
-                    ...(preview?.transportMethod ? [{ label: "Hình thức vận chuyển", value: preview.transportMethod }] : []),
-                    ...(preview?.truckPlate ? [{ label: "Biển số xe", value: preview.truckPlate }] : []),
-                    ...(preview?.driverName ? [{ label: "Tài xế giao nhận", value: preview.driverName }] : []),
-                ],
-        },
-    ];
+        });
+
+        const harvestedAt = firstSrc.harvestRecord?.actualHarvestedAt || firstSrc.harvestedAt || new Date(dispatchDate.getTime() - 5 * 24 * 3600 * 1000);
+        const harvestLotCodes = uniquePreviewSources.map((s) => s.lotCode).filter(Boolean).join(", ") || rawCode;
+        const totalHarvestWeight = uniquePreviewSources.reduce((sum, s) => sum + Number(s.weight || 0), 0) || weight;
+
+        previewMilestones.push({
+            id: "milestone-harvest-preview",
+            stepNumber: 2,
+            type: "HARVEST",
+            title: "THU HOẠCH",
+            subtitle: "Thu hoạch đúng độ tuổi trái, đáp ứng thời gian cách ly thuốc BVTV (PHI)",
+            date: harvestedAt,
+            dateText: formatVnDate(harvestedAt),
+            badgeText: "QC: Đạt",
+            badgeVariant: "emerald",
+            fields: [
+                { label: "Vườn", value: farmNames, highlight: true },
+                { label: "Lô thu hoạch", value: harvestLotCodes, highlight: true },
+                { label: "Khối lượng", value: `${totalHarvestWeight.toLocaleString("vi-VN")} kg`, highlight: true },
+                { label: "Giống", value: varieties },
+                { label: "Kiểm tra trước thu hoạch", value: "Đạt" },
+            ],
+        });
+
+        previewMilestones.push({
+            id: "milestone-proc-receipt-preview",
+            stepNumber: 3,
+            type: "PROCESSING_RECEIPT",
+            title: "TIẾP NHẬN & PHÂN LOẠI",
+            subtitle: "Tiếp nhận nông sản trực tiếp từ nhà vườn để đưa vào dây chuyền",
+            date: harvestedAt,
+            dateText: formatVnDate(harvestedAt),
+            badgeText: "QC: Đạt",
+            badgeVariant: "blue",
+            fields: [
+                { label: "Cơ sở", value: facilityName, highlight: true },
+                { label: "Lô nguyên liệu", value: rawCode, highlight: true },
+                { label: "Khối lượng", value: `${totalHarvestWeight.toLocaleString("vi-VN")} kg` },
+                { label: "QC", value: "Đạt" },
+            ],
+        });
+    } else if (previewFarm) {
+        const seasonStartedAt = previewFarm.cropSeasons?.[0]?.startedAt || new Date(dispatchDate.getTime() - 90 * 24 * 3600 * 1000);
+        previewMilestones.push({
+            id: "milestone-season-preview",
+            stepNumber: 1,
+            type: "SEASON",
+            title: "BẮT ĐẦU VỤ MÙA",
+            subtitle: "Khởi đầu chu kỳ canh tác theo tiêu chuẩn VietGAP & mã số vùng trồng GACC",
+            date: seasonStartedAt,
+            dateText: formatVnDate(seasonStartedAt),
+            badgeText: "Chính vụ",
+            badgeVariant: "emerald",
+            fields: [
+                { label: "Vụ mùa", value: previewFarm.cropSeasons?.[0]?.name || "Vụ sầu riêng 2026" },
+                { label: "Vườn", value: previewFarm.farmName, highlight: true },
+                { label: "Mã số vùng sản xuất", value: previewFarm.farmCode, highlight: true },
+                { label: "Giống", value: previewFarm.durianVariety || "Ri6", highlight: true },
+            ],
+        });
+
+        const harvestedAt = new Date(dispatchDate.getTime() - 5 * 24 * 3600 * 1000);
+        previewMilestones.push({
+            id: "milestone-harvest-preview",
+            stepNumber: 2,
+            type: "HARVEST",
+            title: "THU HOẠCH",
+            subtitle: "Thu hoạch đúng độ tuổi trái, đáp ứng thời gian cách ly thuốc BVTV (PHI)",
+            date: harvestedAt,
+            dateText: formatVnDate(harvestedAt),
+            badgeText: "QC: Đạt",
+            badgeVariant: "emerald",
+            fields: [
+                { label: "Vườn", value: previewFarm.farmName, highlight: true },
+                { label: "Lô thu hoạch", value: rawCode, highlight: true },
+                { label: "Khối lượng", value: `${weight.toLocaleString("vi-VN")} kg`, highlight: true },
+                { label: "Kiểm tra trước thu hoạch", value: "Đạt" },
+            ],
+        });
+
+        previewMilestones.push({
+            id: "milestone-proc-receipt-preview",
+            stepNumber: 3,
+            type: "PROCESSING_RECEIPT",
+            title: "TIẾP NHẬN & PHÂN LOẠI",
+            subtitle: "Tiếp nhận nông sản trực tiếp từ nhà vườn để đưa vào dây chuyền",
+            date: harvestedAt,
+            dateText: formatVnDate(harvestedAt),
+            badgeText: "QC: Đạt",
+            badgeVariant: "blue",
+            fields: [
+                { label: "Cơ sở", value: facilityName, highlight: true },
+                { label: "Lô nguyên liệu", value: rawCode, highlight: true },
+                { label: "Khối lượng", value: `${weight.toLocaleString("vi-VN")} kg` },
+                { label: "QC", value: "Đạt" },
+            ],
+        });
+    }
+
+    previewMilestones.push({
+        id: "milestone-packaging-preview",
+        stepNumber: 4,
+        type: "PROCESSING_PACKAGING",
+        title: "CHẾ BIẾN – ĐÓNG GÓI",
+        subtitle: packaging,
+        date: packagingDate || dispatchDate,
+        dateText: packagingDate ? formatVnDate(packagingDate) : "Chưa cập nhật",
+        badgeText: "Hoàn tất đóng gói",
+        badgeVariant: "emerald",
+        fields: [
+            { label: "Lô thành phẩm", value: lotCode, highlight: true },
+            { label: "Sản phẩm", value: productName },
+            { label: "Số lượng thùng", value: boxCount != null ? `${boxCount.toLocaleString("vi-VN")} thùng` : "Chưa cập nhật" },
+            { label: "Quy cách đóng gói", value: packaging },
+        ],
+    });
+
+    previewMilestones.push({
+        id: "milestone-dispatch-preview",
+        stepNumber: 5,
+        type: isExport ? "EXPORT" : "DISTRIBUTION",
+        title: isExport ? "XUẤT KHẨU NƯỚC NGOÀI" : "XUẤT BÁN TRONG NƯỚC",
+        subtitle: isExport ? "Vận chuyển container lạnh niêm phong chì xuất khẩu" : "Giao hàng trực tiếp đến đơn vị phân phối nội địa",
+        date: dispatchDate,
+        dateText: preview.exportDate ? formatVnDate(dispatchDate) : "Chưa cập nhật",
+        badgeText: isExport ? "Đã xuất cảng" : "Đang giao hàng",
+        badgeVariant: "indigo",
+        fields: isExport
+            ? [
+                { label: "Khối lượng xuất", value: `${weight.toLocaleString("vi-VN")} kg`, highlight: true },
+                { label: "Số thùng", value: boxCount != null ? `${boxCount.toLocaleString("vi-VN")} thùng` : "Chưa cập nhật" },
+                { label: "Thị trường nhập khẩu", value: destCountry, highlight: true },
+                { label: "Cửa khẩu / Cảng xuất", value: preview?.portOfLoading || "Chưa cập nhật" },
+                { label: "Điểm đến", value: destAddress, highlight: true },
+                { label: "Số Container", value: preview?.containerNumber || "Chưa cập nhật" },
+                { label: "Số Seal chì", value: preview?.sealNumber || "Chưa cập nhật" },
+                { label: "Biển số xe", value: preview?.truckPlate || "Chưa cập nhật" },
+                { label: "Đơn vị vận chuyển", value: preview?.carrierName || "Chưa cập nhật" },
+            ]
+            : [
+                { label: "Tên sản phẩm xuất bán", value: productName, highlight: true },
+                { label: "Khối lượng xuất", value: `${weight.toLocaleString("vi-VN")} kg`, highlight: true },
+                { label: "Số thùng", value: boxCount != null ? `${boxCount.toLocaleString("vi-VN")} thùng` : "Chưa cập nhật" },
+                ...(preview?.distributionChannel ? [{ label: "Kênh phân phối", value: preview.distributionChannel, highlight: true }] : []),
+                ...(preview?.partnerSystem ? [{ label: "Hệ thống / Đối tác", value: preview.partnerSystem, highlight: true }] : []),
+                { label: "Đơn vị / Chi nhánh nhận", value: destName, highlight: true },
+                ...(preview?.contactPerson ? [{ label: "Người liên hệ", value: preview.contactPerson }] : (preview?.customerName && preview.customerName !== destName ? [{ label: "Người liên hệ", value: preview.customerName }] : [])),
+                ...(preview?.customerPhone ? [{ label: "Số điện thoại", value: preview.customerPhone }] : []),
+                { label: "Địa chỉ giao hàng", value: destAddress, highlight: true },
+                ...(preview?.transportMethod ? [{ label: "Hình thức vận chuyển", value: preview.transportMethod }] : []),
+                ...(preview?.truckPlate ? [{ label: "Biển số xe", value: preview.truckPlate }] : []),
+                ...(preview?.driverName ? [{ label: "Tài xế giao nhận", value: preview.driverName }] : []),
+            ],
+    });
+
+    const milestones: TraceMilestone[] = previewMilestones
+        .sort((a, b) => {
+            const orderA = MILESTONE_ORDER_MAP[a.type] ?? 99;
+            const orderB = MILESTONE_ORDER_MAP[b.type] ?? 99;
+            if (orderA !== orderB) return orderA - orderB;
+            return new Date(a.date).getTime() - new Date(b.date).getTime();
+        })
+        .map((m, index) => ({
+            ...m,
+            stepNumber: index + 1,
+        }));
 
     return {
         isPreview: true,
