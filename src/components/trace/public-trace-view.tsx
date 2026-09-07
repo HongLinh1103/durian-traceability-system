@@ -354,45 +354,6 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
             <div className="mx-auto max-w-3xl space-y-6 min-w-0">
                 {/* 1. HEADER: PRODUCT & QR BADGE */}
                 <header className="rounded-3xl border border-emerald-200/80 bg-white p-5 shadow-sm sm:p-8 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
-                        <div className="flex items-center gap-2">
-                            <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-700 text-white font-black text-xs shadow-xs shrink-0">
-                                TV
-                            </span>
-                            <span className="text-xs font-black uppercase tracking-[0.1em] text-emerald-800 whitespace-nowrap">
-                                TRUY XUẤT NGUỒN GỐC
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span
-                                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black border whitespace-nowrap shrink-0 ${
-                                    active
-                                        ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                                        : trace.qrStatus === "REVOKED"
-                                        ? "bg-red-50 text-red-800 border-red-200"
-                                        : "bg-amber-50 text-amber-800 border-amber-200"
-                                }`}
-                            >
-                                {active ? (
-                                    <>
-                                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                                        <span className="whitespace-nowrap">MÃ TRUY XUẤT HỢP LỆ</span>
-                                    </>
-                                ) : trace.qrStatus === "REVOKED" ? (
-                                    <>
-                                        <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
-                                        <span className="whitespace-nowrap">MÃ ĐÃ THU HỒI</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                                        <span className="whitespace-nowrap">MÃ ĐANG TẠM KHÓA</span>
-                                    </>
-                                )}
-                            </span>
-                        </div>
-                    </div>
-
                     <div>
                         <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">
                             {trace.commercialLot.productName}
@@ -403,32 +364,6 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                                 {trace.commercialLot.lotCode}
                             </b>
                         </p>
-                    </div>
-
-                    {/* Quick Info Grid */}
-                    <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 sm:grid-cols-4 text-xs">
-                        <div className="space-y-1 bg-slate-50/70 p-2.5 rounded-2xl border border-slate-100 sm:bg-transparent sm:p-0 sm:border-0 min-w-0">
-                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Mã định danh QR</span>
-                            <span className="font-mono font-bold text-slate-800 block truncate" title={trace.code}>{trace.code}</span>
-                        </div>
-                        <div className="space-y-1 bg-slate-50/70 p-2.5 rounded-2xl border border-slate-100 sm:bg-transparent sm:p-0 sm:border-0 min-w-0">
-                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Đơn vị phát hành</span>
-                            <span className="font-bold text-slate-800 block truncate" title={trace.issuer}>{trace.issuer}</span>
-                        </div>
-                        <div className="space-y-1 bg-slate-50/70 p-2.5 rounded-2xl border border-slate-100 sm:bg-transparent sm:p-0 sm:border-0 min-w-0">
-                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Khối lượng lô</span>
-                            <span className="font-black text-emerald-800 block truncate">
-                                {trace.commercialLot.quantity.toLocaleString("vi-VN")} {trace.commercialLot.unit}
-                            </span>
-                        </div>
-                        <div className="space-y-1 bg-slate-50/70 p-2.5 rounded-2xl border border-slate-100 sm:bg-transparent sm:p-0 sm:border-0 min-w-0">
-                            <span className="text-slate-400 font-bold uppercase tracking-wider block text-[10px]">Điểm đến / Thị trường</span>
-                            <span className="font-bold text-slate-800 block truncate" title={trace.destination?.country || trace.destination?.name || trace.commercialLot.buyerName || ""}>
-                                {trace.destination?.country && !["việt nam", "vietnam", "vn"].includes(trace.destination.country.toLowerCase())
-                                    ? trace.destination.country
-                                    : trace.destination?.name || trace.commercialLot.buyerName || "Chợ đầu mối Nông sản Thủ Đức"}
-                            </span>
-                        </div>
                     </div>
 
                     {/* QR Code Action Box */}
@@ -447,20 +382,7 @@ export function PublicTraceView({ trace }: { trace: PublicTraceData }) {
                                     <QrCode className="h-12 w-12 text-emerald-600 shrink-0" />
                                 </div>
                             )}
-                            <div className="min-w-0">
-                                <div className="flex items-center justify-center gap-1.5 text-xs font-black uppercase text-emerald-800 tracking-wide whitespace-nowrap">
-                                    <Sparkles className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                                    <span className="whitespace-nowrap">Mã QR Định Danh</span>
-                                </div>
-                                <p className="text-xs text-slate-600 mt-1">
-                                    Quét bằng Camera hoặc Zalo để xác thực nguồn gốc sầu riêng.
-                                </p>
-                                <div className="mt-1.5 flex items-center justify-center gap-2">
-                                    <span className="font-mono text-[11px] font-bold text-slate-700 bg-white px-2 py-0.5 rounded-md border border-slate-200 whitespace-nowrap shrink-0 inline-block">
-                                        Token: {trace.publicToken}
-                                    </span>
-                                </div>
-                            </div>
+
                         </div>
 
                         <div className="grid grid-cols-3 items-center gap-2 w-full max-w-md">

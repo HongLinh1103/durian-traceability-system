@@ -6,6 +6,7 @@ export interface PreviewTraceData {
     lotCode?: string;
     weight: number;
     boxCount?: number;
+    packaging?: string;
     destinationCountry?: string;
     portOfDestination?: string;
     portOfLoading?: string;

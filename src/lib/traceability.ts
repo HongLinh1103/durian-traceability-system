@@ -755,6 +755,8 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
                 { label: "Mã mẻ / đóng gói", value: batchCode },
                 { label: "Lô thành phẩm", value: finishedLotCode, highlight: true },
                 { label: "Sản phẩm", value: finishedProductName },
+                { label: "Số lượng thùng", value: shipment?.boxCount != null ? `${shipment.boxCount.toLocaleString("vi-VN")} thùng` : "Chưa cập nhật" },
+                { label: "Quy cách đóng gói", value: fpl?.packaging || "Chưa cập nhật" },
                 { label: "Khối lượng", value: `${finishedWeight.toLocaleString("vi-VN")} kg` },
                 { label: "QC", value: "Đạt" },
             ],
@@ -815,7 +817,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
         if (shipment.note.trim().startsWith("{")) {
             try {
                 shipmentMeta = JSON.parse(shipment.note);
-            } catch {}
+            } catch { }
         } else {
             const parts = (shipment.note as string).split("|").map((p: string) => p.trim());
             parts.forEach((part: string) => {
@@ -866,8 +868,8 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
                 ...(vehicle ? [{ label: "Biển số xe", value: vehicle }] : []),
                 ...(driver ? [{ label: "Tài xế vận chuyển", value: driver }] : []),
                 ...(transport ? [{ label: "Hình thức vận chuyển", value: transport }] : []),
-                ...(shipment?.boxCount ? [{ label: "Số thùng", value: `${shipment.boxCount.toLocaleString("vi-VN")} thùng` }] : []),
-                { label: "Khối lượng", value: `${Number(shipment?.dispatchedWeight || trace.commercialLot.quantity).toLocaleString("vi-VN")} kg` },
+                { label: "Khối lượng xuất", value: `${Number(shipment?.dispatchedWeight ?? trace.commercialLot.quantity).toLocaleString("vi-VN")} kg`, highlight: true },
+                { label: "Số thùng", value: shipment?.boxCount != null ? `${shipment.boxCount.toLocaleString("vi-VN")} thùng` : "Chưa cập nhật" },
             ],
         };
         rawMilestones.push(milestoneExport);
@@ -945,27 +947,27 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
         issuerType: trace.commercialLot.ownerType,
         destination: trace.commercialLot.destination
             ? {
-                  name: shipmentMeta.partnerBranch || trace.commercialLot.destination.name,
-                  type: trace.commercialLot.destination.type,
-                  address: shipmentMeta.deliveryAddress || trace.commercialLot.destination.address,
-                  country: trace.commercialLot.destination.country,
-              }
+                name: shipmentMeta.partnerBranch || trace.commercialLot.destination.name,
+                type: trace.commercialLot.destination.type,
+                address: shipmentMeta.deliveryAddress || trace.commercialLot.destination.address,
+                country: trace.commercialLot.destination.country,
+            }
             : null,
         currentStatus: isExport ? "Đã xuất khẩu" : "Đã xuất hàng đến điểm phân phối",
         processingSummary: fpl ? { manufacturedAt: fpl.manufacturedAt, productName: fpl.productName } : null,
         shipment: shipment
             ? {
-                  code: shipment.shipmentCode,
-                  status: shipment.status,
-                  dispatchAt: shipment.dispatchAt,
-                  receivedAt: shipment.receivedAt,
-                  vehicleReference: shipment.vehicleReference,
-                  containerNumber: shipment.containerNumber,
-                  sealNumber: shipment.sealNumber,
-                  boxCount: shipment.boxCount,
-                  dispatchedWeight: Number(shipment.dispatchedWeight),
-                  exportInfo: shipment.exportInfo,
-              }
+                code: shipment.shipmentCode,
+                status: shipment.status,
+                dispatchAt: shipment.dispatchAt,
+                receivedAt: shipment.receivedAt,
+                vehicleReference: shipment.vehicleReference,
+                containerNumber: shipment.containerNumber,
+                sealNumber: shipment.sealNumber,
+                boxCount: shipment.boxCount,
+                dispatchedWeight: Number(shipment.dispatchedWeight),
+                exportInfo: shipment.exportInfo,
+            }
             : null,
         milestones: validMilestones,
         timeline: validMilestones.map((m) => ({
@@ -1018,32 +1020,32 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
 async function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTraceData) {
     const previewFinishedLot = preview?.finishedProductLotId
         ? await prisma.finishedProductLot.findUnique({
-              where: { id: preview.finishedProductLotId },
-              include: {
-                  processingBatch: {
-                      include: {
-                          inputs: {
-                              include: {
-                                  rawMaterialLot: {
-                                      include: {
-                                          rawMaterialReceipt: {
-                                              include: {
-                                                  sourceHarvestLot: { include: harvestInclude },
-                                                  sourceCollectionLot: {
-                                                      include: {
-                                                          items: { include: { harvestLot: { include: harvestInclude } } },
-                                                      },
-                                                  },
-                                              },
-                                          },
-                                      },
-                                  },
-                              },
-                          },
-                      },
-                  },
-              },
-          }).catch(() => null)
+            where: { id: preview.finishedProductLotId },
+            include: {
+                processingBatch: {
+                    include: {
+                        inputs: {
+                            include: {
+                                rawMaterialLot: {
+                                    include: {
+                                        rawMaterialReceipt: {
+                                            include: {
+                                                sourceHarvestLot: { include: harvestInclude },
+                                                sourceCollectionLot: {
+                                                    include: {
+                                                        items: { include: { harvestLot: { include: harvestInclude } } },
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }).catch(() => null)
         : null;
 
     const previewSources = previewFinishedLot?.processingBatch?.inputs?.flatMap((input) => {
@@ -1059,47 +1061,48 @@ async function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTrac
     // that exact identity to recover the farmer's real active season and logs.
     const previewFarm = uniquePreviewSources.length === 0 && (preview?.farmName || preview?.regionCode)
         ? await prisma.farm.findFirst({
-              where: {
-                  isActive: true,
-                  OR: [
-                      ...(preview?.farmName ? [{ farmName: { equals: preview.farmName, mode: "insensitive" as const } }] : []),
-                      ...(preview?.regionCode ? [{ farmCode: { equals: preview.regionCode, mode: "insensitive" as const } }] : []),
-                  ],
-              },
-              select: {
-                  id: true,
-                  farmName: true,
-                  farmCode: true,
-                  durianVariety: true,
-                  region: true,
-                  cropSeasons: {
-                      where: { status: "ACTIVE" },
-                      orderBy: [{ year: "desc" }, { sequence: "desc" }],
-                      take: 1,
-                      include: {
-                          farmingLogs: {
-                              orderBy: { actionDate: "desc" },
-                              take: 30,
-                              select: {
-                                  stage: true,
-                                  activityType: true,
-                                  otherActivity: true,
-                                  chemicalName: true,
-                                  dosage: true,
-                                  phiDays: true,
-                                  isGACCCompliant: true,
-                                  actionDate: true,
-                                  notes: true,
-                              },
-                          },
-                      },
-                  },
-              },
-          }).catch(() => null)
+            where: {
+                isActive: true,
+                OR: [
+                    ...(preview?.farmName ? [{ farmName: { equals: preview.farmName, mode: "insensitive" as const } }] : []),
+                    ...(preview?.regionCode ? [{ farmCode: { equals: preview.regionCode, mode: "insensitive" as const } }] : []),
+                ],
+            },
+            select: {
+                id: true,
+                farmName: true,
+                farmCode: true,
+                durianVariety: true,
+                region: true,
+                cropSeasons: {
+                    where: { status: "ACTIVE" },
+                    orderBy: [{ year: "desc" }, { sequence: "desc" }],
+                    take: 1,
+                    include: {
+                        farmingLogs: {
+                            orderBy: { actionDate: "desc" },
+                            take: 30,
+                            select: {
+                                stage: true,
+                                activityType: true,
+                                otherActivity: true,
+                                chemicalName: true,
+                                dosage: true,
+                                phiDays: true,
+                                isGACCCompliant: true,
+                                actionDate: true,
+                                notes: true,
+                            },
+                        },
+                    },
+                },
+            },
+        }).catch(() => null)
         : null;
     const isExport = preview ? preview.shipmentType === "EXPORT" : !cleanToken.toUpperCase().startsWith("DOM-");
     const weight = preview?.weight || 3100;
-    const boxCount = preview?.boxCount || Math.max(1, Math.round(weight / 18));
+    const boxCount = preview?.boxCount;
+    const packaging = preview?.packaging?.trim() || previewFinishedLot?.packaging || "Chưa cập nhật";
     const lotCode = preview?.lotCode || "FP-FRESH-20260830-001";
     const farmName = preview?.farmName || "Vườn sầu riêng Minh Phát";
     const regionCode = preview?.regionCode || "MSVT-GACC-001";
@@ -1170,8 +1173,8 @@ async function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTrac
             id: "milestone-packaging-preview",
             stepNumber: 4,
             type: "PROCESSING_PACKAGING",
-            title: "ĐÓNG GÓI & DÁN TEM TRUY XUẤT",
-            subtitle: "Đóng thùng carton 18kg chuyên dụng, tiệt trùng và dán nhãn theo quy định",
+            title: "ĐÓNG GÓI & CHẾ BIẾN",
+            subtitle: packaging,
             date: new Date("2026-08-30"),
             dateText: "30/08/2026",
             badgeText: "Hoàn tất đóng gói",
@@ -1179,8 +1182,8 @@ async function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTrac
             fields: [
                 { label: "Lô thành phẩm", value: lotCode, highlight: true },
                 { label: "Sản phẩm", value: productName },
-                { label: "Số lượng thùng", value: `${boxCount} thùng` },
-                { label: "Quy cách đóng gói", value: "Thùng carton 5-6 trái / 18kg" },
+                { label: "Số lượng thùng", value: boxCount != null ? `${boxCount.toLocaleString("vi-VN")} thùng` : "Chưa cập nhật" },
+                { label: "Quy cách đóng gói", value: packaging },
             ],
         },
         {
@@ -1195,6 +1198,8 @@ async function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTrac
             badgeVariant: "indigo",
             fields: isExport
                 ? [
+                    { label: "Khối lượng xuất", value: `${weight.toLocaleString("vi-VN")} kg`, highlight: true },
+                    { label: "Số thùng", value: boxCount != null ? `${boxCount.toLocaleString("vi-VN")} thùng` : "Chưa cập nhật" },
                     { label: "Thị trường nhập khẩu", value: destCountry, highlight: true },
                     { label: "Cửa khẩu / Cảng xuất", value: preview?.portOfLoading || "Cửa khẩu Quốc tế Hữu Nghị" },
                     { label: "Điểm đến", value: destAddress, highlight: true },
@@ -1206,7 +1211,7 @@ async function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTrac
                 : [
                     { label: "Tên sản phẩm xuất bán", value: productName, highlight: true },
                     { label: "Khối lượng xuất", value: `${weight.toLocaleString("vi-VN")} kg`, highlight: true },
-                    { label: "Số thùng", value: `${boxCount.toLocaleString("vi-VN")} thùng` },
+                    { label: "Số thùng", value: boxCount != null ? `${boxCount.toLocaleString("vi-VN")} thùng` : "Chưa cập nhật" },
                     ...(preview?.distributionChannel ? [{ label: "Kênh phân phối", value: preview.distributionChannel, highlight: true }] : []),
                     ...(preview?.partnerSystem ? [{ label: "Hệ thống / Đối tác", value: preview.partnerSystem, highlight: true }] : []),
                     { label: "Đơn vị / Chi nhánh nhận", value: destName, highlight: true },
@@ -1304,33 +1309,33 @@ async function buildPreviewTraceObject(cleanToken: string, preview?: PreviewTrac
                 })),
             }))
             : previewFarm && previewFarm.cropSeasons[0]
-            ? [{
-                lotCode: rawCode,
-                farmName: previewFarm.farmName,
-                farmCode: previewFarm.farmCode,
-                region: previewFarm.region ? { code: previewFarm.region.code, name: previewFarm.region.name } : null,
-                variety: previewFarm.durianVariety,
-                harvestedAt: new Date(),
-                contributedWeight: weight,
-                unit: "kg",
-                complianceStatus: "COMPLIANT",
-                season: previewFarm.cropSeasons[0].name,
-                cultivationSummary: null,
-                cultivationLogs: previewFarm.cropSeasons[0].farmingLogs,
-            }]
-            : [{
-                lotCode: rawCode,
-                farmName,
-                farmCode: regionCode,
-                region: { code: regionCode, name: "Vùng trồng Sầu riêng Tân Phú" },
-                variety: "Ri6",
-                harvestedAt: new Date("2026-08-28"),
-                contributedWeight: weight,
-                unit: "kg",
-                complianceStatus: "COMPLIANT",
-                season: "Vụ mùa 2026",
-                cultivationSummary: "Canh tác tiêu chuẩn VietGAP & GACC kiểm định",
-                cultivationLogs: [],
-            }],
+                ? [{
+                    lotCode: rawCode,
+                    farmName: previewFarm.farmName,
+                    farmCode: previewFarm.farmCode,
+                    region: previewFarm.region ? { code: previewFarm.region.code, name: previewFarm.region.name } : null,
+                    variety: previewFarm.durianVariety,
+                    harvestedAt: new Date(),
+                    contributedWeight: weight,
+                    unit: "kg",
+                    complianceStatus: "COMPLIANT",
+                    season: previewFarm.cropSeasons[0].name,
+                    cultivationSummary: null,
+                    cultivationLogs: previewFarm.cropSeasons[0].farmingLogs,
+                }]
+                : [{
+                    lotCode: rawCode,
+                    farmName,
+                    farmCode: regionCode,
+                    region: { code: regionCode, name: "Vùng trồng Sầu riêng Tân Phú" },
+                    variety: "Ri6",
+                    harvestedAt: new Date("2026-08-28"),
+                    contributedWeight: weight,
+                    unit: "kg",
+                    complianceStatus: "COMPLIANT",
+                    season: "Vụ mùa 2026",
+                    cultivationSummary: "Canh tác tiêu chuẩn VietGAP & GACC kiểm định",
+                    cultivationLogs: [],
+                }],
     };
 }
