@@ -10,7 +10,9 @@ export default async function TracePage(props: {
 }) {
     const params = await Promise.resolve(props.params);
     const search = props.searchParams ? await Promise.resolve(props.searchParams) : {};
-    const encodedPayload = typeof search.p === "string" ? search.p : (typeof search.preview === "string" ? search.preview : undefined);
+    const rawP = Array.isArray(search.p) ? search.p[0] : search.p;
+    const rawPreview = Array.isArray(search.preview) ? search.preview[0] : search.preview;
+    const encodedPayload = typeof rawP === "string" ? rawP : (typeof rawPreview === "string" ? rawPreview : undefined);
 
     const trace = await getPublicTrace(params.publicToken, encodedPayload);
 

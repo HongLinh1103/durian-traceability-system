@@ -104,9 +104,9 @@ export function ProcessingQrGeneratorView({ shipments: initialShipments }: Proce
     };
 
     const traceUrl = activeShipment?.qrPublicToken
-        ? `${typeof window !== "undefined" ? window.location.origin : ""}/trace/${activeShipment.qrPublicToken}`
+        ? `${typeof window !== "undefined" ? window.location.origin : ""}/trace/${encodeURIComponent(activeShipment.qrPublicToken)}`
         : activeShipment
-        ? `${typeof window !== "undefined" ? window.location.origin : ""}/trace?code=${activeShipment.shipmentCode}`
+        ? `${typeof window !== "undefined" ? window.location.origin : ""}/trace/${encodeURIComponent(activeShipment.shipmentCode)}`
         : "#";
 
     const qrImageUrl = activeShipment

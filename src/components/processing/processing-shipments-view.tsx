@@ -538,33 +538,40 @@ export function ProcessingShipmentsView({
 
     // Encode real-time form data into URL query param so ANY scanner gets 100% exact data
     const previewPayload = useMemo(() => {
-        if (!selectedLot || !shipmentCode) return "";
+        if (!selectedLot) return "";
+        const code = (shipmentCode || "").trim() || (shipmentType === "EXPORT" ? "EXP" : "DOM");
+        const w = Number(weightInput);
+        const validWeight = Number.isFinite(w) && w > 0 ? w : (Number(selectedLot.remainingWeight) || 1);
+        const b = Number(boxCountInput);
+        const validBoxCount = Number.isFinite(b) && b > 0 ? Math.round(b) : (validWeight > 0 ? Math.max(1, Math.round(validWeight / 18)) : undefined);
+        const prodName = productName.trim() || selectedLot.productName || "Sầu riêng tươi xuất khẩu";
+
         const payload: Partial<PreviewTraceData> = {
-            shipmentCode,
+            shipmentCode: code,
             finishedProductLotId: selectedLot.id,
             shipmentType,
-            productName: productName.trim() || selectedLot.productName,
+            productName: prodName,
             lotCode: selectedLot.lotCode,
             packaging: selectedLot.packaging,
             exportDate,
-            weight: Number(weightInput) || 0,
-            boxCount: Number(boxCountInput) || undefined,
-            destinationCountry: shipmentType === "EXPORT" ? (destinationCountry || "Trung Quốc") : "Việt Nam",
-            portOfDestination: shipmentType === "EXPORT" ? portOfDestination : undefined,
-            portOfLoading: shipmentType === "EXPORT" ? portOfLoading : undefined,
-            containerNumber: shipmentType === "EXPORT" ? containerNumber : undefined,
-            sealNumber: shipmentType === "EXPORT" ? sealNumber : undefined,
-            truckPlate: truckPlate || undefined,
-            carrierName: shipmentType === "EXPORT" ? carrierName : transportMethod,
-            distributionChannel: shipmentType === "DOMESTIC" ? distributionChannel : undefined,
-            partnerSystem: shipmentType === "DOMESTIC" ? partnerSystem : undefined,
-            partnerBranch: shipmentType === "DOMESTIC" ? partnerBranch : undefined,
-            customerName: shipmentType === "DOMESTIC" ? (partnerBranch || customerName || partnerSystem) : undefined,
-            contactPerson: shipmentType === "DOMESTIC" ? contactPerson : undefined,
-            customerPhone: shipmentType === "DOMESTIC" ? customerPhone : undefined,
-            deliveryAddress: shipmentType === "DOMESTIC" ? deliveryAddress : undefined,
-            transportMethod: shipmentType === "DOMESTIC" ? transportMethod : undefined,
-            driverName: shipmentType === "DOMESTIC" ? driverName : undefined,
+            weight: validWeight,
+            boxCount: validBoxCount,
+            destinationCountry: shipmentType === "EXPORT" ? (destinationCountry.trim() || "Trung Quốc") : "Việt Nam",
+            portOfDestination: shipmentType === "EXPORT" ? (portOfDestination.trim() || undefined) : (deliveryAddress.trim() || undefined),
+            portOfLoading: shipmentType === "EXPORT" ? (portOfLoading.trim() || undefined) : undefined,
+            containerNumber: shipmentType === "EXPORT" ? (containerNumber.trim() || undefined) : undefined,
+            sealNumber: shipmentType === "EXPORT" ? (sealNumber.trim() || undefined) : undefined,
+            truckPlate: truckPlate.trim() || undefined,
+            carrierName: shipmentType === "EXPORT" ? (carrierName.trim() || undefined) : (transportMethod.trim() || undefined),
+            distributionChannel: shipmentType === "DOMESTIC" ? (distributionChannel.trim() || undefined) : undefined,
+            partnerSystem: shipmentType === "DOMESTIC" ? (partnerSystem.trim() || undefined) : undefined,
+            partnerBranch: shipmentType === "DOMESTIC" ? (partnerBranch.trim() || undefined) : undefined,
+            customerName: shipmentType === "DOMESTIC" ? (partnerBranch.trim() || customerName.trim() || partnerSystem.trim() || undefined) : undefined,
+            contactPerson: shipmentType === "DOMESTIC" ? (contactPerson.trim() || undefined) : undefined,
+            customerPhone: shipmentType === "DOMESTIC" ? (customerPhone.trim() || undefined) : undefined,
+            deliveryAddress: shipmentType === "DOMESTIC" ? (deliveryAddress.trim() || undefined) : undefined,
+            transportMethod: shipmentType === "DOMESTIC" ? (transportMethod.trim() || undefined) : undefined,
+            driverName: shipmentType === "DOMESTIC" ? (driverName.trim() || undefined) : undefined,
             farmName: selectedLot.farmName,
             regionCode: selectedLot.regionCode,
             rawLotCode: selectedLot.rawLotCode,
@@ -602,12 +609,12 @@ export function ProcessingShipmentsView({
     // Live Trace URL with embedded real-time preview data
     const liveTraceUrl = useMemo(() => {
         const origin = typeof window !== "undefined" ? window.location.origin : "";
-        const code = encodeURIComponent(shipmentCode || "EXP");
+        const code = encodeURIComponent((shipmentCode || "").trim() || (shipmentType === "EXPORT" ? "EXP" : "DOM"));
         if (previewPayload) {
             return `${origin}/trace/${code}?p=${encodeURIComponent(previewPayload)}`;
         }
         return `${origin}/trace/${code}`;
-    }, [shipmentCode, previewPayload]);
+    }, [shipmentCode, shipmentType, previewPayload]);
 
     const liveQrImage = useMemo(() => {
         return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(liveTraceUrl)}`;
@@ -785,7 +792,7 @@ export function ProcessingShipmentsView({
                 regionCode: selectedLot.regionCode || "MSVT-VN-DL",
                 rawLotCode: selectedLot.rawLotCode || "NVL-001",
                 facilityName,
-
+                previewPayload,
             };
 
             setShipments((prev) => [newRow, ...prev]);

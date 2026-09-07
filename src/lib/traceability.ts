@@ -731,7 +731,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
             id: "milestone-processing",
             stepNumber: 4,
             type: "PROCESSING_PACKAGING",
-            title: "CƠ SỞ CHẾ BIẾN – ĐÓNG GÓI",
+            title: "CHẾ BIẾN – ĐÓNG GÓI",
             subtitle: isFrozenPulp ? "Nhánh bốc múi / chế biến" : "Nhánh trái tươi đóng gói",
             date: manufacturedDate,
             dateText: formatVnDate(manufacturedDate),
@@ -994,9 +994,14 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
 }
 
 async function buildPreviewTraceObject(cleanToken: string, preview: PreviewTraceData) {
-    const previewFinishedLot = preview?.finishedProductLotId
-        ? await prisma.finishedProductLot.findUnique({
-            where: { id: preview.finishedProductLotId },
+    const previewFinishedLot = (preview?.finishedProductLotId || preview?.lotCode)
+        ? await prisma.finishedProductLot.findFirst({
+            where: {
+                OR: [
+                    ...(preview?.finishedProductLotId ? [{ id: preview.finishedProductLotId }, { lotCode: preview.finishedProductLotId }] : []),
+                    ...(preview?.lotCode ? [{ lotCode: preview.lotCode }] : []),
+                ],
+            },
             include: {
                 processingBatch: {
                     include: {

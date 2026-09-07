@@ -57,7 +57,7 @@ export function encodePreviewPayload(data: Partial<PreviewTraceData>): string {
 }
 
 export function decodePreviewPayload(encoded: string): PreviewTraceData | undefined {
-    if (!encoded) return undefined;
+    if (!encoded || typeof encoded !== "string") return undefined;
     try {
         let json = "";
         if (typeof Buffer !== "undefined") {
@@ -70,12 +70,29 @@ export function decodePreviewPayload(encoded: string): PreviewTraceData | undefi
             json = decodeURIComponent(escape(atob(base64)));
         }
         const parsed = JSON.parse(json);
-        if (parsed && typeof parsed.shipmentCode === "string" && parsed.shipmentCode.trim()
-            && typeof parsed.productName === "string" && parsed.productName.trim()
-            && typeof parsed.weight === "number" && Number.isFinite(parsed.weight) && parsed.weight > 0
-            && ["EXPORT", "DOMESTIC"].includes(parsed.shipmentType)
-            && (parsed.boxCount == null || (Number.isInteger(parsed.boxCount) && parsed.boxCount > 0))) {
-            return parsed as PreviewTraceData;
+        if (parsed && typeof parsed === "object") {
+            const shipmentCode = typeof parsed.shipmentCode === "string" && parsed.shipmentCode.trim()
+                ? parsed.shipmentCode.trim()
+                : "EXP";
+            const weightNum = Number(parsed.weight);
+            if (!Number.isFinite(weightNum) || weightNum <= 0) return undefined;
+            const shipmentType = parsed.shipmentType === "DOMESTIC" ? "DOMESTIC" : "EXPORT";
+            const boxCountNum = parsed.boxCount != null && parsed.boxCount !== "" ? Number(parsed.boxCount) : undefined;
+            const validBoxCount = boxCountNum !== undefined && Number.isFinite(boxCountNum) && boxCountNum > 0
+                ? Math.round(boxCountNum)
+                : undefined;
+            const productName = typeof parsed.productName === "string" && parsed.productName.trim()
+                ? parsed.productName.trim()
+                : "Sầu riêng tươi xuất khẩu";
+
+            return {
+                ...parsed,
+                shipmentCode,
+                productName,
+                weight: weightNum,
+                shipmentType,
+                boxCount: validBoxCount,
+            } as PreviewTraceData;
         }
         return undefined;
     } catch {
@@ -93,8 +110,21 @@ export function savePreviewTrace(data: PreviewTraceData) {
 export function getPreviewTrace(codeOrToken: string, encodedPayload?: string): PreviewTraceData | undefined {
     if (encodedPayload) {
         const decoded = decodePreviewPayload(encodedPayload);
-        if (decoded && decoded.shipmentCode.trim().toUpperCase() === codeOrToken.trim().toUpperCase()) {
-            return decoded;
+        if (decoded) {
+            const clean = codeOrToken?.trim().toUpperCase() || "";
+            const shipCode = decoded.shipmentCode?.trim().toUpperCase() || "";
+            const lotCode = decoded.lotCode?.trim().toUpperCase() || "";
+            const lotId = decoded.finishedProductLotId?.trim().toUpperCase() || "";
+            if (
+                clean === shipCode ||
+                (lotCode && clean === lotCode) ||
+                (lotId && clean === lotId) ||
+                clean === "PREVIEW" ||
+                clean === "EXP" ||
+                clean === "DOM"
+            ) {
+                return decoded;
+            }
         }
     }
 
