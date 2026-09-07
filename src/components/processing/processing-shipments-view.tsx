@@ -26,12 +26,14 @@ import {
     Trees,
     Truck,
     X,
+    FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ModalPortal } from "@/components/ui/modal-portal";
 import { encodePreviewPayload, PreviewTraceData } from "@/lib/trace-preview";
 import { formatVietnameseDate } from "@/lib/date-format";
+import { SalesDispatchSlip, SalesDispatchData } from "@/components/partner/sales-dispatch-slip";
 
 export type ShipmentItemRow = {
     id: string;
@@ -44,6 +46,8 @@ export type ShipmentItemRow = {
     carrierName?: string;
     weight: number;
     boxCount?: number;
+    unitPrice?: number;
+    totalAmount?: number;
     destinationCountry?: string;
     portOfLoading?: string;
     portOfDestination?: string;
@@ -59,6 +63,8 @@ export type ShipmentItemRow = {
     driverName?: string;
     dispatchDate?: string | Date | null;
     status: "DRAFT" | "READY" | "DISPATCHED";
+    paymentStatus?: string;
+    paymentMethod?: string;
     hasQrCode?: boolean;
     qrPublicToken?: string;
     farmName?: string;
@@ -407,6 +413,58 @@ export function ProcessingShipmentsView({
     // Modal View QR Code
     const [viewQrShipment, setViewQrShipment] = useState<ShipmentItemRow | null>(null);
     const [copied, setCopied] = useState(false);
+
+    // Modal View Dispatch Slip
+    const [selectedShipmentForSlip, setSelectedShipmentForSlip] = useState<ShipmentItemRow | null>(null);
+
+    const slipData: SalesDispatchData | null = useMemo(() => {
+        if (!selectedShipmentForSlip) return null;
+        const s = selectedShipmentForSlip;
+        const isExport = s.shipmentType === "EXPORT";
+        const dest = isExport
+            ? [s.portOfDestination, s.destinationCountry].filter(Boolean).join(", ") || s.deliveryAddress || "Thị trường xuất khẩu"
+            : s.deliveryAddress || [s.partnerBranch, s.partnerSystem, s.distributionChannel].filter(Boolean).join(" - ") || "Thị trường nội địa";
+
+        return {
+            id: s.id,
+            lotCode: s.shipmentCode,
+            productName: s.productName,
+            quantity: s.weight,
+            unit: "kg",
+            buyerName: s.customerName || (isExport ? "Đối tác Nhập khẩu Quốc tế" : s.partnerSystem || "Khách hàng mua hàng"),
+            buyerPhone: s.customerPhone || "—",
+            buyerAddress: dest,
+            unitPrice: s.unitPrice || 0,
+            subtotal: s.totalAmount || ((s.unitPrice || 0) * s.weight),
+            totalAmount: s.totalAmount || ((s.unitPrice || 0) * s.weight),
+            paidAmount: s.paymentStatus === "PAID" ? (s.totalAmount || ((s.unitPrice || 0) * s.weight)) : 0,
+            debtAmount: s.paymentStatus === "PAID" ? 0 : (s.totalAmount || ((s.unitPrice || 0) * s.weight)),
+            paymentStatus: s.paymentStatus || "PAID",
+            paymentMethod: s.paymentMethod || "Chuyển khoản ngân hàng",
+            dispatchedAt: s.dispatchDate,
+            ownerName: s.facilityName || facilityName,
+            ownerType: "PROCESSING_FACILITY",
+            boxCount: s.boxCount,
+            packagingSpec: isExport
+                ? (s.boxCount ? `${s.boxCount} thùng xuất khẩu` : "Thùng xuất khẩu")
+                : (s.boxCount ? `${s.boxCount} khay` : "Đóng khay hút chân không"),
+            isExport: isExport,
+            destinationCountry: s.destinationCountry,
+            portOfLoading: s.portOfLoading,
+            transportMethod: s.transportMethod,
+            containerNumber: s.containerNumber,
+            sealNumber: s.sealNumber,
+            vehicleReference: s.truckPlate,
+            traceabilityCode: s.hasQrCode
+                ? {
+                      id: s.id,
+                      code: s.shipmentCode,
+                      publicToken: s.qrPublicToken || s.id,
+                      status: "ACTIVE",
+                  }
+                : null,
+        };
+    }, [selectedShipmentForSlip, facilityName]);
 
     // Form fields
     const [shipmentType, setShipmentType] = useState<"EXPORT" | "DOMESTIC">("EXPORT");
@@ -1023,26 +1081,16 @@ export function ProcessingShipmentsView({
                                             </span>
                                         </td>
 
-                                        {/* Thao tác: Xem QR | In QR | Xem truy xuất */}
+                                        {/* Thao tác: Xem phiếu xuất | Xem truy xuất */}
                                         <td className="px-5 py-3 text-right whitespace-nowrap">
-                                            <div className="inline-flex items-center gap-1">
+                                            <div className="inline-flex items-center gap-1.5">
                                                 <Button
                                                     size="sm"
-                                                    onClick={() => setViewQrShipment(s)}
-                                                    className="h-8 rounded-xl bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft"
+                                                    onClick={() => setSelectedShipmentForSlip(s)}
+                                                    className="h-8 rounded-xl bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-soft inline-flex items-center gap-1.5"
                                                 >
-                                                    <QrCode className="mr-1 h-3.5 w-3.5" />
-                                                    Xem QR
-                                                </Button>
-
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => handlePrintQr(s)}
-                                                    className="h-8 rounded-xl border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                                                >
-                                                    <Printer className="mr-1 h-3.5 w-3.5" />
-                                                    In QR
+                                                    <FileText className="h-3.5 w-3.5" />
+                                                    Xem phiếu xuất
                                                 </Button>
 
                                                 <a
@@ -2008,6 +2056,14 @@ export function ProcessingShipmentsView({
                         </div>
                     </div>
                 </ModalPortal>
+            )}
+
+            {/* Modal Phiếu Xuất Hàng */}
+            {slipData && (
+                <SalesDispatchSlip
+                    data={slipData}
+                    onClose={() => setSelectedShipmentForSlip(null)}
+                />
             )}
         </div>
     );

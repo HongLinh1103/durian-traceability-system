@@ -47,6 +47,8 @@ export type SalesDispatchData = {
     note?: string | null;
     ownerName?: string | null;
     ownerType?: string | null;
+    boxCount?: number | string | null;
+    packagingSpec?: string | null;
     // Export fields (Nghị quyết 36/2026/NQ-CP & GACC Standard)
     isExport?: boolean;
     destinationCountry?: string | null;
@@ -232,7 +234,7 @@ export function SalesDispatchSlip({
                     `}
                     <tr>
                         <td class="label">Khối lượng xuất ${isExport ? "khẩu" : "bán"}:</td>
-                        <td class="val"><b style="font-size: 14px;">${quantity.toLocaleString("vi-VN")} ${unit}</b></td>
+                        <td class="val"><b style="font-size: 14px;">${quantity.toLocaleString("vi-VN")} ${unit}${data.boxCount ? ` (${data.boxCount} ${data.productName?.toLowerCase().includes("cơm") || data.productName?.toLowerCase().includes("bóc múi") ? "khay" : "thùng"})` : ''}</b></td>
                     </tr>
                     <tr>
                         <td class="label">Đơn giá:</td>
@@ -415,7 +417,14 @@ export function SalesDispatchSlip({
                                 )}
                                 <tr className="border-b border-slate-100 bg-slate-50/50">
                                     <td className="p-3 text-slate-500 font-semibold">Khối lượng xuất:</td>
-                                    <td className="p-3 font-black text-emerald-800 text-sm">{quantity.toLocaleString("vi-VN")} {unit}</td>
+                                    <td className="p-3 font-black text-emerald-800 text-sm">
+                                        {quantity.toLocaleString("vi-VN")} {unit}
+                                        {data.boxCount && (
+                                            <span className="ml-2 text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                                                ({data.boxCount} {data.productName?.toLowerCase().includes("cơm") || data.productName?.toLowerCase().includes("bóc múi") ? "khay" : "thùng"})
+                                            </span>
+                                        )}
+                                    </td>
                                 </tr>
                                 <tr className="border-b border-slate-100">
                                     <td className="p-3 text-slate-500 font-semibold">Đơn giá:</td>

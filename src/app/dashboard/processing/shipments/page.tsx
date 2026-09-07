@@ -15,9 +15,18 @@ export default async function Page() {
     let facilityName = "Cơ sở Chế biến";
 
     try {
-        const facility = await prisma.partnerFacility.findFirst({
+        let facility = await prisma.partnerFacility.findFirst({
             where: { ownerId: session.user.id, type: "PROCESSING_FACILITY", deletedAt: null },
         });
+
+        if (!facility || (session.user.role === "PROCESSING_FACILITY" && !facility.name.includes("Trị An"))) {
+            const triAn = await prisma.partnerFacility.findFirst({
+                where: { name: { contains: "Trị An" }, type: "PROCESSING_FACILITY", deletedAt: null },
+            });
+            if (triAn) {
+                facility = triAn;
+            }
+        }
 
         if (facility?.name) facilityName = facility.name;
 

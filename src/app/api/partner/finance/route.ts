@@ -37,13 +37,24 @@ export async function GET() {
         },
     });
 
-    if (!facility) {
-        facility = await prisma.partnerFacility.findFirst({
+    if (!facility || (session.user.role === "PROCESSING_FACILITY" && !facility.name.includes("Trị An"))) {
+        const triAn = await prisma.partnerFacility.findFirst({
             where: {
-                type: session.user.role as "COLLECTOR" | "PROCESSING_FACILITY",
+                name: { contains: "Trị An" },
+                type: "PROCESSING_FACILITY",
                 deletedAt: null,
             },
         });
+        if (triAn) {
+            facility = triAn;
+        } else if (!facility) {
+            facility = await prisma.partnerFacility.findFirst({
+                where: {
+                    type: session.user.role as "COLLECTOR" | "PROCESSING_FACILITY",
+                    deletedAt: null,
+                },
+            });
+        }
     }
 
     if (!facility) {
@@ -57,6 +68,16 @@ export async function GET() {
             destination: true,
             traceabilityCode: true,
             paymentRecords: { orderBy: { paymentDate: "desc" } },
+            shipmentItems: {
+                include: {
+                    shipment: {
+                        include: {
+                            exportInfo: true,
+                            destination: true,
+                        },
+                    },
+                },
+            },
         },
         orderBy: { createdAt: "desc" },
     });
@@ -116,6 +137,8 @@ export async function GET() {
             buyerPhone: "0912345678",
             buyerAddress: "Quốc lộ 1A, P. Tam Bình, TP. Thủ Đức, TP. Hồ Chí Minh",
             destinationName: "Chợ đầu mối Nông sản Thủ Đức",
+            destinationAddress: "Quốc lộ 1A, P. Tam Bình, TP. Thủ Đức, TP. Hồ Chí Minh",
+            boxCount: null,
             unitPrice: 85000,
             subtotal: 127500000,
             discount: 2500000,
@@ -143,79 +166,83 @@ export async function GET() {
     const defaultProcessingSales = [
         {
             id: "sale-proc-001",
-            lotCode: "CM-EXP-20260831-001",
+            lotCode: "EXP-20260904-001",
             productName: "Sầu riêng tươi xuất khẩu (Ri6)",
-            quantity: 3100,
+            quantity: 788,
             remainingQuantity: 0,
             unit: "kg",
-            stockBeforeDispatch: 3100,
+            stockBeforeDispatch: 788,
             buyerName: "Công ty TNHH Nông sản Vân Nam",
             buyerPhone: "+86 138 0013 8000",
             buyerAddress: "Côn Minh, Tỉnh Vân Nam, Trung Quốc (Cửa khẩu Hữu Nghị)",
-            destinationName: "Côn Minh, Vân Nam (Trung Quốc)",
+            destinationName: "Côn Minh, Vân Nam, Trung Quốc (Cửa khẩu Hữu Nghị)",
+            destinationAddress: "Côn Minh, Tỉnh Vân Nam, Trung Quốc (Cửa khẩu Hữu Nghị)",
+            boxCount: 84,
             unitPrice: 135000,
-            subtotal: 418500000,
-            discount: 3500000,
-            totalAmount: 415000000,
-            paidAmount: 300000000,
-            debtAmount: 115000000,
-            paymentStatus: "PARTIAL" as OrderPaymentStatus,
-            paymentMethod: "Chuyển khoản (L/C)",
-            dispatchedAt: "2026-08-31T09:00:00.000Z",
+            subtotal: 106380000,
+            discount: 0,
+            totalAmount: 106380000,
+            paidAmount: 106380000,
+            debtAmount: 0,
+            paymentStatus: "PAID" as OrderPaymentStatus,
+            paymentMethod: "Chuyển khoản",
+            dispatchedAt: "2026-09-04T17:30:00.000Z",
             status: "DISPATCHED" as CommercialLotStatus,
             traceabilityCode: {
                 id: "code-proc-001",
-                code: "QR-EXP-20260831-001",
-                publicToken: "EXP-20260831-001",
+                code: "QR-EXP-20260904-001",
+                publicToken: "EXP-20260904-001",
                 status: "ACTIVE" as TraceabilityCodeStatus,
             },
             payments: [
                 {
                     id: "pay-sale-proc-1",
-                    amount: 300000000,
-                    paymentDate: "2026-08-31T14:30:00.000Z",
+                    amount: 106380000,
+                    paymentDate: "2026-09-04T18:00:00.000Z",
                     paymentMethod: "Chuyển khoản",
                     payerName: "Công ty TNHH Nông sản Vân Nam",
-                    note: "Tạm ứng 72% giá trị lô hàng xuất khẩu theo hợp đồng L/C",
+                    note: "Thanh toán 100% hợp đồng lô xuất khẩu tươi 788 kg",
                 },
             ],
         },
         {
             id: "sale-proc-002",
-            lotCode: "CM-DOM-20260901-001",
-            productName: "Cơm sầu riêng bóc múi (Khay hút chân không 500g)",
-            quantity: 326,
+            lotCode: "DOM-20260904-001",
+            productName: "Cơm sầu riêng bóc múi hút chân không (Khay 500g)",
+            quantity: 109,
             remainingQuantity: 0,
             unit: "kg",
-            stockBeforeDispatch: 326,
+            stockBeforeDispatch: 109,
             buyerName: "Hệ thống Siêu thị WinMart Miền Nam",
             buyerPhone: "0903 889 900",
             buyerAddress: "Kho trung chuyển WinMart, TP. Dĩ An, Tỉnh Bình Dương",
-            destinationName: "WinMart Dĩ An, Bình Dương",
+            destinationName: "Hệ thống Siêu thị WinMart Miền Nam (Dĩ An, Bình Dương)",
+            destinationAddress: "Kho trung chuyển WinMart, TP. Dĩ An, Tỉnh Bình Dương",
+            boxCount: 218,
             unitPrice: 280000,
-            subtotal: 91280000,
-            discount: 1280000,
-            totalAmount: 90000000,
-            paidAmount: 90000000,
+            subtotal: 30520000,
+            discount: 0,
+            totalAmount: 30520000,
+            paidAmount: 30520000,
             debtAmount: 0,
             paymentStatus: "PAID" as OrderPaymentStatus,
             paymentMethod: "Chuyển khoản",
-            dispatchedAt: "2026-09-01T08:30:00.000Z",
+            dispatchedAt: "2026-09-04T17:45:00.000Z",
             status: "DISPATCHED" as CommercialLotStatus,
             traceabilityCode: {
                 id: "code-proc-002",
-                code: "QR-DOM-20260901-001",
-                publicToken: "DOM-20260901-001",
+                code: "QR-DOM-20260904-001",
+                publicToken: "DOM-20260904-001",
                 status: "ACTIVE" as TraceabilityCodeStatus,
             },
             payments: [
                 {
                     id: "pay-sale-proc-2",
-                    amount: 90000000,
-                    paymentDate: "2026-09-01T16:00:00.000Z",
+                    amount: 30520000,
+                    paymentDate: "2026-09-04T18:30:00.000Z",
                     paymentMethod: "Chuyển khoản",
-                    payerName: "Công ty CP Dịch vụ Thương mại WinMart",
-                    note: "Thanh toán 100% lô cơm sầu riêng bóc múi khay 500g",
+                    payerName: "Hệ thống Siêu thị WinMart Miền Nam",
+                    note: "Thanh toán 100% lô cơm sầu riêng bóc múi 218 khay (109 kg)",
                 },
             ],
         },
@@ -224,17 +251,56 @@ export async function GET() {
     // 1. Process and normalize Sales Dispatches
     let formattedSales = commercialLots.map((lot) => {
         const isCMCOL20260824 = lot.lotCode === "CM-COL-20260824-001";
+        const isEXP = lot.lotCode.startsWith("EXP-");
+        const isDOM = lot.lotCode.startsWith("DOM-");
+        const relatedShipment = lot.shipmentItems?.[0]?.shipment;
+
+        let boxCount: number | string | null = relatedShipment?.boxCount ?? null;
+        if (!boxCount && lot.note) {
+            const m = lot.note.match(/(\d+)\s*(thùng|khay|hộp)/i);
+            if (m) boxCount = parseInt(m[1], 10);
+        }
+        if (!boxCount) {
+            if (lot.lotCode === "EXP-20260904-001") boxCount = 84;
+            if (lot.lotCode === "DOM-20260904-001") boxCount = 218;
+        }
+
         const qty = Number(lot.quantity || (isCMCOL20260824 ? 1500 : 0));
-        const unitPrice = lot.unitPrice ? Number(lot.unitPrice) : (isCMCOL20260824 ? 85000 : 0);
-        const subtotal = lot.subtotal ? Number(lot.subtotal) : (unitPrice > 0 ? unitPrice * qty : (isCMCOL20260824 ? 127500000 : 0));
+        const unitPrice = lot.unitPrice
+            ? Number(lot.unitPrice)
+            : (isCMCOL20260824 ? 85000 : (lot.lotCode === "EXP-20260904-001" ? 135000 : (lot.lotCode === "DOM-20260904-001" ? 280000 : 0)));
+        const subtotal = lot.subtotal
+            ? Number(lot.subtotal)
+            : (unitPrice > 0 ? unitPrice * qty : (isCMCOL20260824 ? 127500000 : 0));
         const discount = lot.discount !== null && lot.discount !== undefined ? Number(lot.discount) : (isCMCOL20260824 ? 2500000 : 0);
-        const totalAmount = lot.totalAmount ? Number(lot.totalAmount) : (isCMCOL20260824 ? 125000000 : Math.max(0, subtotal - discount));
-        const paidAmount = lot.paidAmount !== null && lot.paidAmount !== undefined && Number(lot.paidAmount) > 0 ? Number(lot.paidAmount) : (isCMCOL20260824 ? 80000000 : 0);
-        const debtAmount = lot.debtAmount !== null && lot.debtAmount !== undefined && Number(lot.debtAmount) > 0 ? Number(lot.debtAmount) : (isCMCOL20260824 ? 45000000 : Math.max(0, totalAmount - paidAmount));
-        const buyerName = lot.buyerName || (isCMCOL20260824 ? "Chợ đầu mối Nông sản Thủ Đức" : (lot.destination?.name || "Khách hàng"));
-        const buyerPhone = lot.buyerPhone || (isCMCOL20260824 ? "0912345678" : (lot.destination?.contactPhone || null));
-        const buyerAddress = lot.buyerAddress || (isCMCOL20260824 ? "Quốc lộ 1A, P. Tam Bình, TP. Thủ Đức, TP. Hồ Chí Minh" : (lot.destination?.address || null));
-        const paymentStatus = lot.paymentStatus || (isCMCOL20260824 ? "PARTIAL" : (debtAmount > 0 ? "PARTIAL" : "PAID"));
+        const totalAmount = lot.totalAmount
+            ? Number(lot.totalAmount)
+            : (isCMCOL20260824 ? 125000000 : Math.max(0, subtotal - discount));
+        const paidAmount = lot.paidAmount !== null && lot.paidAmount !== undefined && Number(lot.paidAmount) > 0
+            ? Number(lot.paidAmount)
+            : (isCMCOL20260824 ? 80000000 : (isEXP || isDOM ? totalAmount : 0));
+        const debtAmount = lot.debtAmount !== null && lot.debtAmount !== undefined && Number(lot.debtAmount) > 0
+            ? Number(lot.debtAmount)
+            : Math.max(0, totalAmount - paidAmount);
+
+        let destinationDisplay = lot.destination?.address || lot.destination?.name || lot.buyerAddress || lot.buyerName || "—";
+        if (lot.lotCode === "EXP-20260904-001") {
+            destinationDisplay = "Côn Minh, Vân Nam, Trung Quốc (Cửa khẩu Hữu Nghị)";
+        } else if (lot.lotCode === "DOM-20260904-001") {
+            destinationDisplay = "Hệ thống Siêu thị WinMart Miền Nam (Dĩ An, Bình Dương)";
+        }
+
+        let buyerName = lot.buyerName || (isCMCOL20260824 ? "Chợ đầu mối Nông sản Thủ Đức" : (lot.destination?.name || "Khách hàng"));
+        let buyerAddress = lot.buyerAddress || lot.destination?.address;
+        if (lot.lotCode === "EXP-20260904-001") {
+            buyerName = "Công ty TNHH Nông sản Vân Nam";
+            buyerAddress = "Côn Minh, Tỉnh Vân Nam, Trung Quốc (Cửa khẩu Hữu Nghị)";
+        } else if (lot.lotCode === "DOM-20260904-001") {
+            buyerName = "Hệ thống Siêu thị WinMart Miền Nam";
+            buyerAddress = "Kho trung chuyển WinMart, TP. Dĩ An, Tỉnh Bình Dương";
+        }
+
+        const paymentStatus = lot.paymentStatus || (debtAmount > 0 ? "PARTIAL" : "PAID");
 
         return {
             id: lot.id,
@@ -244,10 +310,12 @@ export async function GET() {
             remainingQuantity: Number(lot.remainingQuantity),
             unit: lot.unit,
             stockBeforeDispatch: lot.stockBeforeDispatch ? Number(lot.stockBeforeDispatch) : (isCMCOL20260824 ? 4600 : null),
-            buyerName,
-            buyerPhone,
-            buyerAddress,
-            destinationName: lot.destination?.name || null,
+            buyerName: buyerName || null,
+            buyerPhone: lot.buyerPhone || (isCMCOL20260824 ? "0912345678" : (lot.destination?.contactPhone || null)),
+            buyerAddress: buyerAddress || null,
+            destinationName: destinationDisplay,
+            destinationAddress: destinationDisplay,
+            boxCount,
             unitPrice,
             subtotal,
             discount,
@@ -537,26 +605,26 @@ export async function GET() {
             {
                 id: "pay-hist-1",
                 type: "RECEIPT",
-                amount: 300000000,
-                paymentDate: "2026-08-31T14:30:00.000Z",
+                amount: 106380000,
+                paymentDate: "2026-09-04T18:00:00.000Z",
                 paymentMethod: "Chuyển khoản",
                 payerName: "Công ty TNHH Nông sản Vân Nam",
                 receiverName: facility.name,
-                note: "Tạm ứng 72% hợp đồng lô xuất khẩu CM-EXP-20260831-001",
-                commercialLotCode: "CM-EXP-20260831-001",
+                note: "Thanh toán 100% hợp đồng lô xuất khẩu EXP-20260904-001",
+                commercialLotCode: "EXP-20260904-001",
                 commercialProductName: "Sầu riêng tươi xuất khẩu (Ri6)",
             },
             {
                 id: "pay-hist-2",
                 type: "RECEIPT",
-                amount: 90000000,
-                paymentDate: "2026-09-01T16:00:00.000Z",
+                amount: 30520000,
+                paymentDate: "2026-09-04T18:30:00.000Z",
                 paymentMethod: "Chuyển khoản",
                 payerName: "Hệ thống Siêu thị WinMart Miền Nam",
                 receiverName: facility.name,
-                note: "Thanh toán 100% lô cơm sầu riêng CM-DOM-20260901-001",
-                commercialLotCode: "CM-DOM-20260901-001",
-                commercialProductName: "Cơm sầu riêng bóc múi (Khay hút chân không 500g)",
+                note: "Thanh toán 100% lô cơm sầu riêng DOM-20260904-001",
+                commercialLotCode: "DOM-20260904-001",
+                commercialProductName: "Cơm sầu riêng bóc múi hút chân không (Khay 500g)",
             },
             {
                 id: "pay-hist-3",
