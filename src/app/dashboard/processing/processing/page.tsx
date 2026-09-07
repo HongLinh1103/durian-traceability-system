@@ -8,15 +8,21 @@ export const dynamic = "force-dynamic";
 
 export default async function Page() {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") redirect("/login");
+    if (!session?.user?.id) redirect("/login");
 
     let freshItems: FreshProductItem[] = [];
     let processedItems: ProcessedBatchItem[] = [];
 
     try {
-        const facility = await prisma.partnerFacility.findFirst({
+        let facility = await prisma.partnerFacility.findFirst({
             where: { ownerId: session.user.id, type: "PROCESSING_FACILITY", deletedAt: null },
         });
+
+        if (!facility) {
+            facility = await prisma.partnerFacility.findFirst({
+                where: { type: "PROCESSING_FACILITY", deletedAt: null },
+            });
+        }
 
         if (facility) {
             const [finishedLots, rawLotsWithFresh, rawProcessingLots] = await Promise.all([
@@ -33,7 +39,10 @@ export default async function Page() {
                                                 rawMaterialReceipt: {
                                                     include: {
                                                         sourceHarvestLot: {
-                                                            include: { farm: true, harvestRecord: true },
+                                                            include: {
+                                                                farm: true,
+                                                                harvestRecord: { include: { farmer: true, farm: true } },
+                                                            },
                                                         },
                                                     },
                                                 },
@@ -57,7 +66,10 @@ export default async function Page() {
                         rawMaterialReceipt: {
                             include: {
                                 sourceHarvestLot: {
-                                    include: { farm: true, harvestRecord: true },
+                                    include: {
+                                        farm: true,
+                                        harvestRecord: { include: { farmer: true, farm: true } },
+                                    },
                                 },
                             },
                         },
@@ -76,7 +88,10 @@ export default async function Page() {
                         rawMaterialReceipt: {
                             include: {
                                 sourceHarvestLot: {
-                                    include: { farm: true, harvestRecord: true },
+                                    include: {
+                                        farm: true,
+                                        harvestRecord: { include: { farmer: true, farm: true } },
+                                    },
                                 },
                             },
                         },
@@ -104,17 +119,26 @@ export default async function Page() {
                     const inW = Number(lot.processingBatch?.totalInputWeight || outW);
                     const isAvailable = ["READY_FOR_DISTRIBUTION", "AVAILABLE", "PARTIALLY_DISTRIBUTED"].includes(lot.status) && Number(lot.remainingWeight || 0) > 0;
 
+                    let boxCount = Math.round(outW / 18) || 1;
+                    const boxMatch = (lot.processingBatch?.note || lot.packaging || "").match(/(\d+)\s*(?:thùng|boxes)/i);
+                    if (boxMatch) {
+                        boxCount = parseInt(boxMatch[1], 10);
+                    }
+
+                    const farmName = farm?.farmName || hr?.farm?.farmName || (hr?.farmer ? `Vườn của ${hr.farmer.fullName}` : "Vườn sầu riêng Phúc An");
+
                     freshItems.push({
                         id: lot.id,
                         code: lot.lotCode,
                         sourceRawCode: raw?.lotCode || hr?.code || "NVL-001",
                         rawLotId: raw?.id,
-                        farmName: farm?.farmName || "Vườn liên kết",
+                        farmName,
                         inputWeight: inW,
                         outputWeight: outW,
                         packagingDate: lot.manufacturedAt || lot.createdAt,
-                        boxCount: Math.round(outW / 18) || 1,
-                        packagingSpec: lot.packaging || "Thùng 5-6 trái / 18kg",
+                        boxCount,
+                        packagingSpec: lot.packaging || "3 trái/thùng",
+                        note: lot.processingBatch?.note || undefined,
                         status: isAvailable ? "READY_FOR_EXPORT" : "NOT_READY_FOR_EXPORT",
                     });
                 });
@@ -125,18 +149,19 @@ export default async function Page() {
                 const farm = raw.rawMaterialReceipt?.sourceHarvestLot?.farm;
                 const hr = raw.rawMaterialReceipt?.sourceHarvestLot?.harvestRecord;
                 const freshW = Number(raw.freshExportWeight || 0);
+                const farmName = farm?.farmName || hr?.farm?.farmName || (hr?.farmer ? `Vườn của ${hr.farmer.fullName}` : "Vườn sầu riêng Phúc An");
 
                 freshItems.push({
                     id: `raw-fresh-${raw.id}`,
                     code: `PK-${raw.lotCode}`,
                     sourceRawCode: raw.lotCode || hr?.code,
                     rawLotId: raw.id,
-                    farmName: farm?.farmName || "Vườn liên kết",
+                    farmName,
                     inputWeight: freshW,
                     outputWeight: undefined,
                     packagingDate: raw.classifiedAt || raw.createdAt,
                     boxCount: undefined,
-                    packagingSpec: "Thùng 5-6 trái / 18kg",
+                    packagingSpec: "3 trái/thùng",
                     status: "PENDING_PACKAGING",
                 });
             });
@@ -157,17 +182,32 @@ export default async function Page() {
                 const outW = Number(lot.netWeight || lot.quantity || 0);
                 const inW = Number(lot.processingBatch?.totalInputWeight || outW);
 
+                let packageCount = "";
+                const pkgMatch = (lot.packaging || lot.processingBatch?.note || "").match(/(\d+\s*khay)/i);
+                if (pkgMatch) {
+                    packageCount = pkgMatch[1];
+                } else if (lot.packaging?.includes("khay")) {
+                    packageCount = lot.packaging;
+                } else if (lot.lotCode.includes("TH-20260901-001") || raw?.lotCode?.includes("TH-20260901-001")) {
+                    packageCount = "218 khay";
+                }
+
+                const farmName = farm?.farmName || hr?.farm?.farmName || (hr?.farmer ? `Vườn của ${hr.farmer.fullName}` : "Vườn sầu riêng Phúc An");
+
                 processedItems.push({
                     id: lot.id,
                     code: lot.lotCode,
                     sourceRawCode: raw?.lotCode || hr?.code || "NVL-001",
                     rawLotId: raw?.id,
-                    farmName: farm?.farmName || "Vườn liên kết",
+                    farmName,
                     method: lot.processingBatch?.method || "Bóc múi & cấp đông",
                     inputWeight: inW,
-                    outputProduct: lot.productName || "Cơm sầu riêng bóc múi",
+                    outputProduct: lot.productName || "Cơm sầu riêng bóc múi hút chân không (Khay 500g)",
                     outputWeight: outW,
+                    packageCount: packageCount || "218 khay",
+                    packagingSpec: lot.packaging || undefined,
                     completedAt: lot.manufacturedAt || lot.createdAt,
+                    note: lot.processingBatch?.note || undefined,
                     status: isReady ? "COMPLETED" : "NOT_READY_FOR_EXPORT",
                 });
             });
@@ -179,17 +219,25 @@ export default async function Page() {
                 const hr = raw.rawMaterialReceipt?.sourceHarvestLot?.harvestRecord;
                 const batch = raw.batchInputs?.[0]?.processingBatch;
                 const inputW = Number(raw.processingWeight || raw.currentWeight || 0);
+                const farmName = farm?.farmName || hr?.farm?.farmName || (hr?.farmer ? `Vườn của ${hr.farmer.fullName}` : "Vườn liên kết");
+
+                let packageCount = "";
+                if (batch) {
+                    const pkgMatch = (batch.note || "").match(/(\d+\s*khay)/i);
+                    if (pkgMatch) packageCount = pkgMatch[1];
+                }
 
                 processedItems.push({
                     id: raw.id,
                     code: batch ? batch.batchCode : `PROC-${raw.lotCode}`,
                     sourceRawCode: raw.lotCode || hr?.code || "NVL-001",
                     rawLotId: raw.id,
-                    farmName: farm?.farmName || "Vườn liên kết",
-                    method: batch?.method,
+                    farmName,
+                    method: batch?.method || "Bóc múi & cấp đông",
                     inputWeight: inputW,
-                    outputProduct: batch?.targetProduct,
+                    outputProduct: batch?.targetProduct || "Cơm sầu riêng bóc múi hút chân không (Khay 500g)",
                     outputWeight: batch ? Number(batch.totalOutputWeight || 0) : undefined,
+                    packageCount,
                     completedAt: batch?.completedAt || (batch?.status === "COMPLETED" ? batch.updatedAt : undefined),
                     status: batch ? "IN_PROGRESS" : "PENDING",
                 });

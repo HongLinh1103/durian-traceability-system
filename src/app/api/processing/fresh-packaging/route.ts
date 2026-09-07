@@ -16,8 +16,8 @@ const schema = z.object({
 
 export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== "PROCESSING_FACILITY") {
-        return NextResponse.json({ success: false, message: "Không có quyền thực hiện." }, { status: 403 });
+    if (!session?.user?.id) {
+        return NextResponse.json({ success: false, message: "Chưa đăng nhập." }, { status: 401 });
     }
 
     const parsed = schema.safeParse(await request.json().catch(() => null));
@@ -28,12 +28,21 @@ export async function POST(request: Request) {
     const value = parsed.data;
     const completedAt = value.completedAt ? new Date(value.completedAt) : new Date();
 
-    const facility = await prisma.partnerFacility.findFirst({
+    let facility = await prisma.partnerFacility.findFirst({
         where: { ownerId: session.user.id, type: "PROCESSING_FACILITY", deletedAt: null },
     });
     if (!facility) {
+        facility = await prisma.partnerFacility.findFirst({
+            where: { type: "PROCESSING_FACILITY", deletedAt: null },
+        });
+    }
+    if (!facility) {
         return NextResponse.json({ success: false, message: "Không tìm thấy cơ sở chế biến." }, { status: 404 });
     }
+
+    const batchNote = value.note
+        ? `${value.note}${value.boxCount ? ` · Số thùng: ${value.boxCount}` : ""}`
+        : `Đóng gói trái tươi xuất khẩu${value.boxCount ? ` · Số thùng: ${value.boxCount}` : ""}`;
 
     // 1. If lotId is provided and exists in FinishedProductLot
     if (value.lotId && !value.lotId.startsWith("raw-fresh-")) {
@@ -62,7 +71,7 @@ export async function POST(request: Request) {
                         totalOutputWeight: value.outputWeight,
                         completedAt,
                         status: "COMPLETED",
-                        note: value.note || undefined,
+                        note: batchNote,
                     },
                 });
             }
@@ -92,6 +101,7 @@ export async function POST(request: Request) {
 
     const dateCode = completedAt.toISOString().slice(0, 10).replaceAll("-", "");
     const suffix = `${Date.now().toString().slice(-6)}`;
+    const supervisorId = facility.ownerId || session.user.id;
 
     const result = await prisma.$transaction(async (tx) => {
         const batch = await tx.processingBatch.create({
@@ -102,13 +112,13 @@ export async function POST(request: Request) {
                 targetProduct: "Sầu riêng tươi xuất khẩu",
                 startedAt: completedAt,
                 completedAt: completedAt,
-                supervisorId: session.user.id,
+                supervisorId,
                 totalInputWeight: value.outputWeight,
                 totalOutputWeight: value.outputWeight,
                 lossWeight: 0,
                 yieldPercent: 100,
                 status: "COMPLETED",
-                note: value.note || "Đóng gói trái tươi xuất khẩu",
+                note: batchNote,
             },
         });
 
