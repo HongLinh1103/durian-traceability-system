@@ -12,6 +12,8 @@ const schema = z.object({
     shipmentType: z.enum(["EXPORT", "DOMESTIC"]).default("EXPORT"),
     weight: z.coerce.number().positive(),
     boxCount: z.coerce.number().int().min(1).optional(),
+    unitPrice: z.coerce.number().min(0).optional(),
+    totalAmount: z.coerce.number().min(0).optional(),
     truckPlate: z.string().trim().optional(),
     containerNumber: z.string().trim().optional(),
     sealNumber: z.string().trim().optional(),
@@ -157,7 +159,10 @@ export async function POST(request: Request) {
     const publicToken = `TRC-${randomBytes(4).toString("hex").toUpperCase()}`;
 
     const result = await prisma.$transaction(async (tx) => {
-        // 1. Create CommercialLot with buyer info
+        // 1. Create CommercialLot with buyer info & financial fields
+        const unitPrice = v.unitPrice ? Number(v.unitPrice) : null;
+        const totalAmount = v.totalAmount ? Number(v.totalAmount) : (unitPrice ? Math.round(v.weight * unitPrice) : null);
+
         const commercialLot = await tx.commercialLot.create({
             data: {
                 lotCode: v.shipmentCode,
@@ -169,7 +174,15 @@ export async function POST(request: Request) {
                 destinationId: destination!.id,
                 productName: v.productName,
                 quantity: v.weight,
-                remainingQuantity: v.weight,
+                remainingQuantity: 0,
+                unit: "kg",
+                unitPrice,
+                subtotal: totalAmount,
+                totalAmount,
+                paidAmount: totalAmount,
+                debtAmount: 0,
+                paymentStatus: totalAmount ? "PAID" : "UNPAID",
+                paymentMethod: "Chuyển khoản",
                 buyerName: destName,
                 buyerPhone: v.customerPhone || null,
                 buyerAddress: destAddress || null,
@@ -177,6 +190,23 @@ export async function POST(request: Request) {
                 status: "QR_ISSUED",
             },
         });
+
+        // 1b. Create payment record for cashflow tracking if totalAmount > 0
+        if (totalAmount && totalAmount > 0) {
+            await tx.partnerPaymentRecord.create({
+                data: {
+                    facilityId: facility.id,
+                    commercialLotId: commercialLot.id,
+                    type: "RECEIPT",
+                    amount: totalAmount,
+                    paymentDate: exportDate,
+                    paymentMethod: "Chuyển khoản",
+                    payerName: destName,
+                    receiverName: facility.name,
+                    note: `Thu tiền lô xuất hàng ${v.shipmentCode} (${v.productName})`,
+                },
+            });
+        }
 
         // 2. Create Shipment
         const shipment = await tx.shipment.create({

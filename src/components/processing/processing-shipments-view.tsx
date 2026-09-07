@@ -415,6 +415,8 @@ export function ProcessingShipmentsView({
     const [productName, setProductName] = useState("");
     const [weightInput, setWeightInput] = useState<number | string>("");
     const [boxCountInput, setBoxCountInput] = useState<number | string>("");
+    const [unitPriceInput, setUnitPriceInput] = useState<number | string>("");
+    const [totalAmountInput, setTotalAmountInput] = useState<number | string>("");
 
     // Transport & Shipping fields - ALL EMPTY by default
     const [truckPlate, setTruckPlate] = useState("");
@@ -722,6 +724,8 @@ export function ProcessingShipmentsView({
                 shipmentType,
                 weight: w,
                 boxCount: Number(boxCountInput) || undefined,
+                unitPrice: Number(unitPriceInput) || undefined,
+                totalAmount: Number(totalAmountInput) || (Number(unitPriceInput) && w > 0 ? Math.round(w * Number(unitPriceInput)) : undefined),
                 truckPlate: truckPlate.trim() || undefined,
                 exportDate,
                 status: "DISPATCHED",
@@ -829,6 +833,8 @@ export function ProcessingShipmentsView({
                 variant: "success",
             });
             setOpenCreateModal(false);
+            setUnitPriceInput("");
+            setTotalAmountInput("");
         } catch (err: any) {
             toast({ title: "Lỗi", description: err.message || "Có lỗi xảy ra khi tạo lô.", variant: "destructive" });
         } finally {
@@ -1152,10 +1158,16 @@ export function ProcessingShipmentsView({
                                                         setProductName(found.productName);
                                                         setWeightInput(found.remainingWeight);
                                                         setBoxCountInput(Math.max(1, Math.round(found.remainingWeight / 18)));
+                                                        const isProcessed = found.productName.toLowerCase().includes("cơm") || found.productName.toLowerCase().includes("bóc múi");
+                                                        const defaultPrice = isProcessed ? 280000 : 135000;
+                                                        setUnitPriceInput(defaultPrice);
+                                                        setTotalAmountInput(Math.round(found.remainingWeight * defaultPrice));
                                                     } else {
                                                         setProductName("");
                                                         setWeightInput("");
                                                         setBoxCountInput("");
+                                                        setUnitPriceInput("");
+                                                        setTotalAmountInput("");
                                                     }
                                                 }}
                                                 className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-900 focus:border-emerald-500 focus:outline-none"
@@ -1193,9 +1205,13 @@ export function ProcessingShipmentsView({
                                                     type="number"
                                                     value={weightInput}
                                                     onChange={(e) => {
-                                                        setWeightInput(e.target.value);
-                                                        const w = Number(e.target.value);
+                                                        const val = e.target.value;
+                                                        setWeightInput(val);
+                                                        const w = Number(val);
                                                         if (w > 0) setBoxCountInput(Math.max(1, Math.round(w / 18)));
+                                                        if (w > 0 && Number(unitPriceInput) > 0) {
+                                                            setTotalAmountInput(Math.round(w * Number(unitPriceInput)));
+                                                        }
                                                     }}
                                                     placeholder={selectedLot ? String(selectedLot.remainingWeight) : "0"}
                                                     className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
@@ -1211,6 +1227,48 @@ export function ProcessingShipmentsView({
                                                     className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
                                                 />
                                             </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                Đơn giá bán (VNĐ/kg)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={unitPriceInput}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setUnitPriceInput(val);
+                                                    const p = Number(val);
+                                                    const w = Number(weightInput);
+                                                    if (p > 0 && w > 0) {
+                                                        setTotalAmountInput(Math.round(w * p));
+                                                    }
+                                                }}
+                                                placeholder="Ví dụ: 135000"
+                                                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                            />
+                                            {Number(unitPriceInput) > 0 && (
+                                                <p className="mt-1 text-[10px] text-emerald-700 font-semibold">
+                                                    {Number(unitPriceInput).toLocaleString("vi-VN")} đ/kg
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                Tổng thu (VNĐ)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={totalAmountInput}
+                                                onChange={(e) => setTotalAmountInput(e.target.value)}
+                                                placeholder="Tự động tính = KL x Đơn giá"
+                                                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-black text-emerald-800 focus:border-emerald-500 focus:outline-none"
+                                            />
+                                            {Number(totalAmountInput) > 0 && (
+                                                <p className="mt-1 text-[10px] text-emerald-700 font-bold">
+                                                    Tổng tiền: {Number(totalAmountInput).toLocaleString("vi-VN")} đ
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
