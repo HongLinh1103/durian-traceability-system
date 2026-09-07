@@ -249,9 +249,9 @@ export default function FarmingManagementPage() {
     return (
         <main className="mx-auto min-h-screen max-w-[1600px] px-3 py-6 sm:px-5">
             <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600">ADMIN · Vùng trồng</p>
-                <h1 className="mt-2 text-3xl font-black text-slate-900">Quản lý canh tác</h1>
-                <p className="mt-2 text-sm text-slate-500">Theo dõi tình trạng vườn, mùa vụ và tiến độ cập nhật nhật ký canh tác.</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600">ADMIN · Nông hộ</p>
+                <h1 className="mt-2 text-3xl font-black text-slate-900">Quản lý nông hộ</h1>
+                <p className="mt-2 text-sm text-slate-500">Theo dõi tình trạng nông hộ, vườn trồng, mùa vụ và tiến độ cập nhật nhật ký canh tác.</p>
             </div>
 
             <section className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">

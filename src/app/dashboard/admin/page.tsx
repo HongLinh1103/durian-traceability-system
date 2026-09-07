@@ -24,8 +24,8 @@ export default async function AdminDashboardPage() {
     const summaries = [
         { label: "Tổng tài khoản", value: accountCount, icon: Users, href: "/dashboard/admin/accounts" },
         { label: "Hồ sơ chờ duyệt", value: pendingCount, icon: BookOpenCheck, href: "/dashboard/admin/accounts" },
-        { label: "Tổng vườn trồng", value: farmCount, icon: LandPlot, href: "/dashboard/admin/farming" },
-        { label: "Tổng vùng trồng", value: regionCount, icon: MapPinned, href: "/dashboard/admin/farming" },
+        { label: "Tổng nông hộ", value: farmCount, icon: LandPlot, href: "/dashboard/admin/farming" },
+        { label: "Tổng vùng trồng", value: regionCount, icon: MapPinned, href: "/dashboard/admin/regions" },
     ];
 
     return (

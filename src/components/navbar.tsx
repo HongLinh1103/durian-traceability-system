@@ -48,11 +48,11 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/orders", label: "Đơn mua của tôi", roles: ["FARMER"] },
     { href: "/region-manager/gardens", label: "Quản lý vườn trồng", roles: ["AREA_MANAGER"] },
     { href: "/region-manager/farmers", label: "Hồ sơ nông dân", roles: ["AREA_MANAGER"], badge: true },
-    { href: "/dashboard/admin/farming", label: "Canh tác", roles: ["ADMIN"] },
-    { href: "/dashboard/admin/accounts", label: "Tài khoản", roles: ["ADMIN"], badge: true },
     { href: "/dashboard/admin/regions", label: "Vùng trồng", roles: ["ADMIN"] },
-    { href: "/dashboard/admin/catalog", label: "Danh mục", roles: ["ADMIN"] },
+    { href: "/dashboard/admin/farming", label: "Nông hộ", roles: ["ADMIN"] },
+    { href: "/dashboard/admin/accounts", label: "Tài khoản", roles: ["ADMIN"], badge: true },
     { href: "/dashboard/admin/permissions", label: "Phân quyền", roles: ["ADMIN"] },
+    { href: "/dashboard/admin/catalog", label: "Danh mục", roles: ["ADMIN"] },
     { href: "/dashboard/store", label: "Tổng quan", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/products", label: "Sản phẩm", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/inventory", label: "Kho hàng", roles: ["STORE_OWNER"] },
@@ -111,11 +111,13 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
     const visiblePublicLinks = (isCollector || isStoreOwner || isProcessingFacility || isFarmer)
         ? []
         : isAuthed
-            ? publicLinks.filter((l) => {
-                if (l.href === "/") return false;
-                if (isAdmin && (l.href === "/collectors" || l.href === "/processing-facilities" || l.href === "/seedlings")) return false;
-                return true;
-            })
+            ? publicLinks
+                .filter((l) => {
+                    if (l.href === "/") return false;
+                    if (isAdmin && (l.href === "/collectors" || l.href === "/processing-facilities" || l.href === "/seedlings")) return false;
+                    return true;
+                })
+                .map((l) => (isAdmin && l.href === "/trace" ? { ...l, label: "Quét QR" } : l))
             : publicLinks;
 
     useEffect(() => {

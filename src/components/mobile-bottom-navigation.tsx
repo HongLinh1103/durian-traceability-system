@@ -73,14 +73,17 @@ const navigationByRole: Record<string, RoleNavigation> = {
     ADMIN: {
         items: [
             { label: "Tổng quan", href: "/dashboard/admin", icon: Home },
-            { label: "Tài khoản", href: "/dashboard/admin/accounts", icon: Users },
-            { label: "Canh tác", href: "/dashboard/admin/farming", icon: LandPlot },
+            { label: "Vùng trồng", href: "/dashboard/admin/regions", icon: MapPinned },
+            { label: "Nông hộ", href: "/dashboard/admin/farming", icon: LandPlot },
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
+            { label: "Quét QR", description: "Quét mã QR truy xuất nguồn gốc", href: "/trace", icon: QrCode },
+            { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
+            { label: "Tài liệu", description: "Quản lý và tra cứu tài liệu kỹ thuật", href: "/documents", icon: BookOpenCheck },
+            { label: "Tin tức", description: "Quản lý và theo dõi tin tức nông nghiệp", href: "/news", icon: Bell },
+            { label: "Tài khoản", description: "Quản lý và duyệt tài khoản người dùng", href: "/dashboard/admin/accounts", icon: Users },
             { label: "Phân quyền", description: "Quản lý và cấu hình quyền hạn các vai trò", href: "/dashboard/admin/permissions", icon: Cog },
-            { label: "Tài liệu", description: "Quản lý và đăng tài liệu mới", href: "/documents", icon: BookOpenCheck },
-            { label: "Tin tức", description: "Quản lý và đăng tin tức mới", href: "/dashboard/admin/news", icon: Bell },
             { label: "Danh mục", description: "Quản lý cây giống, giai đoạn, công việc và danh mục cấm", href: "/dashboard/admin/catalog", icon: LibraryBig },
         ],
     },
@@ -274,7 +277,7 @@ export function MobileBottomNavigation() {
 
             {hasQuickActions && actionsOpen && (
                 <div className="fixed inset-0 z-[120] flex items-end bg-slate-950/45 backdrop-blur-sm xl:hidden" role="dialog" aria-modal="true" aria-label="Tác vụ nhanh" onMouseDown={event => { if (event.target === event.currentTarget) setActionsOpen(false); }}>
-                    <section className="w-full rounded-t-[28px] bg-white px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl">
+                    <section className="w-full max-h-[85vh] overflow-y-auto rounded-t-[28px] bg-white px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl">
                         <div className="mx-auto h-1.5 w-12 rounded-full bg-slate-200" />
                         <div className="mb-4 mt-3 flex items-center justify-between">
                             <div>
