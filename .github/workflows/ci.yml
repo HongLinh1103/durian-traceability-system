@@ -42,5 +42,6 @@ jobs:
       - run: npx prisma validate
       - run: npm run prisma:generate
       - run: npm run typecheck
+      - run: node --test scripts/test-auth-security.cjs
+      - run: node --test scripts/check-permission-routes.cjs
       - run: npm run build
-

@@ -12,12 +12,6 @@ import {
     Loader2,
     ShieldCheck,
     Smartphone,
-    Truck,
-    Factory,
-    Sprout,
-    UserCheck,
-    ChevronDown,
-    ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +20,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { PasswordInput } from "@/components/auth/PasswordInput";
-import { SYSTEM_ACCOUNTS } from "@/lib/system-accounts";
 
 function getDashboardPath(role?: string): string {
     switch (role) {
@@ -55,8 +48,6 @@ function LoginForm() {
     const [password, setPassword] = useState("");
     const [rememberMe, setRememberMe] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
-    const [showQuickAccounts, setShowQuickAccounts] = useState(false);
-    const [accountCategory, setAccountCategory] = useState<"COLLECTOR" | "PROCESSING" | "NURSERY" | "OTHERS">("COLLECTOR");
 
     const resolveDestination = useCallback((role?: string) => {
         if (
@@ -78,16 +69,6 @@ function LoginForm() {
             window.location.href = destination;
         }
     }, [status, session, resolveDestination]);
-
-    const selectAccount = (acc: (typeof SYSTEM_ACCOUNTS)[0]) => {
-        setIdentifier(acc.phone);
-        setPassword(acc.password);
-        toast({
-            title: `Đã chọn: ${acc.fullName}`,
-            description: `SĐT: ${acc.phone} · Vai trò: ${acc.role}`,
-            variant: "default",
-        });
-    };
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -217,94 +198,6 @@ function LoginForm() {
                             </span>
                         )}
                     </Button>
-
-                    {/* QUICK DEMO ACCOUNTS ACCORDION */}
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5">
-                        <button
-                            type="button"
-                            onClick={() => setShowQuickAccounts((prev) => !prev)}
-                            className="flex w-full items-center justify-between text-xs font-bold text-slate-700 hover:text-brand-700"
-                        >
-                            <span className="flex items-center gap-1.5">
-                                <UserCheck className="h-4 w-4 text-brand-600" />
-                                Chọn nhanh tài khoản mẫu ({SYSTEM_ACCOUNTS.length} tài khoản)
-                            </span>
-                            {showQuickAccounts ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </button>
-
-                        {showQuickAccounts && (
-                            <div className="mt-3 space-y-2.5 border-t border-slate-200/60 pt-3">
-                                {/* Category Switcher */}
-                                <div className="grid grid-cols-4 gap-1 rounded-xl bg-slate-200/60 p-1 text-[11px] font-bold">
-                                    <button
-                                        type="button"
-                                        onClick={() => setAccountCategory("COLLECTOR")}
-                                        className={`rounded-lg py-1 transition ${
-                                            accountCategory === "COLLECTOR" ? "bg-white text-brand-700 shadow-xs" : "text-slate-600"
-                                        }`}
-                                    >
-                                        Vựa (4)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setAccountCategory("PROCESSING")}
-                                        className={`rounded-lg py-1 transition ${
-                                            accountCategory === "PROCESSING" ? "bg-white text-brand-700 shadow-xs" : "text-slate-600"
-                                        }`}
-                                    >
-                                        Xưởng (4)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setAccountCategory("NURSERY")}
-                                        className={`rounded-lg py-1 transition ${
-                                            accountCategory === "NURSERY" ? "bg-white text-brand-700 shadow-xs" : "text-slate-600"
-                                        }`}
-                                    >
-                                        Trại giống (2)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setAccountCategory("OTHERS")}
-                                        className={`rounded-lg py-1 transition ${
-                                            accountCategory === "OTHERS" ? "bg-white text-brand-700 shadow-xs" : "text-slate-600"
-                                        }`}
-                                    >
-                                        Khác (4)
-                                    </button>
-                                </div>
-
-                                {/* List of Accounts */}
-                                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                                    {SYSTEM_ACCOUNTS.filter((acc) => {
-                                        if (accountCategory === "COLLECTOR") return acc.role === "COLLECTOR";
-                                        if (accountCategory === "PROCESSING") return acc.role === "PROCESSING_FACILITY";
-                                        if (accountCategory === "NURSERY") return acc.facilityType === "NURSERY";
-                                        return acc.role === "ADMIN" || acc.role === "AREA_MANAGER" || acc.role === "FARMER" || (acc.role === "STORE_OWNER" && acc.facilityType !== "NURSERY");
-                                    }).map((acc) => (
-                                        <button
-                                            key={acc.phone}
-                                            type="button"
-                                            onClick={() => selectAccount(acc)}
-                                            className="flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white p-2 text-left text-xs transition hover:border-brand-500 hover:bg-brand-50/50"
-                                        >
-                                            <div className="min-w-0 flex-1">
-                                                <p className="font-bold text-slate-900 truncate">
-                                                    {acc.facilityName || acc.fullName}
-                                                </p>
-                                                <p className="text-[11px] text-slate-500 font-mono">
-                                                    {acc.phone} · MK: {acc.password}
-                                                </p>
-                                            </div>
-                                            <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 shrink-0 ml-2">
-                                                Chọn
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
 
                     <div className="flex flex-col gap-3 rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
                         <Link

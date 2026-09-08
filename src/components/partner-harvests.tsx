@@ -157,7 +157,7 @@ export function PartnerHarvests({
         });
     }, [lots, tab]);
 
-    // Action: Xác nhận tiếp nhận nguồn / Từ chối nguồn
+    // Action: Xác nhận tiếp nhận nguồn / Từ chối nguồn (Chuẩn hóa: POST /api/harvest-receptions/[id]/accept|reject)
     async function act(id: string, action: string, extra: Record<string, unknown> = {}) {
         const reason = action === "REJECT" ? prompt("Lý do từ chối nguồn nguyên liệu:")?.trim() : undefined;
         if (action === "REJECT" && !reason) return false;
@@ -165,17 +165,33 @@ export function PartnerHarvests({
         setError("");
         setSuccessMessage("");
         try {
-            const response = await fetch(`/api/harvests/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action, rejectReason: reason, ...extra }),
-            });
+            let response: Response;
+            if (action === "CONFIRM") {
+                response = await fetch(`/api/harvest-receptions/${id}/accept`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(extra),
+                });
+            } else if (action === "REJECT") {
+                response = await fetch(`/api/harvest-receptions/${id}/reject`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ reason, ...extra }),
+                });
+            } else {
+                response = await fetch(`/api/harvests/${id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action, rejectReason: reason, ...extra }),
+                });
+            }
             const result = await response.json();
             if (!result.success) {
                 alert(result.message || "Thao tác không thành công.");
                 return false;
             }
-            setRows((prev) => prev.map((item) => (item.id === id ? { ...item, status: result.data.status } : item)));
+            const newStatus = result.data?.status || (action === "CONFIRM" ? "CONFIRMED" : action === "REJECT" ? "REJECTED" : "CONFIRMED");
+            setRows((prev) => prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item)));
             setSuccessMessage(action === "CONFIRM" ? "Đã đồng ý tiếp nhận nguồn nguyên liệu. Đang chờ đối tác giao hàng." : "Đã cập nhật trạng thái phiếu.");
             setTimeout(() => setSuccessMessage(""), 5000);
             return true;
@@ -187,7 +203,7 @@ export function PartnerHarvests({
         }
     }
 
-    // Submit Tiếp nhận thực tế -> Tạo RawMaterialReceipt + RawMaterialLot (PENDING_QC)
+    // Submit Tiếp nhận thực tế -> Gọi POST /api/harvest-receptions/[id]/receive (Chuẩn hóa tiếp nhận thực nhận)
     const submitReceipt = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!receiveRow) return;
@@ -204,11 +220,10 @@ export function PartnerHarvests({
         const note = String(form.get("note") || "");
 
         try {
-            const response = await fetch(`/api/harvests/${receiveRow.id}`, {
-                method: "PATCH",
+            const response = await fetch(`/api/harvest-receptions/${receiveRow.id}/receive`, {
+                method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    action: "RECEIVE",
                     receivedWeight,
                     rejectedWeight,
                     receivedAt,
@@ -225,11 +240,12 @@ export function PartnerHarvests({
                 return;
             }
 
-            const updatedHarvest = result.data;
+            const updatedHarvest = result.data?.harvest || result.data;
             setRows((prev) => prev.map((item) => (item.id === receiveRow.id ? { ...item, status: updatedHarvest.status } : item)));
 
-            // Add newly created RawMaterialLot into lots list
-            const newLotCode = `RM-${receiveRow.code}`;
+            // Add newly created RawMaterialLot into lots list if returned
+            const apiRawLot = result.data?.rawLot;
+            const newLotCode = apiRawLot?.code || `RM-${receiveRow.code}`;
             const createdLot: RawLot = {
                 id: "lot-" + Date.now(),
                 code: newLotCode,

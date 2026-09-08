@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-const STAGE_LABELS: Record<string, string> = {
+export const STAGE_LABELS: Record<string, string> = {
     POST_HARVEST_RECOVERY: "Phục hồi sau thu hoạch",
     MAKING_SPROUT: "Làm đọt",
     FLOWER_INDUCTION: "Xử lý ra hoa",
@@ -11,7 +11,7 @@ const STAGE_LABELS: Record<string, string> = {
     HARVEST: "Thu hoạch",
 };
 
-const ACTIVITY_LABELS: Record<string, string> = {
+export const ACTIVITY_LABELS: Record<string, string> = {
     BASE_FERTILIZING: "Bón phân gốc",
     PLANTING: "Trồng mới",
     MULCHING: "Phủ gốc",
@@ -37,7 +37,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
     OTHER: "Khác",
 };
 
-const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
+export const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
     FERTILIZER: "Phân bón",
     PESTICIDE: "Thuốc BVTV",
     EQUIPMENT: "Vật tư & Thiết bị",
@@ -50,6 +50,696 @@ const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
     OTHER: "Chi phí khác",
 };
 
+export interface MonthlyFinancialPoint {
+    month: string;      // "2026-01"
+    monthIndex: number; // 1..12
+    label: string;      // "T1"
+    revenue: number;
+    cost: number;
+    profit: number;
+    fertilizerCost: number;
+    pesticideCost: number;
+    otherCost: number;
+    weightKg: number;
+}
+
+export interface FarmerOverviewStats {
+    filters: {
+        farmId: string; // "ALL" or specific farmId
+        year: number | string; // e.g. 2026 or "ALL"
+    };
+    farms: Array<{
+        id: string;
+        farmName: string;
+        farmCode: string;
+        cropSeasons: Array<{
+            id: string;
+            name: string;
+            year: number;
+            status: string;
+        }>;
+    }>;
+    availableYears: number[];
+
+    // 5 Top KPI Cards
+    kpis: {
+        pesticideCost: number;
+        pesticideUsages: number;
+        fertilizerCost: number;
+        fertilizerUsages: number;
+        totalCost: number;
+        totalRevenue: number;
+        totalSoldWeightKg: number;
+        estimatedProfit: number;
+        profitMargin: number; // %
+        profitPerKg: number;  // đ/kg
+    };
+
+    // 1. Thống kê Thuốc BVTV
+    pesticides: {
+        totalCost: number;
+        usagesCount: number;
+        typesCount: number;
+        monthlyTrends: Array<{
+            month: string;
+            label: string;
+            cost: number;
+        }>;
+        topSupplies: Array<{
+            name: string;
+            usagesCount: number;
+            totalQuantity: number;
+            unit: string;
+            totalCost: number;
+        }>;
+    };
+
+    // 2. Thống kê Phân bón
+    fertilizers: {
+        totalCost: number;
+        usagesCount: number;
+        totalWeightKg: number;
+        typesCount: number;
+        monthlyTrends: Array<{
+            month: string;
+            label: string;
+            cost: number;
+        }>;
+        composition: Array<{
+            key: string;
+            name: string;
+            weightKg: number;
+            percentage: number;
+            cost: number;
+            color: string;
+        }>;
+    };
+
+    // 3. Thống kê Chi phí
+    expenses: {
+        totalCost: number;
+        structure: {
+            fertilizer: { amount: number; percentage: number };
+            other: { amount: number; percentage: number };
+            pesticide: { amount: number; percentage: number };
+        };
+        monthlyTrends: Array<{
+            month: string;
+            label: string;
+            fertilizerCost: number;
+            pesticideCost: number;
+            otherCost: number;
+            totalCost: number;
+        }>;
+        categoryBreakdown: Array<{
+            categoryKey: string;
+            label: string;
+            amount: number;
+            percentage: number;
+            count: number;
+        }>;
+    };
+
+    // 4. Thống kê Doanh thu
+    revenue: {
+        totalRevenue: number;
+        totalWeightKg: number;
+        avgPricePerKg: number;
+        salesCount: number;
+        monthlyTrends: Array<{
+            month: string;
+            label: string;
+            revenue: number;
+            weightKg: number;
+        }>;
+        recentTransactions: Array<{
+            id: string;
+            code: string;
+            date: string;
+            buyerName: string;
+            variety: string;
+            weightKg: number;
+            pricePerKg: number;
+            totalAmount: number;
+            status: string;
+            statusLabel: string;
+        }>;
+    };
+
+    // 5. Thống kê Lợi nhuận & Hiệu quả tài chính
+    financial: {
+        totalRevenue: number;
+        totalCost: number;
+        estimatedProfit: number;
+        profitMargin: number;
+        profitPerKg: number;
+        monthlyTrends: MonthlyFinancialPoint[];
+    };
+}
+
+function parseFertilizerKg(quantity: number, unit: string = ""): number {
+    const u = unit.toLowerCase().trim();
+    if (u.includes("50kg") || u.includes("50 kg")) return quantity * 50;
+    if (u.includes("25kg") || u.includes("25 kg")) return quantity * 25;
+    if (u.includes("tấn") || u.includes("tan")) return quantity * 1000;
+    if (u.includes("kg")) return quantity;
+    if (u.includes("lít") || u.includes("lit") || u.includes("1l") || u.includes("chai")) return quantity * 1;
+    if (u.includes("500g") || u.includes("500 g")) return quantity * 0.5;
+    if (u.includes("gói") || u.includes("bao")) return quantity * 25; // default reasonable bag
+    return quantity;
+}
+
+function classifyFertilizer(name: string, notes: string = ""): "NPK" | "ORGANIC" | "KALI" | "OTHER" {
+    const text = `${name} ${notes}`.toLowerCase();
+    if (/npk|16-16-8|20-20-15|30-10-10|dap|đầu trâu|ba con cò/.test(text)) {
+        return "NPK";
+    }
+    if (/hữu cơ|organic|humic|vi sinh|chuồng|hoai|ủ mục|compost/.test(text)) {
+        return "ORGANIC";
+    }
+    if (/kali|potassium|k2o|kcl|k2so4|sunfat/.test(text)) {
+        return "KALI";
+    }
+    return "OTHER";
+}
+
+const HARVEST_STATUS_LABELS: Record<string, string> = {
+    DRAFT: "Bản nháp",
+    WAITING_CONFIRMATION: "Chờ xác nhận",
+    CONFIRMED: "Đã xác nhận",
+    HARVESTING: "Đang thu hoạch",
+    HARVESTED: "Đã thu hoạch",
+    DELIVERY_CONFIRMED: "Đã giao hàng",
+    COMPLETED: "Hoàn tất",
+    REJECTED: "Đã từ chối",
+    CANCELLED: "Đã hủy",
+};
+
+export async function getFarmerOverviewStatistics(
+    farmerId: string,
+    options?: {
+        farmId?: string | null;
+        year?: number | string | null;
+        cropSeasonId?: string | null;
+    },
+): Promise<FarmerOverviewStats> {
+    // 1. Get farmer farms
+    let farms = await prisma.farm.findMany({
+        where: { farmerId, isActive: true },
+        select: {
+            id: true,
+            farmName: true,
+            farmCode: true,
+            cropSeasons: {
+                orderBy: [{ year: "desc" }, { sequence: "desc" }],
+                select: {
+                    id: true,
+                    name: true,
+                    year: true,
+                    status: true,
+                    startedAt: true,
+                    closedAt: true,
+                },
+            },
+        },
+        orderBy: { farmName: "asc" },
+    });
+
+    if (farms.length === 0) {
+        const newFarm = await prisma.farm.create({
+            data: {
+                farmerId,
+                farmCode: `VN-FARM-${farmerId.slice(-6).toUpperCase()}`,
+                farmName: "Vườn sầu riêng Gia đình",
+                address: "Trị An, Vĩnh Cửu, Đồng Nai",
+                province: "Đồng Nai",
+                district: "Vĩnh Cửu",
+                ward: "Trị An",
+                areaSize: 2.5,
+                totalTrees: 250,
+                durianVariety: "Ri6, Monthong",
+                isActive: true,
+                cropSeasons: {
+                    create: {
+                        name: "Vụ mùa 2026",
+                        year: 2026,
+                        sequence: 1,
+                        status: "ACTIVE",
+                        startedAt: new Date("2026-01-01"),
+                        startingStage: "POST_HARVEST_RECOVERY",
+                    },
+                },
+            },
+            select: {
+                id: true,
+                farmName: true,
+                farmCode: true,
+                cropSeasons: {
+                    select: {
+                        id: true,
+                        name: true,
+                        year: true,
+                        status: true,
+                        startedAt: true,
+                        closedAt: true,
+                    },
+                },
+            },
+        });
+        farms = [newFarm];
+    }
+
+    const farmIdOption = options?.farmId && options.farmId !== "ALL" ? options.farmId : "ALL";
+    const farmIds = farmIdOption === "ALL" ? farms.map((f) => f.id) : [farmIdOption];
+
+    // Determine available years
+    const seasonYears = new Set<number>();
+    farms.forEach((f) => f.cropSeasons.forEach((s) => seasonYears.add(s.year)));
+    seasonYears.add(2026);
+    seasonYears.add(2025);
+    const availableYears = Array.from(seasonYears).sort((a, b) => b - a);
+
+    let selectedYear: number | "ALL" = 2026;
+    if (options?.year) {
+        if (options.year === "ALL") {
+            selectedYear = "ALL";
+        } else {
+            const parsed = Number(options.year);
+            if (!isNaN(parsed)) selectedYear = parsed;
+        }
+    }
+
+    // Date range filter
+    let dateFilter: { gte?: Date; lte?: Date } | undefined = undefined;
+    if (selectedYear !== "ALL") {
+        dateFilter = {
+            gte: new Date(`${selectedYear}-01-01T00:00:00.000Z`),
+            lte: new Date(`${selectedYear}-12-31T23:59:59.999Z`),
+        };
+    }
+
+    // Build Prisma where clauses
+    const supplyWhere: any = {
+        farmerId,
+        farmId: { in: farmIds },
+        type: "OUT",
+    };
+    if (dateFilter) supplyWhere.actionDate = dateFilter;
+    if (options?.cropSeasonId) supplyWhere.cropSeasonId = options.cropSeasonId;
+
+    const expenseWhere: any = {
+        farmerId,
+        farmId: { in: farmIds },
+    };
+    if (dateFilter) expenseWhere.expenseDate = dateFilter;
+    if (options?.cropSeasonId) expenseWhere.cropSeasonId = options.cropSeasonId;
+
+    const harvestWhere: any = {
+        farmerId,
+        farmId: { in: farmIds },
+        status: { in: ["CONFIRMED", "HARVESTING", "HARVESTED", "DELIVERY_CONFIRMED", "COMPLETED"] },
+    };
+    if (dateFilter) harvestWhere.expectedHarvestDate = dateFilter;
+    if (options?.cropSeasonId) harvestWhere.cropSeasonId = options.cropSeasonId;
+
+    // Fetch data concurrently
+    const [supplyTransactions, outsideExpenses, harvestRecords] = await Promise.all([
+        prisma.farmerSupplyTransaction.findMany({
+            where: supplyWhere,
+            include: { supply: true, farm: { select: { farmName: true } } },
+            orderBy: [{ actionDate: "asc" }, { createdAt: "asc" }],
+        }),
+        prisma.farmerExpense.findMany({
+            where: expenseWhere,
+            include: { farm: { select: { farmName: true } } },
+            orderBy: [{ expenseDate: "asc" }, { createdAt: "asc" }],
+        }),
+        prisma.harvestRecord.findMany({
+            where: harvestWhere,
+            include: {
+                varietyItems: true,
+                buyerFacility: { select: { name: true, phone: true } },
+                buyerUser: { select: { fullName: true } },
+                farm: { select: { farmName: true } },
+            },
+            orderBy: [{ completedAt: "desc" }, { actualHarvestedAt: "desc" }, { expectedHarvestDate: "desc" }],
+        }),
+    ]);
+
+    // Initialize monthly timeline T1..T12
+    const targetYearNum = typeof selectedYear === "number" ? selectedYear : 2026;
+    const monthlyMap = new Map<number, MonthlyFinancialPoint>();
+    for (let m = 1; m <= 12; m++) {
+        const monthKey = `${targetYearNum}-${String(m).padStart(2, "0")}`;
+        monthlyMap.set(m, {
+            month: monthKey,
+            monthIndex: m,
+            label: `T${m}`,
+            revenue: 0,
+            cost: 0,
+            profit: 0,
+            fertilizerCost: 0,
+            pesticideCost: 0,
+            otherCost: 0,
+            weightKg: 0,
+        });
+    }
+
+    // -------------------------------------------------------------
+    // 1. Thuốc BVTV
+    // -------------------------------------------------------------
+    const pesticideTx = supplyTransactions.filter((tx) => tx.supply && tx.supply.type === "PESTICIDE");
+    let pesticideCost = 0;
+    const pesticideTypesSet = new Set<string>();
+    const pesticideSupplyMap = new Map<string, { name: string; usagesCount: number; totalQuantity: number; unit: string; totalCost: number }>();
+
+    for (const tx of pesticideTx) {
+        const cost = Number(tx.totalAmount || 0);
+        pesticideCost += cost;
+        const sName = tx.supply.name.trim();
+        pesticideTypesSet.add(sName);
+
+        const cur = pesticideSupplyMap.get(sName) || {
+            name: sName,
+            usagesCount: 0,
+            totalQuantity: 0,
+            unit: tx.supply.unit || "gói/chai",
+            totalCost: 0,
+        };
+        cur.usagesCount += 1;
+        cur.totalQuantity += tx.quantity;
+        cur.totalCost += cost;
+        pesticideSupplyMap.set(sName, cur);
+
+        const m = new Date(tx.actionDate).getMonth() + 1;
+        const point = monthlyMap.get(m);
+        if (point) {
+            point.pesticideCost += cost;
+            point.cost += cost;
+        }
+    }
+
+    const pesticideTop = Array.from(pesticideSupplyMap.values())
+        .sort((a, b) => b.usagesCount - a.usagesCount || b.totalCost - a.totalCost)
+        .slice(0, 6);
+
+    const pesticideMonthlyTrends = Array.from(monthlyMap.values()).map((p) => ({
+        month: p.month,
+        label: p.label,
+        cost: p.pesticideCost,
+    }));
+
+    // -------------------------------------------------------------
+    // 2. Phân bón
+    // -------------------------------------------------------------
+    const fertilizerTx = supplyTransactions.filter((tx) => tx.supply && tx.supply.type === "FERTILIZER");
+    let fertilizerCost = 0;
+    let fertilizerTotalWeightKg = 0;
+    const fertilizerTypesSet = new Set<string>();
+
+    const compositionMap = {
+        NPK: { key: "NPK", name: "NPK (Hỗn hợp vô cơ)", weightKg: 0, cost: 0, color: "#10B981" },
+        ORGANIC: { key: "ORGANIC", name: "Phân hữu cơ & Vi sinh", weightKg: 0, cost: 0, color: "#84CC16" },
+        KALI: { key: "KALI", name: "Kali (K2SO4, KCl)", weightKg: 0, cost: 0, color: "#F59E0B" },
+        OTHER: { key: "OTHER", name: "Phân bón lá & Vi lượng khác", weightKg: 0, cost: 0, color: "#6366F1" },
+    };
+
+    for (const tx of fertilizerTx) {
+        const cost = Number(tx.totalAmount || 0);
+        fertilizerCost += cost;
+        const sName = tx.supply.name.trim();
+        fertilizerTypesSet.add(sName);
+
+        const kg = parseFertilizerKg(tx.quantity, tx.supply.unit);
+        fertilizerTotalWeightKg += kg;
+
+        const group = classifyFertilizer(sName, tx.purpose || "");
+        compositionMap[group].weightKg += kg;
+        compositionMap[group].cost += cost;
+
+        const m = new Date(tx.actionDate).getMonth() + 1;
+        const point = monthlyMap.get(m);
+        if (point) {
+            point.fertilizerCost += cost;
+            point.cost += cost;
+        }
+    }
+
+    const fertilizerComposition = Object.values(compositionMap).map((item) => ({
+        ...item,
+        percentage: fertilizerTotalWeightKg > 0 ? Math.round((item.weightKg / fertilizerTotalWeightKg) * 1000) / 10 : 0,
+    }));
+
+    const fertilizerMonthlyTrends = Array.from(monthlyMap.values()).map((p) => ({
+        month: p.month,
+        label: p.label,
+        cost: p.fertilizerCost,
+    }));
+
+    // -------------------------------------------------------------
+    // 3. Chi phí (Equipment + Outside expenses)
+    // -------------------------------------------------------------
+    const equipmentTx = supplyTransactions.filter(
+        (tx) => tx.supply && (tx.supply.type === "EQUIPMENT" || tx.supply.type === "OTHER"),
+    );
+    let equipmentCost = 0;
+    for (const tx of equipmentTx) {
+        const cost = Number(tx.totalAmount || 0);
+        equipmentCost += cost;
+        const m = new Date(tx.actionDate).getMonth() + 1;
+        const point = monthlyMap.get(m);
+        if (point) {
+            point.otherCost += cost;
+            point.cost += cost;
+        }
+    }
+
+    const categoryExpMap = new Map<string, { label: string; amount: number; count: number }>();
+    let outsideCost = 0;
+
+    for (const exp of outsideExpenses) {
+        const cost = Number(exp.amount || 0);
+        outsideCost += cost;
+        const catKey = exp.category || "OTHER";
+        const catLabel = EXPENSE_CATEGORY_LABELS[catKey] || catKey;
+
+        const cur = categoryExpMap.get(catKey) || { label: catLabel, amount: 0, count: 0 };
+        cur.amount += cost;
+        cur.count += 1;
+        categoryExpMap.set(catKey, cur);
+
+        const m = new Date(exp.expenseDate).getMonth() + 1;
+        const point = monthlyMap.get(m);
+        if (point) {
+            point.otherCost += cost;
+            point.cost += cost;
+        }
+    }
+
+    const otherTotalCost = equipmentCost + outsideCost;
+    const totalCost = fertilizerCost + pesticideCost + otherTotalCost;
+
+    const expenseStructure = {
+        fertilizer: {
+            amount: fertilizerCost,
+            percentage: totalCost > 0 ? Math.round((fertilizerCost / totalCost) * 1000) / 10 : 0,
+        },
+        other: {
+            amount: otherTotalCost,
+            percentage: totalCost > 0 ? Math.round((otherTotalCost / totalCost) * 1000) / 10 : 0,
+        },
+        pesticide: {
+            amount: pesticideCost,
+            percentage: totalCost > 0 ? Math.round((pesticideCost / totalCost) * 1000) / 10 : 0,
+        },
+    };
+
+    const categoryBreakdown = Array.from(categoryExpMap.entries())
+        .map(([key, val]) => ({
+            categoryKey: key,
+            label: val.label,
+            amount: val.amount,
+            count: val.count,
+            percentage: totalCost > 0 ? Math.round((val.amount / totalCost) * 1000) / 10 : 0,
+        }))
+        .sort((a, b) => b.amount - a.amount);
+
+    // -------------------------------------------------------------
+    // 4. Doanh thu (Sales / Revenue from confirmed HarvestRecords)
+    // -------------------------------------------------------------
+    let totalRevenue = 0;
+    let totalSoldWeightKg = 0;
+    const recentTransactions: FarmerOverviewStats["revenue"]["recentTransactions"] = [];
+
+    for (const h of harvestRecords) {
+        let weight = Number(h.receivedWeight ?? h.deliveredWeight ?? h.actualWeight ?? h.expectedSaleWeight ?? h.expectedWeight ?? 0);
+        const unitLower = (h.weightUnit || "").toLowerCase();
+        if ((unitLower.includes("tấn") || unitLower.includes("tan")) && weight > 0 && weight < 50) {
+            weight = weight * 1000;
+        }
+
+        const price = Number(h.expectedPricePerKg || 0);
+        let amount = 0;
+
+        if (h.varietyItems && h.varietyItems.length > 0) {
+            const vSum = h.varietyItems.reduce((acc, vi) => {
+                const viWeight = Number(vi.expectedWeight || 0);
+                const viPrice = Number(vi.expectedPricePerKg || h.expectedPricePerKg || 0);
+                return acc + viWeight * viPrice;
+            }, 0);
+            amount = vSum > 0 ? vSum : weight * price;
+        } else {
+            amount = weight * price;
+        }
+
+        // If price was not specified in record, provide market estimate based on Ri6/Monthong
+        if (amount === 0 && weight > 0) {
+            const estimatedRate = 75000;
+            amount = weight * estimatedRate;
+        }
+
+        totalRevenue += amount;
+        totalSoldWeightKg += weight;
+
+        const harvestDate = h.buyerReceivedAt ?? h.completedAt ?? h.actualHarvestedAt ?? h.expectedHarvestDate;
+        const d = new Date(harvestDate);
+        const dayStr = String(d.getDate()).padStart(2, "0");
+        const monStr = String(d.getMonth() + 1).padStart(2, "0");
+        const formattedDate = `${dayStr}/${monStr}`;
+
+        const noteMatch = h.transactionNote?.match(/bán cho ([^-,.\n]+)/i);
+        const buyerName =
+            noteMatch?.[1]?.trim() ||
+            h.buyerFacility?.name ||
+            h.buyerUser?.fullName ||
+            (h.buyerType === "COLLECTOR"
+                ? "Vựa thu mua"
+                : h.buyerType === "PROCESSING_FACILITY"
+                ? "Cơ sở chế biến"
+                : "Thương lái thu mua");
+
+        recentTransactions.push({
+            id: h.id,
+            code: h.code,
+            date: formattedDate,
+            buyerName,
+            variety: h.durianVariety || "Sầu riêng",
+            weightKg: weight,
+            pricePerKg: price > 0 ? price : Math.round(amount / (weight || 1)),
+            totalAmount: amount,
+            status: h.status,
+            statusLabel: HARVEST_STATUS_LABELS[h.status] || h.status,
+        });
+
+        const m = d.getMonth() + 1;
+        const point = monthlyMap.get(m);
+        if (point) {
+            point.revenue += amount;
+            point.weightKg += weight;
+        }
+    }
+
+    const avgPricePerKg = totalSoldWeightKg > 0 ? Math.round(totalRevenue / totalSoldWeightKg) : 0;
+
+    // -------------------------------------------------------------
+    // 5. Hiệu quả tài chính & Lợi nhuận
+    // -------------------------------------------------------------
+    const estimatedProfit = totalRevenue - totalCost;
+    const profitMargin = totalRevenue > 0 ? Math.round((estimatedProfit / totalRevenue) * 1000) / 10 : 0;
+    const profitPerKg = totalSoldWeightKg > 0 ? Math.round(estimatedProfit / totalSoldWeightKg) : 0;
+
+    // Finalize monthly points profit
+    const monthlyTrends = Array.from(monthlyMap.values()).map((p) => {
+        p.profit = p.revenue - p.cost;
+        return p;
+    });
+
+    const revenueMonthlyTrends = monthlyTrends.map((p) => ({
+        month: p.month,
+        label: p.label,
+        revenue: p.revenue,
+        weightKg: p.weightKg,
+    }));
+
+    const expenseMonthlyTrends = monthlyTrends.map((p) => ({
+        month: p.month,
+        label: p.label,
+        fertilizerCost: p.fertilizerCost,
+        pesticideCost: p.pesticideCost,
+        otherCost: p.otherCost,
+        totalCost: p.cost,
+    }));
+
+    return {
+        filters: {
+            farmId: farmIdOption,
+            year: selectedYear,
+        },
+        farms: farms.map((f) => ({
+            id: f.id,
+            farmName: f.farmName,
+            farmCode: f.farmCode,
+            cropSeasons: f.cropSeasons.map((s) => ({
+                id: s.id,
+                name: s.name,
+                year: s.year,
+                status: s.status,
+            })),
+        })),
+        availableYears,
+        kpis: {
+            pesticideCost,
+            pesticideUsages: pesticideTx.length,
+            fertilizerCost,
+            fertilizerUsages: fertilizerTx.length,
+            totalCost,
+            totalRevenue,
+            totalSoldWeightKg,
+            estimatedProfit,
+            profitMargin,
+            profitPerKg,
+        },
+        pesticides: {
+            totalCost: pesticideCost,
+            usagesCount: pesticideTx.length,
+            typesCount: pesticideTypesSet.size,
+            monthlyTrends: pesticideMonthlyTrends,
+            topSupplies: pesticideTop,
+        },
+        fertilizers: {
+            totalCost: fertilizerCost,
+            usagesCount: fertilizerTx.length,
+            totalWeightKg: fertilizerTotalWeightKg,
+            typesCount: fertilizerTypesSet.size,
+            monthlyTrends: fertilizerMonthlyTrends,
+            composition: fertilizerComposition,
+        },
+        expenses: {
+            totalCost,
+            structure: expenseStructure,
+            monthlyTrends: expenseMonthlyTrends,
+            categoryBreakdown,
+        },
+        revenue: {
+            totalRevenue,
+            totalWeightKg: totalSoldWeightKg,
+            avgPricePerKg,
+            salesCount: harvestRecords.length,
+            monthlyTrends: revenueMonthlyTrends,
+            recentTransactions: recentTransactions.slice(0, 6),
+        },
+        financial: {
+            totalRevenue,
+            totalCost,
+            estimatedProfit,
+            profitMargin,
+            profitPerKg,
+            monthlyTrends,
+        },
+    };
+}
+
+// Keep existing drill-down server data retrieval function for pesticides, fertilizers, and expenses
 export async function getFarmerStatisticsServerData(
     farmerId: string,
     farmId?: string | null,
@@ -93,11 +783,11 @@ export async function getFarmerStatisticsServerData(
                 isActive: true,
                 cropSeasons: {
                     create: {
-                        name: "Vụ mùa 2027",
-                        year: 2027,
+                        name: "Vụ mùa 2026",
+                        year: 2026,
                         sequence: 1,
                         status: "ACTIVE",
-                        startedAt: new Date("2026-05-01"),
+                        startedAt: new Date("2026-01-01"),
                         startingStage: "POST_HARVEST_RECOVERY",
                     },
                 },
@@ -155,7 +845,7 @@ export async function getFarmerStatisticsServerData(
         };
     }
 
-    // Lấy transactions & expenses
+    // Query supply transactions and outside expenses for the season
     const [supplyTransactions, outsideExpenses] = await Promise.all([
         prisma.farmerSupplyTransaction.findMany({
             where: {

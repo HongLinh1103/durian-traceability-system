@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
     CloudSun,
     Leaf,
@@ -63,7 +63,6 @@ export function FarmerJournalUnifiedView({
     cultivationContent,
 }: FarmerJournalUnifiedViewProps) {
     const router = useRouter();
-    const pathname = usePathname();
     const searchParams = useSearchParams();
 
     // 1. Quản lý Vườn được chọn
@@ -88,7 +87,7 @@ export function FarmerJournalUnifiedView({
     const currentSeason = currentFarm?.cropSeasons.find((s) => s.id === selectedSeasonId) || activeSeason || currentFarm?.cropSeasons[0];
 
     // 3. Quản lý Tab chính (Thời tiết | Canh tác | Sinh vật gây hại)
-    const [activeTab, setActiveTab] = useState<"weather" | "cultivation" | "pests">(initialActiveTab);
+    const activeTab = initialActiveTab;
 
     // Modal tạo vụ mùa mới
     const [showCreateSeasonModal, setShowCreateSeasonModal] = useState(false);
@@ -108,10 +107,12 @@ export function FarmerJournalUnifiedView({
     // Cập nhật URL khi đổi Farm, Season hoặc Tab
     const updateUrl = (tab: string, fId: string, sId: string) => {
         const params = new URLSearchParams(searchParams.toString());
-        params.set("tab", tab);
-        if (fId) params.set("farmId", fId);
-        if (sId) params.set("seasonId", sId);
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        params.delete("tab");
+        if (fId) params.set("farmId", fId); else params.delete("farmId");
+        if (sId) params.set("seasonId", sId); else params.delete("seasonId");
+        const href = `/dashboard/farmer/journal/${tab}?${params.toString()}`;
+        if (tab === activeTab) router.replace(href, { scroll: false });
+        else router.push(href, { scroll: false });
     };
 
     const handleFarmChange = (fId: string) => {
@@ -129,7 +130,6 @@ export function FarmerJournalUnifiedView({
     };
 
     const handleTabChange = (tab: "weather" | "cultivation" | "pests") => {
-        setActiveTab(tab);
         updateUrl(tab, selectedFarmId, selectedSeasonId);
     };
 

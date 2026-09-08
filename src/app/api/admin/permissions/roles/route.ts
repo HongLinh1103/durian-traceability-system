@@ -1,103 +1,134 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { generateRoleKeyFromName, calculateRolePermissionStats } from "@/lib/permissions-data";
+import {
+    getAllRolesData,
+    createCustomRole,
+    updateRoleInfo,
+    deleteCustomRole,
+} from "@/lib/role-service";
 
 export const dynamic = "force-dynamic";
 
-// In-memory custom roles fallback
-const customRolesMemory: any[] = [];
+async function requireAdmin() {
+    const session = await getServerSession(authOptions);
+    return session?.user?.id && session.user.role === "ADMIN" ? session : null;
+}
+
+export async function GET() {
+    try {
+        const session = await requireAdmin();
+        if (!session) {
+            return NextResponse.json({ success: false, message: "Không có quyền truy cập." }, { status: 403 });
+        }
+
+        const data = await getAllRolesData();
+        return NextResponse.json({ success: true, data: data.roles });
+    } catch (error: any) {
+        console.error("GET /api/admin/permissions/roles failed:", error);
+        return NextResponse.json(
+            { success: false, message: error?.message || "Lỗi khi lấy danh sách vai trò." },
+            { status: 500 }
+        );
+    }
+}
 
 export async function POST(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
-        const adminName = session?.user?.fullName || session?.user?.phone || "Admin";
+        const session = await requireAdmin();
+        if (!session) {
+            return NextResponse.json({ success: false, message: "Không có quyền truy cập." }, { status: 403 });
+        }
 
+        const adminName = session.user.fullName || session.user.phone || "Admin";
+        const adminId = session.user.id;
         const body = await request.json();
-        const { roleName, roleDescription } = body;
 
-        if (!roleName || !roleName.trim()) {
-            return NextResponse.json({ success: false, message: "Vui lòng nhập tên vai trò" }, { status: 400 });
+        if (!body.roleName || !body.roleName.trim()) {
+            return NextResponse.json({ success: false, message: "Vui lòng nhập tên vai trò." }, { status: 400 });
         }
 
-        const trimmedName = roleName.trim();
-        const generatedKey = generateRoleKeyFromName(trimmedName);
+        const newRole = await createCustomRole(body, adminName, adminId);
+        return NextResponse.json({
+            success: true,
+            message: `Tạo vai trò "${newRole.name}" thành công`,
+            data: newRole,
+        });
+    } catch (error: any) {
+        console.error("POST /api/admin/permissions/roles failed:", error);
+        return NextResponse.json(
+            { success: false, message: error?.message || "Lỗi khi tạo vai trò mới" },
+            { status: 500 }
+        );
+    }
+}
 
-        // Initial default empty permissions for new custom role
-        const defaultModuleEnabled: Record<string, boolean> = {
-            CULTIVATION: true,
-            HARVEST: true,
-            PROCUREMENT: true,
-            PROCESSING: true,
-            INVENTORY: true,
-            STORE_MARKETPLACE: true,
-            SEEDLING_NURSERY: true,
-            FINANCE: true,
-            TRACEABILITY: true,
-            SYSTEM_ADMIN: false,
-        };
-        const initialPermissions: string[] = [];
-
-        const newRoleObj = {
-            key: generatedKey,
-            name: trimmedName,
-            description: roleDescription?.trim() || `Vai trò ${trimmedName} tùy chỉnh`,
-            badgeColor: "bg-indigo-100 text-indigo-800 border-indigo-200",
-        };
-
-        customRolesMemory.push(newRoleObj);
-
-        // Save to DB if available
-        try {
-            await prisma.rolePermissionConfig.upsert({
-                where: { roleKey: generatedKey },
-                update: {
-                    roleName: trimmedName,
-                    roleDescription: roleDescription?.trim() || `Vai trò ${trimmedName} tùy chỉnh`,
-                    updatedByName: adminName,
-                },
-                create: {
-                    roleKey: generatedKey,
-                    roleName: trimmedName,
-                    roleDescription: roleDescription?.trim() || `Vai trò ${trimmedName} tùy chỉnh`,
-                    moduleEnabled: defaultModuleEnabled,
-                    permissions: initialPermissions,
-                    updatedByName: adminName,
-                },
-            });
-
-            await prisma.permissionAuditLog.create({
-                data: {
-                    roleKey: generatedKey,
-                    actorName: adminName,
-                    action: "CREATE_ROLE",
-                    changes: [{ type: "CREATE_ROLE", roleName: trimmedName, roleKey: generatedKey }],
-                    changeSummary: `Tạo mới vai trò: ${trimmedName} (${generatedKey})`,
-                },
-            });
-        } catch (dbErr) {
-            console.warn("[CreateRoleAPI] Database offline, created in memory:", dbErr);
+export async function PUT(request: Request) {
+    try {
+        const session = await requireAdmin();
+        if (!session) {
+            return NextResponse.json({ success: false, message: "Không có quyền truy cập." }, { status: 403 });
         }
 
-        const stats = calculateRolePermissionStats(generatedKey, initialPermissions, defaultModuleEnabled);
+        const adminName = session.user.fullName || session.user.phone || "Admin";
+        const adminId = session.user.id;
+        const body = await request.json();
+
+        if (!body.roleKey) {
+            return NextResponse.json({ success: false, message: "Thiếu mã vai trò." }, { status: 400 });
+        }
+
+        const updated = await updateRoleInfo(
+            body.roleKey,
+            {
+                name: body.roleName,
+                description: body.roleDescription,
+                targetGroup: body.targetGroup,
+                status: body.status,
+            },
+            adminName,
+            adminId
+        );
 
         return NextResponse.json({
             success: true,
-            message: `Tạo vai trò "${trimmedName}" thành công`,
-            data: {
-                role: newRoleObj,
-                config: {
-                    moduleEnabled: defaultModuleEnabled,
-                    permissions: initialPermissions,
-                    stats,
-                },
-            },
+            message: "Cập nhật vai trò thành công.",
+            data: updated,
         });
     } catch (error: any) {
-        console.error("Error creating custom role:", error);
+        console.error("PUT /api/admin/permissions/roles failed:", error);
         return NextResponse.json(
-            { success: false, message: error.message || "Lỗi khi tạo vai trò mới" },
+            { success: false, message: error?.message || "Lỗi khi cập nhật vai trò" },
+            { status: 500 }
+        );
+    }
+}
+
+export async function DELETE(request: Request) {
+    try {
+        const session = await requireAdmin();
+        if (!session) {
+            return NextResponse.json({ success: false, message: "Không có quyền truy cập." }, { status: 403 });
+        }
+
+        const adminName = session.user.fullName || session.user.phone || "Admin";
+        const adminId = session.user.id;
+        const { searchParams } = new URL(request.url);
+        const roleKey = searchParams.get("roleKey");
+
+        if (!roleKey) {
+            return NextResponse.json({ success: false, message: "Thiếu mã vai trò cần xóa." }, { status: 400 });
+        }
+
+        await deleteCustomRole(roleKey, adminName, adminId);
+        return NextResponse.json({
+            success: true,
+            message: `Đã xóa vai trò ${roleKey} thành công.`,
+        });
+    } catch (error: any) {
+        console.error("DELETE /api/admin/permissions/roles failed:", error);
+        return NextResponse.json(
+            { success: false, message: error?.message || "Lỗi khi xóa vai trò" },
             { status: 500 }
         );
     }

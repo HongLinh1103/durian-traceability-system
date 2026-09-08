@@ -61,7 +61,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
-            { label: "Tài chính", description: "Báo cáo chi phí, thuốc BVTV và phân bón", href: "/dashboard/farmer/statistics", icon: CircleDollarSign },
+            { label: "Thống kê", description: "Báo cáo chi phí, thuốc BVTV và phân bón", href: "/dashboard/farmer/statistics", icon: CircleDollarSign },
             { label: "Tạo QR", description: "Tạo mã QR truy xuất nguồn gốc nông sản", href: "/dashboard/farmer/traceability", icon: QrCode },
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Kế hoạch", description: "Lập lịch và theo dõi công việc canh tác", href: "/dashboard/farmer/plans", icon: CalendarDays },
@@ -151,16 +151,16 @@ export function MobileBottomNavigation() {
     const roleFromPathname = pathname.startsWith("/dashboard/partner")
         ? "COLLECTOR"
         : pathname.startsWith("/dashboard/processing")
-        ? "PROCESSING_FACILITY"
-        : pathname.startsWith("/dashboard/store")
-        ? "STORE_OWNER"
-        : pathname.startsWith("/dashboard/area-manager") || pathname.startsWith("/region-manager")
-        ? "AREA_MANAGER"
-        : pathname.startsWith("/dashboard/admin")
-        ? "ADMIN"
-        : pathname.startsWith("/dashboard/farmer")
-        ? "FARMER"
-        : undefined;
+            ? "PROCESSING_FACILITY"
+            : pathname.startsWith("/dashboard/store")
+                ? "STORE_OWNER"
+                : pathname.startsWith("/dashboard/area-manager") || pathname.startsWith("/region-manager")
+                    ? "AREA_MANAGER"
+                    : pathname.startsWith("/dashboard/admin")
+                        ? "ADMIN"
+                        : pathname.startsWith("/dashboard/farmer")
+                            ? "FARMER"
+                            : undefined;
 
     const effectiveRole = session?.user?.role || roleFromPathname;
     const configuration = effectiveRole ? navigationByRole[effectiveRole] : undefined;

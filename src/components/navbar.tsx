@@ -39,7 +39,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/farmer/journal", label: "Nhật ký", roles: ["FARMER"] },
     { href: "/dashboard/farmer/harvests", label: "Phiếu thu hoạch", roles: ["FARMER"] },
     { href: "/dashboard/farmer/traceability", label: "Tạo QR", roles: ["FARMER"] },
-    { href: "/dashboard/farmer/statistics", label: "Tài chính", roles: ["FARMER"] },
+    { href: "/dashboard/farmer/statistics", label: "Thống kê", roles: ["FARMER"] },
     { href: "/materials", label: "Tất cả vật tư", roles: ["FARMER"] },
     { href: "/materials/fertilizers", label: "Phân bón", roles: ["FARMER"] },
     { href: "/materials/pesticides", label: "Thuốc BVTV", roles: ["FARMER"] },

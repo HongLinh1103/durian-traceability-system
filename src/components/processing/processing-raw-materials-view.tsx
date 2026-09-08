@@ -120,18 +120,17 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
         setConfirmNoteInput("Cơ sở Chế biến Sầu riêng Trị An xác nhận tiếp nhận nguồn nguyên liệu theo kế hoạch thu hoạch của Farm.");
     };
 
-    // Handler: Confirm Harvest Ticket
+    // Handler: Confirm Harvest Ticket (Chuẩn hóa: POST /api/harvest-receptions/[id]/accept)
     const handleConfirmHarvest = async () => {
         if (!confirmingItem) return;
         const harvestId = confirmingItem.harvestId || confirmingItem.id.replace("harvest-", "");
         setSubmittingConfirm(true);
 
         try {
-            const res = await fetch(`/api/harvests/${harvestId}`, {
-                method: "PATCH",
+            const res = await fetch(`/api/harvest-receptions/${harvestId}/accept`, {
+                method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    action: "CONFIRM",
                     note: confirmNoteInput || "Cơ sở chế biến xác nhận phiếu thu hoạch.",
                 }),
             });
@@ -167,7 +166,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
         }
     };
 
-    // Handler: Reject Harvest Ticket
+    // Handler: Reject Harvest Ticket (Chuẩn hóa: POST /api/harvest-receptions/[id]/reject)
     const handleRejectHarvest = async () => {
         if (!confirmingItem) return;
         const reason = window.prompt("Vui lòng nhập lý do từ chối phiếu thu hoạch này:");
@@ -181,11 +180,10 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
         setSubmittingConfirm(true);
 
         try {
-            const res = await fetch(`/api/harvests/${harvestId}`, {
-                method: "PATCH",
+            const res = await fetch(`/api/harvest-receptions/${harvestId}/reject`, {
+                method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    action: "REJECT",
                     reason: reason.trim(),
                 }),
             });
@@ -312,14 +310,14 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
         setSubmittingReceive(true);
 
         try {
-            const res = await fetch(`/api/harvests/${harvestId}`, {
-                method: "PATCH",
+            const res = await fetch(`/api/harvest-receptions/${harvestId}/receive`, {
+                method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    action: "RECEIVE",
                     receivedWeight: actualWeight,
                     fruitCount: actualFruitCount,
                     receivedAt: receivedAtInput ? new Date(receivedAtInput).toISOString() : new Date().toISOString(),
+                    vehiclePlate: truckPlateInput,
                     weightDifferenceReason: liveDiff !== 0 ? `Chênh lệch ${liveDiff > 0 ? "+" : ""}${liveDiff} kg so với khai báo` : undefined,
                     note: `${conditionInput} | Số trái: ${actualFruitCount} | Xe: ${truckPlateInput} | Đơn giá: ${unitPriceInput ? `${Number(unitPriceInput).toLocaleString("vi-VN")} đ/kg` : "—"}${receiveNoteInput ? ` | ${receiveNoteInput}` : ""}`,
                 }),

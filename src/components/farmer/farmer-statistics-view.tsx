@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
     Activity,
@@ -101,6 +103,7 @@ const EXPENSE_ICONS: Record<string, any> = {
 };
 
 interface FarmerStatisticsViewProps {
+    initialActiveTab?: "PESTICIDE" | "FERTILIZER" | "EXPENSE";
     initialData?: {
         farms?: FarmOption[];
         selectedFarm?: { id: string; farmName: string; farmCode: string };
@@ -111,19 +114,35 @@ interface FarmerStatisticsViewProps {
     };
 }
 
-export function FarmerStatisticsView({ initialData }: FarmerStatisticsViewProps = {}) {
+export function FarmerStatisticsView({ initialData, initialActiveTab = "PESTICIDE" }: FarmerStatisticsViewProps = {}) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [farms, setFarms] = useState<FarmOption[]>(initialData?.farms || []);
     const [selectedFarmId, setSelectedFarmId] = useState<string>(
-        initialData?.selectedFarm?.id || initialData?.farms?.[0]?.id || "",
+        initialData?.selectedFarm?.id || searchParams.get("farmId") || initialData?.farms?.[0]?.id || "",
     );
     const [selectedSeasonId, setSelectedSeasonId] = useState<string>(
-        initialData?.selectedSeason?.id || initialData?.farms?.[0]?.cropSeasons?.[0]?.id || "",
+        initialData?.selectedSeason?.id || searchParams.get("seasonId") || initialData?.farms?.[0]?.cropSeasons?.[0]?.id || "",
     );
-    const [dateRangeMode, setDateRangeMode] = useState<"ALL" | "30DAYS" | "90DAYS" | "CUSTOM">("ALL");
-    const [customStartDate, setCustomStartDate] = useState<string>("");
-    const [customEndDate, setCustomEndDate] = useState<string>("");
+    const [dateRangeMode, setDateRangeMode] = useState<"ALL" | "30DAYS" | "90DAYS" | "CUSTOM">(() => {
+        const mode = searchParams.get("range");
+        return mode === "30DAYS" || mode === "90DAYS" || mode === "CUSTOM" ? mode : "ALL";
+    });
+    const [customStartDate, setCustomStartDate] = useState<string>(searchParams.get("startDate") || "");
+    const [customEndDate, setCustomEndDate] = useState<string>(searchParams.get("endDate") || "");
 
-    const [activeTab, setActiveTab] = useState<"PESTICIDE" | "FERTILIZER" | "EXPENSE">("PESTICIDE");
+    const activeTab = initialActiveTab;
+    const setActiveTab = (tab: "PESTICIDE" | "FERTILIZER" | "EXPENSE") => {
+        const slug = { PESTICIDE: "pesticides", FERTILIZER: "fertilizers", EXPENSE: "expenses" }[tab];
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("tab");
+        if (selectedFarmId) params.set("farmId", selectedFarmId); else params.delete("farmId");
+        if (selectedSeasonId) params.set("seasonId", selectedSeasonId); else params.delete("seasonId");
+        params.set("range", dateRangeMode);
+        params.set("startDate", customStartDate);
+        params.set("endDate", customEndDate);
+        router.push(`/dashboard/farmer/statistics/${slug}?${params}`, { scroll: false });
+    };
     const [loading, setLoading] = useState(initialData ? false : true);
 
     // Data from API
@@ -370,8 +389,16 @@ export function FarmerStatisticsView({ initialData }: FarmerStatisticsViewProps 
                 )}
             </div>
 
-            {/* 3 Main Tab Buttons */}
-            <div className="grid grid-cols-3 gap-2 rounded-3xl bg-slate-100 p-1.5 text-center text-xs sm:text-sm font-bold shadow-inner">
+            {/* 4 Main Tab Buttons */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-3xl bg-slate-100 p-1.5 text-center text-xs sm:text-sm font-bold shadow-inner">
+                <Link
+                    href={`/dashboard/farmer/statistics${selectedFarmId ? `?farmId=${selectedFarmId}` : ""}`}
+                    className="flex items-center justify-center gap-1.5 rounded-2xl py-3 text-slate-600 hover:text-slate-900 transition hover:bg-white/60"
+                >
+                    <BarChart3 className="h-4 w-4 text-brand-600" />
+                    <span>Tổng quan</span>
+                </Link>
+
                 <button
                     type="button"
                     onClick={() => setActiveTab("PESTICIDE")}

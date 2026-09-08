@@ -10,8 +10,12 @@ const shared: AccountPermission[] = [{ key: "ACCOUNT_PROFILE", label: "Thông ti
 export const ACCOUNT_PERMISSIONS_BY_ROLE: Record<string, AccountPermission[]> = {
     FARMER: [
         { key: "FARMER_DASHBOARD", label: "Tổng quan nông hộ", path: "/dashboard/farmer" },
-        { key: "FARMER_JOURNAL", label: "Nhật ký canh tác", path: "/dashboard/farmer/journal" },
-        { key: "FARMER_STATISTICS", label: "Tài chính & Thống kê", path: "/dashboard/farmer/statistics" },
+        { key: "FARMER_JOURNAL", label: "Nhật ký canh tác", path: "/dashboard/farmer/journal/cultivation" },
+        { key: "FARMER_STATISTICS", label: "Thống kê Thuốc BVTV", path: "/dashboard/farmer/statistics/pesticides" },
+        { key: "FARMER_WEATHER_JOURNAL", label: "Nhật ký thời tiết", path: "/dashboard/farmer/journal/weather" },
+        { key: "FARMER_PEST_JOURNAL", label: "Nhật ký sinh vật gây hại", path: "/dashboard/farmer/journal/pests" },
+        { key: "FARMER_FERTILIZER_STATISTICS", label: "Thống kê Phân bón", path: "/dashboard/farmer/statistics/fertilizers" },
+        { key: "FARMER_EXPENSE_STATISTICS", label: "Thống kê Chi phí", path: "/dashboard/farmer/statistics/expenses" },
         { key: "FARMER_PLANS", label: "Kế hoạch canh tác", path: "/dashboard/farmer/plans" },
         { key: "FARMER_HARVESTS", label: "Phiếu thu hoạch", path: "/dashboard/farmer/harvests" },
         { key: "FARMER_TRACEABILITY", label: "Tạo mã QR truy xuất", path: "/dashboard/farmer/traceability" },

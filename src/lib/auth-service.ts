@@ -1,9 +1,7 @@
 import type { UserRole } from "@prisma/client";
-import bcryptjs from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { AUTH_SESSION_MAX_AGE_SECONDS, AUTH_REMEMBER_ME_MAX_AGE_SECONDS } from "@/lib/auth-token";
-import { findSystemAccount, SystemAccount } from "@/lib/system-accounts";
 
 export type AuthenticatedUser = {
     id: string;
@@ -51,84 +49,6 @@ function toAuthenticatedUser(user: {
         fullName: user.fullName,
         isApproved: user.isApproved,
     };
-}
-
-async function tryAutoUpsertSystemAccount(sysAcc: SystemAccount) {
-    try {
-        const hashedPassword = await bcryptjs.hash(sysAcc.password, 10);
-        const user = await prisma.user.upsert({
-            where: { phone: sysAcc.phone },
-            update: {
-                email: sysAcc.email,
-                fullName: sysAcc.fullName,
-                role: sysAcc.role,
-                isApproved: true,
-                accountStatus: "APPROVED",
-                password: hashedPassword,
-                lastLoginAt: new Date(),
-            },
-            create: {
-                id: sysAcc.id,
-                phone: sysAcc.phone,
-                email: sysAcc.email,
-                fullName: sysAcc.fullName,
-                role: sysAcc.role,
-                isApproved: true,
-                accountStatus: "APPROVED",
-                password: hashedPassword,
-                lastLoginAt: new Date(),
-            },
-        });
-
-        // If collector or processing facility, ensure partner_facility exists
-        if (sysAcc.role === "COLLECTOR" || sysAcc.role === "PROCESSING_FACILITY") {
-            const existingFac = await prisma.partnerFacility.findFirst({
-                where: { ownerId: user.id },
-            });
-            if (!existingFac && sysAcc.facilityName) {
-                await prisma.partnerFacility.create({
-                    data: {
-                        ownerId: user.id,
-                        type: sysAcc.role,
-                        organizationType: "Hộ kinh doanh / Doanh nghiệp",
-                        name: sysAcc.facilityName,
-                        representativeName: sysAcc.fullName,
-                        representativePhone: sysAcc.phone,
-                        representativeEmail: sysAcc.email,
-                        identityNumber: `ID-${sysAcc.phone}`,
-                        phone: sysAcc.phone,
-                        address: sysAcc.address || "Đồng Nai",
-                        province: sysAcc.province || "Đồng Nai",
-                        status: "APPROVED",
-                    },
-                });
-            }
-        }
-
-        // If store / nursery owner, ensure store exists
-        if (sysAcc.role === "STORE_OWNER") {
-            const existingStore = await prisma.store.findFirst({
-                where: { ownerId: user.id },
-            });
-            if (!existingStore && sysAcc.facilityName) {
-                await prisma.store.create({
-                    data: {
-                        ownerId: user.id,
-                        name: sysAcc.facilityName,
-                        representativeName: sysAcc.fullName,
-                        representativePhone: sysAcc.phone,
-                        representativeEmail: sysAcc.email,
-                        identityNumber: `ID-${sysAcc.phone}`,
-                        phone: sysAcc.phone,
-                        address: sysAcc.address || "Đồng Nai",
-                        status: "APPROVED",
-                    },
-                });
-            }
-        }
-    } catch {
-        // Non-blocking if DB is not reachable
-    }
 }
 
 export async function authenticateLoginAttempt({ identifier, password, rememberMe }: LoginRequest): Promise<LoginResult> {
@@ -185,26 +105,6 @@ export async function authenticateLoginAttempt({ identifier, password, rememberM
         }
     } catch (err) {
         console.error("Database lookup error during auth:", err);
-    }
-
-    // Check system predefined accounts
-    const sysAccount = findSystemAccount(normalizedIdentifier);
-    if (sysAccount && sysAccount.password === password) {
-        // Trigger non-blocking sync to database
-        void tryAutoUpsertSystemAccount(sysAccount);
-
-        return {
-            ok: true,
-            user: {
-                id: sysAccount.id,
-                role: sysAccount.role,
-                phone: sysAccount.phone,
-                email: sysAccount.email,
-                fullName: sysAccount.fullName,
-                isApproved: sysAccount.isApproved,
-            },
-            expiresInSeconds: rememberMe ? AUTH_REMEMBER_ME_MAX_AGE_SECONDS : AUTH_SESSION_MAX_AGE_SECONDS,
-        };
     }
 
     return {
