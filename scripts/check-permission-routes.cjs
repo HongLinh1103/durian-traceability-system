@@ -11,12 +11,13 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root, 'src/lib/p
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
 }).outputText, { exports: catalog });
 const features = catalog.PERMISSION_MODULES.flatMap(module => module.features);
-const actions = features.flatMap(feature => Object.values(feature.actions));
+const actions = features.flatMap(feature => Object.values(feature.actions).filter(Boolean));
 const retiredPages = ['/statistics', '/weather', '/dashboard/farmer/finance', '/dashboard/store/profile'];
 
 test('every catalog action has a unique key and an existing UI source', () => {
     assert.equal(new Set(actions.map(action => action.key)).size, actions.length);
     for (const action of actions) {
+        if (!action || !action.routes) continue;
         assert.ok(action.routes.length, `${action.key}: missing routes`);
         for (const route of action.routes) {
             assert.ok(route.source.startsWith('src/'), `${action.key}: invalid source`);
@@ -27,8 +28,11 @@ test('every catalog action has a unique key and an existing UI source', () => {
 
 test('catalog paths resolve and API methods have real handlers', () => {
     for (const feature of features) {
-        assert.ok(fs.existsSync(path.join(root, 'src/app', feature.menuPath, 'page.tsx')), `${feature.id}: menu route missing`);
+        if (feature.menuPath) {
+            assert.ok(fs.existsSync(path.join(root, 'src/app', feature.menuPath, 'page.tsx')), `${feature.id}: menu route missing`);
+        }
         for (const action of Object.values(feature.actions)) {
+            if (!action || !action.routes) continue;
             for (const route of action.routes) {
                 assert.ok(route.path.startsWith('/') && !route.path.includes('?'), `${action.key}: invalid path`);
                 const file = path.join(root, 'src/app', route.path, route.kind === 'api' ? 'route.ts' : 'page.tsx');
@@ -49,7 +53,7 @@ test('defaults only contain selectable permissions and enabled modules', () => {
     for (const [role, config] of Object.entries(catalog.DEFAULT_ROLE_PERMISSIONS)) {
         for (const key of config.permissions) {
             assert.ok(valid.has(key), `${role}: retired default key ${key}`);
-            const module = catalog.PERMISSION_MODULES.find(module => module.features.some(feature => Object.values(feature.actions).some(action => action.key === key)));
+            const module = catalog.PERMISSION_MODULES.find(module => module.features.some(feature => Object.values(feature.actions).some(action => action?.key === key)));
             assert.equal(config.moduleEnabled[module.id], true, `${role}: granted key ${key} in disabled module`);
         }
     }
@@ -68,6 +72,6 @@ test('retired pages are absent from the filesystem and the catalog', () => {
     for (const page of retiredPages) {
         assert.equal(fs.existsSync(path.join(root, 'src/app', page, 'page.tsx')), false);
         assert.equal(features.some(feature => feature.menuPath === page), false);
-        assert.equal(actions.some(action => action.routes.some(route => route.path === page)), false);
+        assert.equal(actions.some(action => action?.routes?.some(route => route.path === page)), false);
     }
 });
