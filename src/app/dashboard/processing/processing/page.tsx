@@ -30,6 +30,7 @@ export default async function Page() {
                 prisma.finishedProductLot.findMany({
                     where: { facilityId: facility.id },
                     include: {
+                        commercialLots: true,
                         processingBatch: {
                             include: {
                                 inputs: {
@@ -117,7 +118,9 @@ export default async function Page() {
 
                     const outW = Number(lot.netWeight || lot.quantity || 0);
                     const inW = Number(lot.processingBatch?.totalInputWeight || outW);
-                    const isAvailable = ["READY_FOR_DISTRIBUTION", "AVAILABLE", "PARTIALLY_DISTRIBUTED"].includes(lot.status) && Number(lot.remainingWeight || 0) > 0;
+                    const remW = Number(lot.remainingWeight || 0);
+                    const commW = (lot.commercialLots || []).reduce((sum: number, c: any) => sum + Number(c.quantity || 0), 0);
+                    const exportedWeight = commW > 0 ? commW : (lot.status === "DISTRIBUTED" ? outW : Math.max(0, outW - remW));
 
                     let boxCount = Math.round(outW / 18) || 1;
                     const boxMatch = (lot.processingBatch?.note || lot.packaging || "").match(/(\d+)\s*(?:thùng|boxes)/i);
@@ -135,11 +138,12 @@ export default async function Page() {
                         farmName,
                         inputWeight: inW,
                         outputWeight: outW,
+                        exportedWeight,
                         packagingDate: lot.manufacturedAt || lot.createdAt,
                         boxCount,
                         packagingSpec: lot.packaging || "3 trái/thùng",
                         note: lot.processingBatch?.note || undefined,
-                        status: isAvailable ? "READY_FOR_EXPORT" : "NOT_READY_FOR_EXPORT",
+                        status: "READY_FOR_EXPORT",
                     });
                 });
 
@@ -159,6 +163,7 @@ export default async function Page() {
                     farmName,
                     inputWeight: freshW,
                     outputWeight: undefined,
+                    exportedWeight: undefined,
                     packagingDate: raw.classifiedAt || raw.createdAt,
                     boxCount: undefined,
                     packagingSpec: "3 trái/thùng",
@@ -178,9 +183,11 @@ export default async function Page() {
                 if (raw?.id) processedTrackedRawIds.add(raw.id);
                 const farm = raw?.rawMaterialReceipt?.sourceHarvestLot?.farm;
                 const hr = raw?.rawMaterialReceipt?.sourceHarvestLot?.harvestRecord;
-                const isReady = ["READY_FOR_DISTRIBUTION", "AVAILABLE", "PARTIALLY_DISTRIBUTED"].includes(lot.status) && Number(lot.remainingWeight || 0) > 0;
                 const outW = Number(lot.netWeight || lot.quantity || 0);
                 const inW = Number(lot.processingBatch?.totalInputWeight || outW);
+                const remW = Number(lot.remainingWeight || 0);
+                const commW = (lot.commercialLots || []).reduce((sum: number, c: any) => sum + Number(c.quantity || 0), 0);
+                const exportedWeight = commW > 0 ? commW : (lot.status === "DISTRIBUTED" ? outW : Math.max(0, outW - remW));
 
                 let packageCount = "";
                 const pkgMatch = (lot.packaging || lot.processingBatch?.note || "").match(/(\d+\s*khay)/i);
@@ -204,11 +211,12 @@ export default async function Page() {
                     inputWeight: inW,
                     outputProduct: lot.productName || "Cơm sầu riêng bóc múi hút chân không (Khay 500g)",
                     outputWeight: outW,
+                    exportedWeight,
                     packageCount: packageCount || "218 khay",
                     packagingSpec: lot.packaging || undefined,
                     completedAt: lot.manufacturedAt || lot.createdAt,
                     note: lot.processingBatch?.note || undefined,
-                    status: isReady ? "COMPLETED" : "NOT_READY_FOR_EXPORT",
+                    status: "COMPLETED",
                 });
             });
 
@@ -237,6 +245,7 @@ export default async function Page() {
                     inputWeight: inputW,
                     outputProduct: batch?.targetProduct || "Cơm sầu riêng bóc múi hút chân không (Khay 500g)",
                     outputWeight: batch ? Number(batch.totalOutputWeight || 0) : undefined,
+                    exportedWeight: undefined,
                     packageCount,
                     completedAt: batch?.completedAt || (batch?.status === "COMPLETED" ? batch.updatedAt : undefined),
                     status: batch ? "IN_PROGRESS" : "PENDING",

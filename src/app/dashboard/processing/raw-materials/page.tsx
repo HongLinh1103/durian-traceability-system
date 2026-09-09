@@ -177,7 +177,7 @@ export default async function Page() {
                 rejectedFruitCount: rejFruitCount,
                 deliveryMethod: hr?.deliveryMethod || undefined,
                 transactionNote: hr?.transactionNote || undefined,
-                note: row.rawMaterialReceipt?.note || undefined,
+                note: meta.note || row.rawMaterialReceipt?.note || undefined,
             });
         });
 

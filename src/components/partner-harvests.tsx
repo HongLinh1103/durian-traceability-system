@@ -35,6 +35,7 @@ import {
     formatStatusLabel,
 } from "@/lib/processing-facility";
 import { formatVietnameseDate, formatVietnameseDateTime } from "@/lib/date-format";
+import { DateTimePicker24h } from "@/components/ui/date-time-picker-24h";
 
 export type HarvestRow = {
     id: string;
@@ -912,12 +913,10 @@ function ReceiveModal({
                         <label className="block text-xs font-bold uppercase tracking-wide text-slate-700 mb-1">
                             Ngày giờ nhận *
                         </label>
-                        <input
-                            type="datetime-local"
+                        <DateTimePicker24h
                             name="receivedAt"
                             defaultValue={new Date().toISOString().slice(0, 16)}
                             required
-                            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-800 shadow-sm focus:border-brand-500 focus:outline-none"
                         />
                     </div>
                     <div>
@@ -1105,12 +1104,10 @@ function QcFormModal({
                             <label className="block text-xs font-bold uppercase tracking-wide text-slate-700 mb-1">
                                 Ngày giờ kiểm tra *
                             </label>
-                            <input
-                                type="datetime-local"
+                            <DateTimePicker24h
                                 value={inspectedAt}
-                                onChange={(e) => setInspectedAt(e.target.value)}
+                                onChange={setInspectedAt}
                                 required
-                                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-800 shadow-sm focus:border-brand-500 focus:outline-none"
                             />
                         </div>
                         <div>
@@ -2004,13 +2001,13 @@ function IssueRawMaterialModal({
                         <label className="text-xs font-bold text-slate-700">
                             Ngày giờ xuất <span className="text-rose-600">*</span>
                         </label>
-                        <input
-                            type="datetime-local"
-                            required
-                            value={startedAt}
-                            onChange={(e) => setStartedAt(e.target.value)}
-                            className="mt-1 w-full rounded-2xl border border-slate-200 p-2.5 text-xs sm:text-sm text-slate-800 focus:border-brand-500 focus:outline-none"
-                        />
+                        <div className="mt-1">
+                            <DateTimePicker24h
+                                required
+                                value={startedAt}
+                                onChange={setStartedAt}
+                            />
+                        </div>
                     </div>
 
                     <div>

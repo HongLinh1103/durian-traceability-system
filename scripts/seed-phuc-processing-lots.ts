@@ -184,10 +184,10 @@ async function main() {
                 startedAt: completedAt,
                 completedAt: completedAt,
                 supervisorId: facility.ownerId,
-                totalInputWeight: 241,
+                totalInputWeight: 262,
                 totalOutputWeight: 109,
-                lossWeight: 132,
-                yieldPercent: 45.23,
+                lossWeight: 153,
+                yieldPercent: 41.60,
                 status: "COMPLETED",
                 note: "Bóc múi & cấp đông · Số lượng thành phẩm: 218 khay (Khay 500g)",
                 createdAt: completedAt,
@@ -200,10 +200,10 @@ async function main() {
             data: {
                 method: "Bóc múi & cấp đông",
                 targetProduct: "Cơm sầu riêng bóc múi hút chân không (Khay 500g)",
-                totalInputWeight: 241,
+                totalInputWeight: 262,
                 totalOutputWeight: 109,
-                lossWeight: 132,
-                yieldPercent: 45.23,
+                lossWeight: 153,
+                yieldPercent: 41.60,
                 startedAt: completedAt,
                 completedAt: completedAt,
                 status: "COMPLETED",
@@ -224,11 +224,11 @@ async function main() {
         create: {
             processingBatchId: procBatch.id,
             rawMaterialLotId: rawLot.id,
-            inputWeight: 241,
+            inputWeight: 262,
             createdAt: completedAt,
         },
         update: {
-            inputWeight: 241,
+            inputWeight: 262,
         },
     });
 

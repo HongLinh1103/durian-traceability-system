@@ -439,7 +439,7 @@ export function HarvestDetailView({ harvest: initialData }: { harvest: HarvestDa
                         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 sm:p-5 space-y-3 shadow-xs">
                             <h3 className="text-sm sm:text-base font-bold text-emerald-950 flex items-center gap-2">
                                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                                <span>Kết quả thu hoạch & Giao nhận thực tế</span>
+                                <span>Kết quả thu hoạch</span>
                             </h3>
                             <div className="grid gap-3 sm:grid-cols-3 text-xs sm:text-sm">
                                 <div>
@@ -474,7 +474,7 @@ export function HarvestDetailView({ harvest: initialData }: { harvest: HarvestDa
                                 )}
                                 {harvest.actualHarvestedAt && (
                                     <div>
-                                        <p className="text-slate-500">Thời điểm hoàn tất thu:</p>
+                                        <p className="text-slate-500">Thời điểm hoàn tất thu hoạch:</p>
                                         <p className="font-semibold text-slate-800">
                                             {formatVietnameseDateTime(new Date(harvest.actualHarvestedAt))}
                                         </p>

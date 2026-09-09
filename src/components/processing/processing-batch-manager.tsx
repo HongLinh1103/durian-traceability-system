@@ -30,6 +30,7 @@ import {
     calculateYield,
     type ProcessingStepKey,
 } from "@/lib/processing-facility";
+import { DateTimePicker24h } from "@/components/ui/date-time-picker-24h";
 
 export type ProcessingStepItem = {
     id: string;
@@ -892,23 +893,23 @@ function StepExecutionModal({
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="text-xs font-bold text-slate-700">Bắt đầu *</label>
-                                <input
-                                    type="datetime-local"
-                                    required
-                                    value={cleaningStartedAt}
-                                    onChange={(e) => setCleaningStartedAt(e.target.value)}
-                                    className="mt-1 w-full rounded-2xl border border-slate-200 p-2 text-xs"
-                                />
+                                <div className="mt-1">
+                                    <DateTimePicker24h
+                                        required
+                                        value={cleaningStartedAt}
+                                        onChange={setCleaningStartedAt}
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-700">Hoàn tất *</label>
-                                <input
-                                    type="datetime-local"
-                                    required
-                                    value={cleaningCompletedAt}
-                                    onChange={(e) => setCleaningCompletedAt(e.target.value)}
-                                    className="mt-1 w-full rounded-2xl border border-slate-200 p-2 text-xs"
-                                />
+                                <div className="mt-1">
+                                    <DateTimePicker24h
+                                        required
+                                        value={cleaningCompletedAt}
+                                        onChange={setCleaningCompletedAt}
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -973,23 +974,23 @@ function StepExecutionModal({
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="text-xs font-bold text-slate-700">Bắt đầu *</label>
-                                <input
-                                    type="datetime-local"
-                                    required
-                                    value={peelingStartedAt}
-                                    onChange={(e) => setPeelingStartedAt(e.target.value)}
-                                    className="mt-1 w-full rounded-2xl border border-slate-200 p-2 text-xs"
-                                />
+                                <div className="mt-1">
+                                    <DateTimePicker24h
+                                        required
+                                        value={peelingStartedAt}
+                                        onChange={setPeelingStartedAt}
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-700">Hoàn tất *</label>
-                                <input
-                                    type="datetime-local"
-                                    required
-                                    value={peelingCompletedAt}
-                                    onChange={(e) => setPeelingCompletedAt(e.target.value)}
-                                    className="mt-1 w-full rounded-2xl border border-slate-200 p-2 text-xs"
-                                />
+                                <div className="mt-1">
+                                    <DateTimePicker24h
+                                        required
+                                        value={peelingCompletedAt}
+                                        onChange={setPeelingCompletedAt}
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -1069,23 +1070,23 @@ function StepExecutionModal({
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="text-xs font-bold text-slate-700">Bắt đầu *</label>
-                                <input
-                                    type="datetime-local"
-                                    required
-                                    value={rejectStartedAt}
-                                    onChange={(e) => setRejectStartedAt(e.target.value)}
-                                    className="mt-1 w-full rounded-2xl border border-slate-200 p-2 text-xs"
-                                />
+                                <div className="mt-1">
+                                    <DateTimePicker24h
+                                        required
+                                        value={rejectStartedAt}
+                                        onChange={setRejectStartedAt}
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-700">Hoàn tất *</label>
-                                <input
-                                    type="datetime-local"
-                                    required
-                                    value={rejectCompletedAt}
-                                    onChange={(e) => setRejectCompletedAt(e.target.value)}
-                                    className="mt-1 w-full rounded-2xl border border-slate-200 p-2 text-xs"
-                                />
+                                <div className="mt-1">
+                                    <DateTimePicker24h
+                                        required
+                                        value={rejectCompletedAt}
+                                        onChange={setRejectCompletedAt}
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -1150,13 +1151,13 @@ function StepExecutionModal({
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="text-xs font-bold text-slate-700">Ngày giờ cân *</label>
-                                <input
-                                    type="datetime-local"
-                                    required
-                                    value={weighingDate}
-                                    onChange={(e) => setWeighingDate(e.target.value)}
-                                    className="mt-1 w-full rounded-2xl border border-slate-200 p-2 text-xs"
-                                />
+                                <div className="mt-1">
+                                    <DateTimePicker24h
+                                        required
+                                        value={weighingDate}
+                                        onChange={setWeighingDate}
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-700">Người cân *</label>
@@ -1269,13 +1270,13 @@ function StepExecutionModal({
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="text-xs font-bold text-slate-700">Ngày giờ hoàn tất *</label>
-                                <input
-                                    type="datetime-local"
-                                    required
-                                    value={packCompletedAt}
-                                    onChange={(e) => setPackCompletedAt(e.target.value)}
-                                    className="mt-1 w-full rounded-2xl border border-slate-200 p-2 text-xs"
-                                />
+                                <div className="mt-1">
+                                    <DateTimePicker24h
+                                        required
+                                        value={packCompletedAt}
+                                        onChange={setPackCompletedAt}
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-700">Người phụ trách *</label>

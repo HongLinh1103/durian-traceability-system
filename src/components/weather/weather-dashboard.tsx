@@ -256,7 +256,7 @@ export function WeatherDashboard({ role }: { role: "FARMER" | "AREA_MANAGER" }) 
                         <div>
                             <p className="text-xs font-bold uppercase tracking-[0.22em] text-sky-200">TriViet Weather</p>
                             <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Dự báo thời tiết</h1>
-                            <time className="mt-2 block text-sm text-sky-100" dateTime={currentTime.toISOString()}>Cập nhật lúc {currentTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</time>
+                            <time className="mt-2 block text-sm text-sky-100" dateTime={currentTime.toISOString()}>Cập nhật lúc {currentTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}</time>
                         </div>
                         <div className="rounded-full bg-white/10 px-4 py-2 text-xs text-sky-50 backdrop-blur">Tự động cập nhật mỗi 10 phút</div>
                     </div>
@@ -380,7 +380,7 @@ function CurrentWeather({ weather }: { weather: Weather }) {
                                     const HourIcon = presentation.icon;
                                     const thunderstorm = [95, 96, 99].includes(hour.weatherCode);
                                     return <div key={hour.time} className="flex min-w-[88px] flex-col items-center rounded-2xl border border-slate-100 bg-white px-3 py-3 text-center shadow-sm">
-                                        <time className="text-xs font-semibold text-slate-600" dateTime={hour.time}>{new Date(hour.time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</time>
+                                        <time className="text-xs font-semibold text-slate-600" dateTime={hour.time}>{new Date(hour.time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}</time>
                                         <HourIcon className={`my-2 h-7 w-7 ${weatherIconColor(hour.weatherCode, hour.isDay)}`} aria-hidden="true" />
                                         <span className="sr-only">{presentation.label}</span>
                                         <b className="text-base text-slate-900">{Math.round(hour.temperature)}°</b>
@@ -403,7 +403,7 @@ function CurrentWeather({ weather }: { weather: Weather }) {
                                         <polyline points={points} fill="none" stroke={metric === "temperature" ? "#eab308" : metric === "rain" ? "#0284c7" : "#64748b"} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
                                     </svg>
                                     <div className="absolute inset-x-0 top-0 flex justify-between">
-                                        {chartHours.map((hour, index) => <div key={hour.time} className="flex w-16 flex-col items-center text-xs"><b className="text-slate-500">{values[index]}{unit}</b><span className="mt-28 text-slate-500">{new Date(hour.time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span></div>)}
+                                        {chartHours.map((hour, index) => <div key={hour.time} className="flex w-16 flex-col items-center text-xs"><b className="text-slate-500">{values[index]}{unit}</b><span className="mt-28 text-slate-500">{new Date(hour.time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}</span></div>)}
                                     </div>
                                 </div>
                             </div>
@@ -425,7 +425,7 @@ function CurrentWeather({ weather }: { weather: Weather }) {
                                 );
                             })}
                         </div>
-                        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-xs text-slate-500"><span>Nguồn: Open-Meteo · Dữ liệu theo tọa độ, tự làm mới mỗi 10 phút</span><span>Cập nhật lúc {new Date(weather.fetchedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span></div>
+                        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-xs text-slate-500"><span>Nguồn: Open-Meteo · Dữ liệu theo tọa độ, tự làm mới mỗi 10 phút</span><span>Cập nhật lúc {new Date(weather.fetchedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}</span></div>
                     </div>
                 </CardContent>
             </Card>

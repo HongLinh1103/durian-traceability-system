@@ -130,7 +130,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
         items: [
             { label: "Tổng quan", href: "/dashboard/processing", icon: Home },
             { label: "Tiếp nhận", href: "/dashboard/processing/raw-materials", icon: Boxes, badgeKey: "processingIncoming", matches: ["/dashboard/processing/raw-materials"] },
-            { label: "Chế biến", href: "/dashboard/processing/processing", icon: Factory, matches: ["/dashboard/processing/processing"] },
+            { label: "Chế biến", href: "/dashboard/processing/processing", icon: Factory, badgeKey: "processingReady", matches: ["/dashboard/processing/processing"] },
             { label: "Xuất hàng", href: "/dashboard/processing/shipments", icon: Package, matches: ["/dashboard/processing/shipments"] },
         ],
         actions: [
@@ -200,7 +200,8 @@ export function MobileBottomNavigation() {
                     const payload = await response.json();
                     if (!payload.success || cancelled) return;
                     const processingIncoming = payload.actionRequiredCount ?? 0;
-                    setBadges({ processingIncoming });
+                    const processingReady = payload.processingReadyCount ?? 0;
+                    setBadges({ processingIncoming, processingReady });
                     return;
                 }
 
@@ -212,9 +213,11 @@ export function MobileBottomNavigation() {
 
         void fetchBadges();
         const interval = window.setInterval(fetchBadges, 60_000);
+        window.addEventListener("processing-classified-updated", fetchBadges);
         return () => {
             cancelled = true;
             window.clearInterval(interval);
+            window.removeEventListener("processing-classified-updated", fetchBadges);
         };
     }, [effectiveRole]);
 

@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { getStatusBadgeVariant } from "@/lib/processing-facility";
 import { QrCodeViewerModal, QrModalData } from "@/components/traceability/qr-code-viewer-modal";
 import { formatVietnameseDate } from "@/lib/date-format";
+import { DateTimePicker24h } from "@/components/ui/date-time-picker-24h";
 
 export type FinishedProductLotItem = {
     id: string;
@@ -742,13 +743,13 @@ function FinishedQcModal({
 
                     <div>
                         <label className="text-xs font-bold text-slate-700">Ngày giờ kiểm tra *</label>
-                        <input
-                            type="datetime-local"
-                            required
-                            value={inspectedAt}
-                            onChange={(e) => setInspectedAt(e.target.value)}
-                            className="mt-1 w-full rounded-2xl border border-slate-200 p-2 text-xs"
-                        />
+                        <div className="mt-1">
+                            <DateTimePicker24h
+                                required
+                                value={inspectedAt}
+                                onChange={setInspectedAt}
+                            />
+                        </div>
                     </div>
 
                     <div className="sm:col-span-2">
@@ -910,13 +911,13 @@ function WarehouseInModal({
 
                     <div>
                         <label className="text-xs font-bold text-slate-700">Ngày giờ nhập kho *</label>
-                        <input
-                            type="datetime-local"
-                            required
-                            value={warehousedAt}
-                            onChange={(e) => setWarehousedAt(e.target.value)}
-                            className="mt-1 w-full rounded-2xl border border-slate-200 p-2 text-xs"
-                        />
+                        <div className="mt-1">
+                            <DateTimePicker24h
+                                required
+                                value={warehousedAt}
+                                onChange={setWarehousedAt}
+                            />
+                        </div>
                     </div>
 
                     <div>

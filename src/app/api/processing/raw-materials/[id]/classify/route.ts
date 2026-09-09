@@ -109,11 +109,20 @@ export async function POST(request: Request, { params }: { params: { id: string 
             },
         });
 
-        const fruitSummary = [
+        const fruitParts = [
             value.freshExportFruitCount ? `Trái tươi: ${value.freshExportFruitCount} trái` : "",
-            value.processingFruitCount ? `Chế biến: ${value.processingFruitCount} trái` : "",
-            value.rejectedFruitCount ? `Loại bỏ: ${value.rejectedFruitCount} trái` : "",
-        ].filter(Boolean).join(" · ");
+            value.processingFruitCount ? `Chế biến khác: ${value.processingFruitCount} trái` : "",
+            (value.rejectedFruitCount && value.rejectedFruitCount > 0) ? `Loại bỏ: ${value.rejectedFruitCount} trái` : "",
+        ].filter(Boolean);
+        const fruitSummary = fruitParts.join(" · ");
+
+        const descParts = [
+            `Trái tươi xuất khẩu: ${value.freshExportWeight.toLocaleString("vi-VN")} kg${value.freshExportFruitCount ? ` (${value.freshExportFruitCount} trái)` : ""}`,
+            `Chuyển chế biến khác: ${value.processingWeight.toLocaleString("vi-VN")} kg${value.processingFruitCount ? ` (${value.processingFruitCount} trái)` : ""}`,
+            (value.rejectedWeight > 0 || (value.rejectedFruitCount && value.rejectedFruitCount > 0))
+                ? `Không đạt/loại bỏ: ${value.rejectedWeight.toLocaleString("vi-VN")} kg${value.rejectedFruitCount ? ` (${value.rejectedFruitCount} trái)` : ""}`
+                : "",
+        ].filter(Boolean);
 
         await tx.traceEvent.create({
             data: {
@@ -126,7 +135,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
                 organizationType: "PROCESSING_FACILITY",
                 organizationId: lot.facilityId,
                 title: "Tiếp nhận và phân loại nguyên liệu",
-                description: `Trái tươi xuất khẩu: ${value.freshExportWeight.toLocaleString("vi-VN")} kg${value.freshExportFruitCount ? ` (${value.freshExportFruitCount} trái)` : ""} · Chuyển chế biến: ${value.processingWeight.toLocaleString("vi-VN")} kg${value.processingFruitCount ? ` (${value.processingFruitCount} trái)` : ""} · Không đạt/loại bỏ: ${value.rejectedWeight.toLocaleString("vi-VN")} kg${value.rejectedFruitCount ? ` (${value.rejectedFruitCount} trái)` : ""}`,
+                description: descParts.join(" · "),
                 metadata: {
                     direction,
                     freshExportWeight: value.freshExportWeight,
@@ -137,6 +146,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
                     rejectedFruitCount: value.rejectedFruitCount,
                     totalActualWeight: totalInput,
                     fruitSummary,
+                    note: value.note,
                 },
                 isPublic: true,
             },

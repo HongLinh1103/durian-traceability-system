@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ModalPortal } from "@/components/ui/modal-portal";
 import { formatVietnameseDate, formatVietnameseDateTime } from "@/lib/date-format";
+import { DateTimePicker24h } from "@/components/ui/date-time-picker-24h";
 
 export type RawMaterialItem = {
     id: string;
@@ -96,8 +97,6 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
     const [freshFruitCountInput, setFreshFruitCountInput] = useState<number | string>("");
     const [procWeightInput, setProcWeightInput] = useState<number | string>("");
     const [procFruitCountInput, setProcFruitCountInput] = useState<number | string>("");
-    const [rejectWeightInput, setRejectWeightInput] = useState<number | string>("");
-    const [rejectFruitCountInput, setRejectFruitCountInput] = useState<number | string>("");
     const [classifyNoteInput, setClassifyNoteInput] = useState("");
     const [submittingClassify, setSubmittingClassify] = useState(false);
 
@@ -365,52 +364,39 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
     // Handler: Open Classify Drawer
     const handleOpenClassify = (item: RawMaterialItem) => {
         setClassifyingItem(item);
-        const totalW = item.actualReceivedWeight || item.declaredWeight || 0;
-        const totalF = item.actualFruitCount || item.declaredFruitCount || (totalW > 0 ? Math.round(totalW / 3) : 0);
-
-        if (item.freshExportWeight !== undefined || item.processingWeight !== undefined) {
-            setFreshWeightInput(item.freshExportWeight || 0);
-            setProcWeightInput(item.processingWeight || 0);
-            setRejectWeightInput(item.rejectedWeight || Math.max(0, totalW - ((item.freshExportWeight || 0) + (item.processingWeight || 0))));
-            setFreshFruitCountInput(item.freshExportFruitCount !== undefined ? item.freshExportFruitCount : Math.round((item.freshExportWeight || 0) / 3));
-            setProcFruitCountInput(item.processingFruitCount !== undefined ? item.processingFruitCount : Math.round((item.processingWeight || 0) / 3));
-            setRejectFruitCountInput(item.rejectedFruitCount !== undefined ? item.rejectedFruitCount : Math.max(0, totalF - (((item.freshExportFruitCount || Math.round((item.freshExportWeight || 0) / 3))) + ((item.processingFruitCount || Math.round((item.processingWeight || 0) / 3))))));
+        const isClassified = item.status === "CLASSIFIED" || item.direction !== "UNCLASSIFIED" || item.freshExportWeight !== undefined || item.processingWeight !== undefined;
+        if (isClassified) {
+            // Đối với các phiếu ở trạng thái "Đã phân loại": lưu lại/điền lại các dữ liệu đã nhập trong các ô
+            setFreshWeightInput(item.freshExportWeight !== undefined ? item.freshExportWeight : "");
+            setFreshFruitCountInput(item.freshExportFruitCount !== undefined ? item.freshExportFruitCount : "");
+            setProcWeightInput(item.processingWeight !== undefined ? item.processingWeight : "");
+            setProcFruitCountInput(item.processingFruitCount !== undefined ? item.processingFruitCount : "");
+            setClassifyNoteInput(item.note || "");
         } else {
-            // Default: 75% Fresh Export, 23% Processing, 2% Reject
-            const freshW = Math.round(totalW * 0.75);
-            const procW = Math.round(totalW * 0.23);
-            const rejW = Math.max(0, totalW - (freshW + procW));
-            setFreshWeightInput(freshW);
-            setProcWeightInput(procW);
-            setRejectWeightInput(rejW);
-
-            const freshF = Math.round(totalF * 0.75);
-            const procF = Math.round(totalF * 0.23);
-            const rejF = Math.max(0, totalF - (freshF + procF));
-            setFreshFruitCountInput(freshF);
-            setProcFruitCountInput(procF);
-            setRejectFruitCountInput(rejF);
+            // Đối với phiếu chưa phân loại: để trống các ô để người dùng tự nhập
+            setFreshWeightInput("");
+            setFreshFruitCountInput("");
+            setProcWeightInput("");
+            setProcFruitCountInput("");
+            setClassifyNoteInput("");
         }
-        setClassifyNoteInput("");
     };
 
-    // Live Classification Validation (both weight and fruit count)
+    // Live Classification Validation (both weight and fruit count) - 2 branches: Trái tươi & Chế biến khác
     const classificationValidation = useMemo(() => {
-        if (!classifyingItem) return { totalInput: 0, currentSum: 0, diff: 0, isValid: false, fresh: 0, proc: 0, rej: 0, totalFruits: 0, currentFruitSum: 0, fruitDiff: 0, freshF: 0, procF: 0, rejF: 0, isWeightValid: false, isFruitValid: true };
+        if (!classifyingItem) return { totalInput: 0, currentSum: 0, diff: 0, isValid: false, fresh: 0, proc: 0, totalFruits: 0, currentFruitSum: 0, fruitDiff: 0, freshF: 0, procF: 0, isWeightValid: false, isFruitValid: true };
         const totalInput = classifyingItem.actualReceivedWeight || classifyingItem.declaredWeight || 0;
         const totalFruits = classifyingItem.actualFruitCount || classifyingItem.declaredFruitCount || 0;
 
         const fresh = Number(freshWeightInput) || 0;
         const proc = Number(procWeightInput) || 0;
-        const rej = Number(rejectWeightInput) || 0;
-        const currentSum = fresh + proc + rej;
+        const currentSum = fresh + proc;
         const diff = Number((currentSum - totalInput).toFixed(2));
         const isWeightValid = Math.abs(diff) <= 0.01 && currentSum > 0;
 
         const freshF = Number(freshFruitCountInput) || 0;
         const procF = Number(procFruitCountInput) || 0;
-        const rejF = Number(rejectFruitCountInput) || 0;
-        const currentFruitSum = freshF + procF + rejF;
+        const currentFruitSum = freshF + procF;
         const fruitDiff = totalFruits > 0 ? currentFruitSum - totalFruits : 0;
         const isFruitValid = totalFruits > 0 ? fruitDiff === 0 : currentFruitSum > 0;
 
@@ -422,28 +408,26 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
             diff,
             fresh,
             proc,
-            rej,
             totalFruits,
             currentFruitSum,
             fruitDiff,
             freshF,
             procF,
-            rejF,
             isWeightValid,
             isFruitValid,
             isValid,
         };
-    }, [classifyingItem, freshWeightInput, procWeightInput, rejectWeightInput, freshFruitCountInput, procFruitCountInput, rejectFruitCountInput]);
+    }, [classifyingItem, freshWeightInput, procWeightInput, freshFruitCountInput, procFruitCountInput]);
 
     // Handler: Confirm Classification
     const handleConfirmClassify = async () => {
         if (!classifyingItem) return;
-        const { totalInput, currentSum, diff, isValid, fresh = 0, proc = 0, rej = 0, totalFruits, currentFruitSum, fruitDiff, freshF = 0, procF = 0, rejF = 0 } = classificationValidation;
+        const { totalInput, currentSum, diff, isValid, fresh = 0, proc = 0, totalFruits, currentFruitSum, fruitDiff, freshF = 0, procF = 0 } = classificationValidation;
 
         if (!isValid) {
             let msg = "";
             if (Math.abs(diff) > 0.01) {
-                msg = `Tổng 3 phần (${currentSum.toLocaleString("vi-VN")} kg) phải bằng đúng khối lượng thực nhận (${totalInput.toLocaleString("vi-VN")} kg). Chênh lệch: ${diff > 0 ? `+${diff}` : diff} kg.`;
+                msg = `Tổng 2 phần (${currentSum.toLocaleString("vi-VN")} kg) phải bằng đúng khối lượng thực nhận (${totalInput.toLocaleString("vi-VN")} kg). Chênh lệch: ${diff > 0 ? `+${diff}` : diff} kg.`;
             } else if (totalFruits > 0 && fruitDiff !== 0) {
                 msg = `Tổng số lượng trái (${currentFruitSum.toLocaleString("vi-VN")} trái) phải bằng đúng số lượng trái thực nhận (${totalFruits.toLocaleString("vi-VN")} trái). Chênh lệch: ${fruitDiff > 0 ? `+${fruitDiff}` : fruitDiff} trái.`;
             } else {
@@ -469,8 +453,8 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                     freshExportFruitCount: freshF,
                     processingWeight: proc,
                     processingFruitCount: procF,
-                    rejectedWeight: rej,
-                    rejectedFruitCount: rejF,
+                    rejectedWeight: 0,
+                    rejectedFruitCount: 0,
                     note: classifyNoteInput,
                 }),
             });
@@ -482,7 +466,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
 
             toast({
                 title: "Phân loại thành công",
-                description: `Đã phân loại ${totalInput.toLocaleString("vi-VN")} kg (Trái tươi: ${fresh} kg / ${freshF} trái, Chế biến: ${proc} kg / ${procF} trái, Loại bỏ: ${rej} kg / ${rejF} trái). Dữ liệu đã chuyển sang Chế biến & Đóng gói.`,
+                description: `Đã phân loại ${totalInput.toLocaleString("vi-VN")} kg (Trái tươi: ${fresh} kg / ${freshF} trái, Chế biến khác: ${proc} kg / ${procF} trái). Dữ liệu đã chuyển sang Chế biến & Đóng gói.`,
                 variant: "success",
             });
 
@@ -496,10 +480,11 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                             freshExportFruitCount: freshF,
                             processingWeight: proc,
                             processingFruitCount: procF,
-                            rejectedWeight: rej,
-                            rejectedFruitCount: rejF,
+                            rejectedWeight: 0,
+                            rejectedFruitCount: 0,
                             direction: fresh > 0 && proc > 0 ? "SPLIT" : fresh > 0 ? "FRESH_EXPORT" : "PROCESSING",
                             status: "CLASSIFIED",
+                            note: classifyNoteInput || i.note,
                         }
                         : i
                 )
@@ -516,13 +501,18 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                     freshExportFruitCount: freshF,
                     processingWeight: proc,
                     processingFruitCount: procF,
-                    rejectedWeight: rej,
-                    rejectedFruitCount: rejF,
+                    rejectedWeight: 0,
+                    rejectedFruitCount: 0,
                     status: "CLASSIFIED",
                     classifiedAt: new Date().toISOString(),
                 };
                 const filtered = existing.filter((x: any) => x.id !== lotEntry.id);
                 localStorage.setItem("processing_classified_lots", JSON.stringify([...filtered, lotEntry]));
+            } catch { }
+
+            // Notify navigation that a new lot has been classified for Chế biến & Đóng gói
+            try {
+                window.dispatchEvent(new CustomEvent("processing-classified-updated", { detail: { lotId } }));
             } catch { }
 
             setClassifyingItem(null);
@@ -1086,15 +1076,12 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                             <label className="block text-xs font-bold text-slate-700 mb-1">
                                                 Khối lượng khai báo (kg) <span className="text-slate-400 font-normal">(từ phiếu Farm)</span>
                                             </label>
-                                            <div className="relative">
-                                                <input
-                                                    type="number"
-                                                    value={receivingItem.declaredWeight}
-                                                    readOnly
-                                                    className="h-10 w-full rounded-xl border border-slate-300 bg-slate-100 px-3 font-mono text-xs font-bold text-slate-800 cursor-not-allowed focus:outline-none"
-                                                />
-                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">kg</span>
-                                            </div>
+                                            <input
+                                                type="number"
+                                                value={receivingItem.declaredWeight}
+                                                readOnly
+                                                className="h-10 w-full rounded-xl border border-slate-300 bg-slate-100 px-3 font-mono text-xs font-bold text-slate-800 cursor-not-allowed focus:outline-none"
+                                            />
                                             <p className="mt-1 text-[10px] text-slate-500 italic">KL nông dân cân tại vườn khi giao</p>
                                         </div>
 
@@ -1103,16 +1090,13 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                             <label className="block text-xs font-bold text-slate-700 mb-1">
                                                 Khối lượng thực nhận (kg) <span className="text-rose-500">*</span>
                                             </label>
-                                            <div className="relative">
-                                                <input
-                                                    type="number"
-                                                    value={actualWeightInput}
-                                                    onChange={(e) => setActualWeightInput(e.target.value)}
-                                                    placeholder="Nhập KL cân tại cổng xưởng..."
-                                                    className="h-10 w-full rounded-xl border border-emerald-400 bg-white px-3 font-mono text-xs font-bold text-emerald-900 focus:border-emerald-600 focus:outline-none ring-2 ring-emerald-500/20"
-                                                />
-                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-700">kg</span>
-                                            </div>
+                                            <input
+                                                type="number"
+                                                value={actualWeightInput}
+                                                onChange={(e) => setActualWeightInput(e.target.value)}
+                                                placeholder="Nhập KL cân tại cổng xưởng..."
+                                                className="h-10 w-full rounded-xl border border-emerald-400 bg-white px-3 font-mono text-xs font-bold text-emerald-900 focus:border-emerald-600 focus:outline-none ring-2 ring-emerald-500/20"
+                                            />
                                             <p className="mt-1 text-[10px] text-emerald-700 font-medium">KL cân thực tế khi dỡ hàng xuống kho xưởng</p>
                                         </div>
                                     </div>
@@ -1123,16 +1107,13 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                             <label className="block text-xs font-bold text-slate-700 mb-1">
                                                 Số lượng trái thực nhận (trái) <span className="text-rose-500">*</span>
                                             </label>
-                                            <div className="relative">
-                                                <input
-                                                    type="number"
-                                                    value={actualFruitCountInput}
-                                                    onChange={(e) => setActualFruitCountInput(e.target.value)}
-                                                    placeholder="Nhập số lượng trái đếm được..."
-                                                    className="h-10 w-full rounded-xl border border-emerald-400 bg-white px-3 font-mono text-xs font-bold text-emerald-900 focus:border-emerald-600 focus:outline-none"
-                                                />
-                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-700">trái</span>
-                                            </div>
+                                            <input
+                                                type="number"
+                                                value={actualFruitCountInput}
+                                                onChange={(e) => setActualFruitCountInput(e.target.value)}
+                                                placeholder="Nhập số lượng trái đếm được..."
+                                                className="h-10 w-full rounded-xl border border-emerald-400 bg-white px-3 font-mono text-xs font-bold text-emerald-900 focus:border-emerald-600 focus:outline-none"
+                                            />
                                             <p className="mt-1 text-[10px] text-slate-500">Đếm thực tế lúc bốc dỡ vào kho (khai báo: {receivingItem.declaredFruitCount || "—"})</p>
                                         </div>
 
@@ -1166,11 +1147,9 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                         <div>
                                             <label className="block text-xs font-bold text-slate-700 mb-1">Ngày giờ tiếp nhận</label>
-                                            <input
-                                                type="datetime-local"
+                                            <DateTimePicker24h
                                                 value={receivedAtInput}
-                                                onChange={(e) => setReceivedAtInput(e.target.value)}
-                                                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                                onChange={setReceivedAtInput}
                                             />
                                         </div>
 
@@ -1261,10 +1240,10 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                     </div>
                                 </div>
 
-                                {/* 3 Classification Inputs (Khối lượng + Số lượng trái) */}
+                                {/* 2 Classification Inputs (Khối lượng + Số lượng trái) */}
                                 <div className="space-y-3 pt-1">
                                     <label className="block text-xs font-black uppercase tracking-wide text-slate-800">
-                                        Phân chia khối lượng & số lượng trái (3 phần)
+                                        Phân chia khối lượng & số lượng trái (2 phần)
                                     </label>
 
                                     {/* Phần 1: Trái tươi */}
@@ -1282,7 +1261,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                                     type="number"
                                                     value={freshWeightInput}
                                                     onChange={(e) => setFreshWeightInput(e.target.value)}
-                                                    placeholder="Ví dụ: 1800"
+                                                    placeholder="Nhập số kg..."
                                                     className="h-10 w-full rounded-xl border border-emerald-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
                                                 />
                                             </div>
@@ -1292,7 +1271,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                                     type="number"
                                                     value={freshFruitCountInput}
                                                     onChange={(e) => setFreshFruitCountInput(e.target.value)}
-                                                    placeholder="Ví dụ: 600"
+                                                    placeholder="Nhập số trái..."
                                                     className="h-10 w-full rounded-xl border border-emerald-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
                                                 />
                                             </div>
@@ -1314,7 +1293,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                                     type="number"
                                                     value={procWeightInput}
                                                     onChange={(e) => setProcWeightInput(e.target.value)}
-                                                    placeholder="Ví dụ: 620"
+                                                    placeholder="Nhập số kg..."
                                                     className="h-10 w-full rounded-xl border border-indigo-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
                                                 />
                                             </div>
@@ -1324,41 +1303,43 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                                     type="number"
                                                     value={procFruitCountInput}
                                                     onChange={(e) => setProcFruitCountInput(e.target.value)}
-                                                    placeholder="Ví dụ: 200"
+                                                    placeholder="Nhập số trái..."
                                                     className="h-10 w-full rounded-xl border border-indigo-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
                                                 />
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Phần 3: Không đạt / loại bỏ */}
-                                    <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-3.5 space-y-2">
-                                        <div className="flex justify-between items-center">
-                                            <label className="text-xs font-bold text-rose-950 flex items-center gap-1.5">
-                                                <span>🗑️ 3. Không đạt / loại bỏ</span>
-                                            </label>
-                                            <span className="text-[10px] text-rose-700 font-bold">Lọc bỏ / hư hại</span>
+                                    {/* Bảng đối soát số liệu phân loại */}
+                                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 space-y-2 text-xs">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-bold text-slate-700">Đối soát phân loại:</span>
+                                            <span className={classificationValidation.isValid ? "font-bold text-emerald-700" : "font-bold text-amber-600"}>
+                                                {classificationValidation.isValid ? "✓ Đã khớp số liệu" : "Chờ nhập đủ & khớp số liệu"}
+                                            </span>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-slate-200/60">
                                             <div>
-                                                <span className="block text-[11px] font-semibold text-rose-900 mb-1">Khối lượng (kg) *</span>
-                                                <input
-                                                    type="number"
-                                                    value={rejectWeightInput}
-                                                    onChange={(e) => setRejectWeightInput(e.target.value)}
-                                                    placeholder="Ví dụ: 40"
-                                                    className="h-10 w-full rounded-xl border border-rose-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
-                                                />
+                                                <span className="text-slate-500 block">Tổng KL đã chia:</span>
+                                                <span className={`font-mono font-bold ${classificationValidation.isWeightValid ? "text-emerald-700" : "text-amber-700"}`}>
+                                                    {classificationValidation.currentSum.toLocaleString("vi-VN")} / {classificationValidation.totalInput.toLocaleString("vi-VN")} kg
+                                                </span>
+                                                {!classificationValidation.isWeightValid && classificationValidation.currentSum > 0 && (
+                                                    <span className="block text-[10px] text-amber-600 italic">
+                                                        ({classificationValidation.diff > 0 ? `Thừa +${classificationValidation.diff} kg` : `Còn thiếu ${Math.abs(classificationValidation.diff)} kg`})
+                                                    </span>
+                                                )}
                                             </div>
                                             <div>
-                                                <span className="block text-[11px] font-semibold text-rose-900 mb-1">Số lượng (trái) *</span>
-                                                <input
-                                                    type="number"
-                                                    value={rejectFruitCountInput}
-                                                    onChange={(e) => setRejectFruitCountInput(e.target.value)}
-                                                    placeholder="Ví dụ: 20"
-                                                    className="h-10 w-full rounded-xl border border-rose-300 bg-white px-3 font-mono text-xs font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
-                                                />
+                                                <span className="text-slate-500 block">Tổng số trái đã chia:</span>
+                                                <span className={`font-mono font-bold ${classificationValidation.isFruitValid ? "text-emerald-700" : "text-amber-700"}`}>
+                                                    {classificationValidation.currentFruitSum.toLocaleString("vi-VN")} / {classificationValidation.totalFruits.toLocaleString("vi-VN")} trái
+                                                </span>
+                                                {!classificationValidation.isFruitValid && classificationValidation.currentFruitSum > 0 && (
+                                                    <span className="block text-[10px] text-amber-600 italic">
+                                                        ({classificationValidation.fruitDiff > 0 ? `Thừa +${classificationValidation.fruitDiff} trái` : `Còn thiếu ${Math.abs(classificationValidation.fruitDiff)} trái`})
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

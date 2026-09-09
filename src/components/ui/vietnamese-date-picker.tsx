@@ -144,12 +144,12 @@ export function VietnameseDatePicker({
                     <>
                         <button
                             type="button"
-                            className="fixed inset-0 z-[209] cursor-default bg-slate-950/20 backdrop-blur-[1px]"
+                            className="fixed inset-0 z-[100000] cursor-default bg-slate-950/20 backdrop-blur-[1px]"
                             onClick={() => setOpen(false)}
                             aria-label="Đóng lịch"
                         />
                         <div
-                            className="fixed z-[210] w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl"
+                            className="fixed z-[100001] w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl"
                             style={{
                                 left: Math.max(8, Math.min(rect.left, window.innerWidth - 328)),
                                 top: Math.max(8, Math.min(rect.bottom + 8, window.innerHeight - 380)),

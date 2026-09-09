@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ModalPortal } from "@/components/ui/modal-portal";
 import { formatVietnameseDateTime } from "@/lib/date-format";
+import { DateTimePicker24h } from "@/components/ui/date-time-picker-24h";
 
 export type FreshProductItem = {
     id: string;
@@ -32,11 +33,12 @@ export type FreshProductItem = {
     inputWeight: number;
     fruitCount?: number;
     outputWeight?: number;
+    exportedWeight?: number;
     packagingDate?: string | Date | null;
     boxCount?: number;
     packagingSpec?: string;
     note?: string;
-    status: "PENDING_PACKAGING" | "IN_PROGRESS" | "COMPLETED" | "READY_FOR_EXPORT" | "NOT_READY_FOR_EXPORT";
+    status: "PENDING_PACKAGING" | "IN_PROGRESS" | "COMPLETED" | "READY_FOR_EXPORT";
 };
 
 export type ProcessedBatchItem = {
@@ -50,11 +52,12 @@ export type ProcessedBatchItem = {
     fruitCount?: number;
     outputProduct?: string;
     outputWeight?: number;
+    exportedWeight?: number;
     packageCount?: string | number;
     packagingSpec?: string;
     completedAt?: string | Date | null;
     note?: string;
-    status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "NOT_READY_FOR_EXPORT";
+    status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
 };
 
 interface ProcessingProductionViewProps {
@@ -330,6 +333,7 @@ export function ProcessingProductionView({
                             packagingSpec: freshPackagingSpec,
                             packagingDate: freshCompleteDate,
                             status: "READY_FOR_EXPORT",
+                            exportedWeight: item.exportedWeight ?? 0,
                         }
                         : item
                 )
@@ -386,13 +390,9 @@ export function ProcessingProductionView({
     // Handler: Confirm Processing Batch
     const handleConfirmProcBatch = async () => {
         if (!selectedProc) return;
-        if (!procProductName.trim()) {
-            toast({ title: "Thiếu thông tin", description: "Vui lòng nhập tên thành phẩm sau chế biến.", variant: "destructive" });
-            return;
-        }
-        const outW = Number(procOutputWeight);
-        if (!outW || outW <= 0) {
-            toast({ title: "Khối lượng không hợp lệ", description: "Vui lòng nhập khối lượng thành phẩm.", variant: "destructive" });
+        const outW = parseFloat(String(procOutputWeight)) || 0;
+        if (outW <= 0) {
+            toast({ title: "Thiếu dữ liệu", description: "Vui lòng nhập khối lượng thành phẩm hợp lệ (> 0 kg).", variant: "destructive" });
             return;
         }
 
@@ -404,11 +404,13 @@ export function ProcessingProductionView({
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        rawMaterialLotId: selectedProc.rawLotId,
-                        inputWeight: selectedProc.inputWeight,
-                        outputWeight: outW,
+                        branch: "PROCESSED",
+                        rawLotId: selectedProc.rawLotId,
                         productName: procProductName,
+                        productType: "PROCESSED_DURIAN",
+                        outputWeight: outW,
                         packageCount: procPackageCount || "218 khay",
+                        packagingSpec: `Khay hút chân không 500g${procPackageCount ? ` (${procPackageCount})` : ""}`,
                         method: procMethod,
                         manufacturedAt: procDate,
                         note: procNote,
@@ -439,6 +441,7 @@ export function ProcessingProductionView({
                             method: procMethod,
                             completedAt: procDate,
                             status: "COMPLETED",
+                            exportedWeight: item.exportedWeight ?? 0,
                         }
                         : item
                 )
@@ -463,7 +466,7 @@ export function ProcessingProductionView({
 
             toast({
                 title: "Mẻ chế biến hoàn tất",
-                description: `Đã hoàn tất sản xuất ${procProductName} (${outW.toLocaleString("vi-VN")} kg thành phẩm · ${procPackageCount || "218 khay"}). Lô đã chuyển sang trạng thái Đã đóng gói.`,
+                description: `Đã hoàn tất sản xuất ${procProductName} (${outW.toLocaleString("vi-VN")} kg thành phẩm · ${procPackageCount || "218 khay"}). Lô đã chuyển sang trạng thái Đã chế biến.`,
                 variant: "success",
             });
             setSelectedProc(null);
@@ -568,6 +571,7 @@ export function ProcessingProductionView({
                                     <th className="px-5 py-4 whitespace-nowrap">Nguồn</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-right">KL đầu vào</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-right">KL thành phẩm</th>
+                                    <th className="px-5 py-4 whitespace-nowrap text-right">KL xuất bán</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-center">Số thùng</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-center">Hoàn tất lúc</th>
                                     <th className="px-5 py-4 text-center whitespace-nowrap">Trạng thái</th>
@@ -576,9 +580,7 @@ export function ProcessingProductionView({
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-medium">
                                 {filteredFresh.map((item) => {
-                                    const isReady = item.status === "READY_FOR_EXPORT" || item.status === "COMPLETED";
-                                    const isUnavailable = item.status === "NOT_READY_FOR_EXPORT";
-                                    const hasPacked = isReady || isUnavailable || Boolean(item.outputWeight);
+                                    const hasPacked = item.status === "READY_FOR_EXPORT" || item.status === "COMPLETED" || Boolean(item.outputWeight);
 
                                     return (
                                         <tr key={item.id} className="h-14 hover:bg-slate-50/70 transition">
@@ -616,6 +618,19 @@ export function ProcessingProductionView({
                                                 )}
                                             </td>
 
+                                            {/* KL xuất bán */}
+                                            <td className="px-5 py-3 whitespace-nowrap text-right font-bold text-xs sm:text-sm">
+                                                {!hasPacked ? (
+                                                    <span className="text-slate-400">-</span>
+                                                ) : !item.exportedWeight || item.exportedWeight === 0 ? (
+                                                    <span className="font-mono text-slate-600">0</span>
+                                                ) : (
+                                                    <span className="font-mono font-black text-emerald-700">
+                                                        {item.exportedWeight.toLocaleString("vi-VN")} kg
+                                                    </span>
+                                                )}
+                                            </td>
+
                                             {/* Số thùng */}
                                             <td className="px-5 py-3 text-center whitespace-nowrap font-bold text-slate-700 text-xs">
                                                 {hasPacked && item.boxCount ? `${item.boxCount} thùng` : "-"}
@@ -635,13 +650,9 @@ export function ProcessingProductionView({
 
                                             {/* Trạng thái */}
                                             <td className="px-5 py-3 text-center whitespace-nowrap">
-                                                {isReady ? (
+                                                {hasPacked ? (
                                                     <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
                                                         Đã đóng gói
-                                                    </span>
-                                                ) : isUnavailable ? (
-                                                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
-                                                        Không còn đủ điều kiện xuất
                                                     </span>
                                                 ) : item.status === "IN_PROGRESS" ? (
                                                     <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-700">
@@ -659,14 +670,13 @@ export function ProcessingProductionView({
                                                 <Button
                                                     size="sm"
                                                     onClick={() => handleOpenFreshDrawer(item)}
-                                                    disabled={isUnavailable}
-                                                    variant={isReady || isUnavailable ? "outline" : "default"}
-                                                    className={`h-8 rounded-xl text-xs font-bold ${isReady || isUnavailable
+                                                    variant={hasPacked ? "outline" : "default"}
+                                                    className={`h-8 rounded-xl text-xs font-bold ${hasPacked
                                                         ? "border-slate-200 text-slate-700 hover:bg-slate-50"
                                                         : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-soft"
                                                         }`}
                                                 >
-                                                    {isUnavailable ? "Đã xuất kho" : isReady ? "Chi tiết / Sửa" : "Đóng gói"}
+                                                    {hasPacked ? "Chi tiết / Sửa" : "Đóng gói"}
                                                 </Button>
                                             </td>
                                         </tr>
@@ -675,7 +685,7 @@ export function ProcessingProductionView({
 
                                 {filteredFresh.length === 0 && (
                                     <tr>
-                                        <td colSpan={8} className="py-12 text-center text-xs text-slate-400">
+                                        <td colSpan={9} className="py-12 text-center text-xs text-slate-400">
                                             Chưa có lô trái tươi xuất khẩu nào. Vui lòng phân loại lô ở bước Tiếp nhận & Phân loại.
                                         </td>
                                     </tr>
@@ -699,6 +709,7 @@ export function ProcessingProductionView({
                                     <th className="px-5 py-4 whitespace-nowrap">Tên thành phẩm</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-right">KL đầu vào</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-right">KL Thành phẩm</th>
+                                    <th className="px-5 py-4 whitespace-nowrap text-right">KL xuất bán</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-center">SL Thành phẩm</th>
                                     <th className="px-5 py-4 whitespace-nowrap text-center">Hoàn tất lúc</th>
                                     <th className="px-5 py-4 text-center whitespace-nowrap">Trạng thái</th>
@@ -707,9 +718,7 @@ export function ProcessingProductionView({
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-medium">
                                 {filteredProc.map((item) => {
-                                    const isDone = item.status === "COMPLETED";
-                                    const isUnavailable = item.status === "NOT_READY_FOR_EXPORT";
-                                    const hasProcessed = isDone || isUnavailable || Boolean(item.outputWeight || item.outputProduct);
+                                    const hasProcessed = item.status === "COMPLETED" || Boolean(item.outputWeight || item.outputProduct);
 
                                     return (
                                         <tr key={item.id} className="h-14 hover:bg-slate-50/70 transition">
@@ -769,6 +778,19 @@ export function ProcessingProductionView({
                                                 )}
                                             </td>
 
+                                            {/* KL xuất bán */}
+                                            <td className="px-5 py-3 whitespace-nowrap text-right font-bold text-xs sm:text-sm">
+                                                {!hasProcessed ? (
+                                                    <span className="text-slate-400">-</span>
+                                                ) : !item.exportedWeight || item.exportedWeight === 0 ? (
+                                                    <span className="font-mono text-slate-600">0</span>
+                                                ) : (
+                                                    <span className="font-mono font-black text-indigo-700">
+                                                        {item.exportedWeight.toLocaleString("vi-VN")} kg
+                                                    </span>
+                                                )}
+                                            </td>
+
                                             {/* SL Thành phẩm */}
                                             <td className="px-5 py-3 text-center whitespace-nowrap font-bold text-slate-700 text-xs sm:text-sm">
                                                 {hasProcessed && item.packageCount ? (
@@ -794,17 +816,17 @@ export function ProcessingProductionView({
 
                                             {/* Trạng thái */}
                                             <td className="px-5 py-3 text-center whitespace-nowrap">
-                                                {isDone ? (
-                                                    <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                                                        Đã đóng gói
+                                                {hasProcessed ? (
+                                                    <span className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">
+                                                        Đã chế biến
                                                     </span>
-                                                ) : isUnavailable ? (
-                                                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
-                                                        Không còn đủ điều kiện xuất
+                                                ) : item.status === "IN_PROGRESS" ? (
+                                                    <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-700">
+                                                        Đang chế biến
                                                     </span>
                                                 ) : (
                                                     <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
-                                                        Chờ xử lý
+                                                        Chờ chế biến
                                                     </span>
                                                 )}
                                             </td>
@@ -814,14 +836,13 @@ export function ProcessingProductionView({
                                                 <Button
                                                     size="sm"
                                                     onClick={() => handleOpenProcDrawer(item)}
-                                                    disabled={isUnavailable}
-                                                    variant={isDone || isUnavailable ? "outline" : "default"}
-                                                    className={`h-8 rounded-xl text-xs font-bold ${isDone || isUnavailable
+                                                    variant={hasProcessed ? "outline" : "default"}
+                                                    className={`h-8 rounded-xl text-xs font-bold ${hasProcessed
                                                         ? "border-slate-200 text-slate-700 hover:bg-slate-50"
                                                         : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-soft"
                                                         }`}
                                                 >
-                                                    {isUnavailable ? "Đã xuất kho" : isDone ? "Chi tiết / Sửa" : "Chế biến"}
+                                                    {hasProcessed ? "Chi tiết / Sửa" : "Chế biến"}
                                                 </Button>
                                             </td>
                                         </tr>
@@ -830,7 +851,7 @@ export function ProcessingProductionView({
 
                                 {filteredProc.length === 0 && (
                                     <tr>
-                                        <td colSpan={10} className="py-12 text-center text-xs text-slate-400">
+                                        <td colSpan={11} className="py-12 text-center text-xs text-slate-400">
                                             Chưa có lô chuyển chế biến nào. Vui lòng phân loại lô ở bước Tiếp nhận & Phân loại.
                                         </td>
                                     </tr>
@@ -924,11 +945,9 @@ export function ProcessingProductionView({
 
                                         <div>
                                             <label className="block text-xs font-bold text-slate-700 mb-1">Thời gian hoàn tất</label>
-                                            <input
-                                                type="datetime-local"
+                                            <DateTimePicker24h
                                                 value={freshCompleteDate}
-                                                onChange={(e) => setFreshCompleteDate(e.target.value)}
-                                                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                                onChange={setFreshCompleteDate}
                                             />
                                         </div>
                                     </div>
@@ -1069,11 +1088,9 @@ export function ProcessingProductionView({
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-700 mb-1">Thời gian hoàn tất</label>
-                                            <input
-                                                type="datetime-local"
+                                            <DateTimePicker24h
                                                 value={procDate}
-                                                onChange={(e) => setProcDate(e.target.value)}
-                                                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-xs font-medium text-slate-900 focus:border-indigo-500 focus:outline-none"
+                                                onChange={setProcDate}
                                             />
                                         </div>
                                     </div>

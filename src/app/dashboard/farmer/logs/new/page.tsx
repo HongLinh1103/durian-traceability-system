@@ -19,6 +19,7 @@ import { evaluatePhiSafety, matchProhibitedChemical, type ProhibitedChemicalEntr
 import type { OfflineFarmingLogPayload } from "@/lib/offline-farming-logs";
 import { formatVietnameseDate, toIsoDate, toIsoDateTime } from "@/lib/date-format";
 import { VietnameseDatePicker } from "@/components/ui/vietnamese-date-picker";
+import { TimePicker24h } from "@/components/ui/time-picker-24h";
 
 type SpeechRecognitionResultLike = { transcript: string };
 type SpeechRecognitionResultSetLike = { 0?: SpeechRecognitionResultLike };
@@ -736,9 +737,13 @@ export default function NewFarmingLogPage() {
                             </div>
                             <div>
                                 <Label htmlFor="actionTime">Giờ thực hiện</Label>
-                                <Input id="actionTime" type="time" step="60" {...form.register("actionTime")} />
+                                <TimePicker24h
+                                    id="actionTime"
+                                    value={form.watch("actionTime")}
+                                    onChange={(value) => form.setValue("actionTime", value, { shouldDirty: true, shouldValidate: true })}
+                                />
                                 <p className="mt-1 text-xs text-red-600">{form.formState.errors.actionTime?.message}</p>
-                                <p className="mt-1 text-xs text-slate-500">Mặc định là thời gian hiện tại của thiết bị.</p>
+                                <p className="mt-1 text-xs text-slate-500">Mặc định là thời gian hiện tại của thiết bị (định dạng 24 giờ).</p>
                             </div>
                         </div>
 

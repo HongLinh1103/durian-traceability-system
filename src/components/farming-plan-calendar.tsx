@@ -11,6 +11,8 @@ import {
   type GrowthStageLabel,
 } from "@/lib/constants";
 import { formatVietnameseDate } from "@/lib/date-format";
+import { VietnameseDatePicker } from "@/components/ui/vietnamese-date-picker";
+import { TimePicker24h } from "@/components/ui/time-picker-24h";
 
 type Farm = { id: string; farmName: string; farmCode: string };
 type Plan = {
@@ -518,25 +520,25 @@ export function FarmingPlanCalendar() {
           <form onSubmit={save} className="space-y-4">
             <ReadOnly label="Vườn" value={currentFarm?.farmName ?? "—"} />
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Ngày thực hiện *">
-                <input
-                  type="date"
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Ngày thực hiện *
+                </label>
+                <VietnameseDatePicker
                   required
                   value={draft.date}
-                  onChange={(event) =>
-                    setDraft({ ...draft, date: event.target.value })
-                  }
+                  onChange={(val) => setDraft({ ...draft, date: val })}
                 />
-              </Field>
-              <Field label="Giờ thực hiện">
-                <input
-                  type="time"
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Giờ thực hiện
+                </label>
+                <TimePicker24h
                   value={draft.time}
-                  onChange={(event) =>
-                    setDraft({ ...draft, time: event.target.value })
-                  }
+                  onChange={(val) => setDraft({ ...draft, time: val })}
                 />
-              </Field>
+              </div>
             </div>
             <Field label="Giai đoạn canh tác *">
               <select

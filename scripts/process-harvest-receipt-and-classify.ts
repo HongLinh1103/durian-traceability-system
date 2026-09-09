@@ -148,20 +148,19 @@ async function main() {
     // Thời điểm phân loại: 10:30 ngày 04/09/2026 (UTC: 2026-09-04T03:30:00.000Z)
     const classifiedAt = new Date("2026-09-04T03:30:00.000Z");
     const freshExportWeight = 788; // 75%
-    const freshExportFruitCount = 276;
-    const processingWeight = 241; // 23%
-    const processingFruitCount = 85;
-    const rejectedWeight = 21; // 2%
-    const rejectedFruitCount = 7;
+    const freshExportFruitCount = 263;
+    const processingWeight = 262; // 25% (bao gồm 242 kg + 20 kg chuyển từ loại bỏ lên chế biến khác)
+    const processingFruitCount = 87; // 81 + 6 trái
+    const rejectedWeight = 0;
+    const rejectedFruitCount = 0;
     const direction = "SPLIT";
 
     console.log("\n--- BƯỚC 2: PHÂN LOẠI TRÁI NGUYÊN LIỆU ---");
     console.log(`- Thời gian phân loại: 10:30 ngày 04/09/2026 (${classifiedAt.toISOString()})`);
     console.log(`- Hướng phân loại: ${direction} (Vừa xuất tươi vừa chế biến cấp đông)`);
     console.log(`- Trái tươi xuất khẩu: ${freshExportWeight} kg (${freshExportFruitCount} trái)`);
-    console.log(`- Chuyển chế biến cấp đông: ${processingWeight} kg (${processingFruitCount} trái)`);
-    console.log(`- Loại bỏ (không đạt): ${rejectedWeight} kg (${rejectedFruitCount} trái)`);
-    console.log(`- Tổng kiểm tra: ${freshExportWeight + processingWeight + rejectedWeight} kg / ${freshExportFruitCount + processingFruitCount + rejectedFruitCount} trái`);
+    console.log(`- Chuyển chế biến khác: ${processingWeight} kg (${processingFruitCount} trái)`);
+    console.log(`- Tổng kiểm tra: ${freshExportWeight + processingWeight} kg / ${freshExportFruitCount + processingFruitCount} trái`);
 
     const rawLotCode = `RM-${harvest.code}`;
     let rawLot = await prisma.rawMaterialLot.findFirst({
@@ -204,7 +203,7 @@ async function main() {
     }
 
     // 5. Cập nhật TraceEvent truy xuất nguồn gốc
-    const fruitSummary = `Trái tươi: ${freshExportFruitCount} trái · Chế biến: ${processingFruitCount} trái · Loại bỏ: ${rejectedFruitCount} trái`;
+    const fruitSummary = `Trái tươi: ${freshExportFruitCount} trái · Chế biến khác: ${processingFruitCount} trái`;
 
     await prisma.traceEvent.deleteMany({
         where: {
@@ -224,7 +223,7 @@ async function main() {
             organizationType: "PROCESSING_FACILITY",
             organizationId: facility.id,
             title: "Tiếp nhận và phân loại nguyên liệu",
-            description: `Trái tươi xuất khẩu: ${freshExportWeight.toLocaleString("vi-VN")} kg (${freshExportFruitCount} trái) · Chuyển chế biến: ${processingWeight.toLocaleString("vi-VN")} kg (${processingFruitCount} trái) · Không đạt/loại bỏ: ${rejectedWeight.toLocaleString("vi-VN")} kg (${rejectedFruitCount} trái)`,
+            description: `Trái tươi xuất khẩu: ${freshExportWeight.toLocaleString("vi-VN")} kg (${freshExportFruitCount} trái) · Chuyển chế biến khác: ${processingWeight.toLocaleString("vi-VN")} kg (${processingFruitCount} trái)`,
             metadata: {
                 direction,
                 freshExportWeight,

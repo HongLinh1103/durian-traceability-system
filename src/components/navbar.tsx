@@ -27,6 +27,7 @@ type DashboardLink = {
     badge?: boolean;
     planBadge?: boolean;
     collectorBadge?: boolean;
+    processingBadge?: boolean;
     notificationKey?: "documents" | "news";
 };
 
@@ -67,7 +68,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/processing", label: "Tổng quan", roles: ["PROCESSING_FACILITY"] },
     { href: "/china-port", label: "China Port", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/raw-materials", label: "Tiếp nhận & Phân loại", roles: ["PROCESSING_FACILITY"], collectorBadge: true },
-    { href: "/dashboard/processing/processing", label: "Chế biến & Đóng gói", roles: ["PROCESSING_FACILITY"] },
+    { href: "/dashboard/processing/processing", label: "Chế biến & Đóng gói", roles: ["PROCESSING_FACILITY"], processingBadge: true },
     { href: "/dashboard/processing/shipments", label: "Xuất hàng", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/finance", label: "Tài chính", roles: ["PROCESSING_FACILITY"] },
 ];
@@ -82,6 +83,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
     const [cartCount, setCartCount] = useState(0);
     const [duePlanCount, setDuePlanCount] = useState(0);
     const [collectorNoticeCount, setCollectorNoticeCount] = useState(0);
+    const [processingNoticeCount, setProcessingNoticeCount] = useState(0);
     const [contentCounts, setContentCounts] = useState({ documents: 0, news: 0 });
     const [currentUserName, setCurrentUserName] = useState<string | null>(null);
 
@@ -198,14 +200,22 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
     }, [isAuthed, pathname, userRole]);
 
     useEffect(() => {
-        if (!isAuthed || !["COLLECTOR", "PROCESSING_FACILITY"].includes(userRole ?? "")) { setCollectorNoticeCount(0); return; }
+        if (!isAuthed || !["COLLECTOR", "PROCESSING_FACILITY"].includes(userRole ?? "")) {
+            setCollectorNoticeCount(0);
+            setProcessingNoticeCount(0);
+            return;
+        }
         let cancelled = false;
         const fetchCollectorNotices = async () => {
             try {
                 const response = await fetch(userRole === "PROCESSING_FACILITY" ? "/api/processing/raw-materials" : "/api/harvests", { cache: "no-store" });
                 const payload = await response.json();
                 if (!cancelled && payload.success) {
-                    if (userRole === "PROCESSING_FACILITY") { setCollectorNoticeCount(payload.actionRequiredCount ?? 0); return; }
+                    if (userRole === "PROCESSING_FACILITY") {
+                        setCollectorNoticeCount(payload.actionRequiredCount ?? 0);
+                        setProcessingNoticeCount(payload.processingReadyCount ?? 0);
+                        return;
+                    }
                     const rows = payload.data ?? [];
                     const count = rows.filter((item: { status: string }) => ["WAITING_CONFIRMATION", "CONFIRMED", "HARVESTING", "HARVESTED"].includes(item.status)).length;
                     setCollectorNoticeCount(count);
@@ -214,8 +224,14 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                 // non-blocking
             }
         };
-        void fetchCollectorNotices(); const interval = window.setInterval(fetchCollectorNotices, 60_000);
-        return () => { cancelled = true; window.clearInterval(interval); };
+        void fetchCollectorNotices();
+        const interval = window.setInterval(fetchCollectorNotices, 60_000);
+        window.addEventListener("processing-classified-updated", fetchCollectorNotices);
+        return () => {
+            cancelled = true;
+            window.clearInterval(interval);
+            window.removeEventListener("processing-classified-updated", fetchCollectorNotices);
+        };
     }, [isAuthed, pathname, userRole]);
 
     useEffect(() => {
@@ -361,6 +377,11 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                 {link.collectorBadge && collectorNoticeCount > 0 && (
                                     <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white" aria-label={`${collectorNoticeCount} phiếu cần xử lý`}>
                                         {collectorNoticeCount > 99 ? "99+" : collectorNoticeCount}
+                                    </span>
+                                )}
+                                {link.processingBadge && processingNoticeCount > 0 && (
+                                    <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white" aria-label={`${processingNoticeCount} lô chờ chế biến & đóng gói`}>
+                                        {processingNoticeCount > 99 ? "99+" : processingNoticeCount}
                                     </span>
                                 )}
                             </Link>
@@ -518,6 +539,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                     )}
                                     {link.planBadge && duePlanCount > 0 && <CartBadge count={duePlanCount} />}
                                     {link.collectorBadge && collectorNoticeCount > 0 && <CartBadge count={collectorNoticeCount} />}
+                                    {link.processingBadge && processingNoticeCount > 0 && <CartBadge count={processingNoticeCount} />}
                                 </Link>
                             ))}
 
