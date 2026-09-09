@@ -8,6 +8,7 @@ import {
     Bug,
     CalendarPlus,
     LockKeyhole,
+    Unlock,
     AlertCircle,
     X,
 } from "lucide-react";
@@ -191,6 +192,43 @@ export function FarmerJournalUnifiedView({
         }
     };
 
+    // Mở khóa vụ mùa
+    const [reopeningSeason, setReopeningSeason] = useState(false);
+    const handleReopenSeason = async (seasonId?: string) => {
+        const targetId = seasonId || selectedSeasonId;
+        if (!targetId) return;
+        const targetSeason = currentFarm?.cropSeasons.find((s) => s.id === targetId) || currentSeason;
+        const name = targetSeason ? `Vụ ${targetSeason.year}` : "vụ mùa";
+
+        const confirmed = window.confirm(
+            `Bạn có chắc chắn muốn mở khóa lại ${name} để tiếp tục ghi nhật ký canh tác?`
+        );
+        if (!confirmed) return;
+
+        setReopeningSeason(true);
+        try {
+            const res = await fetch("/api/crop-seasons", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "REOPEN",
+                    seasonId: targetId,
+                }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                router.refresh();
+            } else {
+                alert(data.message || "Không thể mở khóa vụ mùa.");
+            }
+        } catch (err) {
+            console.error("handleReopenSeason error:", err);
+            alert("Lỗi kết nối khi mở khóa vụ mùa.");
+        } finally {
+            setReopeningSeason(false);
+        }
+    };
+
     const isSeasonActive = currentSeason?.status === "ACTIVE";
 
     return (
@@ -276,17 +314,31 @@ export function FarmerJournalUnifiedView({
                                     Đóng vụ
                                 </Button>
                             ) : (
-                                !currentFarm?.cropSeasons.some((s) => s.status === "ACTIVE") && (
+                                <>
                                     <Button
                                         type="button"
+                                        variant="outline"
                                         size="sm"
-                                        onClick={() => setShowCreateSeasonModal(true)}
-                                        className="h-8 rounded-xl bg-brand-600 text-xs font-bold text-white hover:bg-brand-700 shadow-soft"
+                                        disabled={reopeningSeason}
+                                        onClick={() => handleReopenSeason(currentSeason?.id)}
+                                        className="h-8 rounded-xl border-emerald-300 bg-emerald-50 text-xs font-bold text-emerald-800 hover:bg-emerald-100 shadow-xs"
                                     >
-                                        <CalendarPlus className="mr-1 h-3.5 w-3.5" />
-                                        Bắt đầu vụ mới
+                                        <Unlock className="mr-1 h-3.5 w-3.5 text-emerald-600" />
+                                        {reopeningSeason ? "Đang mở khóa..." : "Mở khóa vụ mùa"}
                                     </Button>
-                                )
+
+                                    {!currentFarm?.cropSeasons.some((s) => s.status === "ACTIVE") && (
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            onClick={() => setShowCreateSeasonModal(true)}
+                                            className="h-8 rounded-xl bg-brand-600 text-xs font-bold text-white hover:bg-brand-700 shadow-soft"
+                                        >
+                                            <CalendarPlus className="mr-1 h-3.5 w-3.5" />
+                                            Bắt đầu vụ mới
+                                        </Button>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>
@@ -355,6 +407,7 @@ export function FarmerJournalUnifiedView({
                     farmName={currentFarm?.farmName}
                     seasonName={currentSeason?.name}
                     seasonYear={currentSeason?.year}
+                    onReopenSeason={() => handleReopenSeason(currentSeason?.id)}
                 />
             )}
 
@@ -365,6 +418,7 @@ export function FarmerJournalUnifiedView({
                     isSeasonActive={isSeasonActive}
                     farmName={currentFarm?.farmName}
                     seasonName={currentSeason?.name}
+                    onReopenSeason={() => handleReopenSeason(currentSeason?.id)}
                 />
             )}
 

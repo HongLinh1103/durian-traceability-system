@@ -23,10 +23,8 @@ export default async function AdminPermissionsPage() {
     }
 
     return (
-        <main className="min-h-screen bg-slate-50/50 py-8">
-            <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <AdminPermissionManager />
-            </div>
+        <main className="mx-auto min-h-screen max-w-7xl space-y-6 px-4 py-6 sm:px-6">
+            <AdminPermissionManager />
         </main>
     );
 }

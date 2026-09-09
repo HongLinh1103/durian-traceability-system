@@ -48,6 +48,8 @@ export type RawMaterialItem = {
     vehiclePlate?: string;
     condition?: string;
     note?: string;
+    deliveryMethod?: string | null;
+    transactionNote?: string | null;
     status: "WAITING_CONFIRMATION" | "WAITING_RECEIPT" | "RECEIVED" | "WAITING_CLASSIFICATION" | "CLASSIFIED";
     direction: "UNCLASSIFIED" | "FRESH_EXPORT" | "PROCESSING" | "SPLIT";
     freshExportWeight?: number;
@@ -56,6 +58,12 @@ export type RawMaterialItem = {
     processingFruitCount?: number;
     rejectedWeight?: number;
     rejectedFruitCount?: number;
+};
+
+export const deliveryMethodLabels: Record<string, string> = {
+    BUYER_PICKUP: "Bên mua đến thu tại vườn",
+    FARMER_DELIVERY: "Nông dân giao đến bên mua",
+    OTHER: "Thỏa thuận khác",
 };
 
 export function ProcessingRawMaterialsView({ initialItems }: { initialItems: RawMaterialItem[] }) {
@@ -246,14 +254,9 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
     // Handler: Open Receive Drawer
     const handleOpenReceive = (item: RawMaterialItem) => {
         setReceivingItem(item);
-        const isTH001 = item.code === "TH-20260901-001" || item.receiptCode === "TH-20260901-001";
-        const actualW = item.actualReceivedWeight && item.actualReceivedWeight !== item.declaredWeight
-            ? item.actualReceivedWeight
-            : (isTH001 ? item.declaredWeight + 50 : (item.actualReceivedWeight || item.declaredWeight || ""));
-        const actualF = item.actualFruitCount || (isTH001 ? 368 : (item.declaredFruitCount || (actualW ? Math.round(Number(actualW) / 3) : "")));
-
-        setActualWeightInput(actualW);
-        setActualFruitCountInput(actualF);
+        // Không điền sẵn khối lượng thực nhận và số lượng trái thực nhận
+        setActualWeightInput("");
+        setActualFruitCountInput("");
         setUnitPriceInput(item.expectedPricePerKg || 85000);
 
         let dtString = "";
@@ -265,30 +268,27 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                 dtString = "";
             }
         }
-        if (!dtString && isTH001) {
-            dtString = "2026-09-04T10:00";
-        }
         if (!dtString) {
             const now = new Date();
             dtString = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
         }
         setReceivedAtInput(dtString);
-        setTruckPlateInput(item.vehiclePlate || "51D-123.45");
+        setTruckPlateInput(item.vehiclePlate || "");
         setConditionInput(item.condition || "Đạt chuẩn tươi mới, gai xanh cứng, cuống tươi");
-        setReceiveNoteInput(item.note || (isTH001 ? "Khối lượng thực nhận tại xưởng là 1.050 kg (tăng 50 kg so với dự kiến ban đầu 1.000 kg)" : ""));
+        setReceiveNoteInput(item.note || "");
     };
 
     // Live difference in Receive Modal
     const liveDiff = useMemo(() => {
-        if (!receivingItem) return 0;
-        const actual = Number(actualWeightInput) || 0;
+        if (!receivingItem || actualWeightInput === "" || Number(actualWeightInput) <= 0) return null;
+        const actual = Number(actualWeightInput);
         return actual - receivingItem.declaredWeight;
     }, [receivingItem, actualWeightInput]);
 
     // Live fruit difference in Receive Modal
     const liveFruitDiff = useMemo(() => {
-        if (!receivingItem || !receivingItem.declaredFruitCount) return 0;
-        const actual = Number(actualFruitCountInput) || 0;
+        if (!receivingItem || !receivingItem.declaredFruitCount || actualFruitCountInput === "" || Number(actualFruitCountInput) <= 0) return null;
+        const actual = Number(actualFruitCountInput);
         return actual - receivingItem.declaredFruitCount;
     }, [receivingItem, actualFruitCountInput]);
 
@@ -318,7 +318,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                     fruitCount: actualFruitCount,
                     receivedAt: receivedAtInput ? new Date(receivedAtInput).toISOString() : new Date().toISOString(),
                     vehiclePlate: truckPlateInput,
-                    weightDifferenceReason: liveDiff !== 0 ? `Chênh lệch ${liveDiff > 0 ? "+" : ""}${liveDiff} kg so với khai báo` : undefined,
+                    weightDifferenceReason: (liveDiff !== null && liveDiff !== 0) ? `Chênh lệch ${liveDiff > 0 ? "+" : ""}${liveDiff} kg so với khai báo` : undefined,
                     note: `${conditionInput} | Số trái: ${actualFruitCount} | Xe: ${truckPlateInput} | Đơn giá: ${unitPriceInput ? `${Number(unitPriceInput).toLocaleString("vi-VN")} đ/kg` : "—"}${receiveNoteInput ? ` | ${receiveNoteInput}` : ""}`,
                 }),
             });
@@ -831,64 +831,134 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
 
                             {/* Modal Body */}
                             <div className="overflow-y-auto p-5 sm:p-6 space-y-5">
-                                {/* Thông tin chi tiết phiếu thu hoạch */}
-                                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs font-black uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
+                                {/* Thông tin chi tiết phiếu thu hoạch (Trình bày dạng ô nhập liệu) */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                                        <span className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                                             <FileText className="h-4 w-4 text-indigo-600" />
-                                            Thông tin kế hoạch thu hoạch & giao hàng
+                                            Thông tin kế hoạch thu hoạch từ nông dân
                                         </span>
-                                        <span className="rounded-full bg-indigo-100 border border-indigo-300 px-2.5 py-0.5 text-[10px] font-bold text-indigo-800">
+                                        <span className="rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700">
                                             Chờ xác nhận
                                         </span>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
-                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
-                                            <span className="text-[10px] font-semibold text-slate-400 block">Mã phiếu</span>
-                                            <span className="font-mono font-bold text-slate-900">{confirmingItem.code}</span>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                                Mã phiếu thu hoạch
+                                            </label>
+                                            <input
+                                                type="text"
+                                                readOnly
+                                                value={confirmingItem.code}
+                                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-xs font-bold text-slate-900 focus:outline-none"
+                                            />
                                         </div>
-                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
-                                            <span className="text-[10px] font-semibold text-slate-400 block">Farm / Nhà vườn</span>
-                                            <span className="font-bold text-slate-900 truncate block">{confirmingItem.farmName}</span>
-                                            {confirmingItem.regionCode && (
-                                                <span className="text-[10px] text-slate-500 font-mono">MSVT: {confirmingItem.regionCode}</span>
-                                            )}
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                                Vườn trồng / Trang trại
+                                            </label>
+                                            <input
+                                                type="text"
+                                                readOnly
+                                                value={`${confirmingItem.farmName}${confirmingItem.regionCode ? ` (MSVT: ${confirmingItem.regionCode})` : ""}`}
+                                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 focus:outline-none"
+                                            />
                                         </div>
-                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
-                                            <span className="text-[10px] font-semibold text-slate-400 block">Nông dân / SĐT</span>
-                                            <span className="font-semibold text-slate-800 truncate block">{confirmingItem.farmerName || "—"}</span>
-                                            <span className="text-[10px] text-slate-500 font-mono">{confirmingItem.farmerPhone || "—"}</span>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                                Nông dân phụ trách
+                                            </label>
+                                            <input
+                                                type="text"
+                                                readOnly
+                                                value={`${confirmingItem.farmerName || "—"}${confirmingItem.farmerPhone ? ` · SĐT: ${confirmingItem.farmerPhone}` : ""}`}
+                                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 focus:outline-none"
+                                            />
                                         </div>
-                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
-                                            <span className="text-[10px] font-semibold text-slate-400 block">Giống sầu riêng</span>
-                                            <span className="font-bold text-emerald-800">{confirmingItem.variety}</span>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                                Giống sầu riêng
+                                            </label>
+                                            <input
+                                                type="text"
+                                                readOnly
+                                                value={confirmingItem.variety}
+                                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-emerald-800 focus:outline-none"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                                Ngày dự kiến thu hoạch
+                                            </label>
+                                            <input
+                                                type="text"
+                                                readOnly
+                                                value={formatVietnameseDate(confirmingItem.harvestDate) || "—"}
+                                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 focus:outline-none"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                                Sản lượng dự kiến
+                                            </label>
+                                            <input
+                                                type="text"
+                                                readOnly
+                                                value={`${confirmingItem.declaredWeight.toLocaleString("vi-VN")} kg${confirmingItem.declaredFruitCount ? ` (~${confirmingItem.declaredFruitCount} trái)` : ""}`}
+                                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-indigo-900 focus:outline-none"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                                Đơn giá dự kiến / đề xuất
+                                            </label>
+                                            <input
+                                                type="text"
+                                                readOnly
+                                                value={confirmingItem.expectedPricePerKg
+                                                    ? `${confirmingItem.expectedPricePerKg.toLocaleString("vi-VN")} đ/kg`
+                                                    : "Thương lượng khi nhập"}
+                                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-amber-800 focus:outline-none"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-blue-900 mb-1 flex items-center gap-1">
+                                                <Truck className="h-3.5 w-3.5 text-blue-600" />
+                                                Phương thức giao nhận
+                                            </label>
+                                            <input
+                                                type="text"
+                                                readOnly
+                                                value={confirmingItem.deliveryMethod
+                                                    ? deliveryMethodLabels[confirmingItem.deliveryMethod] || confirmingItem.deliveryMethod
+                                                    : "Chưa xác định"}
+                                                className="h-10 w-full rounded-xl border border-blue-300 bg-blue-50/70 px-3 text-xs font-black text-blue-950 focus:outline-none"
+                                            />
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3 pt-1">
-                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
-                                            <span className="text-[10px] font-semibold text-slate-400 block">Ngày dự kiến thu hoạch</span>
-                                            <span className="font-bold text-slate-800">
-                                                {formatVietnameseDate(confirmingItem.harvestDate) || "—"}
-                                            </span>
+                                    {confirmingItem.transactionNote && (
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                                Ghi chú / Lưu ý giao nhận từ nông dân
+                                            </label>
+                                            <input
+                                                type="text"
+                                                readOnly
+                                                value={confirmingItem.transactionNote}
+                                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-700 italic focus:outline-none"
+                                            />
                                         </div>
-                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80">
-                                            <span className="text-[10px] font-semibold text-slate-400 block">Sản lượng dự kiến</span>
-                                            <span className="font-black text-indigo-700 text-sm">
-                                                {confirmingItem.declaredWeight.toLocaleString("vi-VN")} kg
-                                                {confirmingItem.declaredFruitCount ? ` (~${confirmingItem.declaredFruitCount} trái)` : ""}
-                                            </span>
-                                        </div>
-                                        <div className="rounded-xl bg-white p-2.5 border border-slate-200/80 col-span-2 sm:col-span-1">
-                                            <span className="text-[10px] font-semibold text-slate-400 block">Đơn giá dự kiến / đề xuất</span>
-                                            <span className="font-bold text-amber-700">
-                                                {confirmingItem.expectedPricePerKg
-                                                    ? `${confirmingItem.expectedPricePerKg.toLocaleString("vi-VN")} đ/kg`
-                                                    : "Thương lượng khi nhập"}
-                                            </span>
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
 
                                 {/* Ghi chú phản hồi xác nhận từ cơ sở chế biến */}
@@ -1068,16 +1138,24 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
 
                                         <div>
                                             <label className="block text-xs font-bold text-slate-700 mb-1">Đánh giá chênh lệch khối lượng</label>
-                                            <div className={`h-10 rounded-xl px-3 flex items-center justify-between border text-xs font-bold ${Math.abs(liveDiff) === 0
-                                                    ? "bg-slate-100 border-slate-200 text-slate-700"
-                                                    : liveDiff < 0
-                                                        ? "bg-amber-50 border-amber-300 text-amber-800"
-                                                        : "bg-emerald-50 border-emerald-300 text-emerald-800"
+                                            <div className={`h-10 rounded-xl px-3 flex items-center justify-between border text-xs font-bold ${liveDiff === null
+                                                    ? "bg-slate-100 border-slate-200 text-slate-500"
+                                                    : Math.abs(liveDiff) === 0
+                                                        ? "bg-slate-100 border-slate-200 text-slate-700"
+                                                        : liveDiff < 0
+                                                            ? "bg-amber-50 border-amber-300 text-amber-800"
+                                                            : "bg-emerald-50 border-emerald-300 text-emerald-800"
                                                 }`}>
                                                 <span>Chênh lệch:</span>
                                                 <span>
-                                                    {liveDiff > 0 ? `+${liveDiff.toLocaleString("vi-VN")} kg` : `${liveDiff.toLocaleString("vi-VN")} kg`}
-                                                    {receivingItem.declaredWeight > 0 && ` (${((liveDiff / receivingItem.declaredWeight) * 100).toFixed(1)}%)`}
+                                                    {liveDiff === null ? (
+                                                        <span className="font-normal italic text-slate-400">Chờ nhập KL thực nhận</span>
+                                                    ) : (
+                                                        <>
+                                                            {liveDiff > 0 ? `+${liveDiff.toLocaleString("vi-VN")} kg` : `${liveDiff.toLocaleString("vi-VN")} kg`}
+                                                            {receivingItem.declaredWeight > 0 && ` (${((liveDiff / receivingItem.declaredWeight) * 100).toFixed(1)}%)`}
+                                                        </>
+                                                    )}
                                                 </span>
                                             </div>
                                             <p className="mt-1 text-[10px] text-slate-400">Dung sai cho phép vận chuyển thường &lt; 2%</p>

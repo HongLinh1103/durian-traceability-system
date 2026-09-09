@@ -31,7 +31,7 @@ export default async function Page() {
                     <Metric label="Khối lượng thực nhận" value={actualWeight != null ? `${Number(actualWeight).toLocaleString("vi-VN")} ${record.weightUnit}` : "Chưa ghi nhận"} emphasize={actualWeight != null} />
                     <Metric label="Số trái thực tế" value={record.actualFruitCount != null ? `${record.actualFruitCount.toLocaleString("vi-VN")} trái` : "Chưa ghi nhận"} emphasize={record.actualFruitCount != null} />
                     <Metric label="Đơn giá dự kiến" value={record.expectedPricePerKg ? `${Number(record.expectedPricePerKg).toLocaleString("vi-VN")} đ/kg` : "Chưa thống nhất"} />
-                    <Metric label="Hình thức nhận" value={record.deliveryMethod === "BUYER_PICKUP" ? "Vựa đến vườn" : "Nhà vườn giao"} />
+                    <Metric label="Phương thức giao nhận" value={record.deliveryMethod === "BUYER_PICKUP" ? "Bên mua đến thu tại vườn" : record.deliveryMethod === "FARMER_DELIVERY" ? "Nông dân giao đến bên mua" : record.deliveryMethod === "OTHER" ? "Thỏa thuận khác" : "Chưa xác định"} />
                 </div>
             </article>;
         })}{!rows.length && <Empty text="Chưa có đơn thu mua nào." />}</div>

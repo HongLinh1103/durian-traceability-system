@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Calendar, ChevronRight, Eye, FileText, Scale, Trees, Truck, X } from "lucide-react";
+import { Calendar, ChevronRight, ClipboardCheck, Eye, FileText, Scale, Trees, Truck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -184,20 +184,12 @@ export function FarmerHarvests({ initial }: { initial: Row[] }) {
                                     </Link>
                                 </Button>
 
-                                {["DRAFT", "CONFIRMED"].includes(item.status) && (
+                                {["CONFIRMED", "HARVESTING", "DRAFT"].includes(item.status) && (
                                     <Button
-                                        className="h-10 rounded-2xl bg-brand-600 text-white hover:bg-brand-700 shadow-soft"
-                                        disabled={busy}
-                                        onClick={() => void send(item, "START")}
-                                    >
-                                        Bắt đầu thu hoạch
-                                    </Button>
-                                )}
-                                {item.status === "HARVESTING" && (
-                                    <Button
-                                        className="h-10 rounded-2xl bg-brand-600 text-white hover:bg-brand-700 shadow-soft"
+                                        className="h-10 rounded-2xl bg-brand-600 text-white hover:bg-brand-700 shadow-soft font-bold"
                                         onClick={() => open(item, "FINISH")}
                                     >
+                                        <ClipboardCheck className="mr-1.5 h-4 w-4" />
                                         Nhập kết quả thu hoạch
                                     </Button>
                                 )}

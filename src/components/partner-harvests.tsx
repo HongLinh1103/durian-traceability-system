@@ -18,6 +18,9 @@ import {
     Warehouse,
     FileCheck,
     Factory,
+    ClipboardCheck,
+    FileText,
+    Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +48,8 @@ export type HarvestRow = {
     expectedHarvestDate: string;
     expectedPricePerKg?: string | number | null;
     farmerDeliveredAt?: string | null;
+    deliveryMethod?: string | null;
+    transactionNote?: string | null;
     farm: {
         farmName: string;
         farmCode?: string;
@@ -53,6 +58,12 @@ export type HarvestRow = {
         region?: { code: string } | null;
     };
     farmer?: { fullName: string; phone: string };
+};
+
+export const deliveryMethodLabels: Record<string, string> = {
+    BUYER_PICKUP: "Bên mua đến thu tại vườn",
+    FARMER_DELIVERY: "Nông dân giao đến bên mua",
+    OTHER: "Thỏa thuận khác",
 };
 
 export type RawLot = {
@@ -122,6 +133,7 @@ export function PartnerHarvests({
     const [tab, setTab] = useState(initialTab);
     const [busy, setBusy] = useState<string | null>(null);
     const [receiveRow, setReceiveRow] = useState<HarvestRow | null>(null);
+    const [confirmHarvestRow, setConfirmHarvestRow] = useState<HarvestRow | null>(null);
     const [qcLot, setQcLot] = useState<RawLot | null>(null);
     const [viewLot, setViewLot] = useState<RawLot | null>(null);
     const [viewHarvestRow, setViewHarvestRow] = useState<HarvestRow | null>(null);
@@ -487,9 +499,13 @@ export function PartnerHarvests({
                                         }
                                     />
                                     <Info
-                                        icon={MapPin}
-                                        label="Vùng trồng / Vị trí"
-                                        value={item.farm.region?.code || item.farm.address}
+                                        icon={Truck}
+                                        label="Phương thức giao nhận"
+                                        value={
+                                            item.deliveryMethod
+                                                ? deliveryMethodLabels[item.deliveryMethod] || item.deliveryMethod
+                                                : "Chưa xác định"
+                                        }
                                     />
                                     <Info
                                         icon={Sprout}
@@ -498,7 +514,7 @@ export function PartnerHarvests({
                                     />
                                 </div>
 
-                                {mode === "PROCESSING_FACILITY" && isNew && (
+                                {isNew && (
                                     <div className="flex gap-2 pt-2 border-t">
                                         <Button
                                             variant="outline"
@@ -512,9 +528,10 @@ export function PartnerHarvests({
                                             size="sm"
                                             className="flex-1 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold"
                                             disabled={busy === item.id}
-                                            onClick={() => void act(item.id, "CONFIRM")}
+                                            onClick={() => setConfirmHarvestRow(item)}
                                         >
-                                            Xác nhận tiếp nhận
+                                            <ClipboardCheck className="mr-1.5 h-4 w-4" />
+                                            Xác nhận phiếu
                                         </Button>
                                         <Button
                                             variant="outline"
@@ -773,6 +790,23 @@ export function PartnerHarvests({
             {/* MODAL: XEM CHI TIẾT PHIẾU THU HOẠCH NGUỒN */}
             {viewHarvestRow && (
                 <HarvestRowDetailModal row={viewHarvestRow} onClose={() => setViewHarvestRow(null)} />
+            )}
+
+            {/* MODAL: XÁC NHẬN PHIẾU THU HOẠCH (DÀNH CHO VỰA & CƠ SỞ CHẾ BIẾN) */}
+            {confirmHarvestRow && (
+                <ConfirmHarvestModal
+                    row={confirmHarvestRow}
+                    busy={busy === confirmHarvestRow.id}
+                    onClose={() => setConfirmHarvestRow(null)}
+                    onConfirm={async (note) => {
+                        const ok = await act(confirmHarvestRow.id, "CONFIRM", { note });
+                        if (ok) setConfirmHarvestRow(null);
+                    }}
+                    onReject={async () => {
+                        const ok = await act(confirmHarvestRow.id, "REJECT");
+                        if (ok) setConfirmHarvestRow(null);
+                    }}
+                />
             )}
         </section>
     );
@@ -1552,11 +1586,218 @@ function HarvestRowDetailModal({ row, onClose }: { row: HarvestRow; onClose: () 
                         <span className="text-slate-500">Ngày thu hoạch / giao dự kiến:</span>
                         <b className="text-slate-800">{formatVietnameseDate(row.expectedHarvestDate)}</b>
                     </div>
+                    <div className="flex justify-between">
+                        <span className="text-slate-500">Phương thức giao nhận:</span>
+                        <b className="text-blue-900 font-bold">
+                            {row.deliveryMethod ? deliveryMethodLabels[row.deliveryMethod] || row.deliveryMethod : "Chưa xác định"}
+                        </b>
+                    </div>
+                    {row.transactionNote && (
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Ghi chú giao dịch:</span>
+                            <b className="text-slate-800 italic">{row.transactionNote}</b>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex justify-end pt-2">
                     <Button variant="outline" className="rounded-2xl" onClick={onClose}>
                         Đóng
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+}
+
+function ConfirmHarvestModal({
+    row,
+    busy,
+    onClose,
+    onConfirm,
+    onReject,
+}: {
+    row: HarvestRow;
+    busy: boolean;
+    onClose: () => void;
+    onConfirm: (note: string) => void;
+    onReject: () => void;
+}) {
+    const [note, setNote] = useState("");
+    const expectedKg = Number(row.expectedWeight) || 0;
+    const priceKg = row.expectedPricePerKg ? Number(row.expectedPricePerKg) : 0;
+
+    return (
+        <Modal title="XÁC NHẬN PHIẾU THU HOẠCH" onClose={onClose}>
+            <div className="space-y-4 text-xs sm:text-sm">
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                            <FileText className="h-4 w-4 text-brand-600" />
+                            Thông tin kế hoạch thu hoạch từ nông dân
+                        </span>
+                        <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-bold text-amber-700">
+                            Chờ xác nhận
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                Mã phiếu thu hoạch
+                            </label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={row.code}
+                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-xs font-bold text-slate-900 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                Vườn trồng / Trang trại
+                            </label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={`${row.farm.farmName}${row.farm.region?.code ? ` (MSVT: ${row.farm.region.code})` : ""}`}
+                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                Nông dân phụ trách
+                            </label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={`${row.farmer?.fullName || "—"}${row.farmer?.phone ? ` · SĐT: ${row.farmer.phone}` : ""}`}
+                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                Giống sầu riêng
+                            </label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={row.farm.durianVariety}
+                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-emerald-800 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                Ngày dự kiến thu hoạch
+                            </label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={formatVietnameseDate(row.expectedHarvestDate)}
+                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                Sản lượng dự kiến
+                            </label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={`${expectedKg.toLocaleString("vi-VN")} ${row.weightUnit}`}
+                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-indigo-900 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                Đơn giá dự kiến / đề xuất
+                            </label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={priceKg > 0 ? `${priceKg.toLocaleString("vi-VN")} đ/kg` : "Thương lượng khi nhập"}
+                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-amber-800 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-blue-900 mb-1 flex items-center gap-1">
+                                <Truck className="h-3.5 w-3.5 text-blue-600" />
+                                Phương thức giao nhận
+                            </label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={row.deliveryMethod ? deliveryMethodLabels[row.deliveryMethod] || row.deliveryMethod : "Chưa xác định"}
+                                className="h-10 w-full rounded-xl border border-blue-300 bg-blue-50/70 px-3 text-xs font-black text-blue-950 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    {row.transactionNote && (
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                Ghi chú / Thỏa thuận từ nông dân
+                            </label>
+                            <input
+                                type="text"
+                                readOnly
+                                value={row.transactionNote}
+                                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-700 italic focus:outline-none"
+                            />
+                        </div>
+                    )}
+                </div>
+
+                <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                        Ghi chú xác nhận / Hẹn lịch với nông dân:
+                    </label>
+                    <textarea
+                        rows={3}
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        placeholder="Nhập ghi chú phản hồi, thời gian đón hàng hoặc hướng dẫn địa điểm giao nhận..."
+                        className="w-full rounded-xl border border-slate-300 p-3 text-xs text-slate-800 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none"
+                    />
+                    <p className="text-[11px] text-slate-500 italic">
+                        Khi xác nhận, phiếu sẽ chuyển sang trạng thái <strong>Đã xác nhận</strong> để tiếp tục theo dõi tiến độ thu hoạch và chuẩn bị cân nhận nông sản.
+                    </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-2 border-t">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onReject}
+                        disabled={busy}
+                        className="rounded-2xl border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold"
+                    >
+                        Từ chối
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onClose}
+                        disabled={busy}
+                        className="rounded-2xl text-xs font-bold text-slate-600"
+                    >
+                        Đóng
+                    </Button>
+                    <Button
+                        type="button"
+                        onClick={() => onConfirm(note)}
+                        disabled={busy}
+                        className="rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-sm"
+                    >
+                        {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <ClipboardCheck className="h-4 w-4 mr-1.5" />}
+                        Xác nhận phiếu thu hoạch
                     </Button>
                 </div>
             </div>

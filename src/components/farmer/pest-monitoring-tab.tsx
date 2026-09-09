@@ -13,6 +13,7 @@ import {
     Loader2,
     X,
     Printer,
+    Unlock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatVietnameseDate } from "@/lib/date-format";
@@ -23,6 +24,7 @@ interface PestMonitoringTabProps {
     isSeasonActive?: boolean;
     farmName?: string;
     seasonName?: string;
+    onReopenSeason?: () => void;
 }
 
 interface PestBookSummary {
@@ -118,6 +120,7 @@ export function PestMonitoringTab({
     farmId,
     cropSeasonId,
     isSeasonActive = true,
+    onReopenSeason,
 }: PestMonitoringTabProps) {
     const [books, setBooks] = useState<PestBookSummary[]>([]);
     const [loading, setLoading] = useState(true);
@@ -1185,8 +1188,20 @@ export function PestMonitoringTab({
                 </div>
 
                 {!isSeasonActive ? (
-                    <div className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-600 border border-slate-200 shrink-0">
-                        <span>🔒 Vụ mùa đã đóng (Chế độ chỉ xem)</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 border border-slate-200 shrink-0">
+                            <span>🔒 Vụ mùa đã đóng (Chế độ chỉ xem)</span>
+                        </div>
+                        {onReopenSeason && (
+                            <Button
+                                type="button"
+                                onClick={onReopenSeason}
+                                className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-xs sm:text-sm font-bold text-emerald-800 shadow-xs hover:bg-emerald-100 shrink-0"
+                            >
+                                <Unlock className="mr-1.5 h-4 w-4 text-emerald-600" />
+                                Mở khóa vụ mùa
+                            </Button>
+                        )}
                     </div>
                 ) : (
                     <Button

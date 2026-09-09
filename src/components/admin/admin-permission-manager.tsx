@@ -2,14 +2,9 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import {
-    ArrowLeft,
-    Check,
-    ChevronDown,
-    ChevronRight,
-    ChevronUp,
-    Loader2,
-    RotateCcw,
-    Save,
+    CheckSquare,
+    Square,
+    MinusSquare,
     Search,
     ShieldCheck,
     LayoutDashboard,
@@ -28,39 +23,42 @@ import {
     UserCheck,
     Layers,
     BookOpen,
-    CheckSquare,
-    Square,
-    MinusSquare,
-    Phone,
-    BadgeCheck,
+    Bell,
+    ChevronDown,
+    ChevronRight,
+    Loader2,
     Plus,
+    RotateCcw,
+    Save,
     Trash2,
-    UserPlus,
+    Edit3,
     AlertCircle,
     X,
-    Building2,
-    Info,
-    SlidersHorizontal,
+    Check,
+    ShieldAlert,
+    ChevronUp,
     Sparkles,
-    Bell
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
     PERMISSION_MODULES,
     getAllSystemPermissionKeys,
     ROLE_TARGET_GROUPS,
     ModuleDef,
     FeatureDef,
+    PermissionActionDef,
     RoleItem,
-    RoleAssignedUser,
+    generateRoleKeyFromName,
 } from "@/lib/permissions-data";
 
-// Ánh xạ icon cho từng module
+// Ánh xạ icon cho từng phân hệ nghiệp vụ
 function getModuleIcon(iconName: string) {
     switch (iconName) {
         case "LayoutDashboard":
-            return <LayoutDashboard className="h-5 w-5 text-indigo-600" />;
+            return <LayoutDashboard className="h-5 w-5 text-emerald-600" />;
         case "Sprout":
             return <Sprout className="h-5 w-5 text-emerald-600" />;
         case "Wheat":
@@ -100,1672 +98,1379 @@ function getModuleIcon(iconName: string) {
     }
 }
 
-async function readJsonResponse(response: Response) {
-    const text = await response.text();
-    if (!text.trim()) throw new Error(`Máy chủ không trả về dữ liệu (HTTP ${response.status}).`);
-    try {
-        return JSON.parse(text);
-    } catch {
-        throw new Error(`Phản hồi từ máy chủ không hợp lệ (HTTP ${response.status}).`);
-    }
-}
-
 export function AdminPermissionManager() {
-    const router = useRouter();
-
-    // Dữ liệu chính
+    // 1. STATE DỮ LIỆU
     const [roles, setRoles] = useState<RoleItem[]>([]);
-    const [allUsers, setAllUsers] = useState<RoleAssignedUser[]>([]);
-    const [selectedRoleKey, setSelectedRoleKey] = useState<string>("");
-    const [activeTab, setActiveTab] = useState<"info" | "permissions" | "accounts">("permissions");
-
-    // Phân quyền đang thao tác (working copy)
-    const [currentPermissions, setCurrentPermissions] = useState<string[]>([]);
-
-    // Form thông tin Role (working copy cho tab Info)
-    const [roleInfoForm, setRoleInfoForm] = useState<{
-        name: string;
-        description: string;
-        targetGroup: string;
-        status: "ACTIVE" | "INACTIVE";
-    }>({
-        name: "",
-        description: "",
-        targetGroup: "Cơ sở chế biến",
-        status: "ACTIVE",
-    });
-
-    // Tìm kiếm & Bộ lọc
-    const [searchRoleQuery, setSearchRoleQuery] = useState("");
-    const [searchFeatureQuery, setSearchFeatureQuery] = useState("");
-    const [searchAccountQuery, setSearchAccountQuery] = useState("");
-    const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
-
-    // Modals & States
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-    const [selectedUserIdsToAssign, setSelectedUserIdsToAssign] = useState<string[]>([]);
-    const [assignModalSearch, setAssignModalSearch] = useState("");
-
-    const [newRoleForm, setNewRoleForm] = useState({
-        roleName: "",
-        roleKey: "",
-        roleDescription: "",
-        targetGroup: "Cơ sở chế biến",
-        copyFromRole: "",
-    });
-
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+    const [selectedRoleKey, setSelectedRoleKey] = useState<string>("");
+    const [activeTab, setActiveTab] = useState<"info" | "permissions">("permissions");
 
-    // Lấy toàn bộ keys của hệ thống
-    const allSystemKeys = useMemo(() => getAllSystemPermissionKeys(), []);
+    // Tìm kiếm
+    const [roleSearch, setRoleSearch] = useState("");
+    const [featureSearch, setFeatureSearch] = useState("");
 
-    // Tải dữ liệu từ API
-    const loadData = useCallback(async (preferredKey?: string) => {
+    // Cây phân hệ (Mở rộng / Thu gọn)
+    const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
+
+    // Quyền đang chỉnh sửa (Draft permissions)
+    const [editingPermissions, setEditingPermissions] = useState<Set<string>>(new Set());
+    const [initialPermissions, setInitialPermissions] = useState<Set<string>>(new Set());
+
+    // Trạng thái thao tác API
+    const [isSaving, setIsSaving] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
+    const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+    // Modal Tạo vai trò mới
+    const [createModalOpen, setCreateModalOpen] = useState(false);
+    const [newRoleName, setNewRoleName] = useState("");
+    const [newRoleKey, setNewRoleKey] = useState("");
+    const [newRoleTargetGroup, setNewRoleTargetGroup] = useState<string>("Cơ sở chế biến");
+    const [newRoleDesc, setNewRoleDesc] = useState("");
+    const [copyFromRole, setCopyFromRole] = useState<string>("");
+    const [isCreatingRole, setIsCreatingRole] = useState(false);
+
+    // Modal Chỉnh sửa vai trò
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editRoleName, setEditRoleName] = useState("");
+    const [editRoleDesc, setEditRoleDesc] = useState("");
+    const [editRoleTargetGroup, setEditRoleTargetGroup] = useState("");
+    const [isEditingRole, setIsEditingRole] = useState(false);
+
+    // Modal Xóa vai trò
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [isDeletingRole, setIsDeletingRole] = useState(false);
+
+    // Toast helper
+    const showToast = (text: string, type: "success" | "error" = "success") => {
+        setToastMessage({ text, type });
+        setTimeout(() => setToastMessage(null), 4000);
+    };
+
+    // 2. TẢI DỮ LIỆU BAN ĐẦU
+    const loadRoles = useCallback(async (selectKeyAfterLoad?: string) => {
         setLoading(true);
         try {
-            const res = await fetch("/api/admin/permissions", { cache: "no-store" });
-            const json = await readJsonResponse(res);
-            if (!res.ok || !json.success) {
-                throw new Error(json.message || "Không thể tải danh mục phân quyền.");
-            }
-
-            const rolesList: RoleItem[] = json.data?.roles || [];
-            const usersList: RoleAssignedUser[] = json.data?.users || [];
-            setRoles(rolesList);
-            setAllUsers(usersList);
-
-            // Chọn vai trò mặc định
-            const targetKey =
-                preferredKey ||
-                selectedRoleKey ||
-                (rolesList.some((r) => r.key === "PROCESSING_STAFF") ? "PROCESSING_STAFF" : rolesList[0]?.key || "");
-
-            if (targetKey) {
-                const targetRole = rolesList.find((r) => r.key === targetKey) || rolesList[0];
-                if (targetRole) {
-                    setSelectedRoleKey(targetRole.key);
-                    setCurrentPermissions([...targetRole.permissions]);
-                    setRoleInfoForm({
-                        name: targetRole.name,
-                        description: targetRole.description,
-                        targetGroup: targetRole.targetGroup,
-                        status: targetRole.status,
-                    });
+            const res = await fetch("/api/admin/roles");
+            const data = await res.json();
+            if (data.success && Array.isArray(data.data)) {
+                setRoles(data.data);
+                const targetKey = selectKeyAfterLoad || selectedRoleKey || data.data[0]?.key || "ADMIN";
+                const activeRole = data.data.find((r: RoleItem) => r.key === targetKey) || data.data[0];
+                if (activeRole) {
+                    setSelectedRoleKey(activeRole.key);
+                    const perms = new Set<string>(activeRole.permissions || []);
+                    setEditingPermissions(new Set(perms));
+                    setInitialPermissions(new Set(perms));
                 }
+            } else {
+                showToast(data.message || "Không thể tải danh sách vai trò", "error");
             }
-        } catch (error: any) {
-            setMessage({
-                text: error?.message || "Có lỗi xảy ra khi kết nối máy chủ.",
-                type: "error",
-            });
+        } catch (err) {
+            console.error("loadRoles error:", err);
+            showToast("Lỗi kết nối khi tải danh mục vai trò.", "error");
         } finally {
             setLoading(false);
         }
     }, [selectedRoleKey]);
 
     useEffect(() => {
-        void loadData();
-    }, [loadData]);
+        void loadRoles();
+    }, []);
 
-    // Vai trò đang được chọn
+    // Vai trò hiện đang được chọn
     const selectedRole = useMemo(() => {
-        return roles.find((r) => r.key === selectedRoleKey);
+        return roles.find((r) => r.key === selectedRoleKey) || roles[0] || null;
     }, [roles, selectedRoleKey]);
 
-    // Đếm số thay đổi chưa lưu giữa working copy và saved permissions
-    const unsavedChangesCount = useMemo(() => {
-        if (!selectedRole) return 0;
-        const origSet = new Set(selectedRole.permissions);
-        const currSet = new Set(currentPermissions);
-        let diff = 0;
-        for (const p of currSet) {
-            if (!origSet.has(p)) diff++;
-        }
-        for (const p of origSet) {
-            if (!currSet.has(p)) diff++;
-        }
-        return diff;
-    }, [selectedRole, currentPermissions]);
-
-    const hasUnsavedChanges = unsavedChangesCount > 0;
-
-    // Chọn Role khác từ Sidebar
-    function handleSelectRole(key: string) {
+    // Khi đổi selectedRoleKey, đồng bộ draft permissions
+    const handleSelectRole = (key: string) => {
         if (key === selectedRoleKey) return;
-
-        if (hasUnsavedChanges) {
-            if (!window.confirm("Bạn có các thay đổi quyền chưa lưu cho vai trò hiện tại. Bạn có muốn chuyển sang vai trò khác và hủy thay đổi này không?")) {
-                return;
-            }
+        if (isDirty) {
+            const confirmLeave = window.confirm("Bạn có các thay đổi chưa lưu trên vai trò hiện tại. Tiếp tục chuyển vai trò sẽ hủy các thay đổi này?");
+            if (!confirmLeave) return;
         }
-
         setSelectedRoleKey(key);
-        setMessage(null);
         const target = roles.find((r) => r.key === key);
         if (target) {
-            setCurrentPermissions([...target.permissions]);
-            setRoleInfoForm({
-                name: target.name,
-                description: target.description,
-                targetGroup: target.targetGroup,
-                status: target.status,
-            });
+            const perms = new Set<string>(target.permissions || []);
+            setEditingPermissions(new Set(perms));
+            setInitialPermissions(new Set(perms));
         }
-    }
+    };
 
-    // Toggle một permission key đơn lẻ
-    function togglePermission(key: string) {
-        setCurrentPermissions((prev) =>
-            prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-        );
-    }
-
-    // Toggle tất cả các actions của 1 Feature
-    function toggleFeature(feature: FeatureDef) {
-        const featureKeys = Object.values(feature.actions)
-            .map((act) => act?.key)
-            .filter((k): k is string => Boolean(k));
-        if (featureKeys.length === 0) return;
-
-        const allActive = featureKeys.every((k) => currentPermissions.includes(k));
-        if (allActive) {
-            setCurrentPermissions((prev) => prev.filter((k) => !featureKeys.includes(k)));
-        } else {
-            setCurrentPermissions((prev) => Array.from(new Set([...prev, ...featureKeys])));
+    // Kiểm tra có thay đổi chưa lưu hay không
+    const isDirty = useMemo(() => {
+        if (editingPermissions.size !== initialPermissions.size) return true;
+        for (const p of editingPermissions) {
+            if (!initialPermissions.has(p)) return true;
         }
-    }
+        return false;
+    }, [editingPermissions, initialPermissions]);
 
-    // Toggle tất cả các actions của 1 Module
-    function toggleModule(mod: ModuleDef) {
-        const moduleKeys: string[] = [];
-        for (const feat of mod.features) {
-            for (const act of Object.values(feat.actions)) {
-                if (act?.key) moduleKeys.push(act.key);
-            }
-        }
-        if (moduleKeys.length === 0) return;
+    // Phân loại vai trò: Hệ thống và Tùy chỉnh
+    const { systemRoles, customRoles } = useMemo(() => {
+        const query = roleSearch.trim().toLowerCase();
+        const filtered = roles.filter((r) => {
+            if (!query) return true;
+            return (
+                r.name.toLowerCase().includes(query) ||
+                r.key.toLowerCase().includes(query) ||
+                r.description.toLowerCase().includes(query)
+            );
+        });
 
-        const allActive = moduleKeys.every((k) => currentPermissions.includes(k));
-        if (allActive) {
-            setCurrentPermissions((prev) => prev.filter((k) => !moduleKeys.includes(k)));
-        } else {
-            setCurrentPermissions((prev) => Array.from(new Set([...prev, ...moduleKeys])));
-        }
-    }
+        return {
+            systemRoles: filtered.filter((r) => r.isSystem),
+            customRoles: filtered.filter((r) => !r.isSystem),
+        };
+    }, [roles, roleSearch]);
 
-    // Khôi phục quyền về mặc định của Role
-    async function handleResetToDefault() {
-        if (!selectedRole) return;
-        if (!window.confirm(`Khôi phục toàn bộ quyền của vai trò "${selectedRole.name}" về giá trị mặc định của hệ thống?`)) {
-            return;
-        }
-
-        setSaving(true);
-        setMessage(null);
-        try {
-            const res = await fetch("/api/admin/permissions/reset", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ roleKey: selectedRole.key }),
-            });
-            const json = await readJsonResponse(res);
-            if (!res.ok || !json.success) throw new Error(json.message || "Lỗi khi khôi phục quyền mặc định.");
-
-            const newPerms = json.data?.permissions || [];
-            setCurrentPermissions([...newPerms]);
-            setMessage({
-                text: json.message || `Đã khôi phục quyền mặc định của vai trò ${selectedRole.name}.`,
-                type: "success",
-            });
-            await loadData(selectedRole.key);
-        } catch (err: any) {
-            setMessage({ text: err?.message || "Lỗi khi khôi phục quyền.", type: "error" });
-        } finally {
-            setSaving(false);
-        }
-    }
-
-    // Hủy thay đổi chưa lưu
-    function handleDiscardChanges() {
-        if (!selectedRole) return;
-        setCurrentPermissions([...selectedRole.permissions]);
-        setMessage({ text: "Đã hủy các thay đổi quyền chưa lưu.", type: "success" });
-    }
-
-    // Lưu phân quyền Role
-    async function handleSavePermissions() {
-        if (!selectedRole) return;
-        setSaving(true);
-        setMessage(null);
-        try {
-            const res = await fetch("/api/admin/permissions", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    roleKey: selectedRole.key,
-                    permissions: currentPermissions,
-                }),
-            });
-            const json = await readJsonResponse(res);
-            if (!res.ok || !json.success) throw new Error(json.message || "Lỗi khi lưu phân quyền.");
-
-            setMessage({
-                text: json.message || `Đã lưu thành công phân quyền cho vai trò "${selectedRole.name}".`,
-                type: "success",
-            });
-            await loadData(selectedRole.key);
-        } catch (err: any) {
-            setMessage({ text: err?.message || "Lỗi khi lưu quyền.", type: "error" });
-        } finally {
-            setSaving(false);
-        }
-    }
-
-    // Lưu thông tin Role (Tab Thông tin)
-    async function handleSaveRoleInfo(e: React.FormEvent) {
-        e.preventDefault();
-        if (!selectedRole) return;
-        setSaving(true);
-        setMessage(null);
-        try {
-            const res = await fetch("/api/admin/permissions", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "update_role_info",
-                    roleKey: selectedRole.key,
-                    roleName: roleInfoForm.name,
-                    roleDescription: roleInfoForm.description,
-                    targetGroup: roleInfoForm.targetGroup,
-                    status: roleInfoForm.status,
-                }),
-            });
-            const json = await readJsonResponse(res);
-            if (!res.ok || !json.success) throw new Error(json.message || "Lỗi khi cập nhật thông tin vai trò.");
-
-            setMessage({ text: "Đã cập nhật thông tin vai trò thành công!", type: "success" });
-            await loadData(selectedRole.key);
-        } catch (err: any) {
-            setMessage({ text: err?.message || "Lỗi khi lưu thông tin vai trò.", type: "error" });
-        } finally {
-            setSaving(false);
-        }
-    }
-
-    // Xóa Role tùy chỉnh
-    async function handleDeleteRole() {
-        if (!selectedRole || selectedRole.isSystem) return;
-        if (!window.confirm(`Bạn có chắc chắn muốn xóa vai trò tùy chỉnh "${selectedRole.name}" (${selectedRole.key})? Hành động này không thể hoàn tác.`)) {
-            return;
-        }
-
-        setSaving(true);
-        setMessage(null);
-        try {
-            const res = await fetch(`/api/admin/permissions?roleKey=${encodeURIComponent(selectedRole.key)}`, {
-                method: "DELETE",
-            });
-            const json = await readJsonResponse(res);
-            if (!res.ok || !json.success) throw new Error(json.message || "Lỗi khi xóa vai trò.");
-
-            setMessage({ text: json.message || "Đã xóa vai trò thành công.", type: "success" });
-            await loadData("ADMIN");
-        } catch (err: any) {
-            setMessage({ text: err?.message || "Lỗi khi xóa vai trò.", type: "error" });
-        } finally {
-            setSaving(false);
-        }
-    }
-
-    // Gán tài khoản vào Role
-    async function handleConfirmAssignUsers() {
-        if (!selectedRole || selectedUserIdsToAssign.length === 0) return;
-        setSaving(true);
-        try {
-            const res = await fetch("/api/admin/permissions", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "assign_users",
-                    roleKey: selectedRole.key,
-                    userIds: selectedUserIdsToAssign,
-                }),
-            });
-            const json = await readJsonResponse(res);
-            if (!res.ok || !json.success) throw new Error(json.message || "Lỗi khi gán tài khoản.");
-
-            setMessage({ text: `Đã gán thành công ${selectedUserIdsToAssign.length} tài khoản vào vai trò ${selectedRole.name}.`, type: "success" });
-            setIsAssignModalOpen(false);
-            setSelectedUserIdsToAssign([]);
-            await loadData(selectedRole.key);
-        } catch (err: any) {
-            setMessage({ text: err?.message || "Lỗi khi gán tài khoản.", type: "error" });
-        } finally {
-            setSaving(false);
-        }
-    }
-
-    // Gỡ tài khoản khỏi Role
-    async function handleRemoveUser(user: RoleAssignedUser) {
-        if (!selectedRole) return;
-        if (!window.confirm(`Gỡ tài khoản ${user.fullName} (${user.phone}) khỏi vai trò ${selectedRole.name}?`)) {
-            return;
-        }
-
-        setSaving(true);
-        try {
-            const res = await fetch("/api/admin/permissions", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "remove_user",
-                    roleKey: selectedRole.key,
-                    userId: user.id,
-                }),
-            });
-            const json = await readJsonResponse(res);
-            if (!res.ok || !json.success) throw new Error(json.message || "Lỗi khi gỡ tài khoản.");
-
-            setMessage({ text: `Đã gỡ tài khoản ${user.fullName} khỏi vai trò ${selectedRole.name}.`, type: "success" });
-            await loadData(selectedRole.key);
-        } catch (err: any) {
-            setMessage({ text: err?.message || "Lỗi khi gỡ tài khoản.", type: "error" });
-        } finally {
-            setSaving(false);
-        }
-    }
-
-    // Tạo Role mới từ Modal
-    async function handleCreateRoleSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        if (!newRoleForm.roleName.trim()) {
-            alert("Vui lòng nhập tên vai trò.");
-            return;
-        }
-
-        setSaving(true);
-        setMessage(null);
-        try {
-            const res = await fetch("/api/admin/permissions/roles", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newRoleForm),
-            });
-            const json = await readJsonResponse(res);
-            if (!res.ok || !json.success) throw new Error(json.message || "Lỗi khi tạo vai trò mới.");
-
-            const createdRoleKey = json.data?.key || json.data?.role?.key;
-            setMessage({ text: `Đã tạo vai trò "${newRoleForm.roleName}" thành công!`, type: "success" });
-            setIsCreateModalOpen(false);
-            setNewRoleForm({
-                roleName: "",
-                roleKey: "",
-                roleDescription: "",
-                targetGroup: "Cơ sở chế biến",
-                copyFromRole: "",
-            });
-            await loadData(createdRoleKey);
-        } catch (err: any) {
-            setMessage({ text: err?.message || "Lỗi khi tạo vai trò.", type: "error" });
-        } finally {
-            setSaving(false);
-        }
-    }
-
-    // Điều khiển mở rộng / thu gọn tree
-    function toggleCollapseModule(modId: string) {
-        setCollapsedModules((prev) => ({ ...prev, [modId]: !prev[modId] }));
-    }
-
-    const isAllExpanded = Object.keys(collapsedModules).length === 0;
-
-    function handleToggleExpandAll() {
-        if (isAllExpanded) {
-            // Thu gọn tất cả
-            const collapsed: Record<string, boolean> = {};
-            for (const m of PERMISSION_MODULES) collapsed[m.id] = true;
-            setCollapsedModules(collapsed);
-        } else {
-            // Mở rộng tất cả
-            setCollapsedModules({});
-        }
-    }
-
-    // Chọn tất cả / Bỏ chọn tất cả quyền
-    const isAllPermissionsSelected = currentPermissions.length >= allSystemKeys.length;
-
-    function handleToggleSelectAll() {
-        if (isAllPermissionsSelected) {
-            setCurrentPermissions([]);
-        } else {
-            setCurrentPermissions([...allSystemKeys]);
-        }
-    }
-
-    // Lọc danh sách Roles ở Sidebar
-    const filteredSystemRoles = useMemo(() => {
-        const q = searchRoleQuery.trim().toLowerCase();
-        return roles.filter((r) => r.isSystem && (!q || r.name.toLowerCase().includes(q) || r.key.toLowerCase().includes(q)));
-    }, [roles, searchRoleQuery]);
-
-    const filteredCustomRoles = useMemo(() => {
-        const q = searchRoleQuery.trim().toLowerCase();
-        return roles.filter((r) => !r.isSystem && (!q || r.name.toLowerCase().includes(q) || r.key.toLowerCase().includes(q)));
-    }, [roles, searchRoleQuery]);
-
-    // Lọc Module & Feature cho Tab Phân quyền
-    const filteredTreeModules = useMemo(() => {
-        const q = searchFeatureQuery.trim().toLowerCase();
+    // Lọc danh sách Module & Feature theo từ khóa tìm kiếm chức năng
+    const filteredModules = useMemo(() => {
+        const q = featureSearch.trim().toLowerCase();
         if (!q) return PERMISSION_MODULES;
 
-        return PERMISSION_MODULES.filter((mod) => {
-            const modMatch = mod.name.toLowerCase().includes(q) || mod.title.toLowerCase().includes(q);
-            if (modMatch) return true;
-            return mod.features.some((feat) => {
-                const featMatch = feat.name.toLowerCase().includes(q) || feat.description.toLowerCase().includes(q) || feat.group?.toLowerCase().includes(q);
-                const actMatch = Object.values(feat.actions).some(
-                    (act) => act?.label.toLowerCase().includes(q) || act?.key.toLowerCase().includes(q)
-                        || act?.routes.some((route) => `${route.method || ""} ${route.path} ${route.operation || ""}`.toLowerCase().includes(q))
-                );
-                return featMatch || actMatch;
-            });
-        }).map((mod) => {
-            const matchedFeatures = mod.features.filter((feat) => {
-                const featMatch = feat.name.toLowerCase().includes(q) || feat.description.toLowerCase().includes(q) || feat.group?.toLowerCase().includes(q);
-                const actMatch = Object.values(feat.actions).some(
-                    (act) => act?.label.toLowerCase().includes(q) || act?.key.toLowerCase().includes(q)
-                        || act?.routes.some((route) => `${route.method || ""} ${route.path} ${route.operation || ""}`.toLowerCase().includes(q))
-                );
-                return featMatch || actMatch || mod.name.toLowerCase().includes(q);
-            });
-            return {
-                ...mod,
-                features: matchedFeatures.length > 0 ? matchedFeatures : mod.features,
-            };
-        });
-    }, [searchFeatureQuery]);
+        return PERMISSION_MODULES.map((mod) => {
+            const modMatches =
+                mod.name.toLowerCase().includes(q) ||
+                mod.title.toLowerCase().includes(q) ||
+                mod.description.toLowerCase().includes(q);
 
-    // Lọc tài khoản thuộc Role (Tab Tài khoản)
-    const assignedAccounts = useMemo(() => {
-        if (!selectedRole) return [];
-        const q = searchAccountQuery.trim().toLowerCase();
-        return selectedRole.assignedUsers.filter((u) => {
-            if (!q) return true;
-            return (
-                u.fullName.toLowerCase().includes(q) ||
-                u.phone.includes(q) ||
-                (u.email && u.email.toLowerCase().includes(q)) ||
-                (u.organization && u.organization.toLowerCase().includes(q))
-            );
-        });
-    }, [selectedRole, searchAccountQuery]);
+            if (mod.isSingleEntity) {
+                const singleFeat = mod.features[0];
+                if (!singleFeat) return null;
+                if (modMatches) return mod;
 
-    // Danh sách tài khoản có thể gán vào Role (chưa thuộc Role này)
-    const assignableUsers = useMemo(() => {
-        if (!selectedRole) return [];
-        const assignedIds = new Set(selectedRole.assignedUsers.map((u) => u.id));
-        const q = assignModalSearch.trim().toLowerCase();
-        return allUsers.filter((u) => {
-            if (assignedIds.has(u.id)) return false;
-            if (!q) return true;
-            return (
-                u.fullName.toLowerCase().includes(q) ||
-                u.phone.includes(q) ||
-                (u.email && u.email.toLowerCase().includes(q)) ||
-                (u.organization && u.organization.toLowerCase().includes(q))
-            );
+                const matchedActions: Record<string, PermissionActionDef> = {};
+                for (const [actionKey, actionDef] of Object.entries(singleFeat.actions)) {
+                    if (!actionDef) continue;
+                    if (
+                        actionDef.label.toLowerCase().includes(q) ||
+                        actionDef.key.toLowerCase().includes(q) ||
+                        (actionDef.description && actionDef.description.toLowerCase().includes(q))
+                    ) {
+                        matchedActions[actionKey] = actionDef;
+                    }
+                }
+
+                if (Object.keys(matchedActions).length > 0) {
+                    return {
+                        ...mod,
+                        features: [
+                            {
+                                ...singleFeat,
+                                actions: matchedActions,
+                            },
+                        ],
+                    };
+                }
+                return null;
+            }
+
+            const matchedFeatures = mod.features.map((feat) => {
+                const featMatches =
+                    modMatches ||
+                    feat.name.toLowerCase().includes(q) ||
+                    (feat.description && feat.description.toLowerCase().includes(q));
+
+                if (featMatches) return feat;
+
+                const matchedActions: Record<string, PermissionActionDef> = {};
+                for (const [actionKey, actionDef] of Object.entries(feat.actions)) {
+                    if (!actionDef) continue;
+                    if (
+                        actionDef.label.toLowerCase().includes(q) ||
+                        actionDef.key.toLowerCase().includes(q) ||
+                        (actionDef.description && actionDef.description.toLowerCase().includes(q))
+                    ) {
+                        matchedActions[actionKey] = actionDef;
+                    }
+                }
+
+                if (Object.keys(matchedActions).length > 0) {
+                    return {
+                        ...feat,
+                        actions: matchedActions,
+                    };
+                }
+                return null;
+            }).filter((f): f is FeatureDef => f !== null);
+
+            if (matchedFeatures.length > 0) {
+                return {
+                    ...mod,
+                    features: matchedFeatures,
+                };
+            }
+            return null;
+        }).filter((mod): mod is ModuleDef => mod !== null);
+    }, [featureSearch]);
+
+    // Trạng thái expand ban đầu của tất cả module
+    useEffect(() => {
+        if (PERMISSION_MODULES.length > 0 && Object.keys(expandedModules).length === 0) {
+            const initial: Record<string, boolean> = {};
+            PERMISSION_MODULES.forEach((m) => {
+                initial[m.id] = true;
+            });
+            setExpandedModules(initial);
+        }
+    }, [expandedModules]);
+
+    // 3. LOGIC TRI-STATE CHO CÂY PHÂN QUYỀN (Module -> Feature -> Action)
+
+    // Lấy tất cả permission keys thuộc một Feature
+    const getFeatureKeys = (feature: FeatureDef): string[] => {
+        return Object.values(feature.actions)
+            .map((a) => a?.key)
+            .filter((k): k is string => Boolean(k));
+    };
+
+    // Lấy tất cả permission keys thuộc một Module
+    const getModuleKeys = (module: ModuleDef): string[] => {
+        return module.features.flatMap((f) => getFeatureKeys(f));
+    };
+
+    // Kiểm tra trạng thái tri-state của Feature
+    const getFeatureCheckState = (feature: FeatureDef): "none" | "partial" | "all" => {
+        const keys = getFeatureKeys(feature);
+        if (keys.length === 0) return "none";
+        const granted = keys.filter((k) => editingPermissions.has(k)).length;
+        if (granted === 0) return "none";
+        if (granted === keys.length) return "all";
+        return "partial";
+    };
+
+    // Kiểm tra trạng thái tri-state của Module
+    const getModuleCheckState = (module: ModuleDef): "none" | "partial" | "all" => {
+        const keys = getModuleKeys(module);
+        if (keys.length === 0) return "none";
+        const granted = keys.filter((k) => editingPermissions.has(k)).length;
+        if (granted === 0) return "none";
+        if (granted === keys.length) return "all";
+        return "partial";
+    };
+
+    // Trạng thái của "Chọn tất cả" toàn hệ thống
+    const allSystemKeys = useMemo(() => getAllSystemPermissionKeys(), []);
+    const globalCheckState = useMemo<"none" | "partial" | "all">(() => {
+        if (allSystemKeys.length === 0) return "none";
+        const granted = allSystemKeys.filter((k) => editingPermissions.has(k)).length;
+        if (granted === 0) return "none";
+        if (granted === allSystemKeys.length) return "all";
+        return "partial";
+    }, [allSystemKeys, editingPermissions]);
+
+    // Toggle một action riêng lẻ
+    const handleToggleAction = (actionKey: string) => {
+        setEditingPermissions((prev) => {
+            const next = new Set(prev);
+            if (next.has(actionKey)) {
+                next.delete(actionKey);
+            } else {
+                next.add(actionKey);
+            }
+            return next;
         });
-    }, [selectedRole, allUsers, assignModalSearch]);
+    };
+
+    // Toggle một Feature (Chức năng)
+    const handleToggleFeature = (feature: FeatureDef) => {
+        const keys = getFeatureKeys(feature);
+        const state = getFeatureCheckState(feature);
+        setEditingPermissions((prev) => {
+            const next = new Set(prev);
+            if (state === "all") {
+                keys.forEach((k) => next.delete(k));
+            } else {
+                keys.forEach((k) => next.add(k));
+            }
+            return next;
+        });
+    };
+
+    // Toggle một Module (Phân hệ)
+    const handleToggleModule = (module: ModuleDef) => {
+        const keys = getModuleKeys(module);
+        const state = getModuleCheckState(module);
+        setEditingPermissions((prev) => {
+            const next = new Set(prev);
+            if (state === "all") {
+                keys.forEach((k) => next.delete(k));
+            } else {
+                keys.forEach((k) => next.add(k));
+            }
+            return next;
+        });
+    };
+
+    // Toggle Chọn tất cả / Bỏ chọn tất cả
+    const handleToggleAll = () => {
+        setEditingPermissions((prev) => {
+            if (globalCheckState === "all") {
+                return new Set();
+            } else {
+                return new Set(allSystemKeys);
+            }
+        });
+    };
+
+    // Mở rộng tất cả / Thu gọn tất cả
+    const handleExpandAll = (expanded: boolean) => {
+        const next: Record<string, boolean> = {};
+        PERMISSION_MODULES.forEach((m) => {
+            next[m.id] = expanded;
+        });
+        setExpandedModules(next);
+    };
+
+    // 4. THAO TÁC LƯU, HỦY VÀ KHÔI PHỤC QUYỀN
+    const handleSavePermissions = async () => {
+        if (!selectedRole) return;
+        setIsSaving(true);
+        try {
+            const permsArray = Array.from(editingPermissions);
+            const res = await fetch(`/api/admin/roles/${selectedRole.key}/permissions`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ permissions: permsArray }),
+            });
+            const payload = await res.json();
+            if (payload.success) {
+                setInitialPermissions(new Set(permsArray));
+                // Cập nhật lại trong state roles
+                setRoles((prev) =>
+                    prev.map((r) =>
+                        r.key === selectedRole.key
+                            ? {
+                                  ...r,
+                                  permissions: permsArray,
+                                  stats: {
+                                      ...r.stats,
+                                      totalGranted: permsArray.length,
+                                  },
+                              }
+                            : r,
+                    ),
+                );
+                showToast(`Đã lưu thành công ${permsArray.length} quyền cho vai trò ${selectedRole.name}.`);
+            } else {
+                showToast(payload.message || "Không thể lưu phân quyền.", "error");
+            }
+        } catch (err) {
+            console.error("handleSavePermissions error:", err);
+            showToast("Lỗi khi lưu phân quyền.", "error");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDiscardChanges = () => {
+        setEditingPermissions(new Set(initialPermissions));
+        showToast("Đã hoàn nguyên các thay đổi chưa lưu.");
+    };
+
+    const handleResetToDefault = async () => {
+        if (!selectedRole) return;
+        const confirmReset = window.confirm(
+            `Bạn có chắc chắn muốn khôi phục quyền của vai trò "${selectedRole.name}" về thiết lập mặc định của hệ thống?`,
+        );
+        if (!confirmReset) return;
+
+        setIsResetting(true);
+        try {
+            const res = await fetch(`/api/admin/roles/${selectedRole.key}/reset`, {
+                method: "POST",
+            });
+            const payload = await res.json();
+            if (payload.success) {
+                const defaultPerms = payload.data.permissions || [];
+                setEditingPermissions(new Set(defaultPerms));
+                setInitialPermissions(new Set(defaultPerms));
+                setRoles((prev) =>
+                    prev.map((r) =>
+                        r.key === selectedRole.key
+                            ? {
+                                  ...r,
+                                  permissions: defaultPerms,
+                                  stats: {
+                                      ...r.stats,
+                                      totalGranted: defaultPerms.length,
+                                  },
+                              }
+                            : r,
+                    ),
+                );
+                showToast(`Đã khôi phục ${defaultPerms.length} quyền mặc định cho vai trò.`);
+            } else {
+                showToast(payload.message || "Không thể khôi phục quyền mặc định.", "error");
+            }
+        } catch (err) {
+            console.error("handleResetToDefault error:", err);
+            showToast("Lỗi khi khôi phục quyền mặc định.", "error");
+        } finally {
+            setIsResetting(false);
+        }
+    };
+
+    // 5. THAO TÁC TẠO VAI TRÒ MỚI
+    const handleOpenCreateModal = () => {
+        setNewRoleName("");
+        setNewRoleKey("");
+        setNewRoleTargetGroup("Cơ sở chế biến");
+        setNewRoleDesc("");
+        setCopyFromRole("");
+        setCreateModalOpen(true);
+    };
+
+    const handleNameChangeForNewRole = (name: string) => {
+        setNewRoleName(name);
+        setNewRoleKey(generateRoleKeyFromName(name));
+    };
+
+    const handleCreateRole = async () => {
+        if (!newRoleName.trim()) {
+            showToast("Vui lòng nhập tên vai trò.", "error");
+            return;
+        }
+
+        setIsCreatingRole(true);
+        try {
+            const res = await fetch("/api/admin/roles", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    roleName: newRoleName.trim(),
+                    roleKey: newRoleKey.trim() || undefined,
+                    roleDescription: newRoleDesc.trim() || undefined,
+                    targetGroup: newRoleTargetGroup,
+                    copyFromRole: copyFromRole || undefined,
+                }),
+            });
+            const payload = await res.json();
+            if (payload.success) {
+                showToast(`Đã tạo vai trò "${payload.data.name}" thành công.`);
+                setCreateModalOpen(false);
+                await loadRoles(payload.data.key);
+            } else {
+                showToast(payload.message || "Không thể tạo vai trò.", "error");
+            }
+        } catch (err) {
+            console.error("handleCreateRole error:", err);
+            showToast("Lỗi khi tạo vai trò mới.", "error");
+        } finally {
+            setIsCreatingRole(false);
+        }
+    };
+
+    // 6. THAO TÁC CHỈNH SỬA VAI TRÒ TÙY CHỈNH
+    const handleOpenEditModal = () => {
+        if (!selectedRole) return;
+        setEditRoleName(selectedRole.name);
+        setEditRoleDesc(selectedRole.description);
+        setEditRoleTargetGroup(selectedRole.targetGroup || "Cơ sở chế biến");
+        setEditModalOpen(true);
+    };
+
+    const handleSaveRoleInfo = async () => {
+        if (!selectedRole) return;
+        if (!editRoleName.trim()) {
+            showToast("Tên vai trò không được để trống.", "error");
+            return;
+        }
+
+        setIsEditingRole(true);
+        try {
+            const res = await fetch(`/api/admin/roles/${selectedRole.key}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: editRoleName.trim(),
+                    description: editRoleDesc.trim(),
+                    targetGroup: editRoleTargetGroup,
+                }),
+            });
+            const payload = await res.json();
+            if (payload.success) {
+                showToast("Cập nhật thông tin vai trò thành công.");
+                setEditModalOpen(false);
+                setRoles((prev) =>
+                    prev.map((r) =>
+                        r.key === selectedRole.key
+                            ? {
+                                  ...r,
+                                  name: editRoleName.trim(),
+                                  description: editRoleDesc.trim(),
+                                  targetGroup: editRoleTargetGroup,
+                              }
+                            : r,
+                    ),
+                );
+            } else {
+                showToast(payload.message || "Không thể cập nhật vai trò.", "error");
+            }
+        } catch (err) {
+            console.error("handleSaveRoleInfo error:", err);
+            showToast("Lỗi khi cập nhật vai trò.", "error");
+        } finally {
+            setIsEditingRole(false);
+        }
+    };
+
+    // 7. THAO TÁC XÓA VAI TRÒ TÙY CHỈNH
+    const handleDeleteRole = async () => {
+        if (!selectedRole || selectedRole.isSystem) return;
+        setIsDeletingRole(true);
+        try {
+            const res = await fetch(`/api/admin/roles/${selectedRole.key}`, {
+                method: "DELETE",
+            });
+            const payload = await res.json();
+            if (payload.success) {
+                showToast(`Đã xóa vai trò "${selectedRole.name}".`);
+                setDeleteModalOpen(false);
+                await loadRoles("ADMIN");
+            } else {
+                showToast(payload.message || "Không thể xóa vai trò.", "error");
+            }
+        } catch (err) {
+            console.error("handleDeleteRole error:", err);
+            showToast("Lỗi khi xóa vai trò.", "error");
+        } finally {
+            setIsDeletingRole(false);
+        }
+    };
 
     return (
-        <div className="mx-auto max-w-[1536px] space-y-6 pb-24">
-            {/* 1. Header Trang */}
-            <div className="flex flex-col gap-4 border-b border-slate-200/80 pb-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                    <button
-                        type="button"
-                        onClick={() => router.back()}
-                        className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
-                        aria-label="Quay lại"
-                    >
-                        <ArrowLeft className="h-5 w-5" />
-                    </button>
-                    <div>
-                        <div className="flex items-center gap-2.5">
-                            <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
-                                Phân Quyền Hệ Thống
-                            </h1>
-                            <span className="rounded-md bg-emerald-100 px-2.5 py-0.5 text-xs font-black text-emerald-800 border border-emerald-200">
-                                Role-Centric
-                            </span>
-                        </div>
-                        <p className="text-sm font-medium text-slate-500">
-                            Quản lý vai trò, quyền truy cập và tài khoản được gán.
-                        </p>
-                    </div>
-                </div>
-
-                {/* Quick Info tổng thể */}
-                <div className="flex items-center gap-3">
-                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2 shadow-sm text-right">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                            Tổng số vai trò
-                        </span>
-                        <span className="text-lg font-black text-slate-800">
-                            {roles.length} <span className="text-xs font-semibold text-slate-500">vai trò</span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Thông báo Alert */}
-            {message && (
+        <div className="space-y-6 pb-24">
+            {/* TOAST THÔNG BÁO */}
+            {toastMessage && (
                 <div
-                    className={`flex items-center justify-between rounded-2xl border p-4 text-sm font-semibold shadow-sm transition ${
-                        message.type === "success"
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                            : "border-rose-200 bg-rose-50 text-rose-800"
+                    className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg border text-sm font-medium transition-all ${
+                        toastMessage.type === "success"
+                            ? "bg-emerald-50 text-emerald-900 border-emerald-200"
+                            : "bg-rose-50 text-rose-900 border-rose-200"
                     }`}
                 >
-                    <div className="flex items-center gap-2.5">
-                        {message.type === "success" ? (
-                            <BadgeCheck className="h-5 w-5 text-emerald-600 shrink-0" />
-                        ) : (
-                            <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
-                        )}
-                        <span>{message.text}</span>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => setMessage(null)}
-                        className="text-xs font-bold underline hover:opacity-80 ml-4"
+                    {toastMessage.type === "success" ? (
+                        <Check className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                        <AlertCircle className="h-4 w-4 text-rose-600" />
+                    )}
+                    <span>{toastMessage.text}</span>
+                </div>
+            )}
+
+            {/* TIÊU ĐỀ TRANG */}
+            <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-600">Quản trị hệ thống · Phân quyền</p>
+                    <h1 className="mt-1 text-2xl sm:text-3xl font-black text-slate-900">Phân quyền vai trò</h1>
+                    <p className="mt-1 text-sm text-slate-500">
+                        Quản lý danh mục vai trò hệ thống, tạo vai trò tùy chỉnh và phân quyền chức năng theo cây nghiệp vụ.
+                    </p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Button
+                        onClick={handleOpenCreateModal}
+                        className="rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs sm:text-sm gap-2 shadow-sm h-11 px-4 transition-all"
                     >
-                        Đóng
-                    </button>
+                        <Plus className="h-4 w-4" />
+                        Tạo vai trò mới
+                    </Button>
                 </div>
-            )}
+            </header>
 
-            {/* Loading Spinner chính */}
-            {loading && (
-                <div className="flex flex-col items-center justify-center py-28">
-                    <Loader2 className="h-9 w-9 animate-spin text-emerald-600" />
-                    <p className="mt-4 text-sm font-bold text-slate-600">Đang tải danh mục vai trò và phân quyền...</p>
+            {/* BỐ CỤC CHÍNH MASTER-DETAIL (2 CỘT) */}
+            {loading ? (
+                <div className="flex flex-col items-center justify-center py-24 bg-white rounded-[24px] border border-slate-200">
+                    <Loader2 className="h-8 w-8 text-brand-600 animate-spin mb-3" />
+                    <p className="text-sm text-slate-500 font-medium">Đang tải ma trận phân quyền hệ thống...</p>
                 </div>
-            )}
-
-            {/* Bố cục Role-Centric 2 Cột (Sidebar Trái - Workspace Phải) */}
-            {!loading && (
+            ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                    {/* CỘT TRÁI: SIDEBAR DANH SÁCH VAI TRÒ */}
-                    <div className="lg:col-span-4 xl:col-span-3 space-y-4">
-                        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
-                            {/* Tiêu đề sidebar & Nút tạo Role */}
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                                    <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                                    Vai Trò
-                                </h2>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsCreateModalOpen(true)}
-                                    className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 text-xs font-bold shadow-sm transition"
+                    {/* CỘT TRÁI (MASTER): DANH SÁCH VAI TRÒ (4 CỘT) */}
+                    <div className="lg:col-span-4 bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                        {/* Header cột trái */}
+                        <div className="p-4 border-b border-slate-100 bg-slate-50/70">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                                    Danh sách vai trò ({roles.length})
+                                </span>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleOpenCreateModal}
+                                    className="h-7 px-2 text-brand-600 hover:text-brand-700 hover:bg-brand-50 text-xs font-semibold rounded-lg"
                                 >
-                                    <Plus className="h-3.5 w-3.5" />
-                                    Tạo Role mới
-                                </button>
+                                    <Plus className="h-3.5 w-3.5 mr-1" />
+                                    Thêm vai trò
+                                </Button>
                             </div>
-
-                            {/* Ô tìm kiếm vai trò */}
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <input
-                                    type="text"
-                                    value={searchRoleQuery}
-                                    onChange={(e) => setSearchRoleQuery(e.target.value)}
+                                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <Input
+                                    value={roleSearch}
+                                    onChange={(e) => setRoleSearch(e.target.value)}
                                     placeholder="Tìm vai trò..."
-                                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs font-semibold outline-none transition focus:border-emerald-500 focus:bg-white"
+                                    className="pl-9 h-10 rounded-xl text-xs bg-white border-slate-200 focus-visible:ring-brand-500"
                                 />
-                                {searchRoleQuery && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setSearchRoleQuery("")}
-                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                    >
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
-                                )}
+                            </div>
+                        </div>
+
+                        {/* Danh sách cuộn vai trò */}
+                        <div className="divide-y divide-slate-100 max-h-[calc(100vh-280px)] overflow-y-auto">
+                            {/* NHÓM VAI TRÒ HỆ THỐNG */}
+                            <div className="p-2.5">
+                                <div className="px-3 py-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Vai trò hệ thống ({systemRoles.length})
+                                </div>
+                                <div className="space-y-1 mt-1">
+                                    {systemRoles.map((role) => {
+                                        const isSelected = role.key === selectedRoleKey;
+                                        return (
+                                            <button
+                                                key={role.key}
+                                                type="button"
+                                                onClick={() => handleSelectRole(role.key)}
+                                                className={`w-full text-left p-3 rounded-xl transition-all flex items-start justify-between gap-2 border ${
+                                                    isSelected
+                                                        ? "bg-brand-50/80 border-brand-200 shadow-xs"
+                                                        : "hover:bg-slate-50 border-transparent text-slate-700"
+                                                }`}
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span
+                                                            className={`font-semibold text-sm truncate ${
+                                                                isSelected ? "text-brand-950 font-bold" : "text-slate-800"
+                                                            }`}
+                                                        >
+                                                            {role.name}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className={`text-[11px] font-mono uppercase ${isSelected ? "text-brand-700 font-semibold" : "text-slate-500"}`}>
+                                                            {role.key}
+                                                        </span>
+                                                        <span className="text-slate-300">•</span>
+                                                        <span className="text-[11px] text-slate-500">
+                                                            {role.stats?.userCount ?? role.assignedUsers?.length ?? 0} tài khoản
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
+                                                    Hệ thống
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
-                            {/* Danh sách Roles cuộn */}
-                            <div className="space-y-5 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
-                                {/* NHÓM 1: ROLE HỆ THỐNG */}
-                                <div>
-                                    <div className="mb-2 px-2 text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                                        <span>Role Hệ Thống</span>
-                                        <span className="text-[10px] font-bold text-slate-400">({filteredSystemRoles.length})</span>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        {filteredSystemRoles.map((role) => {
-                                            const isSelected = selectedRoleKey === role.key;
-                                            return (
-                                                <button
-                                                    key={role.key}
-                                                    type="button"
-                                                    onClick={() => handleSelectRole(role.key)}
-                                                    className={`w-full text-left rounded-2xl p-3 transition border relative group ${
-                                                        isSelected
-                                                            ? "border-emerald-600 bg-emerald-50/70 shadow-sm"
-                                                            : "border-transparent bg-slate-50 hover:bg-slate-100/80 hover:border-slate-200"
-                                                    }`}
-                                                >
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <div className="min-w-0 flex-1">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className={`font-black text-sm truncate ${isSelected ? "text-emerald-900" : "text-slate-900"}`}>
-                                                                    {role.name}
-                                                                </span>
-                                                            </div>
-                                                            <div className="mt-0.5 text-[11px] font-semibold text-slate-400 truncate">
-                                                                {role.key}
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-right shrink-0">
-                                                            <div className="text-xs font-black text-emerald-700">
-                                                                {role.stats.totalGranted} <span className="text-[10px] font-semibold text-slate-400">quyền</span>
-                                                            </div>
-                                                            <div className="text-[11px] font-bold text-slate-500">
-                                                                {role.stats.userCount} <span className="text-[10px] font-medium text-slate-400">TK</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    {isSelected && (
-                                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-emerald-600" />
-                                                    )}
-                                                </button>
-                                            );
-                                        })}
-                                        {filteredSystemRoles.length === 0 && (
-                                            <div className="text-xs text-slate-400 italic px-2 py-1">
-                                                Không tìm thấy vai trò hệ thống nào.
-                                            </div>
-                                        )}
-                                    </div>
+                            {/* NHÓM VAI TRÒ TÙY CHỈNH */}
+                            <div className="p-2.5">
+                                <div className="px-3 py-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                                    <span>Vai trò tùy chỉnh ({customRoles.length})</span>
                                 </div>
-
-                                {/* NHÓM 2: ROLE TÙY CHỈNH */}
-                                <div>
-                                    <div className="mb-2 px-2 text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                                        <span>Role Tùy Chỉnh</span>
-                                        <span className="text-[10px] font-bold text-slate-400">({filteredCustomRoles.length})</span>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        {filteredCustomRoles.map((role) => {
-                                            const isSelected = selectedRoleKey === role.key;
+                                <div className="space-y-1 mt-1">
+                                    {customRoles.length === 0 ? (
+                                        <div className="px-3 py-4 text-center text-xs text-slate-400">
+                                            Chưa có vai trò tùy chỉnh. Bấm "+ Thêm vai trò" để tạo mới.
+                                        </div>
+                                    ) : (
+                                        customRoles.map((role) => {
+                                            const isSelected = role.key === selectedRoleKey;
                                             return (
                                                 <button
                                                     key={role.key}
                                                     type="button"
                                                     onClick={() => handleSelectRole(role.key)}
-                                                    className={`w-full text-left rounded-2xl p-3 transition border relative group ${
+                                                    className={`w-full text-left p-3 rounded-xl transition-all flex items-start justify-between gap-2 border ${
                                                         isSelected
-                                                            ? "border-emerald-600 bg-emerald-50/70 shadow-sm"
-                                                            : "border-transparent bg-slate-50 hover:bg-slate-100/80 hover:border-slate-200"
+                                                            ? "bg-brand-50/80 border-brand-200 shadow-xs"
+                                                            : "hover:bg-slate-50 border-transparent text-slate-700"
                                                     }`}
                                                 >
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <div className="min-w-0 flex-1">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className={`font-black text-sm truncate ${isSelected ? "text-emerald-900" : "text-slate-900"}`}>
-                                                                    {role.name}
-                                                                </span>
-                                                                <span className="rounded bg-indigo-100 px-1 py-0.2 text-[9px] font-bold text-indigo-700 shrink-0">
-                                                                    Tùy chỉnh
-                                                                </span>
-                                                            </div>
-                                                            <div className="mt-0.5 text-[11px] font-semibold text-slate-400 truncate">
-                                                                {role.key}
-                                                            </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span
+                                                                className={`font-semibold text-sm truncate ${
+                                                                    isSelected ? "text-brand-950 font-bold" : "text-slate-800"
+                                                                }`}
+                                                            >
+                                                                {role.name}
+                                                            </span>
                                                         </div>
-                                                        <div className="text-right shrink-0">
-                                                            <div className="text-xs font-black text-emerald-700">
-                                                                {role.stats.totalGranted} <span className="text-[10px] font-semibold text-slate-400">quyền</span>
-                                                            </div>
-                                                            <div className="text-[11px] font-bold text-slate-500">
-                                                                {role.stats.userCount} <span className="text-[10px] font-medium text-slate-400">TK</span>
-                                                            </div>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className={`text-[11px] font-mono uppercase ${isSelected ? "text-brand-700 font-semibold" : "text-slate-500"}`}>
+                                                                {role.key}
+                                                            </span>
+                                                            <span className="text-slate-300">•</span>
+                                                            <span className="text-[11px] text-slate-500">
+                                                                {role.stats?.userCount ?? role.assignedUsers?.length ?? 0} tài khoản
+                                                            </span>
                                                         </div>
                                                     </div>
-                                                    {isSelected && (
-                                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-emerald-600" />
-                                                    )}
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                                                        Tùy chỉnh
+                                                    </span>
                                                 </button>
                                             );
-                                        })}
-                                        {filteredCustomRoles.length === 0 && (
-                                            <div className="text-xs text-slate-400 italic px-2 py-2 text-center bg-slate-50 rounded-xl">
-                                                Chưa có vai trò tùy chỉnh. Nhấn [+ Tạo Role mới] để tạo.
-                                            </div>
-                                        )}
-                                    </div>
+                                        })
+                                    )}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* CỘT PHẢI: CHI TIẾT VAI TRÒ ĐƯỢC CHỌN (WORKSPACE) */}
-                    <div className="lg:col-span-8 xl:col-span-9 space-y-5">
+                    {/* CỘT PHẢI (DETAIL): CHI TIẾT VAI TRÒ (8 CỘT) */}
+                    <div className="lg:col-span-8 space-y-4">
                         {selectedRole ? (
-                            <>
-                                {/* Header Vai trò được chọn */}
-                                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                        <div>
-                                            <div className="flex flex-wrap items-center gap-2.5">
-                                                <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-                                                    {selectedRole.name}
-                                                </h2>
-                                                <span className="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-mono font-bold text-slate-700 border border-slate-200">
-                                                    {selectedRole.key}
-                                                </span>
-                                                <span className="rounded-md bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-800 border border-purple-200">
-                                                    {selectedRole.targetGroup}
-                                                </span>
-                                                <span
-                                                    className={`rounded-md px-2.5 py-1 text-xs font-bold border ${
-                                                        selectedRole.status === "ACTIVE"
-                                                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                                                            : "bg-slate-100 text-slate-600 border-slate-200"
-                                                    }`}
-                                                >
-                                                    {selectedRole.status === "ACTIVE" ? "Đang sử dụng" : "Ngưng sử dụng"}
-                                                </span>
-                                            </div>
-                                            <p className="mt-2 text-sm text-slate-500 max-w-2xl font-medium">
-                                                {selectedRole.description || "Chưa có mô tả chi tiết cho vai trò này."}
-                                            </p>
+                            <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden">
+                                {/* Header chi tiết vai trò */}
+                                <div className="p-5 sm:p-6 border-b border-slate-100 bg-gradient-to-r from-brand-50/20 via-white to-slate-50/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                    <div>
+                                        <div className="flex items-center gap-2.5 flex-wrap">
+                                            <h2 className="text-xl font-bold text-slate-900">{selectedRole.name}</h2>
+                                            <span className="px-2.5 py-0.5 rounded-lg font-mono text-xs font-bold bg-brand-50 text-brand-700 border border-brand-200">
+                                                {selectedRole.key}
+                                            </span>
+                                            {selectedRole.isSystem ? (
+                                                <Badge className="bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold rounded-lg">
+                                                    Vai trò hệ thống
+                                                </Badge>
+                                            ) : (
+                                                <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-lg">
+                                                    Vai trò tùy chỉnh
+                                                </Badge>
+                                            )}
                                         </div>
-
-                                        {/* Thống kê quyền & Tài khoản */}
-                                        <div className="flex items-center gap-3 shrink-0">
-                                            <div className="rounded-2xl bg-emerald-50 border border-emerald-200/80 px-4 py-2.5 text-center">
-                                                <div className="text-xs font-bold text-emerald-800">Quyền cấp</div>
-                                                <div className="text-xl font-black text-emerald-700">
-                                                    {currentPermissions.length}
-                                                </div>
-                                            </div>
-                                            <div className="rounded-2xl bg-blue-50 border border-blue-200/80 px-4 py-2.5 text-center">
-                                                <div className="text-xs font-bold text-blue-800">Tài khoản gán</div>
-                                                <div className="text-xl font-black text-blue-700">
-                                                    {selectedRole.assignedUsers.length}
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <p className="text-xs text-slate-500 mt-1 max-w-2xl">{selectedRole.description}</p>
                                     </div>
 
-                                    {/* 3 Tab Điều hướng chính */}
-                                    <div className="mt-6 flex items-center gap-2 border-b border-slate-100 pb-0">
-                                        <button
-                                            type="button"
-                                            onClick={() => setActiveTab("info")}
-                                            className={`flex items-center gap-2 px-4 py-3 text-xs font-black uppercase tracking-wider transition border-b-2 ${
-                                                activeTab === "info"
-                                                    ? "border-emerald-600 text-emerald-700"
-                                                    : "border-transparent text-slate-500 hover:text-slate-800"
-                                            }`}
-                                        >
-                                            <Info className="h-4 w-4" />
-                                            Thông tin
-                                        </button>
+                                    {/* Tabs chuyển đổi: [Phân quyền] [Thông tin] */}
+                                    <div className="flex items-center gap-1 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200/80 self-start sm:self-auto">
                                         <button
                                             type="button"
                                             onClick={() => setActiveTab("permissions")}
-                                            className={`flex items-center gap-2 px-4 py-3 text-xs font-black uppercase tracking-wider transition border-b-2 ${
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                                                 activeTab === "permissions"
-                                                    ? "border-emerald-600 text-emerald-700"
-                                                    : "border-transparent text-slate-500 hover:text-slate-800"
+                                                    ? "bg-white text-brand-700 shadow-xs"
+                                                    : "text-slate-600 hover:text-slate-900 font-medium"
                                             }`}
                                         >
-                                            <SlidersHorizontal className="h-4 w-4" />
-                                            Phân quyền
-                                            <span className="ml-1 rounded-full bg-emerald-100 px-2 py-0.2 text-[10px] font-bold text-emerald-800">
-                                                {currentPermissions.length}
-                                            </span>
+                                            Phân quyền ({editingPermissions.size})
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setActiveTab("accounts")}
-                                            className={`flex items-center gap-2 px-4 py-3 text-xs font-black uppercase tracking-wider transition border-b-2 ${
-                                                activeTab === "accounts"
-                                                    ? "border-emerald-600 text-emerald-700"
-                                                    : "border-transparent text-slate-500 hover:text-slate-800"
+                                            onClick={() => setActiveTab("info")}
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                                activeTab === "info"
+                                                    ? "bg-white text-brand-700 shadow-xs"
+                                                    : "text-slate-600 hover:text-slate-900 font-medium"
                                             }`}
                                         >
-                                            <Users className="h-4 w-4" />
-                                            Tài khoản
-                                            <span className="ml-1 rounded-full bg-blue-100 px-2 py-0.2 text-[10px] font-bold text-blue-800">
-                                                {selectedRole.assignedUsers.length}
-                                            </span>
+                                            Thông tin vai trò
                                         </button>
                                     </div>
                                 </div>
 
-                                {/* TAB 1: THÔNG TIN ROLE */}
+                                {/* NỘI DUNG TAB 1: THÔNG TIN VAI TRÒ */}
                                 {activeTab === "info" && (
-                                    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                                        <form onSubmit={handleSaveRoleInfo} className="space-y-6 max-w-2xl">
-                                            <div>
-                                                <label className="block text-xs font-black uppercase tracking-wider text-slate-600 mb-2">
-                                                    Tên Role <span className="text-rose-500">*</span>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    required
-                                                    value={roleInfoForm.name}
-                                                    onChange={(e) => setRoleInfoForm((prev) => ({ ...prev, name: e.target.value }))}
-                                                    className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-                                                />
+                                    <div className="p-6 space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 space-y-1">
+                                                <div className="text-xs font-medium text-slate-500">Tên vai trò</div>
+                                                <div className="text-sm font-semibold text-slate-900">{selectedRole.name}</div>
                                             </div>
-
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-xs font-black uppercase tracking-wider text-slate-600 mb-2">
-                                                        Mã Role (Role Key)
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        disabled
-                                                        value={selectedRole.key}
-                                                        className="h-11 w-full rounded-xl border border-slate-200 bg-slate-100 px-4 text-sm font-mono font-bold text-slate-500 outline-none cursor-not-allowed"
-                                                    />
-                                                    <p className="mt-1 text-[11px] text-slate-400 font-medium">
-                                                        {selectedRole.isSystem ? "Mã vai trò hệ thống cố định" : "Mã định danh không thể thay đổi sau khi tạo"}
-                                                    </p>
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-xs font-black uppercase tracking-wider text-slate-600 mb-2">
-                                                        Nhóm đối tượng
-                                                    </label>
-                                                    <select
-                                                        value={roleInfoForm.targetGroup}
-                                                        onChange={(e) => setRoleInfoForm((prev) => ({ ...prev, targetGroup: e.target.value }))}
-                                                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-emerald-500"
-                                                    >
-                                                        {ROLE_TARGET_GROUPS.map((tg) => (
-                                                            <option key={tg} value={tg}>
-                                                                {tg}
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                                            <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 space-y-1">
+                                                <div className="text-xs font-medium text-slate-500">Mã vai trò (Key)</div>
+                                                <div className="text-sm font-mono font-bold text-brand-700">{selectedRole.key}</div>
+                                            </div>
+                                            <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 space-y-1">
+                                                <div className="text-xs font-medium text-slate-500">Nhóm đối tượng</div>
+                                                <div className="text-sm font-semibold text-slate-900">
+                                                    {selectedRole.targetGroup || "Toàn hệ thống"}
                                                 </div>
                                             </div>
-
-                                            <div>
-                                                <label className="block text-xs font-black uppercase tracking-wider text-slate-600 mb-2">
-                                                    Mô tả vai trò
-                                                </label>
-                                                <textarea
-                                                    rows={3}
-                                                    value={roleInfoForm.description}
-                                                    onChange={(e) => setRoleInfoForm((prev) => ({ ...prev, description: e.target.value }))}
-                                                    placeholder="Mô tả phạm vi trách nhiệm và công việc của vai trò..."
-                                                    className="w-full rounded-xl border border-slate-200 p-3 text-sm font-medium text-slate-800 outline-none transition focus:border-emerald-500"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-xs font-black uppercase tracking-wider text-slate-600 mb-2">
-                                                    Trạng thái hoạt động
-                                                </label>
-                                                <div className="flex items-center gap-4">
-                                                    <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-slate-700">
-                                                        <input
-                                                            type="radio"
-                                                            name="status"
-                                                            value="ACTIVE"
-                                                            checked={roleInfoForm.status === "ACTIVE"}
-                                                            onChange={() => setRoleInfoForm((prev) => ({ ...prev, status: "ACTIVE" }))}
-                                                            className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
-                                                        />
-                                                        Đang sử dụng
-                                                    </label>
-                                                    <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-slate-700">
-                                                        <input
-                                                            type="radio"
-                                                            name="status"
-                                                            value="INACTIVE"
-                                                            checked={roleInfoForm.status === "INACTIVE"}
-                                                            onChange={() => setRoleInfoForm((prev) => ({ ...prev, status: "INACTIVE" }))}
-                                                            className="h-4 w-4 text-slate-600 focus:ring-slate-500"
-                                                        />
-                                                        Ngưng sử dụng
-                                                    </label>
+                                            <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 space-y-1">
+                                                <div className="text-xs font-medium text-slate-500">Loại vai trò</div>
+                                                <div className="text-sm font-semibold text-slate-900">
+                                                    {selectedRole.isSystem ? "Vai trò mặc định hệ thống" : "Vai trò tùy chỉnh"}
                                                 </div>
                                             </div>
-
-                                            <div className="pt-4 flex items-center justify-between border-t border-slate-100">
-                                                {!selectedRole.isSystem ? (
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        onClick={handleDeleteRole}
-                                                        disabled={saving}
-                                                        className="rounded-xl border-rose-300 bg-rose-50 text-rose-700 font-bold hover:bg-rose-100"
-                                                    >
-                                                        <Trash2 className="mr-1.5 h-4 w-4" />
-                                                        Xóa Role
-                                                    </Button>
-                                                ) : (
-                                                    <div className="text-xs text-slate-400 italic">
-                                                        * Role hệ thống không thể xóa
-                                                    </div>
-                                                )}
-
-                                                <Button
-                                                    type="submit"
-                                                    disabled={saving}
-                                                    className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black px-6 shadow-sm"
-                                                >
-                                                    {saving ? (
-                                                        <>
-                                                            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                                                            Đang lưu...
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Save className="mr-1.5 h-4 w-4" />
-                                                            Lưu thay đổi
-                                                        </>
-                                                    )}
-                                                </Button>
+                                            <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 space-y-1">
+                                                <div className="text-xs font-medium text-slate-500">Số tài khoản đang sử dụng</div>
+                                                <div className="text-sm font-bold text-emerald-700">
+                                                    {selectedRole.stats?.userCount ?? selectedRole.assignedUsers?.length ?? 0} người dùng
+                                                </div>
                                             </div>
-                                        </form>
-                                    </div>
-                                )}
-
-                                {/* TAB 2: PHÂN QUYỀN (PERMISSION TREE 3 TẦNG) */}
-                                {activeTab === "permissions" && (
-                                    <div className="space-y-4">
-                                        {/* Toolbar gọn gàng theo yêu cầu */}
-                                        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                                            {/* Ô Tìm chức năng */}
-                                            <div className="relative flex-1 max-w-sm">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                                <input
-                                                    type="text"
-                                                    value={searchFeatureQuery}
-                                                    onChange={(e) => setSearchFeatureQuery(e.target.value)}
-                                                    placeholder="Tìm chức năng..."
-                                                    className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs font-semibold outline-none transition focus:border-emerald-500 focus:bg-white"
-                                                />
-                                                {searchFeatureQuery && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setSearchFeatureQuery("")}
-                                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                                    >
-                                                        <X className="h-3.5 w-3.5" />
-                                                    </button>
-                                                )}
+                                            <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 space-y-1">
+                                                <div className="text-xs font-medium text-slate-500">Số quyền đang được cấp</div>
+                                                <div className="text-sm font-bold text-brand-700">
+                                                    {editingPermissions.size} / {allSystemKeys.length} quyền
+                                                </div>
                                             </div>
-
-                                            {/* Các nút hành động theo format chuẩn người dùng yêu cầu: [Khôi phục mặc định] [Mở rộng tất cả] [Chọn tất cả] */}
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={handleResetToDefault}
-                                                    disabled={saving}
-                                                    className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition"
-                                                    title="Khôi phục các quyền theo thiết lập mặc định của vai trò này"
-                                                >
-                                                    <RotateCcw className="h-3.5 w-3.5 text-amber-600" />
-                                                    Khôi phục mặc định
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={handleToggleExpandAll}
-                                                    className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition"
-                                                >
-                                                    {isAllExpanded ? (
-                                                        <>
-                                                            <ChevronUp className="h-3.5 w-3.5" />
-                                                            Thu gọn tất cả
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <ChevronDown className="h-3.5 w-3.5" />
-                                                            Mở rộng tất cả
-                                                        </>
-                                                    )}
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={handleToggleSelectAll}
-                                                    className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition border ${
-                                                        isAllPermissionsSelected
-                                                            ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                                                            : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                                                    }`}
-                                                >
-                                                    <CheckSquare className="h-3.5 w-3.5" />
-                                                    {isAllPermissionsSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
-                                                </button>
+                                            <div className="md:col-span-2 p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 space-y-1">
+                                                <div className="text-xs font-medium text-slate-500">Mô tả chức năng</div>
+                                                <div className="text-sm text-slate-800 leading-relaxed">
+                                                    {selectedRole.description || "Chưa có mô tả chi tiết."}
+                                                </div>
                                             </div>
                                         </div>
 
-                                        {/* Thống kê theo Role: ví dụ "28 quyền đang được cấp" */}
-                                        <div className="flex items-center justify-between px-2">
-                                            <div className="text-sm font-bold text-slate-700">
-                                                <span className="font-black text-emerald-600 text-base">{currentPermissions.length} quyền</span> đang được cấp cho vai trò này
-                                            </div>
-                                            {searchFeatureQuery && (
-                                                <div className="text-xs text-slate-400 font-semibold">
-                                                    Đang lọc theo: &quot;{searchFeatureQuery}&quot;
+                                        {/* Hành động quản trị vai trò */}
+                                        <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                                            {selectedRole.isSystem ? (
+                                                <div className="flex items-center gap-2 text-xs text-slate-500 italic">
+                                                    <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />
+                                                    <span>Đây là vai trò hệ thống cốt lõi. Không thể xóa hoặc thay đổi mã định danh.</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-3">
+                                                    <Button
+                                                        onClick={handleOpenEditModal}
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="rounded-xl border-slate-200 gap-1.5 text-xs font-semibold hover:bg-slate-50"
+                                                    >
+                                                        <Edit3 className="h-3.5 w-3.5" />
+                                                        Chỉnh sửa thông tin
+                                                    </Button>
+                                                    <Button
+                                                        onClick={() => setDeleteModalOpen(true)}
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="rounded-xl gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                        Xóa vai trò này
+                                                    </Button>
                                                 </div>
                                             )}
                                         </div>
+                                    </div>
+                                )}
 
-                                        {/* TREE CHECKBOX 3 TẦNG: Phân hệ -> Chức năng -> Quyền thao tác */}
-                                        <div className="space-y-4">
-                                            {filteredTreeModules.map((mod) => {
-                                                const isCollapsed = !!collapsedModules[mod.id];
+                                {/* NỘI DUNG TAB 2: CÂY PHÂN QUYỀN (PHÂN HỆ -> CHỨC NĂNG -> HÀNH ĐỘNG) */}
+                                {activeTab === "permissions" && (
+                                    <div className="p-5 sm:p-6 space-y-4">
+                                        {/* Thanh công cụ phân quyền */}
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200">
+                                            {/* Ô tìm chức năng */}
+                                            <div className="relative flex-1 max-w-md">
+                                                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                <Input
+                                                    value={featureSearch}
+                                                    onChange={(e) => setFeatureSearch(e.target.value)}
+                                                    placeholder="Tìm chức năng / phân hệ..."
+                                                    className="pl-9 h-9 text-xs bg-white rounded-xl border-slate-200 focus-visible:ring-brand-500"
+                                                />
+                                            </div>
 
-                                                // Tính quyền trong module
-                                                const modKeys: string[] = [];
-                                                for (const f of mod.features) {
-                                                    for (const a of Object.values(f.actions)) {
-                                                        if (a?.key) modKeys.push(a.key);
-                                                    }
-                                                }
-                                                const modGrantedCount = modKeys.filter((k) => currentPermissions.includes(k)).length;
-                                                const isModAllGranted = modKeys.length > 0 && modGrantedCount === modKeys.length;
+                                            {/* Thao tác chọn nhanh */}
+                                            <div className="flex items-center gap-4 text-xs font-medium text-slate-700">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleToggleAll}
+                                                    className="flex items-center gap-1.5 hover:text-brand-600 font-semibold cursor-pointer transition-colors"
+                                                >
+                                                    {globalCheckState === "all" ? (
+                                                        <CheckSquare className="h-4 w-4 text-emerald-600 fill-emerald-50" />
+                                                    ) : globalCheckState === "partial" ? (
+                                                        <MinusSquare className="h-4 w-4 text-brand-600 fill-brand-50" />
+                                                    ) : (
+                                                        <Square className="h-4 w-4 text-slate-400" />
+                                                    )}
+                                                    <span>Chọn tất cả</span>
+                                                </button>
+
+                                                <span className="text-slate-300">|</span>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleExpandAll(true)}
+                                                    className="hover:text-brand-600 font-medium cursor-pointer transition-colors"
+                                                >
+                                                    Mở rộng tất cả
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleExpandAll(false)}
+                                                    className="hover:text-brand-600 font-medium cursor-pointer transition-colors"
+                                                >
+                                                    Thu gọn tất cả
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* CÂY PHÂN QUYỀN 3 CẤP */}
+                                        <div className="space-y-3">
+                                            {filteredModules.map((module) => {
+                                                const isExpanded = expandedModules[module.id] ?? true;
+                                                const moduleState = getModuleCheckState(module);
+                                                const modKeys = getModuleKeys(module);
+                                                const grantedModCount = modKeys.filter((k) => editingPermissions.has(k)).length;
 
                                                 return (
                                                     <div
-                                                        key={mod.id}
-                                                        className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition hover:border-slate-300"
+                                                        key={module.id}
+                                                        className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-xs"
                                                     >
-                                                        {/* TẦNG 1: PHÂN HỆ (MODULE) */}
-                                                        <div
-                                                            onClick={() => toggleCollapseModule(mod.id)}
-                                                            className="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-50/70 hover:bg-slate-50 transition cursor-pointer select-none border-b border-slate-100"
-                                                        >
-                                                            <div className="flex items-center gap-3">
+                                                        {/* CẤP 1: PHÂN HỆ (MODULE) */}
+                                                        <div className="p-3.5 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between gap-3 select-none">
+                                                            <div className="flex items-center gap-2.5">
                                                                 <button
                                                                     type="button"
-                                                                    className="text-slate-400 hover:text-slate-700 transition"
-                                                                    aria-label="Thu gọn/mở rộng phân hệ"
+                                                                    onClick={() =>
+                                                                        setExpandedModules((prev) => ({
+                                                                            ...prev,
+                                                                            [module.id]: !isExpanded,
+                                                                        }))
+                                                                    }
+                                                                    className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer rounded-lg hover:bg-slate-200/60 transition-colors"
                                                                 >
-                                                                    {isCollapsed ? (
-                                                                        <ChevronRight className="h-4 w-4" />
-                                                                    ) : (
+                                                                    {isExpanded ? (
                                                                         <ChevronDown className="h-4 w-4" />
+                                                                    ) : (
+                                                                        <ChevronRight className="h-4 w-4" />
                                                                     )}
                                                                 </button>
-                                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white border border-slate-200 shadow-sm">
-                                                                    {getModuleIcon(mod.iconName)}
-                                                                </div>
-                                                                <div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="font-black text-slate-900 text-sm tracking-wide">
-                                                                            {mod.name}
-                                                                        </span>
-                                                                        <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-                                                                            — {mod.title}
-                                                                        </span>
-                                                                    </div>
-                                                                    <p className="text-[11px] text-slate-400 line-clamp-1">
-                                                                        {mod.description}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Thống kê quyền module & nút toggle module */}
-                                                            <div className="flex items-center gap-3 ml-auto">
-                                                                <span
-                                                                    className={`rounded-full px-2.5 py-0.5 text-xs font-black ${
-                                                                        modGrantedCount > 0
-                                                                            ? "bg-emerald-100 text-emerald-800"
-                                                                            : "bg-slate-200 text-slate-600"
-                                                                    }`}
-                                                                >
-                                                                    {modGrantedCount}/{modKeys.length} quyền
-                                                                </span>
 
                                                                 <button
                                                                     type="button"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        toggleModule(mod);
-                                                                    }}
-                                                                    className={`rounded-lg px-2.5 py-1 text-xs font-bold border transition ${
-                                                                        isModAllGranted
-                                                                            ? "border-emerald-300 bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                                                                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-                                                                    }`}
+                                                                    onClick={() => handleToggleModule(module)}
+                                                                    className="flex items-center gap-2 text-left cursor-pointer group"
                                                                 >
-                                                                    {isModAllGranted ? "Bỏ chọn phân hệ" : "Chọn cả phân hệ"}
+                                                                    {moduleState === "all" ? (
+                                                                        <CheckSquare className="h-4 w-4 text-emerald-600 fill-emerald-50 shrink-0" />
+                                                                    ) : moduleState === "partial" ? (
+                                                                        <MinusSquare className="h-4 w-4 text-brand-600 fill-brand-50 shrink-0" />
+                                                                    ) : (
+                                                                        <Square className="h-4 w-4 text-slate-400 shrink-0 group-hover:text-slate-600" />
+                                                                    )}
+
+                                                                    <div className="flex items-center gap-2">
+                                                                        {getModuleIcon(module.iconName)}
+                                                                        <span className="font-bold text-xs uppercase tracking-wider text-slate-800">
+                                                                            {module.name}
+                                                                        </span>
+                                                                    </div>
                                                                 </button>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2 text-xs">
+                                                                <span className="text-slate-500 font-medium">
+                                                                    {grantedModCount} / {modKeys.length} quyền
+                                                                </span>
                                                             </div>
                                                         </div>
 
-                                                        {/* NỘI DUNG TẦNG 2 & TẦNG 3 (KHI MỞ RỘNG) */}
-                                                        {!isCollapsed && (
-                                                            <div className="divide-y divide-slate-100 p-2 sm:p-4 space-y-4">
-                                                                {mod.features.map((feature, featureIndex) => {
-                                                                    const featureActions = Object.values(feature.actions).filter(Boolean);
-                                                                    const featKeys = featureActions.map((a) => a!.key);
-                                                                    const featGrantedCount = featKeys.filter((k) => currentPermissions.includes(k)).length;
-                                                                    const isFeatAllGranted = featKeys.length > 0 && featGrantedCount === featKeys.length;
-                                                                    const isFeatPartial = featGrantedCount > 0 && featGrantedCount < featKeys.length;
+                                                        {/* CẤP 2 & 3: CHỨC NĂNG VÀ HÀNH ĐỘNG */}
+                                                        {isExpanded && (
+                                                            module.isSingleEntity ? (
+                                                                /* CẤP 2-TẦNG: TRỰC TIẾP CÁC HÀNH ĐỘNG (KHÔNG LẶP CẤP CON) */
+                                                                <div className="p-4 bg-slate-50/30">
+                                                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                                                                        {Object.values(module.features[0]?.actions || {})
+                                                                            .filter((a): a is PermissionActionDef => Boolean(a?.key))
+                                                                            .map((action) => {
+                                                                                const isChecked = editingPermissions.has(action.key);
+                                                                                return (
+                                                                                    <label
+                                                                                        key={action.key}
+                                                                                        onClick={() => handleToggleAction(action.key)}
+                                                                                        className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs cursor-pointer transition-all select-none ${
+                                                                                            isChecked
+                                                                                                ? "bg-brand-50/80 border-brand-200 text-brand-950 font-semibold shadow-xs"
+                                                                                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50/60"
+                                                                                        }`}
+                                                                                    >
+                                                                                        {isChecked ? (
+                                                                                            <CheckSquare className="h-4 w-4 text-brand-600 shrink-0" />
+                                                                                        ) : (
+                                                                                            <Square className="h-4 w-4 text-slate-400 shrink-0" />
+                                                                                        )}
+                                                                                        <span className="font-medium truncate" title={action.description || action.label}>
+                                                                                            {action.label}
+                                                                                        </span>
+                                                                                    </label>
+                                                                                );
+                                                                            })}
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                /* CẤP 3-TẦNG: CÓ CẤP CHỨC NĂNG CON */
+                                                                <div className="divide-y divide-slate-100 p-2.5 space-y-1">
+                                                                    {module.features.map((feature) => {
+                                                                        const featState = getFeatureCheckState(feature);
+                                                                        const featActions = Object.values(feature.actions).filter(
+                                                                            (a): a is PermissionActionDef => Boolean(a?.key),
+                                                                        );
 
-                                                                    return (
-                                                                        <div key={feature.id} className="pt-3 first:pt-0">
-                                                                            {feature.group && feature.group !== mod.features[featureIndex - 1]?.group && (
-                                                                                <h3 className="mb-4 rounded-xl bg-emerald-50 px-3 py-2.5 text-xs font-extrabold tracking-wide text-emerald-800 sm:text-sm">
-                                                                                    {feature.group}
-                                                                                </h3>
-                                                                            )}
-                                                                            <div className={feature.group ? "ml-2 border-l-2 border-emerald-100 pl-3 sm:ml-4 sm:pl-4" : undefined}>
-                                                                            {/* TẦNG 2: CHỨC NĂNG (FEATURE) */}
-                                                                            <div className="flex items-start justify-between gap-3 mb-2.5">
-                                                                                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                                        return (
+                                                                            <div
+                                                                                key={feature.id}
+                                                                                className="p-3 rounded-xl hover:bg-slate-50/60 transition-colors"
+                                                                            >
+                                                                                {/* Header Cấp 2: Chức năng */}
+                                                                                <div className="flex items-start justify-between gap-3 mb-2.5">
                                                                                     <button
                                                                                         type="button"
-                                                                                        onClick={() => toggleFeature(feature)}
-                                                                                        className="text-slate-600 hover:text-emerald-700 transition"
-                                                                                        title="Chọn/Bỏ chọn tất cả quyền của chức năng này"
+                                                                                        onClick={() => handleToggleFeature(feature)}
+                                                                                        className="flex items-center gap-2 text-left cursor-pointer group"
                                                                                     >
-                                                                                        {isFeatAllGranted ? (
-                                                                                            <CheckSquare className="h-4 w-4 text-emerald-600 fill-emerald-100" />
-                                                                                        ) : isFeatPartial ? (
-                                                                                            <MinusSquare className="h-4 w-4 text-emerald-600 fill-emerald-100" />
+                                                                                        {featState === "all" ? (
+                                                                                            <CheckSquare className="h-4 w-4 text-emerald-600 fill-emerald-50 shrink-0" />
+                                                                                        ) : featState === "partial" ? (
+                                                                                            <MinusSquare className="h-4 w-4 text-brand-600 fill-brand-50 shrink-0" />
                                                                                         ) : (
-                                                                                            <Square className="h-4 w-4 text-slate-300 hover:text-slate-400" />
+                                                                                            <Square className="h-4 w-4 text-slate-400 shrink-0 group-hover:text-slate-600" />
                                                                                         )}
+                                                                                        <div>
+                                                                                            <div className="font-bold text-xs text-slate-800">
+                                                                                                {feature.name}
+                                                                                            </div>
+                                                                                            {feature.description && (
+                                                                                                <div className="text-[11px] text-slate-500 line-clamp-1">
+                                                                                                    {feature.description}
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
                                                                                     </button>
-                                                                                    <span
-                                                                                        onClick={() => toggleFeature(feature)}
-                                                                                        className="font-extrabold text-sm text-slate-900 cursor-pointer hover:text-emerald-700 transition"
-                                                                                    >
-                                                                                        {feature.name}
-                                                                                    </span>
-                                                                                    {feature.menuPath && (
-                                                                                        <span className="break-all rounded bg-slate-100 px-1.5 py-0.2 text-[10px] font-mono text-slate-500">
-                                                                                            {feature.menuPath}
-                                                                                        </span>
-                                                                                    )}
                                                                                 </div>
 
-                                                                                <span className="text-xs font-bold text-slate-400">
-                                                                                    {featGrantedCount}/{featKeys.length}
-                                                                                </span>
-                                                                            </div>
+                                                                                {/* Cấp 3: Các hành động (Checkboxes ngắn gọn) */}
+                                                                                <div className="ml-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 pt-2 border-t border-dashed border-slate-100">
+                                                                                    {featActions.map((action) => {
+                                                                                        const isChecked = editingPermissions.has(action.key);
 
-                                                                            {/* TẦNG 3: QUYỀN THAO TÁC (ACTIONS) */}
-                                                                            <div className="grid grid-cols-2 gap-2 pl-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-                                                                                {featureActions.map((action) => {
-                                                                                    if (!action) return null;
-                                                                                    const isGranted = currentPermissions.includes(action.key);
-
-                                                                                    return (
-                                                                                        <button
-                                                                                            key={action.key}
-                                                                                            type="button"
-                                                                                            onClick={() => togglePermission(action.key)}
-                                                                                            className={`flex min-w-0 items-center gap-2 rounded-xl p-2.5 text-left border transition group ${
-                                                                                                isGranted
-                                                                                                    ? "border-emerald-200 bg-emerald-50/60 text-emerald-950 font-bold"
-                                                                                                    : "border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50"
-                                                                                            }`}
-                                                                                            title={`Mã quyền: ${action.key}`}
-                                                                                        >
-                                                                                            <span
-                                                                                                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
-                                                                                                    isGranted
-                                                                                                        ? "border-emerald-600 bg-emerald-600 text-white"
-                                                                                                        : "border-slate-300 bg-white group-hover:border-slate-400"
+                                                                                        return (
+                                                                                            <label
+                                                                                                key={action.key}
+                                                                                                onClick={() => handleToggleAction(action.key)}
+                                                                                                className={`flex items-center gap-2 p-2 rounded-xl border text-xs cursor-pointer transition-all select-none ${
+                                                                                                    isChecked
+                                                                                                        ? "bg-brand-50/70 border-brand-200 text-brand-950 font-semibold shadow-xs"
+                                                                                                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50/60"
                                                                                                 }`}
                                                                                             >
-                                                                                                {isGranted && <Check className="h-3 w-3 stroke-[3]" />}
-                                                                                            </span>
-                                                                                            <span className="min-w-0 flex-1 text-xs font-semibold leading-snug">
-                                                                                                {action.label}
-                                                                                            </span>
-                                                                                        </button>
-                                                                                    );
-                                                                                })}
+                                                                                                {isChecked ? (
+                                                                                                    <CheckSquare className="h-3.5 w-3.5 text-brand-600 shrink-0" />
+                                                                                                ) : (
+                                                                                                    <Square className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                                                                                )}
+                                                                                                <span className="truncate" title={action.description || action.label}>
+                                                                                                    {action.label}
+                                                                                                </span>
+                                                                                            </label>
+                                                                                        );
+                                                                                    })}
+                                                                                </div>
                                                                             </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )
                                                         )}
                                                     </div>
                                                 );
                                             })}
-
-                                            {filteredTreeModules.length === 0 && (
-                                                <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm font-medium text-slate-500">
-                                                    Không tìm thấy chức năng hoặc quyền nào khớp với từ khóa &quot;{searchFeatureQuery}&quot;.
-                                                </div>
-                                            )}
                                         </div>
-
-                                        {/* Thanh trạng thái thay đổi chưa lưu (Floating Sticky Bar) */}
-                                        {hasUnsavedChanges && (
-                                            <div className="sticky bottom-4 z-30 flex items-center justify-between gap-4 rounded-2xl border border-amber-300 bg-amber-50/95 p-4 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2">
-                                                <div className="flex items-center gap-2.5">
-                                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-200 text-amber-800">
-                                                        <Sparkles className="h-4 w-4" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-sm font-black text-amber-900">
-                                                            Có {unsavedChangesCount} thay đổi chưa lưu
-                                                        </div>
-                                                        <div className="text-xs text-amber-700">
-                                                            Đừng quên lưu quyền để cập nhật phân quyền mới cho vai trò này.
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-2">
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        onClick={handleDiscardChanges}
-                                                        disabled={saving}
-                                                        className="rounded-xl border-slate-300 bg-white text-slate-700 font-bold hover:bg-slate-50"
-                                                    >
-                                                        Hủy
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        onClick={handleSavePermissions}
-                                                        disabled={saving}
-                                                        className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black px-5 shadow-sm"
-                                                    >
-                                                        {saving ? (
-                                                            <>
-                                                                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                                                                Đang lưu...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Save className="mr-1.5 h-4 w-4" />
-                                                                Lưu quyền
-                                                            </>
-                                                        )}
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
                                 )}
-
-                                {/* TAB 3: TÀI KHOẢN THUỘC ROLE */}
-                                {activeTab === "accounts" && (
-                                    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-                                        {/* Header tab & Toolbar */}
-                                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
-                                            <div>
-                                                <div className="flex items-center gap-2.5">
-                                                    <h3 className="text-lg font-black text-slate-900 uppercase">
-                                                        Tài Khoản Thuộc Role
-                                                    </h3>
-                                                    <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-800">
-                                                        {selectedRole.assignedUsers.length} tài khoản
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs text-slate-500 mt-0.5">
-                                                    Danh sách các tài khoản người dùng đang được áp dụng quyền hạn của vai trò này.
-                                                </p>
-                                            </div>
-
-                                            <div className="flex flex-wrap items-center gap-2.5">
-                                                {/* Ô tìm kiếm tài khoản */}
-                                                <div className="relative w-64">
-                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                                    <input
-                                                        type="text"
-                                                        value={searchAccountQuery}
-                                                        onChange={(e) => setSearchAccountQuery(e.target.value)}
-                                                        placeholder="Tìm tên, số điện thoại..."
-                                                        className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs font-semibold outline-none transition focus:border-emerald-500 focus:bg-white"
-                                                    />
-                                                </div>
-
-                                                <Button
-                                                    type="button"
-                                                    onClick={() => setIsAssignModalOpen(true)}
-                                                    className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 px-4 shadow-sm"
-                                                >
-                                                    <UserPlus className="mr-1.5 h-4 w-4" />
-                                                    Gán tài khoản
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        {/* Danh sách các tài khoản */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                                            {assignedAccounts.map((acc) => (
-                                                <div
-                                                    key={acc.id}
-                                                    className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 transition hover:bg-slate-50 hover:border-slate-300"
-                                                >
-                                                    <div className="flex items-center gap-3.5 min-w-0">
-                                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white font-black text-base shadow-sm">
-                                                            {acc.fullName.charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <div className="flex items-center gap-2">
-                                                                <h4 className="font-extrabold text-slate-900 text-sm truncate">
-                                                                    {acc.fullName}
-                                                                </h4>
-                                                            </div>
-                                                            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-slate-500 font-medium">
-                                                                <span className="flex items-center gap-1 font-mono">
-                                                                    <Phone className="h-3 w-3 text-slate-400" />
-                                                                    {acc.phone}
-                                                                </span>
-                                                                {acc.organization && (
-                                                                    <span className="flex items-center gap-1 text-slate-600 truncate">
-                                                                        <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
-                                                                        {acc.organization}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveUser(acc)}
-                                                        className="shrink-0 text-xs font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200 rounded-xl px-2.5 py-1.5 transition"
-                                                    >
-                                                        Gỡ khỏi Role
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        {assignedAccounts.length === 0 && (
-                                            <div className="py-12 text-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50">
-                                                <Users className="mx-auto h-8 w-8 text-slate-400" />
-                                                <p className="mt-2 text-sm font-bold text-slate-600">
-                                                    Chưa có tài khoản nào thuộc vai trò này.
-                                                </p>
-                                                <p className="text-xs text-slate-400 mt-1">
-                                                    Nhấn &quot;+ Gán tài khoản&quot; để cấp vai trò cho người dùng trong hệ thống.
-                                                </p>
-                                                <Button
-                                                    type="button"
-                                                    onClick={() => setIsAssignModalOpen(true)}
-                                                    className="mt-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
-                                                >
-                                                    <UserPlus className="mr-1.5 h-4 w-4" />
-                                                    Gán tài khoản ngay
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </>
+                            </div>
                         ) : (
-                            <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center">
-                                <ShieldCheck className="mx-auto h-12 w-12 text-slate-300" />
-                                <h3 className="mt-3 text-lg font-bold text-slate-700">Chọn một vai trò từ danh sách</h3>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    Vui lòng chọn vai trò ở cột bên trái để bắt đầu quản lý thông tin, phân quyền và tài khoản.
-                                </p>
+                            <div className="bg-white p-12 text-center rounded-[24px] border border-slate-200 shadow-sm">
+                                <ShieldCheck className="h-10 w-10 text-slate-300 mx-auto mb-2" />
+                                <p className="text-sm font-medium text-slate-600">Vui lòng chọn vai trò để quản lý phân quyền.</p>
                             </div>
                         )}
                     </div>
                 </div>
             )}
 
-            {/* MODAL 1: TẠO ROLE MỚI */}
-            {isCreateModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                            <div className="flex items-center gap-2">
-                                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
-                                    <Plus className="h-5 w-5" />
-                                </div>
-                                <h3 className="text-lg font-black text-slate-900 uppercase">
-                                    Tạo Vai Trò Tùy Chỉnh
-                                </h3>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setIsCreateModalOpen(false)}
-                                className="text-slate-400 hover:text-slate-600"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
+            {/* STICKY FOOTER: XUẤT HIỆN KHI CÓ THAY ĐỔI CHƯA LƯU */}
+            {isDirty && selectedRole && (
+                <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-5xl rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-2xl backdrop-blur-md transition-all animate-in slide-in-from-bottom flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-2.5 text-amber-900 font-medium text-xs sm:text-sm">
+                        <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                        <span>
+                            Bạn có thay đổi chưa lưu trên vai trò <strong>{selectedRole.name}</strong> ({editingPermissions.size} quyền).
+                        </span>
+                    </div>
 
-                        <form onSubmit={handleCreateRoleSubmit} className="mt-5 space-y-4">
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
-                                    Tên vai trò <span className="text-rose-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="Ví dụ: Nhân viên tiếp nhận, Nhân viên xuất hàng..."
-                                    value={newRoleForm.roleName}
-                                    onChange={(e) => {
-                                        const name = e.target.value;
-                                        setNewRoleForm((prev) => ({
-                                            ...prev,
-                                            roleName: name,
-                                        }));
-                                    }}
-                                    className="h-11 w-full rounded-xl border border-slate-200 px-3.5 text-sm font-bold text-slate-800 outline-none transition focus:border-emerald-500"
-                                />
-                            </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleResetToDefault}
+                            disabled={isResetting || isSaving}
+                            className="rounded-xl border-slate-200 text-xs font-semibold gap-1.5"
+                        >
+                            <RotateCcw className="h-3.5 w-3.5 text-slate-500" />
+                            Khôi phục mặc định
+                        </Button>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
-                                        Nhóm đối tượng
-                                    </label>
-                                    <select
-                                        value={newRoleForm.targetGroup}
-                                        onChange={(e) => setNewRoleForm((prev) => ({ ...prev, targetGroup: e.target.value }))}
-                                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-emerald-500"
-                                    >
-                                        {ROLE_TARGET_GROUPS.map((tg) => (
-                                            <option key={tg} value={tg}>
-                                                {tg}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleDiscardChanges}
+                            disabled={isSaving || isResetting}
+                            className="rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900"
+                        >
+                            Hủy thay đổi
+                        </Button>
 
-                                <div>
-                                    <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
-                                        Sao chép quyền từ
-                                    </label>
-                                    <select
-                                        value={newRoleForm.copyFromRole}
-                                        onChange={(e) => setNewRoleForm((prev) => ({ ...prev, copyFromRole: e.target.value }))}
-                                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-emerald-500"
-                                    >
-                                        <option value="">Không sao chép (Trống)</option>
-                                        {roles.map((r) => (
-                                            <option key={r.key} value={r.key}>
-                                                {r.name} ({r.key})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
-                                    Mô tả vai trò
-                                </label>
-                                <textarea
-                                    rows={3}
-                                    placeholder="Mô tả tóm tắt nhiệm vụ của vai trò..."
-                                    value={newRoleForm.roleDescription}
-                                    onChange={(e) => setNewRoleForm((prev) => ({ ...prev, roleDescription: e.target.value }))}
-                                    className="w-full rounded-xl border border-slate-200 p-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500"
-                                />
-                            </div>
-
-                            <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => setIsCreateModalOpen(false)}
-                                    className="rounded-xl border-slate-200 text-slate-700 font-bold"
-                                >
-                                    Hủy
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    disabled={saving}
-                                    className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black"
-                                >
-                                    {saving ? (
-                                        <>
-                                            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                                            Đang tạo...
-                                        </>
-                                    ) : (
-                                        "Tạo vai trò"
-                                    )}
-                                </Button>
-                            </div>
-                        </form>
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleSavePermissions}
+                            disabled={isSaving || isResetting}
+                            className="rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs gap-1.5 shadow-sm h-9 px-4 transition-all"
+                        >
+                            {isSaving ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Đang lưu...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="h-3.5 w-3.5" />
+                                    Lưu thay đổi
+                                </>
+                            )}
+                        </Button>
                     </div>
                 </div>
             )}
 
-            {/* MODAL 2: GÁN TÀI KHOẢN VÀO ROLE */}
-            {isAssignModalOpen && selectedRole && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 flex flex-col max-h-[85vh]">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-4 shrink-0">
-                            <div>
-                                <h3 className="text-lg font-black text-slate-900 uppercase">
-                                    Gán Tài Khoản Vào Role
-                                </h3>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                    Chọn tài khoản để gán vào vai trò <span className="font-bold text-emerald-700">{selectedRole.name}</span>
-                                </p>
-                            </div>
+            {/* MODAL: TẠO VAI TRÒ MỚI */}
+            {createModalOpen && (
+                <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-[28px] bg-white border border-slate-200 p-6 shadow-2xl animate-in zoom-in-95 space-y-5">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                                <Plus className="h-4 w-4 text-brand-600" />
+                                TẠO VAI TRÒ MỚI
+                            </h3>
                             <button
                                 type="button"
-                                onClick={() => setIsAssignModalOpen(false)}
-                                className="text-slate-400 hover:text-slate-600"
+                                onClick={() => setCreateModalOpen(false)}
+                                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
                             >
-                                <X className="h-5 w-5" />
+                                <X className="h-4 w-4" />
                             </button>
                         </div>
 
-                        {/* Ô tìm kiếm tài khoản */}
-                        <div className="py-3 shrink-0">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <input
-                                    type="text"
-                                    value={assignModalSearch}
-                                    onChange={(e) => setAssignModalSearch(e.target.value)}
-                                    placeholder="Tìm theo tên, số điện thoại, đơn vị..."
-                                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs font-semibold outline-none transition focus:border-emerald-500 focus:bg-white"
+                        <div className="space-y-4 text-xs">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-slate-700">Tên vai trò *</Label>
+                                <Input
+                                    value={newRoleName}
+                                    onChange={(e) => handleNameChangeForNewRole(e.target.value)}
+                                    placeholder="Ví dụ: Nhân viên QC, Nhân viên kho..."
+                                    className="h-10 text-xs rounded-xl border-slate-200 focus-visible:ring-brand-500"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-slate-700">Mã vai trò (Key)</Label>
+                                <Input
+                                    value={newRoleKey}
+                                    onChange={(e) => setNewRoleKey(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ""))}
+                                    placeholder="Tự sinh từ tên vai trò (VD: QC_STAFF)"
+                                    className="h-10 font-mono text-xs uppercase rounded-xl border-slate-200 focus-visible:ring-brand-500"
+                                />
+                                <span className="text-[10px] text-slate-500">Mã vai trò viết hoa không dấu, không thể thay đổi sau khi tạo.</span>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-slate-700">Nhóm đối tượng</Label>
+                                <select
+                                    value={newRoleTargetGroup}
+                                    onChange={(e) => setNewRoleTargetGroup(e.target.value)}
+                                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+                                >
+                                    {ROLE_TARGET_GROUPS.map((tg) => (
+                                        <option key={tg} value={tg}>
+                                            {tg}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-slate-700">Mô tả vai trò</Label>
+                                <textarea
+                                    value={newRoleDesc}
+                                    onChange={(e) => setNewRoleDesc(e.target.value)}
+                                    placeholder="Mô tả trách nhiệm và nghiệp vụ của vai trò..."
+                                    rows={2}
+                                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-slate-700">Sao chép quyền từ vai trò có sẵn</Label>
+                                <select
+                                    value={copyFromRole}
+                                    onChange={(e) => setCopyFromRole(e.target.value)}
+                                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+                                >
+                                    <option value="">-- Để trống (Không sao chép) --</option>
+                                    {roles.map((r) => (
+                                        <option key={r.key} value={r.key}>
+                                            {r.name} ({r.permissions?.length || 0} quyền)
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCreateModalOpen(false)}
+                                disabled={isCreatingRole}
+                                className="rounded-xl border-slate-200 text-xs font-semibold h-10 px-4"
+                            >
+                                Hủy
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleCreateRole}
+                                disabled={isCreatingRole}
+                                className="rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs h-10 px-4 gap-1.5 shadow-sm transition-all"
+                            >
+                                {isCreatingRole ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                                Tạo vai trò
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: CHỈNH SỬA THÔNG TIN VAI TRÒ */}
+            {editModalOpen && (
+                <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-[28px] bg-white border border-slate-200 p-6 shadow-2xl animate-in zoom-in-95 space-y-5">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 className="font-bold text-slate-900 text-base">CHỈNH SỬA VAI TRÒ</h3>
+                            <button
+                                type="button"
+                                onClick={() => setEditModalOpen(false)}
+                                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4 text-xs">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-slate-700">Tên vai trò *</Label>
+                                <Input
+                                    value={editRoleName}
+                                    onChange={(e) => setEditRoleName(e.target.value)}
+                                    className="h-10 text-xs rounded-xl border-slate-200 focus-visible:ring-brand-500"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-slate-700">Nhóm đối tượng</Label>
+                                <select
+                                    value={editRoleTargetGroup}
+                                    onChange={(e) => setEditRoleTargetGroup(e.target.value)}
+                                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+                                >
+                                    {ROLE_TARGET_GROUPS.map((tg) => (
+                                        <option key={tg} value={tg}>
+                                            {tg}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-slate-700">Mô tả vai trò</Label>
+                                <textarea
+                                    value={editRoleDesc}
+                                    onChange={(e) => setEditRoleDesc(e.target.value)}
+                                    rows={3}
+                                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
                                 />
                             </div>
                         </div>
 
-                        {/* Danh sách tài khoản khả dụng */}
-                        <div className="flex-1 overflow-y-auto divide-y divide-slate-100 pr-1 space-y-1">
-                            {assignableUsers.map((user) => {
-                                const isChecked = selectedUserIdsToAssign.includes(user.id);
-                                return (
-                                    <label
-                                        key={user.id}
-                                        className={`flex items-center justify-between gap-3 p-3 rounded-2xl cursor-pointer transition ${
-                                            isChecked ? "bg-emerald-50/70 border border-emerald-200" : "hover:bg-slate-50"
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <input
-                                                type="checkbox"
-                                                checked={isChecked}
-                                                onChange={() => {
-                                                    setSelectedUserIdsToAssign((prev) =>
-                                                        prev.includes(user.id)
-                                                            ? prev.filter((id) => id !== user.id)
-                                                            : [...prev, user.id]
-                                                    );
-                                                }}
-                                                className="h-4 w-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
-                                            />
-                                            <div className="min-w-0">
-                                                <div className="font-extrabold text-sm text-slate-900 truncate">
-                                                    {user.fullName}
-                                                </div>
-                                                <div className="text-xs text-slate-500 font-medium">
-                                                    {user.phone} {user.organization ? `· ${user.organization}` : ""}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                                            {user.role}
-                                        </span>
-                                    </label>
-                                );
-                            })}
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditModalOpen(false)}
+                                disabled={isEditingRole}
+                                className="rounded-xl border-slate-200 text-xs font-semibold h-10 px-4"
+                            >
+                                Hủy
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleSaveRoleInfo}
+                                disabled={isEditingRole}
+                                className="rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs h-10 px-4 gap-1.5 shadow-sm transition-all"
+                            >
+                                {isEditingRole ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                                Lưu thông tin
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-                            {assignableUsers.length === 0 && (
-                                <div className="py-8 text-center text-xs text-slate-400 italic">
-                                    Không tìm thấy tài khoản khả dụng nào phù hợp.
-                                </div>
-                            )}
+            {/* MODAL: XÁC NHẬN XÓA VAI TRÒ */}
+            {deleteModalOpen && selectedRole && (
+                <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-sm rounded-[28px] bg-white border border-slate-200 p-6 shadow-2xl animate-in zoom-in-95 text-center space-y-4">
+                        <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                            <AlertCircle className="h-6 w-6" />
+                        </div>
+                        <div className="space-y-1">
+                            <h3 className="font-bold text-slate-900 text-base">Xác nhận xóa vai trò</h3>
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                                Bạn có chắc chắn muốn xóa vai trò <strong>{selectedRole.name}</strong> ({selectedRole.key}) khỏi hệ thống? Thao tác này không thể hoàn tác.
+                            </p>
                         </div>
 
-                        {/* Footer modal */}
-                        <div className="pt-4 flex items-center justify-between border-t border-slate-100 shrink-0">
-                            <span className="text-xs font-bold text-slate-600">
-                                Đã chọn: <span className="text-emerald-700 font-black">{selectedUserIdsToAssign.length}</span> tài khoản
-                            </span>
-
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => setIsAssignModalOpen(false)}
-                                    className="rounded-xl border-slate-200 text-slate-700 font-bold"
-                                >
-                                    Hủy
-                                </Button>
-                                <Button
-                                    type="button"
-                                    disabled={saving || selectedUserIdsToAssign.length === 0}
-                                    onClick={handleConfirmAssignUsers}
-                                    className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black"
-                                >
-                                    {saving ? (
-                                        <>
-                                            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                                            Đang gán...
-                                        </>
-                                    ) : (
-                                        `Gán ${selectedUserIdsToAssign.length} tài khoản`
-                                    )}
-                                </Button>
-                            </div>
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-center gap-2.5">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setDeleteModalOpen(false)}
+                                disabled={isDeletingRole}
+                                className="rounded-xl border-slate-200 text-xs font-semibold h-10 px-4"
+                            >
+                                Hủy bỏ
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleDeleteRole}
+                                disabled={isDeletingRole}
+                                className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs h-10 px-4 gap-1.5 shadow-sm transition-all"
+                            >
+                                {isDeletingRole ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                Xóa vĩnh viễn
+                            </Button>
                         </div>
                     </div>
                 </div>

@@ -109,6 +109,8 @@ export default async function Page() {
                 actualFruitCount: h.actualFruitCount || declaredFruitCount,
                 weightDifference: h.receivedWeight ? Number(h.receivedWeight) - declaredWeight : 0,
                 receivedAt: h.buyerReceivedAt || null,
+                deliveryMethod: h.deliveryMethod || undefined,
+                transactionNote: h.transactionNote || undefined,
                 status: h.status === "WAITING_CONFIRMATION" ? "WAITING_CONFIRMATION" : "WAITING_RECEIPT",
                 direction: "UNCLASSIFIED",
             });
@@ -173,6 +175,8 @@ export default async function Page() {
                 processingFruitCount: procFruitCount,
                 rejectedWeight: isClassified && rejectedW > 0 ? rejectedW : undefined,
                 rejectedFruitCount: rejFruitCount,
+                deliveryMethod: hr?.deliveryMethod || undefined,
+                transactionNote: hr?.transactionNote || undefined,
                 note: row.rawMaterialReceipt?.note || undefined,
             });
         });

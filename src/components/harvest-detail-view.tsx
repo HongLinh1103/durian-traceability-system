@@ -8,6 +8,7 @@ import {
     Building2,
     Calendar,
     CheckCircle2,
+    ClipboardCheck,
     DollarSign,
     FileText,
     History,
@@ -517,21 +518,12 @@ export function HarvestDetailView({ harvest: initialData }: { harvest: HarvestDa
 
                     {/* Actions Bar */}
                     <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-100">
-                        {["DRAFT", "CONFIRMED"].includes(harvest.status) && (
-                            <Button
-                                disabled={busy}
-                                onClick={() => void sendAction("START")}
-                                className="h-11 rounded-2xl bg-brand-600 px-6 font-bold text-white hover:bg-brand-700 shadow-soft"
-                            >
-                                Bắt đầu thu hoạch
-                            </Button>
-                        )}
-
-                        {harvest.status === "HARVESTING" && (
+                        {["CONFIRMED", "HARVESTING", "DRAFT"].includes(harvest.status) && (
                             <Button
                                 onClick={() => setModalMode("FINISH")}
                                 className="h-11 rounded-2xl bg-brand-600 px-6 font-bold text-white hover:bg-brand-700 shadow-soft"
                             >
+                                <ClipboardCheck className="mr-1.5 h-4 w-4" />
                                 Nhập kết quả thu hoạch
                             </Button>
                         )}

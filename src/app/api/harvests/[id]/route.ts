@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 const transitions: Record<string, Record<string, string[]>> = {
     COLLECTOR: { CONFIRM: ["WAITING_CONFIRMATION"], REJECT: ["WAITING_CONFIRMATION"], RECEIVE: ["DELIVERY_CONFIRMED", "HARVESTED"] },
     PROCESSING_FACILITY: { CONFIRM: ["WAITING_CONFIRMATION"], REJECT: ["WAITING_CONFIRMATION"], RECEIVE: ["DELIVERY_CONFIRMED", "HARVESTED", "CONFIRMED", "COMPLETED"] },
-    FARMER: { START: ["CONFIRMED", "DRAFT"], FINISH: ["HARVESTING"], DELIVER: ["HARVESTED"] },
+    FARMER: { START: ["CONFIRMED", "DRAFT"], FINISH: ["CONFIRMED", "HARVESTING", "DRAFT"], DELIVER: ["HARVESTED"] },
 };
 const targets: Record<string, HarvestStatus> = { CONFIRM: "CONFIRMED", REJECT: "REJECTED", START: "HARVESTING", FINISH: "HARVESTED", DELIVER: "DELIVERY_CONFIRMED", RECEIVE: "COMPLETED" };
 
@@ -44,7 +44,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const updated = await prisma.$transaction(async (tx) => {
         const item = await tx.harvestRecord.update({ where: { id: record.id }, data: {
             status: target, rejectionReason: action === "REJECT" ? String(body.reason || "") : undefined,
-            actualStartedAt: action === "START" ? new Date() : undefined, actualHarvestedAt: action === "FINISH" ? new Date() : undefined,
+            actualStartedAt: action === "START" ? new Date() : (record.actualStartedAt ?? (action === "FINISH" ? new Date() : undefined)), actualHarvestedAt: action === "FINISH" ? new Date() : undefined,
             actualTreeCount: body.actualTreeCount ? Number(body.actualTreeCount) : undefined,
             actualFruitCount: body.actualFruitCount !== undefined ? Number(body.actualFruitCount) : (body.fruitCount !== undefined ? Number(body.fruitCount) : undefined),
             actualWeight, actualNote: body.note, farmerDeliveredAt: action === "DELIVER" ? new Date() : undefined,

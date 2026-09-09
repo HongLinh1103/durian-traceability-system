@@ -74,18 +74,26 @@ const schema = z.discriminatedUnion("action", [
         notes: z.string().trim().max(500).optional(),
     }),
     z.object({ action: z.literal("CLOSE"), seasonId: z.string().min(1), note: z.string().trim().max(500).optional() }),
+    z.object({ action: z.literal("REOPEN"), seasonId: z.string().min(1) }),
 ]);
 
 export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== "FARMER") {
-        return NextResponse.json({ success: false, message: "Chỉ nông dân được quản lý vụ mùa." }, { status: 403 });
+    if (!session?.user?.id || (session.user.role !== "FARMER" && session.user.role !== "ADMIN")) {
+        return NextResponse.json({ success: false, message: "Bạn không có quyền quản lý vụ mùa." }, { status: 403 });
     }
     const parsed = schema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ success: false, message: "Dữ liệu vụ mùa không hợp lệ." }, { status: 400 });
 
     if (parsed.data.action === "CREATE") {
-        const farm = await prisma.farm.findFirst({ where: { id: parsed.data.farmId, farmerId: session.user.id, isActive: true }, select: { id: true } });
+        const farm = await prisma.farm.findFirst({
+            where: {
+                id: parsed.data.farmId,
+                isActive: true,
+                ...(session.user.role === "ADMIN" ? {} : { farmerId: session.user.id }),
+            },
+            select: { id: true },
+        });
         if (!farm) return NextResponse.json({ success: false, message: "Vườn không tồn tại hoặc không thuộc tài khoản." }, { status: 404 });
         const active = await prisma.cropSeason.findFirst({ where: { farmId: farm.id, status: "ACTIVE" }, select: { name: true } });
         if (active) return NextResponse.json({ success: false, message: `${active.name} vẫn đang hoạt động. Hãy đóng vụ trước khi mở vụ mới.` }, { status: 409 });
@@ -102,10 +110,64 @@ export async function POST(request: Request) {
             notes: parsed.data.notes || null,
             expectedEndAt: new Date(`${parsed.data.targetYear}-12-31T23:59:59+07:00`),
         } });
+        await prisma.farm.update({
+            where: { id: farm.id },
+            data: { isInSeason: true },
+        });
         return NextResponse.json({ success: true, data: season, message: "Đã bắt đầu vụ mùa mới." });
     }
 
-    const season = await prisma.cropSeason.findFirst({ where: { id: parsed.data.seasonId, status: "ACTIVE", farm: { farmerId: session.user.id } }, select: { id: true, name: true } });
+    if (parsed.data.action === "REOPEN") {
+        const season = await prisma.cropSeason.findFirst({
+            where: {
+                id: parsed.data.seasonId,
+                status: "CLOSED",
+                ...(session.user.role === "ADMIN" ? {} : { farm: { farmerId: session.user.id } }),
+            },
+            include: { farm: true },
+        });
+        if (!season) {
+            return NextResponse.json({ success: false, message: "Không tìm thấy vụ mùa đã đóng." }, { status: 404 });
+        }
+        const active = await prisma.cropSeason.findFirst({
+            where: {
+                farmId: season.farmId,
+                status: "ACTIVE",
+                id: { not: season.id },
+            },
+            select: { name: true },
+        });
+        if (active) {
+            return NextResponse.json({
+                success: false,
+                message: `${active.name} hiện đang hoạt động trên vườn này. Vui lòng đóng vụ đó trước khi mở lại ${season.name}.`,
+            }, { status: 409 });
+        }
+
+        await prisma.cropSeason.update({
+            where: { id: season.id },
+            data: {
+                status: "ACTIVE",
+                closedAt: null,
+                closingNote: null,
+            },
+        });
+        await prisma.farm.update({
+            where: { id: season.farmId },
+            data: { isInSeason: true },
+        });
+
+        return NextResponse.json({ success: true, message: `Đã mở khóa thành công ${season.name}. Bạn có thể tiếp tục ghi nhật ký.` });
+    }
+
+    const season = await prisma.cropSeason.findFirst({
+        where: {
+            id: parsed.data.seasonId,
+            status: "ACTIVE",
+            ...(session.user.role === "ADMIN" ? {} : { farm: { farmerId: session.user.id } }),
+        },
+        select: { id: true, name: true },
+    });
     if (!season) return NextResponse.json({ success: false, message: "Không tìm thấy vụ mùa đang hoạt động." }, { status: 404 });
     const harvested = await prisma.harvestRecord.count({ where: { cropSeasonId: season.id, status: { in: ["HARVESTED", "DELIVERY_CONFIRMED", "COMPLETED"] } } });
     if (!harvested) return NextResponse.json({ success: false, message: "Chỉ có thể đóng vụ sau khi đã ghi nhận thu hoạch." }, { status: 409 });
