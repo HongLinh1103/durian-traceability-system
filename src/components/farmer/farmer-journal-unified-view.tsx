@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { WeatherJournal } from "@/components/weather/weather-journal";
 import { PestMonitoringTab } from "@/components/farmer/pest-monitoring-tab";
 import { CultivationLogsTab } from "@/components/farmer/cultivation-logs-tab";
-import { formatVietnameseDate } from "@/lib/date-format";
 
 const STAGES = [
     ["POST_HARVEST_RECOVERY", "Phục hồi sau thu hoạch"],
@@ -198,7 +197,7 @@ export function FarmerJournalUnifiedView({
         const targetId = seasonId || selectedSeasonId;
         if (!targetId) return;
         const targetSeason = currentFarm?.cropSeasons.find((s) => s.id === targetId) || currentSeason;
-        const name = targetSeason ? `Vụ ${targetSeason.year}` : "vụ mùa";
+        const name = targetSeason ? (targetSeason.name ? (targetSeason.name.startsWith("Niên vụ") ? targetSeason.name : `Niên vụ ${targetSeason.name}`) : `Niên vụ ${targetSeason.year - 1}-${targetSeason.year}`) : "vụ mùa";
 
         const confirmed = window.confirm(
             `Bạn có chắc chắn muốn mở khóa lại ${name} để tiếp tục ghi nhật ký canh tác?`
@@ -254,22 +253,25 @@ export function FarmerJournalUnifiedView({
                         </select>
                     </div>
 
-                    {/* Chọn Vụ mùa */}
+                    {/* Chọn Niên vụ */}
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Vụ mùa</label>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Niên vụ</label>
                         <select
                             value={selectedSeasonId}
                             onChange={(e) => handleSeasonChange(e.target.value)}
                             disabled={!currentFarm || currentFarm.cropSeasons.length === 0}
                             className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-900 focus:border-brand-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
                         >
-                            {currentFarm?.cropSeasons.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                    Vụ {s.year}
-                                </option>
-                            ))}
+                            {currentFarm?.cropSeasons.map((s) => {
+                                const cleanName = s.name ? s.name.replace(/^Niên vụ\s*/, "") : `${s.year - 1}-${s.year}`;
+                                return (
+                                    <option key={s.id} value={s.id}>
+                                        {cleanName}
+                                    </option>
+                                );
+                            })}
                             {(!currentFarm || currentFarm.cropSeasons.length === 0) && (
-                                <option value="">Chưa có vụ mùa nào</option>
+                                <option value="">Chưa có niên vụ nào</option>
                             )}
                         </select>
                     </div>
@@ -287,11 +289,6 @@ export function FarmerJournalUnifiedView({
                             ) : (
                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200">
                                     Đã đóng
-                                </span>
-                            )}
-                            {currentSeason.startedAt && (
-                                <span className="text-slate-500 text-xs">
-                                    Bắt đầu: {formatVietnameseDate(currentSeason.startedAt)}
                                 </span>
                             )}
                             {!isSeasonActive && (
@@ -408,6 +405,14 @@ export function FarmerJournalUnifiedView({
                     seasonName={currentSeason?.name}
                     seasonYear={currentSeason?.year}
                     onReopenSeason={() => handleReopenSeason(currentSeason?.id)}
+                    onNavigateToPestBook={(pestName) => {
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.delete("tab");
+                        if (selectedFarmId) params.set("farmId", selectedFarmId);
+                        if (selectedSeasonId) params.set("seasonId", selectedSeasonId);
+                        params.set("pest", pestName);
+                        router.push(`/dashboard/farmer/journal/pests?${params.toString()}`, { scroll: false });
+                    }}
                 />
             )}
 
@@ -417,8 +422,20 @@ export function FarmerJournalUnifiedView({
                     cropSeasonId={selectedSeasonId}
                     isSeasonActive={isSeasonActive}
                     farmName={currentFarm?.farmName}
+                    farmAddress={currentFarm?.address || undefined}
                     seasonName={currentSeason?.name}
+                    seasonYear={currentSeason?.year}
                     onReopenSeason={() => handleReopenSeason(currentSeason?.id)}
+                    initialSelectedPestName={searchParams.get("pest")}
+                    onNavigateToCultivation={(logId) => {
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.delete("tab");
+                        params.delete("pest");
+                        if (selectedFarmId) params.set("farmId", selectedFarmId);
+                        if (selectedSeasonId) params.set("seasonId", selectedSeasonId);
+                        if (logId) params.set("logId", logId);
+                        router.push(`/dashboard/farmer/journal/cultivation?${params.toString()}`, { scroll: false });
+                    }}
                 />
             )}
 
@@ -440,7 +457,7 @@ export function FarmerJournalUnifiedView({
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-600 mb-1">Năm vụ mùa *</label>
+                                    <label className="block text-xs font-bold text-slate-600 mb-1">Năm bắt đầu niên vụ *</label>
                                     <input
                                         type="number"
                                         min={2020}
@@ -450,6 +467,9 @@ export function FarmerJournalUnifiedView({
                                         onChange={(e) => setNewSeasonForm({ ...newSeasonForm, targetYear: Number(e.target.value) })}
                                         className="h-10 w-full rounded-2xl border border-slate-200 px-3 text-sm focus:border-brand-500 focus:outline-none"
                                     />
+                                    <p className="mt-1 text-[11px] text-slate-400 font-medium">
+                                        Niên vụ {newSeasonForm.targetYear}-{Number(newSeasonForm.targetYear) + 1}
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-600 mb-1">Ngày bắt đầu *</label>

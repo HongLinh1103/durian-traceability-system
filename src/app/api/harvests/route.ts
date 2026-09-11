@@ -29,6 +29,14 @@ const schema = z.object({
     transactionNote: z.string().optional().nullable(),
 });
 
+const quickHarvestSchema = z.object({
+    cropSeasonId: z.string().min(1, "Vui lòng chọn niên vụ."),
+    actualWeight: z.coerce.number().positive("Tổng sản lượng phải lớn hơn 0."),
+    buyerName: z.string().trim().min(1, "Vui lòng nhập hoặc chọn bên mua."),
+    buyerFacilityId: z.string().optional().nullable(),
+    pricePerKg: z.coerce.number().positive("Giá bán phải lớn hơn 0."),
+});
+
 export async function GET() {
     try {
         const session = await getServerSession(authOptions);
@@ -49,6 +57,7 @@ export async function GET() {
         const data = await prisma.harvestRecord.findMany({
             where: whereCondition,
             include: {
+                cropSeason: { select: { id: true, name: true, year: true, status: true, startedAt: true, expectedEndAt: true } },
                 varietyItems: true,
                 farm: { select: { farmName: true, farmCode: true, address: true, durianVariety: true } },
                 farmer: { select: { fullName: true, phone: true } },
@@ -67,14 +76,112 @@ export async function POST(request: Request) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id || session.user.role !== "FARMER") {
-            return NextResponse.json({ success: false, message: "Chỉ tài khoản nông dân mới có quyền tạo phiếu thu hoạch." }, { status: 403 });
+            return NextResponse.json({ success: false, message: "Chỉ tài khoản nông dân mới có quyền tạo hồ sơ thu hoạch." }, { status: 403 });
         }
 
-        let bodyJson: unknown;
+        let bodyJson: any;
         try {
             bodyJson = await request.json();
         } catch {
             return NextResponse.json({ success: false, message: "Dữ liệu gửi lên không đúng định dạng JSON." }, { status: 400 });
+        }
+
+        // Branch 1: Concise "Hồ sơ thu hoạch" format
+        if (bodyJson && (bodyJson.cropSeasonId || bodyJson.buyerName) && !bodyJson.varietyItems) {
+            const parsedQuick = quickHarvestSchema.safeParse(bodyJson);
+            if (!parsedQuick.success) {
+                return NextResponse.json({
+                    success: false,
+                    message: parsedQuick.error.issues[0]?.message || "Dữ liệu không hợp lệ.",
+                }, { status: 400 });
+            }
+            const qData = parsedQuick.data;
+            const season = await prisma.cropSeason.findFirst({
+                where: { id: qData.cropSeasonId },
+                include: { farm: true },
+            });
+            if (!season || season.farm.farmerId !== session.user.id) {
+                return NextResponse.json({
+                    success: false,
+                    message: "Niên vụ được chọn không tồn tại hoặc không thuộc quyền quản lý của bạn.",
+                }, { status: 404 });
+            }
+
+            let facility = null;
+            if (qData.buyerFacilityId) {
+                facility = await prisma.partnerFacility.findFirst({
+                    where: { id: qData.buyerFacilityId, deletedAt: null },
+                });
+            }
+
+            const safeBuyerType = facility ? facility.type : "UNDETERMINED";
+            const buyerUserId = facility ? facility.ownerId : null;
+            const buyerName = (facility ? facility.name : qData.buyerName).trim();
+            const weight = qData.actualWeight;
+            const price = qData.pricePerKg;
+
+            const day = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+            const count = await prisma.harvestRecord.count({ where: { code: { startsWith: `TH-${day}` } } });
+            let codeIndex = count + 1;
+            let code = `TH-${day}-${String(codeIndex).padStart(3, "0")}`;
+            while (await prisma.harvestRecord.findUnique({ where: { code } })) {
+                codeIndex++;
+                code = `TH-${day}-${String(codeIndex).padStart(3, "0")}`;
+            }
+
+            const harvestDate = season.startedAt ? new Date(season.startedAt) : new Date();
+
+            const created = await prisma.harvestRecord.create({
+                data: {
+                    code,
+                    farmId: season.farmId,
+                    farmerId: session.user.id,
+                    cropSeasonId: season.id,
+                    buyerType: safeBuyerType,
+                    buyerFacilityId: facility?.id || null,
+                    buyerUserId,
+                    status: "COMPLETED",
+                    expectedHarvestDate: harvestDate,
+                    actualHarvestedAt: new Date(),
+                    completedAt: new Date(),
+                    durianVariety: season.farm.durianVariety || "Ri6",
+                    expectedWeight: weight,
+                    actualWeight: weight,
+                    deliveredWeight: weight,
+                    receivedWeight: weight,
+                    expectedSaleWeight: weight,
+                    weightUnit: "kg",
+                    expectedPricePerKg: price,
+                    transactionNote: buyerName,
+                    varietyItems: {
+                        create: [
+                            {
+                                durianVariety: season.farm.durianVariety || "Ri6",
+                                expectedWeight: weight,
+                                expectedPricePerKg: price,
+                            },
+                        ],
+                    },
+                    histories: {
+                        create: {
+                            actorId: session.user.id,
+                            toStatus: "COMPLETED",
+                            note: `Nông dân tạo hồ sơ thu hoạch (${buyerName})`,
+                        },
+                    },
+                },
+                include: {
+                    cropSeason: true,
+                    farm: true,
+                    buyerFacility: true,
+                },
+            });
+
+            return NextResponse.json({
+                success: true,
+                data: created,
+                message: "Đã lưu hồ sơ thu hoạch thành công.",
+            }, { status: 201 });
         }
 
         const parsed = schema.safeParse(bodyJson);

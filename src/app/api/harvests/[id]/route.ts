@@ -151,3 +151,189 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (notifyId) await prisma.notification.create({ data: { userId: notifyId, type: "HARVEST_STATUS", title: `Phiếu ${record.code} đã cập nhật`, message: `Trạng thái mới: ${target}` } }).catch(() => undefined);
     return NextResponse.json({ success: true, data: updated });
 }
+
+export async function GET(_request: Request, { params }: { params: { id: string } }) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) return NextResponse.json({ success: false, message: "Chưa đăng nhập." }, { status: 401 });
+
+    const record = await prisma.harvestRecord.findFirst({
+        where: { OR: [{ id: params.id }, { code: params.id }] },
+        include: {
+            cropSeason: true,
+            farm: true,
+            buyerFacility: true,
+            varietyItems: true,
+        },
+    });
+    if (!record) return NextResponse.json({ success: false, message: "Không tìm thấy hồ sơ thu hoạch." }, { status: 404 });
+    return NextResponse.json({ success: true, data: record });
+}
+
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) return NextResponse.json({ success: false, message: "Chưa đăng nhập." }, { status: 401 });
+
+        const record = await prisma.harvestRecord.findFirst({
+            where: { OR: [{ id: params.id }, { code: params.id }] },
+            include: { farm: true },
+        });
+        if (!record) return NextResponse.json({ success: false, message: "Không tìm thấy hồ sơ thu hoạch." }, { status: 404 });
+        if (record.farmerId !== session.user.id && session.user.role !== "ADMIN") {
+            return NextResponse.json({ success: false, message: "Bạn không có quyền chỉnh sửa hồ sơ này." }, { status: 403 });
+        }
+
+        const body = await request.json();
+        const { cropSeasonId, actualWeight, buyerName, buyerFacilityId, pricePerKg } = body;
+
+        const weight = Number(actualWeight);
+        if (isNaN(weight) || weight <= 0) {
+            return NextResponse.json({ success: false, message: "Tổng sản lượng phải lớn hơn 0." }, { status: 400 });
+        }
+        const price = Number(pricePerKg);
+        if (isNaN(price) || price <= 0) {
+            return NextResponse.json({ success: false, message: "Giá bán phải lớn hơn 0." }, { status: 400 });
+        }
+        if (!cropSeasonId) {
+            return NextResponse.json({ success: false, message: "Vui lòng chọn niên vụ." }, { status: 400 });
+        }
+
+        const season = await prisma.cropSeason.findFirst({
+            where: { id: cropSeasonId },
+            include: { farm: true },
+        });
+        if (!season || (season.farm.farmerId !== session.user.id && session.user.role !== "ADMIN")) {
+            return NextResponse.json({ success: false, message: "Niên vụ được chọn không hợp lệ." }, { status: 404 });
+        }
+
+        let facility = null;
+        if (buyerFacilityId) {
+            facility = await prisma.partnerFacility.findFirst({
+                where: { id: buyerFacilityId, deletedAt: null },
+            });
+        }
+
+        const safeBuyerType = facility ? facility.type : "UNDETERMINED";
+        const buyerUserId = facility ? facility.ownerId : null;
+        const finalBuyerName = (facility ? facility.name : buyerName || "").trim();
+
+        const updated = await prisma.$transaction(async (tx) => {
+            await tx.harvestVarietyItem.deleteMany({ where: { harvestId: record.id } });
+            await tx.harvestVarietyItem.create({
+                data: {
+                    harvestId: record.id,
+                    durianVariety: season.farm.durianVariety || "Ri6",
+                    expectedWeight: weight,
+                    expectedPricePerKg: price,
+                },
+            });
+
+            return await tx.harvestRecord.update({
+                where: { id: record.id },
+                data: {
+                    cropSeasonId: season.id,
+                    farmId: season.farmId,
+                    actualWeight: weight,
+                    expectedWeight: weight,
+                    deliveredWeight: weight,
+                    receivedWeight: weight,
+                    expectedSaleWeight: weight,
+                    expectedPricePerKg: price,
+                    buyerFacilityId: facility?.id || null,
+                    buyerUserId,
+                    buyerType: safeBuyerType,
+                    transactionNote: finalBuyerName || record.transactionNote,
+                },
+                include: {
+                    cropSeason: true,
+                    farm: true,
+                    buyerFacility: true,
+                },
+            });
+        });
+
+        return NextResponse.json({
+            success: true,
+            data: updated,
+            message: "Đã cập nhật hồ sơ thu hoạch thành công.",
+        });
+    } catch (error) {
+        console.error("PUT /api/harvests/[id] error:", error);
+        return NextResponse.json({
+            success: false,
+            message: error instanceof Error ? error.message : "Đã có lỗi xảy ra khi cập nhật hồ sơ.",
+        }, { status: 500 });
+    }
+}
+
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) return NextResponse.json({ success: false, message: "Chưa đăng nhập." }, { status: 401 });
+
+        const record = await prisma.harvestRecord.findFirst({
+            where: { OR: [{ id: params.id }, { code: params.id }] },
+            include: {
+                harvestLot: {
+                    include: {
+                        procurementOrders: { select: { id: true } },
+                        collectionItems: { select: { id: true } },
+                        rawReceipts: { select: { id: true } },
+                        commercialLots: { select: { id: true } },
+                    },
+                },
+            },
+        });
+        if (!record) return NextResponse.json({ success: false, message: "Không tìm thấy hồ sơ thu hoạch." }, { status: 404 });
+        if (record.farmerId !== session.user.id && session.user.role !== "ADMIN") {
+            return NextResponse.json({ success: false, message: "Bạn không có quyền xóa hồ sơ này." }, { status: 403 });
+        }
+
+        // Check if downstream supply chain entities rely on this harvest record
+        if (record.harvestLot) {
+            const hasDownstream =
+                record.harvestLot.procurementOrders.length > 0 ||
+                record.harvestLot.collectionItems.length > 0 ||
+                record.harvestLot.rawReceipts.length > 0 ||
+                record.harvestLot.commercialLots.length > 0;
+            if (hasDownstream) {
+                return NextResponse.json({
+                    success: false,
+                    message: "Hồ sơ thu hoạch này đã phát sinh giao dịch trong chuỗi cung ứng nên không thể xóa.",
+                }, { status: 409 });
+            }
+        }
+
+        const relatedExpenseCount = await prisma.partnerExpense.count({
+            where: { relatedHarvestRecordId: record.id },
+        });
+        if (relatedExpenseCount > 0) {
+            return NextResponse.json({
+                success: false,
+                message: "Hồ sơ này đang liên kết với phiếu chi của cơ sở đối tác nên không thể xóa.",
+            }, { status: 409 });
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.harvestStatusHistory.deleteMany({ where: { harvestId: record.id } });
+            await tx.harvestVarietyItem.deleteMany({ where: { harvestId: record.id } });
+            await tx.farmingLog.deleteMany({ where: { harvestRecordId: record.id } });
+            if (record.harvestLot) {
+                await tx.harvestTraceSnapshot.deleteMany({ where: { harvestLotId: record.harvestLot.id } });
+                await tx.harvestLot.delete({ where: { id: record.harvestLot.id } });
+            }
+            await tx.harvestRecord.delete({ where: { id: record.id } });
+        });
+
+        return NextResponse.json({
+            success: true,
+            message: "Đã xóa hồ sơ thu hoạch thành công.",
+        });
+    } catch (error) {
+        console.error("DELETE /api/harvests/[id] error:", error);
+        return NextResponse.json({
+            success: false,
+            message: error instanceof Error ? error.message : "Đã có lỗi xảy ra khi xóa hồ sơ.",
+        }, { status: 500 });
+    }
+}

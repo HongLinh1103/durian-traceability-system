@@ -1,3 +1,4 @@
+import { seasonDateBounds } from "@/lib/crop-season";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
@@ -47,6 +48,7 @@ export async function GET(request: Request) {
             { chemicalName: { contains: query, mode: "insensitive" } },
             { notes: { contains: query, mode: "insensitive" } },
             { otherActivity: { contains: query, mode: "insensitive" } },
+            { pestsDetected: { contains: query, mode: "insensitive" } },
         ];
     }
 
@@ -64,7 +66,7 @@ export async function GET(request: Request) {
                 durianVariety: true,
                 cropSeasons: {
                     orderBy: [{ year: "desc" }, { sequence: "desc" }],
-                    select: { id: true, name: true, year: true, status: true },
+                    select: { id: true, name: true, year: true, status: true, startedAt: true, expectedEndAt: true, closedAt: true },
                 },
             },
         }),
@@ -83,6 +85,7 @@ export async function GET(request: Request) {
                 chemicalName: true,
                 dosage: true,
                 phiDays: true,
+                pestsDetected: true,
                 notes: true,
                 images: true,
                 isGACCCompliant: true,
@@ -110,6 +113,7 @@ export async function POST(request: Request) {
         const chemicalName = String(formData.get("chemicalName") ?? "");
         const dosage = String(formData.get("dosage") ?? "");
         const phiDays = Number(formData.get("phiDays") ?? 0);
+        const pestsDetected = String(formData.get("pestsDetected") ?? "Không phát hiện").trim() || "Không phát hiện";
         const plannedHarvestDate = String(formData.get("plannedHarvestDate") ?? "");
         const notes = String(formData.get("notes") ?? "");
         const isGACCCompliant = toBoolean(formData.get("isGACCCompliant"));
@@ -144,7 +148,7 @@ export async function POST(request: Request) {
                 farmerId: session.user.id,
                 isActive: true,
             },
-            select: { id: true, cropSeasons: { where: { status: "ACTIVE" }, take: 1, select: { id: true } } },
+            select: { id: true, cropSeasons: { where: { status: "ACTIVE" }, take: 1, select: { id: true, name: true, year: true, startedAt: true, expectedEndAt: true, closedAt: true } } },
         });
         if (!ownedFarm) {
             return NextResponse.json(
@@ -160,6 +164,11 @@ export async function POST(request: Request) {
             );
         }
 
+        const bounds = seasonDateBounds(activeSeason);
+        const actionDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).format(parsedActionDate);
+        if (actionDay < bounds.min || actionDay > bounds.max) {
+            return NextResponse.json({ ok: false, error: "Ngày ghi nhật ký phải nằm trong niên vụ (" + bounds.min + " đến " + bounds.max + ")." }, { status: 400 });
+        }
         const prohibitedEntries = normalizedActivityType === "SPRAY_PESTICIDE"
             ? await prisma.pesticide.findMany({
                 where: { isActive: true, deletedAt: null, gaccStatus: "PROHIBITED" },
@@ -192,6 +201,7 @@ export async function POST(request: Request) {
                 chemicalName: requiresChemicalName ? chemicalName : null,
                 dosage: requiresDosage ? dosage : null,
                 phiDays: requiresDosage ? phiDays : null,
+                pestsDetected,
                 isGACCCompliant:
                     normalizedActivityType !== "SPRAY_PESTICIDE" ||
                     (isGACCCompliant && prohibitedMatch.status === "none"),
@@ -264,3 +274,100 @@ export async function POST(request: Request) {
         );
     }
 }
+
+export async function DELETE(request: Request) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ ok: false, error: "Chưa đăng nhập." }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(request.url);
+        let id = searchParams.get("id");
+        if (!id) {
+            const body = await request.json().catch(() => null);
+            id = body?.id;
+        }
+
+        if (!id) {
+            return NextResponse.json({ ok: false, error: "Thiếu ID nhật ký." }, { status: 400 });
+        }
+
+        const log = await prisma.farmingLog.findUnique({
+            where: { id },
+            include: {
+                farm: { select: { id: true, farmerId: true } },
+                cropSeason: { select: { id: true, status: true } },
+                supplyTransactions: true,
+            },
+        });
+
+        if (!log) {
+            return NextResponse.json({ ok: false, error: "Nhật ký không tồn tại." }, { status: 404 });
+        }
+
+        const isOwner = log.farm.farmerId === session.user.id;
+        const isAdminOrManager = session.user.role === "ADMIN" || session.user.role === "AREA_MANAGER";
+        if (!isOwner && !isAdminOrManager) {
+            return NextResponse.json({ ok: false, error: "Bạn không có quyền xóa nhật ký này." }, { status: 403 });
+        }
+
+        if (log.cropSeason?.status === "CLOSED" && !isAdminOrManager) {
+            return NextResponse.json(
+                { ok: false, error: "Vụ mùa đã đóng, không thể xóa nhật ký." },
+                { status: 400 }
+            );
+        }
+
+        await prisma.$transaction(async (tx) => {
+            for (const st of log.supplyTransactions) {
+                if (st.type === "OUT" && st.quantity > 0) {
+                    await tx.farmerSupply.update({
+                        where: { id: st.supplyId },
+                        data: { quantity: { increment: st.quantity } },
+                    }).catch(() => null);
+                }
+            }
+
+            await tx.farmerSupplyTransaction.deleteMany({
+                where: { farmingLogId: log.id },
+            });
+
+            await tx.farmingLogMaterial.deleteMany({
+                where: { farmingLogId: log.id },
+            });
+
+            await tx.pestMonitoringBook.updateMany({
+                where: { discoveryLogId: log.id },
+                data: { discoveryLogId: null },
+            });
+            await tx.pestTreatment.updateMany({
+                where: { farmingLogId: log.id },
+                data: { farmingLogId: null },
+            });
+
+            if (log.planId) {
+                await tx.farmingPlan.update({
+                    where: { id: log.planId },
+                    data: { status: "PLANNED", completedAt: null },
+                }).catch(() => null);
+            }
+
+            await tx.farmingLog.delete({
+                where: { id: log.id },
+            });
+        });
+
+        return NextResponse.json({
+            ok: true,
+            message: "Đã xóa nhật ký canh tác thành công.",
+        });
+    } catch (error) {
+        console.error("Lỗi khi xóa nhật ký canh tác:", error);
+        return NextResponse.json(
+            { ok: false, error: error instanceof Error ? error.message : "Lỗi khi xóa nhật ký" },
+            { status: 500 }
+        );
+    }
+}
+

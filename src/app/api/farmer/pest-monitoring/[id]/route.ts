@@ -9,7 +9,13 @@ export const dynamic = "force-dynamic";
 const updateBookSchema = z.object({
     pestName: z.string().trim().min(2).max(200).optional(),
     scientificName: z.string().trim().max(200).optional().nullable(),
-    trapType: z.string().trim().min(2).max(100).optional(),
+    firstDetectedDate: z.string().optional().nullable(),
+    discoveryStage: z.string().trim().max(100).optional().nullable(),
+    discoverySource: z.string().trim().max(200).optional().nullable(),
+    discoveryLogId: z.string().optional().nullable(),
+    monitoringMethods: z.array(z.string()).optional(),
+    targetPart: z.string().trim().max(200).optional().nullable(),
+    trapType: z.string().trim().max(100).optional().nullable(),
     attractant: z.string().trim().max(200).optional().nullable(),
     checkFrequencyDays: z.coerce.number().int().min(1).optional(),
     status: z.enum(["ACTIVE", "CLOSED"]).optional(),
@@ -62,8 +68,21 @@ export async function GET(
                 farmerId,
             },
             include: {
-                farm: { select: { id: true, farmName: true, farmCode: true, address: true } },
+                farm: { select: { id: true, farmName: true, farmCode: true, address: true, ward: true, district: true, province: true } },
                 cropSeason: { select: { id: true, name: true, year: true, status: true } },
+                discoveryLog: {
+                    select: {
+                        id: true,
+                        actionDate: true,
+                        stage: true,
+                        activityType: true,
+                        otherActivity: true,
+                        chemicalName: true,
+                        dosage: true,
+                        phiDays: true,
+                        notes: true,
+                    },
+                },
                 traps: {
                     orderBy: { trapCode: "asc" },
                 },
@@ -76,6 +95,7 @@ export async function GET(
                                     select: {
                                         trapCode: true,
                                         trapType: true,
+                                        attractant: true,
                                         locationName: true,
                                         latitude: true,
                                         longitude: true,
@@ -87,6 +107,18 @@ export async function GET(
                 },
                 treatments: {
                     orderBy: { treatmentDate: "desc" },
+                    include: {
+                        farmingLog: {
+                            select: {
+                                id: true,
+                                actionDate: true,
+                                activityType: true,
+                                chemicalName: true,
+                                dosage: true,
+                                phiDays: true,
+                            },
+                        },
+                    },
                 },
             },
         });
@@ -114,9 +146,16 @@ export async function GET(
             success: true,
             data: {
                 ...book,
+                firstDetectedDate: book.firstDetectedDate ? book.firstDetectedDate.toISOString() : null,
                 startDate: book.startDate.toISOString(),
                 createdAt: book.createdAt.toISOString(),
                 updatedAt: book.updatedAt.toISOString(),
+                discoveryLog: book.discoveryLog
+                    ? {
+                        ...book.discoveryLog,
+                        actionDate: book.discoveryLog.actionDate.toISOString(),
+                    }
+                    : null,
                 traps: book.traps.map((t) => ({
                     ...t,
                     installedDate: t.installedDate.toISOString(),
@@ -134,6 +173,12 @@ export async function GET(
                     treatmentDate: tr.treatmentDate.toISOString(),
                     createdAt: tr.createdAt.toISOString(),
                     updatedAt: tr.updatedAt.toISOString(),
+                    farmingLog: tr.farmingLog
+                        ? {
+                            ...tr.farmingLog,
+                            actionDate: tr.farmingLog.actionDate.toISOString(),
+                        }
+                        : null,
                 })),
                 summary,
             },
@@ -171,9 +216,14 @@ export async function PUT(
             );
         }
 
+        const updateData: any = { ...parsed.data };
+        if (parsed.data.firstDetectedDate !== undefined) {
+            updateData.firstDetectedDate = parsed.data.firstDetectedDate ? new Date(parsed.data.firstDetectedDate) : null;
+        }
+
         const updated = await prisma.pestMonitoringBook.update({
             where: { id: params.id, farmerId },
-            data: parsed.data,
+            data: updateData,
         });
 
         return NextResponse.json({ success: true, data: updated, message: "Đã cập nhật sổ theo dõi thành công." });

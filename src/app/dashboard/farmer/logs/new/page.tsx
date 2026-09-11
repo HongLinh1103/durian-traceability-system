@@ -1,5 +1,6 @@
 "use client";
 
+import { seasonDateBounds } from "@/lib/crop-season";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -37,7 +38,7 @@ type SpeechRecognitionInstanceLike = {
 };
 
 type SpeechRecognitionConstructorLike = new () => SpeechRecognitionInstanceLike;
-type FarmOption = { id: string; farmCode: string; farmName: string; cropSeasons?: { id: string; name: string; year: number }[] };
+type FarmOption = { id: string; farmCode: string; farmName: string; cropSeasons?: { id: string; name: string; year: number; status: string; startedAt: string | null; expectedEndAt: string | null; closedAt: string | null }[] };
 type FarmingLogItem = {
     id: string;
     actionDate: string;
@@ -71,6 +72,7 @@ function buildLogFormData(
     formData.append("chemicalName", values.chemicalName);
     formData.append("dosage", values.dosage);
     formData.append("phiDays", String(values.phiDays));
+    formData.append("pestsDetected", values.pestsDetected || "Không phát hiện");
     formData.append("plannedHarvestDate", values.plannedHarvestDate ? toIsoDate(values.plannedHarvestDate) : "");
     formData.append("notes", values.notes ?? "");
     formData.append("isGACCCompliant", String(isGACCCompliant));
@@ -186,6 +188,7 @@ export default function NewFarmingLogPage() {
             farmId: "",
             chemicalName: "",
             dosage: "",
+            pestsDetected: "Không phát hiện",
             notes: "",
             plannedHarvestDate: formatVietnameseDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)),
         },
@@ -193,6 +196,9 @@ export default function NewFarmingLogPage() {
 
     const chemicalName = form.watch("chemicalName");
     const actionDate = form.watch("actionDate");
+    const selectedFarmId = form.watch("farmId");
+    const activeSeason = farms.find(farm => farm.id === selectedFarmId)?.cropSeasons?.find(season => season.status === "ACTIVE");
+    const dateBounds = activeSeason ? seasonDateBounds(activeSeason) : undefined;
     const phiDays = Number(form.watch("phiDays") ?? 0);
     const plannedHarvestDate = form.watch("plannedHarvestDate");
     const stage = form.watch("stage");
@@ -353,7 +359,7 @@ export default function NewFarmingLogPage() {
                 data?: { farms: FarmOption[]; logs: FarmingLogItem[] };
             };
             if (response.ok && payload.ok && payload.data) {
-                const activeFarms = payload.data.farms.filter(farm => Boolean(farm.cropSeasons?.length));
+                const activeFarms = payload.data.farms.filter(farm => farm.cropSeasons?.some(season => season.status === "ACTIVE"));
                 setFarms(activeFarms);
                 const currentFarmId = form.getValues("farmId");
                 if (
@@ -545,6 +551,10 @@ export default function NewFarmingLogPage() {
     }, []);
 
     const onSubmit = form.handleSubmit(async (values) => {
+        if (dateBounds && (toIsoDate(values.actionDate) < dateBounds.min || toIsoDate(values.actionDate) > dateBounds.max)) {
+            form.setError("actionDate", { message: "Ngày thực hiện phải từ " + dateBounds.min + " đến " + dateBounds.max + "." });
+            return;
+        }
         try {
             const harvestSafety = evaluatePhiSafety({
                 sprayDate: toIsoDate(values.actionDate),
@@ -622,6 +632,7 @@ export default function NewFarmingLogPage() {
                 farmId: values.farmId,
                 chemicalName: "",
                 dosage: "",
+                pestsDetected: "Không phát hiện",
                 notes: "",
                 plannedHarvestDate: values.plannedHarvestDate,
             });
@@ -732,7 +743,7 @@ export default function NewFarmingLogPage() {
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <Label htmlFor="actionDate">Ngày thực hiện</Label>
-                                <VietnameseDatePicker id="actionDate" value={toIsoDate(actionDate)} onChange={(value) => form.setValue("actionDate", formatVietnameseDate(new Date(`${value}T00:00:00`)), { shouldDirty: true, shouldValidate: true })} />
+                                <VietnameseDatePicker min={dateBounds?.min} max={dateBounds?.max} id="actionDate" value={toIsoDate(actionDate)} onChange={(value) => form.setValue("actionDate", formatVietnameseDate(new Date(`${value}T00:00:00`)), { shouldDirty: true, shouldValidate: true })} />
                                 <p className="mt-1 text-xs text-red-600">{form.formState.errors.actionDate?.message}</p>
                             </div>
                             <div>
@@ -776,21 +787,21 @@ export default function NewFarmingLogPage() {
                             <input type="hidden" {...form.register("activityType")} />
                             <div className="relative w-full min-w-0 max-w-full">
                                 <div ref={activityScrollerRef} onWheel={scrollPillsHorizontally} onPointerDown={beginPillDrag} onPointerMove={movePillDrag} onPointerUp={endPillDrag} onPointerCancel={endPillDrag} className="flex w-full cursor-grab touch-pan-x snap-x snap-proximity flex-nowrap gap-3 overflow-x-auto overscroll-x-contain px-1 pb-3 pr-16 pt-1 select-none active:cursor-grabbing [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                                {availableActivities.map((activity) => (
-                                    <button
-                                        key={activity}
-                                        type="button"
-                                        onClick={(event) => {
-                                            if (event.currentTarget.parentElement?.dataset.dragging === "true") return;
-                                            form.setValue("activityType", activity, { shouldDirty: true, shouldValidate: true });
-                                            centerPillInScroller(event.currentTarget);
-                                        }}
-                                        className={`flex min-h-12 min-w-[8.5rem] shrink-0 touch-pan-x snap-start cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border px-5 py-3 text-sm font-semibold transition-all ${form.watch("activityType") === activity ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200" : "border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50"}`}
-                                        aria-pressed={form.watch("activityType") === activity}
-                                    >
-                                        <span>{activity}</span>
-                                    </button>
-                                ))}
+                                    {availableActivities.map((activity) => (
+                                        <button
+                                            key={activity}
+                                            type="button"
+                                            onClick={(event) => {
+                                                if (event.currentTarget.parentElement?.dataset.dragging === "true") return;
+                                                form.setValue("activityType", activity, { shouldDirty: true, shouldValidate: true });
+                                                centerPillInScroller(event.currentTarget);
+                                            }}
+                                            className={`flex min-h-12 min-w-[8.5rem] shrink-0 touch-pan-x snap-start cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border px-5 py-3 text-sm font-semibold transition-all ${form.watch("activityType") === activity ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200" : "border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50"}`}
+                                            aria-pressed={form.watch("activityType") === activity}
+                                        >
+                                            <span>{activity}</span>
+                                        </button>
+                                    ))}
                                 </div>
                                 <div className="pointer-events-none absolute inset-y-1 right-0 w-10 bg-gradient-to-l from-white via-white/85 to-transparent" aria-hidden="true" />
                             </div>
@@ -877,6 +888,19 @@ export default function NewFarmingLogPage() {
                                 </div>
                             </div>
                         )}
+
+                        <div>
+                            <Label htmlFor="pestsDetected">Sinh vật gây hại phát hiện</Label>
+                            <Input
+                                id="pestsDetected"
+                                placeholder="Ví dụ: Rầy xanh-Bọ trĩ, Sâu đục trái (hoặc Không phát hiện)..."
+                                {...form.register("pestsDetected")}
+                            />
+                            <p className="mt-1 text-xs text-slate-500">
+                                Người dùng nhập tay sinh vật gây hại phát hiện tại vườn (nếu không có hãy ghi là &quot;Không phát hiện&quot;).
+                            </p>
+                            <p className="mt-1 text-xs text-red-600">{form.formState.errors.pestsDetected?.message}</p>
+                        </div>
 
                         <div>
                             <div className="mb-2 flex items-center justify-between gap-3">

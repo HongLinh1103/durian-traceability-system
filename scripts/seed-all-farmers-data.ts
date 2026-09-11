@@ -50,19 +50,19 @@ async function main() {
             console.log(`   + Tạo vườn mới: ${farm.farmName} (${farm.farmCode})`);
         }
 
-        // 2. Nếu chưa có vụ mùa, tạo Vụ 2027 (ACTIVE) và Vụ 2026 (CLOSED)
+        // 2. Nếu chưa có vụ mùa, tạo Niên vụ 2025-2026 (ACTIVE)
         let activeSeason = farm.cropSeasons.find((s) => s.status === "ACTIVE");
         if (!activeSeason) {
             activeSeason = await prisma.cropSeason.create({
                 data: {
                     farmId: farm.id,
-                    name: "Vụ mùa 2027",
-                    year: 2027,
+                    name: "Niên vụ 2025-2026",
+                    year: 2026,
                     sequence: 1,
                     status: "ACTIVE",
-                    startedAt: new Date("2026-05-01"),
+                    startedAt: new Date("2025-08-01"),
                     startingStage: "POST_HARVEST_RECOVERY",
-                    notes: "Vụ mùa sầu riêng xuất khẩu GACC 2027",
+                    notes: "Niên vụ 2025-2026 sầu riêng xuất khẩu GACC / VietGAP",
                 },
             });
             console.log(`   + Tạo vụ mùa mới: ${activeSeason.name} [ACTIVE]`);

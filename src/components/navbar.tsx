@@ -38,7 +38,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/china-port", label: "China Port", roles: ["FARMER", "COLLECTOR"] },
     { href: "/dashboard/farmer/plans", label: "Kế hoạch", roles: ["FARMER"], planBadge: true },
     { href: "/dashboard/farmer/journal", label: "Nhật ký", roles: ["FARMER"] },
-    { href: "/dashboard/farmer/harvests", label: "Phiếu thu hoạch", roles: ["FARMER"] },
+    { href: "/dashboard/farmer/harvests", label: "Hồ sơ thu hoạch", roles: ["FARMER"] },
     { href: "/dashboard/farmer/traceability", label: "Tạo QR", roles: ["FARMER"] },
     { href: "/dashboard/farmer/statistics", label: "Thống kê", roles: ["FARMER"] },
     { href: "/materials", label: "Tất cả vật tư", roles: ["FARMER"] },

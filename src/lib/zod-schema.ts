@@ -198,6 +198,7 @@ export const farmingLogSchema = z.object({
     chemicalName: z.string().trim().optional().default(""),
     dosage: z.string().trim().optional().default(""),
     phiDays: z.coerce.number().int().min(0, "PHI không hợp lệ").default(0),
+    pestsDetected: z.string().trim().optional().default("Không phát hiện"),
     plannedHarvestDate: z.string().refine(
         (value) => !value || isValidVietnameseDate(value),
         "Ngày phải có định dạng dd/mm/yyyy",

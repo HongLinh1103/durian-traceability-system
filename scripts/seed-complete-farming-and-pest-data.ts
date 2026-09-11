@@ -18,50 +18,63 @@ async function main() {
         if (!farm.farmerId) continue;
         console.log(`\n--- Xử lý vườn: ${farm.farmName} (${farm.farmCode}) - Chủ: ${farm.farmer?.fullName} ---`);
 
-        // A. ĐẢM BẢO CÓ VỤ 2025 [CLOSED]
-        let season2025 = farm.cropSeasons.find((s) => s.year === 2025);
+        // A. ĐẢM BẢO CÓ NIÊN VỤ 2024-2025 [CLOSED]
+        let season2025 = farm.cropSeasons.find((s) => s.year === 2025 || s.name.includes("2025"));
         if (!season2025) {
             season2025 = await prisma.cropSeason.create({
                 data: {
                     farmId: farm.id,
-                    name: "Vụ 2025",
+                    name: "Niên vụ 2024-2025",
                     year: 2025,
                     sequence: 1,
                     status: "CLOSED",
                     startedAt: new Date("2024-08-01T00:00:00Z"),
                     closedAt: new Date("2025-05-30T23:59:59Z"),
-                    notes: "Vụ mùa 2025 đã hoàn thành thu hoạch thắng lợi, năng suất đạt 14.5 tấn/ha.",
+                    expectedEndAt: new Date("2025-05-31T23:59:59Z"),
+                    notes: "Niên vụ 2024-2025 đã hoàn thành thu hoạch thắng lợi, năng suất đạt 14.5 tấn/ha theo tiêu chuẩn VietGAP.",
                 },
             });
-            console.log(`  + Đã tạo Vụ 2025 [CLOSED]`);
+            console.log(`  + Đã tạo Niên vụ 2024-2025 [CLOSED]`);
         } else {
-            if (season2025.status !== "CLOSED") {
-                season2025 = await prisma.cropSeason.update({
-                    where: { id: season2025.id },
-                    data: {
-                        status: "CLOSED",
-                        startedAt: new Date("2024-08-01T00:00:00Z"),
-                        closedAt: new Date("2025-05-30T23:59:59Z"),
-                    },
-                });
-            }
+            season2025 = await prisma.cropSeason.update({
+                where: { id: season2025.id },
+                data: {
+                    name: "Niên vụ 2024-2025",
+                    status: "CLOSED",
+                    startedAt: new Date("2024-08-01T00:00:00Z"),
+                    closedAt: new Date("2025-05-30T23:59:59Z"),
+                    expectedEndAt: new Date("2025-05-31T23:59:59Z"),
+                },
+            });
         }
 
-        // B. ĐẢM BẢO CÓ VỤ 2027 [ACTIVE]
-        let season2027 = farm.cropSeasons.find((s) => s.year === 2027);
-        if (!season2027) {
-            season2027 = await prisma.cropSeason.create({
+        // B. ĐẢM BẢO CÓ NIÊN VỤ 2025-2026 [ACTIVE]
+        let season2026 = farm.cropSeasons.find((s) => s.id !== season2025?.id && (s.year === 2026 || s.year === 2027 || s.status === "ACTIVE"));
+        if (!season2026) {
+            season2026 = await prisma.cropSeason.create({
                 data: {
                     farmId: farm.id,
-                    name: "Vụ 2027",
-                    year: 2027,
+                    name: "Niên vụ 2025-2026",
+                    year: 2026,
                     sequence: 1,
                     status: "ACTIVE",
-                    startedAt: new Date("2026-08-01T00:00:00Z"),
-                    notes: "Vụ mùa 2027 đang canh tác, thực hiện theo tiêu chuẩn VietGAP xuất khẩu GACC.",
+                    startedAt: new Date("2025-08-01T00:00:00Z"),
+                    expectedEndAt: new Date("2026-08-31T23:59:59Z"),
+                    notes: "Niên vụ 2025-2026 đang canh tác, thực hiện theo tiêu chuẩn VietGAP xuất khẩu GACC.",
                 },
             });
-            console.log(`  + Đã tạo Vụ 2027 [ACTIVE]`);
+            console.log(`  + Đã tạo Niên vụ 2025-2026 [ACTIVE]`);
+        } else {
+            season2026 = await prisma.cropSeason.update({
+                where: { id: season2026.id },
+                data: {
+                    name: "Niên vụ 2025-2026",
+                    year: 2026,
+                    status: "ACTIVE",
+                    startedAt: new Date("2025-08-01T00:00:00Z"),
+                    expectedEndAt: new Date("2026-08-31T23:59:59Z"),
+                },
+            });
         }
 
         // C. TỌA ĐỘ VƯỜN ĐỂ GÁN CHO BẪY
@@ -298,32 +311,32 @@ async function main() {
         }
 
         // =========================================================================
-        // 3. SEED NHẬT KÝ CANH TÁC CHO VỤ 2027 [ACTIVE]
+        // 3. SEED NHẬT KÝ CANH TÁC CHO NIÊN VỤ 2025-2026 [ACTIVE]
         // =========================================================================
-        const existingLogs2027Count = await prisma.farmingLog.count({
-            where: { cropSeasonId: season2027.id },
+        const existingLogs2026Count = await prisma.farmingLog.count({
+            where: { cropSeasonId: season2026.id },
         });
 
-        if (existingLogs2027Count === 0) {
-            const logs2027 = [
+        if (existingLogs2026Count === 0) {
+            const logs2026 = [
                 {
                     farmId: farm.id,
-                    cropSeasonId: season2027.id,
+                    cropSeasonId: season2026.id,
                     stage: "POST_HARVEST_RECOVERY" as const,
-                    actionDate: new Date("2026-08-10T08:00:00Z"),
+                    actionDate: new Date("2025-08-10T08:00:00Z"),
                     activityType: "PRUNE" as const,
                     chemicalName: "Vôi nông nghiệp + Coc 85",
                     dosage: "Quét gốc và cành",
                     phiDays: 0,
                     isGACCCompliant: true,
-                    notes: "Rửa vườn, cắt tỉa cành vô hiệu, tạo độ thông thoáng đầu vụ mùa mới 2027.",
+                    notes: "Rửa vườn, cắt tỉa cành vô hiệu, tạo độ thông thoáng đầu niên vụ mới 2025-2026.",
                     images: [],
                 },
                 {
                     farmId: farm.id,
-                    cropSeasonId: season2027.id,
+                    cropSeasonId: season2026.id,
                     stage: "POST_HARVEST_RECOVERY" as const,
-                    actionDate: new Date("2026-08-20T07:30:00Z"),
+                    actionDate: new Date("2025-08-20T07:30:00Z"),
                     activityType: "BASE_FERTILIZING" as const,
                     chemicalName: "Phân chuồng ủ hoai mục + Vi sinh Trichoderma",
                     dosage: "25 kg / gốc",
@@ -334,9 +347,9 @@ async function main() {
                 },
                 {
                     farmId: farm.id,
-                    cropSeasonId: season2027.id,
+                    cropSeasonId: season2026.id,
                     stage: "MAKING_SPROUT" as const,
-                    actionDate: new Date("2026-09-15T08:00:00Z"),
+                    actionDate: new Date("2025-09-15T08:00:00Z"),
                     activityType: "SHOOT_MANAGEMENT" as const,
                     chemicalName: "Phân bón lá Amino 6000 + Vi lượng",
                     dosage: "500ml / 400 lít",
@@ -347,9 +360,9 @@ async function main() {
                 },
                 {
                     farmId: farm.id,
-                    cropSeasonId: season2027.id,
+                    cropSeasonId: season2026.id,
                     stage: "MAKING_SPROUT" as const,
-                    actionDate: new Date("2026-10-05T07:00:00Z"),
+                    actionDate: new Date("2025-10-05T07:00:00Z"),
                     activityType: "FERTILIZE" as const,
                     chemicalName: "NPK 20-20-15 Đầu Trâu",
                     dosage: "1.5 kg / cây",
@@ -360,53 +373,53 @@ async function main() {
                 },
                 {
                     farmId: farm.id,
-                    cropSeasonId: season2027.id,
+                    cropSeasonId: season2026.id,
                     stage: "FLOWER_INDUCTION" as const,
-                    actionDate: new Date("2026-11-15T08:00:00Z"),
+                    actionDate: new Date("2025-11-15T08:00:00Z"),
                     activityType: "WATER_STRESS" as const,
                     notes: "Bắt đầu xiết nước tạo khô hạn ép ra hoa.",
                     images: [],
                 },
                 {
                     farmId: farm.id,
-                    cropSeasonId: season2027.id,
+                    cropSeasonId: season2026.id,
                     stage: "FLOWERING" as const,
-                    actionDate: new Date("2027-01-10T08:30:00Z"),
+                    actionDate: new Date("2026-01-10T08:30:00Z"),
                     activityType: "FLOWER_THINNING" as const,
                     notes: "Mắt cua ra đồng loạt, tiến hành tỉa hoa đợt 1.",
                     images: [],
                 },
                 {
                     farmId: farm.id,
-                    cropSeasonId: season2027.id,
+                    cropSeasonId: season2026.id,
                     stage: "FLOWERING" as const,
-                    actionDate: new Date("2027-01-22T19:00:00Z"),
+                    actionDate: new Date("2026-01-22T19:00:00Z"),
                     activityType: "POLLINATION" as const,
                     notes: "Thụ phấn nhân tạo bổ sung vào buổi tối.",
                     images: [],
                 },
                 {
                     farmId: farm.id,
-                    cropSeasonId: season2027.id,
+                    cropSeasonId: season2026.id,
                     stage: "FRUIT_SETTING" as const,
-                    actionDate: new Date("2027-02-15T07:30:00Z"),
+                    actionDate: new Date("2026-02-15T07:30:00Z"),
                     activityType: "FRUIT_THINNING" as const,
                     notes: "Tỉa trái non đợt 1 sau xổ nhụy 20 ngày.",
                     images: [],
                 },
                 {
                     farmId: farm.id,
-                    cropSeasonId: season2027.id,
+                    cropSeasonId: season2026.id,
                     stage: "FRUIT_GROWING" as const,
-                    actionDate: new Date("2027-03-01T08:00:00Z"),
+                    actionDate: new Date("2026-03-01T08:00:00Z"),
                     activityType: "BRANCH_SUPPORT" as const,
                     notes: "Cột dây neo cành mang trái chuẩn bị cho giai đoạn nuôi trái lớn.",
                     images: [],
                 },
             ];
 
-            await prisma.farmingLog.createMany({ data: logs2027 });
-            console.log(`  + Đã tạo 9 nhật ký canh tác cho Vụ 2027 [ACTIVE]`);
+            await prisma.farmingLog.createMany({ data: logs2026 });
+            console.log(`  + Đã tạo 9 nhật ký canh tác cho Niên vụ 2025-2026 [ACTIVE]`);
         }
 
         // =========================================================================
@@ -561,70 +574,70 @@ async function main() {
         }
 
         // =========================================================================
-        // 5. SEED SỔ THEO DÕI SINH VẬT GÂY HẠI CHO VỤ 2027 [ACTIVE]
+        // 5. SEED SỔ THEO DÕI SINH VẬT GÂY HẠI CHO NIÊN VỤ 2025-2026 [ACTIVE]
         // =========================================================================
-        const existingPestBooks2027 = await prisma.pestMonitoringBook.findMany({
-            where: { cropSeasonId: season2027.id },
+        const existingPestBooks2026 = await prisma.pestMonitoringBook.findMany({
+            where: { cropSeasonId: season2026.id },
         });
 
-        if (existingPestBooks2027.length === 0) {
-            // Sổ 1: Ruồi đục trái (Vụ 2027 Đang hoạt động)
-            const bookFruitFly2027 = await prisma.pestMonitoringBook.create({
+        if (existingPestBooks2026.length === 0) {
+            // Sổ 1: Ruồi đục trái (Niên vụ 2025-2026 Đang hoạt động)
+            const bookFruitFly2026 = await prisma.pestMonitoringBook.create({
                 data: {
                     farmerId: farm.farmerId,
                     farmId: farm.id,
-                    cropSeasonId: season2027.id,
+                    cropSeasonId: season2026.id,
                     pestName: "Ruồi đục trái",
                     scientificName: "Bactrocera dorsalis",
                     trapType: "Bẫy lồng",
                     attractant: "Pheromone Methyl Eugenol",
-                    startDate: new Date("2026-09-01T00:00:00Z"),
+                    startDate: new Date("2025-09-01T00:00:00Z"),
                     checkFrequencyDays: 7,
                     status: "ACTIVE",
-                    notes: "Sổ theo dõi ruồi đục trái vụ mùa 2027 theo chuẩn mã số vùng trồng xuất khẩu.",
+                    notes: "Sổ theo dõi ruồi đục trái niên vụ 2025-2026 theo chuẩn mã số vùng trồng xuất khẩu.",
                 },
             });
 
-            const trap1_2027 = await prisma.pestTrap.create({
+            const trap1_2026 = await prisma.pestTrap.create({
                 data: {
-                    monitoringBookId: bookFruitFly2027.id,
+                    monitoringBookId: bookFruitFly2026.id,
                     trapCode: "BAY-01",
                     trapType: "Bẫy lồng",
                     locationName: "Khu vườn phía Đông",
                     latitude: baseLat + 0.00018,
                     longitude: baseLng + 0.00022,
-                    installedDate: new Date("2026-09-01T08:00:00Z"),
+                    installedDate: new Date("2025-09-01T08:00:00Z"),
                     status: "ACTIVE",
                     notes: "Treo cành tán ngoài cao 1.8m.",
                 },
             });
 
-            const trap2_2027 = await prisma.pestTrap.create({
+            const trap2_2026 = await prisma.pestTrap.create({
                 data: {
-                    monitoringBookId: bookFruitFly2027.id,
+                    monitoringBookId: bookFruitFly2026.id,
                     trapCode: "BAY-02",
                     trapType: "Bẫy lồng",
                     locationName: "Khu vườn phía Tây",
                     latitude: baseLat - 0.00015,
                     longitude: baseLng - 0.00019,
-                    installedDate: new Date("2026-09-01T08:30:00Z"),
+                    installedDate: new Date("2025-09-01T08:30:00Z"),
                     status: "ACTIVE",
                     notes: "Treo khu vực râm mát.",
                 },
             });
 
-            const inspectionDates2027 = [
-                { date: "2026-10-04", counts: [0, 0], note: "Mồi mới, bẫy sạch" },
-                { date: "2026-12-10", counts: [1, 0], note: "Giai đoạn làm bông, phát hiện 1 con ở BAY-01" },
-                { date: "2027-02-04", counts: [0, 1], note: "Giai đoạn đậu trái non, bẫy hoạt động tốt" },
-                { date: "2027-03-04", counts: [2, 1], note: "Mật độ thấp, đã bổ sung thêm mồi pheromone" },
+            const inspectionDates2026 = [
+                { date: "2025-10-04", counts: [0, 0], note: "Mồi mới, bẫy sạch" },
+                { date: "2025-12-10", counts: [1, 0], note: "Giai đoạn làm bông, phát hiện 1 con ở BAY-01" },
+                { date: "2026-02-04", counts: [0, 1], note: "Giai đoạn đậu trái non, bẫy hoạt động tốt" },
+                { date: "2026-03-04", counts: [2, 1], note: "Mật độ thấp, đã bổ sung thêm mồi pheromone" },
             ];
 
-            for (const insp of inspectionDates2027) {
+            for (const insp of inspectionDates2026) {
                 const total = insp.counts.reduce((a, b) => a + b, 0);
                 const inspection = await prisma.pestInspection.create({
                     data: {
-                        monitoringBookId: bookFruitFly2027.id,
+                        monitoringBookId: bookFruitFly2026.id,
                         inspectionDate: new Date(`${insp.date}T08:00:00Z`),
                         inspectorName: inspectorName,
                         weatherCondition: "Nắng ráo",
@@ -639,14 +652,14 @@ async function main() {
                     data: [
                         {
                             inspectionId: inspection.id,
-                            trapId: trap1_2027.id,
+                            trapId: trap1_2026.id,
                             pestsCount: insp.counts[0],
                             baitStatus: "Còn tốt",
                             notes: "Mồi còn tác dụng",
                         },
                         {
                             inspectionId: inspection.id,
-                            trapId: trap2_2027.id,
+                            trapId: trap2_2026.id,
                             pestsCount: insp.counts[1],
                             baitStatus: "Còn tốt",
                             notes: "Mồi còn tác dụng",
@@ -655,7 +668,7 @@ async function main() {
                 });
             }
 
-            console.log(`  + Đã tạo Sổ theo dõi Ruồi đục trái (kèm 2 bẫy, 4 đợt điều tra) cho Vụ 2027 [ACTIVE]`);
+            console.log(`  + Đã tạo Sổ theo dõi Ruồi đục trái (kèm 2 bẫy, 4 đợt điều tra) cho Niên vụ 2025-2026 [ACTIVE]`);
         }
     }
 

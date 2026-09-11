@@ -57,7 +57,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
         items: [
             { label: "Tổng quan", href: "/dashboard/farmer", icon: Home },
             { label: "Nhật ký", href: "/dashboard/farmer/journal", icon: NotebookPen, matches: ["/dashboard/farmer/journal", "/dashboard/farmer/logs"] },
-            { label: "Phiếu thu hoạch", href: "/dashboard/farmer/harvests", icon: Wheat, matches: ["/dashboard/farmer/harvests", "/harvests"] },
+            { label: "Hồ sơ thu hoạch", href: "/dashboard/farmer/harvests", icon: Wheat, matches: ["/dashboard/farmer/harvests", "/harvests"] },
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [

@@ -1,3 +1,4 @@
+import { formatSeasonName } from "@/lib/crop-season";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -63,7 +64,8 @@ export async function GET() {
         orderBy: { farmName: "asc" },
     });
 
-    return NextResponse.json({ success: true, farms, data: farms });
+    const data = farms.map(farm => ({ ...farm, cropSeasons: farm.cropSeasons.map(season => ({ ...season, name: formatSeasonName(season) })) }));
+    return NextResponse.json({ success: true, farms: data, data });
 }
 
 const schema = z.discriminatedUnion("action", [
@@ -99,16 +101,19 @@ export async function POST(request: Request) {
         if (active) return NextResponse.json({ success: false, message: `${active.name} vẫn đang hoạt động. Hãy đóng vụ trước khi mở vụ mới.` }, { status: 409 });
         const startedAt = new Date(parsed.data.startedAt);
         if (Number.isNaN(startedAt.getTime())) return NextResponse.json({ success: false, message: "Ngày bắt đầu không hợp lệ." }, { status: 400 });
-        const sequence = (await prisma.cropSeason.count({ where: { farmId: farm.id, year: parsed.data.targetYear } })) + 1;
+        if (startedAt.getUTCFullYear() !== parsed.data.targetYear) return NextResponse.json({ success: false, message: "Ngày bắt đầu phải thuộc năm bắt đầu niên vụ." }, { status: 400 });
+        const sequence = (await prisma.cropSeason.count({ where: { farmId: farm.id, year: parsed.data.targetYear + 1 } })) + 1;
         const season = await prisma.cropSeason.create({ data: {
             farmId: farm.id,
-            year: parsed.data.targetYear,
+            year: parsed.data.targetYear + 1,
             sequence,
-            name: sequence === 1 ? `Vụ ${parsed.data.targetYear}` : `Vụ ${parsed.data.targetYear} · Đợt ${sequence}`,
+            name: sequence === 1 
+                ? `${parsed.data.targetYear}-${parsed.data.targetYear + 1}` 
+                : `${parsed.data.targetYear}-${parsed.data.targetYear + 1} · Đợt ${sequence}`,
             startedAt,
             startingStage: parsed.data.startingStage,
             notes: parsed.data.notes || null,
-            expectedEndAt: new Date(`${parsed.data.targetYear}-12-31T23:59:59+07:00`),
+            expectedEndAt: new Date(`${parsed.data.targetYear + 1}-12-31T23:59:59.999+07:00`),
         } });
         await prisma.farm.update({
             where: { id: farm.id },

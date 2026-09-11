@@ -683,7 +683,7 @@ export function FarmerStatisticsOverview({ initialData }: FarmerStatisticsOvervi
 
                     <Button asChild variant="outline" size="sm" className="rounded-2xl border-blue-300 text-xs font-bold text-blue-800 hover:bg-blue-50">
                         <Link href="/dashboard/farmer/harvests" className="inline-flex items-center gap-1">
-                            <span>Xem phiếu thu hoạch</span>
+                            <span>Xem hồ sơ thu hoạch</span>
                             <ExternalLink className="h-3.5 w-3.5" />
                         </Link>
                     </Button>

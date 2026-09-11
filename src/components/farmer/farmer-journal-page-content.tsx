@@ -1,3 +1,4 @@
+import { formatSeasonName } from "@/lib/crop-season";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
@@ -60,11 +61,11 @@ export default async function FarmerJournalPage({
                 farmerId: session.user.id,
                 cropSeasons: {
                     create: {
-                        name: "Vụ mùa 2027",
-                        year: 2027,
+                        name: "2025-2026",
+                        year: 2026,
                         sequence: 1,
                         status: "ACTIVE",
-                        startedAt: new Date("2026-09-01"),
+                        startedAt: new Date("2025-08-01"),
                     },
                 },
             },
@@ -93,6 +94,7 @@ export default async function FarmerJournalPage({
         ...f,
         cropSeasons: f.cropSeasons.map((s) => ({
             ...s,
+            name: formatSeasonName(s),
             startedAt: s.startedAt ? s.startedAt.toISOString() : null,
             closedAt: s.closedAt ? s.closedAt.toISOString() : null,
         })),

@@ -281,11 +281,11 @@ export async function getFarmerOverviewStatistics(
                 isActive: true,
                 cropSeasons: {
                     create: {
-                        name: "Vụ mùa 2026",
+                        name: "Niên vụ 2025-2026",
                         year: 2026,
                         sequence: 1,
                         status: "ACTIVE",
-                        startedAt: new Date("2026-01-01"),
+                        startedAt: new Date("2025-08-01"),
                         startingStage: "POST_HARVEST_RECOVERY",
                     },
                 },
@@ -783,11 +783,11 @@ export async function getFarmerStatisticsServerData(
                 isActive: true,
                 cropSeasons: {
                     create: {
-                        name: "Vụ mùa 2026",
+                        name: "Niên vụ 2025-2026",
                         year: 2026,
                         sequence: 1,
                         status: "ACTIVE",
-                        startedAt: new Date("2026-01-01"),
+                        startedAt: new Date("2025-08-01"),
                         startingStage: "POST_HARVEST_RECOVERY",
                     },
                 },

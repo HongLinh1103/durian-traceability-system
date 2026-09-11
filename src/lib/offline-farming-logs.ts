@@ -68,6 +68,7 @@ async function submitQueuedLog(record: OfflineFarmingLogRecord) {
     formData.append("chemicalName", record.payload.chemicalName ?? "");
     formData.append("dosage", record.payload.dosage ?? "");
     formData.append("phiDays", String(record.payload.phiDays));
+    formData.append("pestsDetected", record.payload.pestsDetected ?? "Không phát hiện");
     formData.append("plannedHarvestDate", record.payload.plannedHarvestDate ? toIsoDate(record.payload.plannedHarvestDate) : "");
     formData.append("notes", record.payload.notes ?? "");
     formData.append("isGACCCompliant", String(record.payload.isGACCCompliant));

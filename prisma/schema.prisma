@@ -1387,6 +1387,7 @@ model FarmingLog {
   chemicalName    String?
   dosage          String?
   phiDays         Int?
+  pestsDetected   String?      @default("Không phát hiện")
   isGACCCompliant Boolean      @default(true)
   notes           String?
   images          String[]     @default([])
@@ -1402,6 +1403,7 @@ model FarmingLog {
   materialsUsed      FarmingLogMaterial[]
   supplyTransactions FarmerSupplyTransaction[]
   pestTreatments     PestTreatment[]
+  discoveryBooks     PestMonitoringBook[] @relation("FarmingLogDiscoveryBooks")
 
   @@index([farmId, actionDate])
   @@index([cropSeasonId, actionDate])
@@ -1616,8 +1618,14 @@ model PestMonitoringBook {
   cropSeasonId       String
   pestName           String
   scientificName     String?
-  trapType           String
+  trapType           String?
   attractant         String?
+  firstDetectedDate  DateTime?
+  discoveryStage     String?
+  discoverySource    String?
+  discoveryLogId     String?
+  monitoringMethods  String[]             @default([])
+  targetPart         String?
   startDate          DateTime             @default(now())
   checkFrequencyDays Int                  @default(7)
   status             PestMonitoringStatus @default(ACTIVE)
@@ -1625,12 +1633,13 @@ model PestMonitoringBook {
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
-  farmer      User             @relation(fields: [farmerId], references: [id], onDelete: Cascade)
-  farm        Farm             @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  cropSeason  CropSeason       @relation(fields: [cropSeasonId], references: [id], onDelete: Cascade)
-  traps       PestTrap[]
-  inspections PestInspection[]
-  treatments  PestTreatment[]
+  farmer       User             @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  farm         Farm             @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  cropSeason   CropSeason       @relation(fields: [cropSeasonId], references: [id], onDelete: Cascade)
+  discoveryLog FarmingLog?      @relation("FarmingLogDiscoveryBooks", fields: [discoveryLogId], references: [id], onDelete: SetNull)
+  traps        PestTrap[]
+  inspections  PestInspection[]
+  treatments   PestTreatment[]
 
   @@index([farmerId, status])
   @@index([farmId, cropSeasonId])
@@ -1642,6 +1651,7 @@ model PestTrap {
   monitoringBookId String
   trapCode         String
   trapType         String
+  attractant       String?
   locationName     String
   latitude         Float?
   longitude        Float?
@@ -1663,6 +1673,9 @@ model PestInspection {
   monitoringBookId String
   inspectionDate   DateTime @default(now())
   inspectorName    String
+  method           String?
+  targetPart       String?
+  resultText       String?
   totalPestsCount  Int      @default(0)
   densityLevel     String?
   weatherCondition String?
@@ -1683,13 +1696,16 @@ model PestInspection {
 model PestInspectionItem {
   id           String  @id @default(cuid())
   inspectionId String
-  trapId       String
+  trapId       String?
+  method       String?
+  targetPart   String?
+  resultText   String?
   pestsCount   Int     @default(0)
   baitStatus   String?
   notes        String?
 
   inspection PestInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
-  trap       PestTrap       @relation(fields: [trapId], references: [id], onDelete: Cascade)
+  trap       PestTrap?      @relation(fields: [trapId], references: [id], onDelete: Cascade)
 
   @@index([inspectionId])
   @@index([trapId])
@@ -1703,6 +1719,7 @@ model PestTreatment {
   treatmentType    String
   productUsed      String?
   dosage           String?
+  phiDays          Int?
   areaTreated      String?
   resultNotes      String?
   farmingLogId     String?

@@ -580,7 +580,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
     // 1. MỐC: BẮT ĐẦU VỤ MÙA
     // -------------------------------------------------------------------------
     const seasonStartedAt = earliestDate(sources.map((s) => s.cropSeason?.startedAt)) || new Date("2026-02-01");
-    const seasonNames = [...new Set(sources.map((s) => s.cropSeason?.name).filter(Boolean))].join(", ") || "Vụ sầu riêng 2026";
+    const seasonNames = [...new Set(sources.map((s) => s.cropSeason?.name).filter(Boolean))].join(", ") || "Niên vụ 2025-2026";
     const farmNames = [...new Set(sources.map((s) => s.farm?.farmName).filter(Boolean))].join(", ") || "Vườn sầu riêng liên kết";
     const regionCodes = [...new Set(sources.map((s) => s.farm?.region?.code || s.farm?.farmCode).filter(Boolean))].filter(Boolean).join(", ") || "MSVT-DN-LK-001";
     const farmLocations = [...new Set(sources.map((s) => [s.farm?.district, s.farm?.province].filter(Boolean).join(", ") || s.farm?.address).filter(Boolean))].filter(Boolean).join("; ") || "Long Khánh, Đồng Nai";
@@ -1121,7 +1121,7 @@ async function buildPreviewTraceObject(cleanToken: string, preview: PreviewTrace
     if (uniquePreviewSources.length > 0) {
         const firstSrc = uniquePreviewSources[0];
         const seasonStartedAt = firstSrc.cropSeason?.startedAt || new Date(dispatchDate.getTime() - 90 * 24 * 3600 * 1000);
-        const seasonNames = [...new Set(uniquePreviewSources.map((s) => s.cropSeason?.name).filter(Boolean))].join(", ") || "Vụ sầu riêng 2026";
+        const seasonNames = [...new Set(uniquePreviewSources.map((s) => s.cropSeason?.name).filter(Boolean))].join(", ") || "Niên vụ 2025-2026";
         const farmNames = [...new Set(uniquePreviewSources.map((s) => s.farm?.farmName).filter(Boolean))].join(", ") || farmName;
         const regionCodes = [...new Set(uniquePreviewSources.map((s) => s.farm?.region?.code || s.farm?.farmCode).filter(Boolean))].join(", ") || regionCode;
         const farmLocations = [...new Set(uniquePreviewSources.map((s) => [s.farm?.district, s.farm?.province].filter(Boolean).join(", ") || s.farm?.address).filter(Boolean))].join("; ") || "Đồng Nai";
@@ -1199,7 +1199,7 @@ async function buildPreviewTraceObject(cleanToken: string, preview: PreviewTrace
             badgeText: "Chính vụ",
             badgeVariant: "emerald",
             fields: [
-                { label: "Vụ mùa", value: previewFarm.cropSeasons?.[0]?.name || "Vụ sầu riêng 2026" },
+                { label: "Vụ mùa", value: previewFarm.cropSeasons?.[0]?.name || "Niên vụ 2025-2026" },
                 { label: "Vườn", value: previewFarm.farmName, highlight: true },
                 { label: "Mã số vùng sản xuất", value: previewFarm.farmCode, highlight: true },
                 { label: "Giống", value: previewFarm.durianVariety || "Ri6", highlight: true },
@@ -1382,7 +1382,7 @@ async function buildPreviewTraceObject(cleanToken: string, preview: PreviewTrace
                 contributedWeight: Number(source.weight || weight),
                 unit: "kg",
                 complianceStatus: source.complianceStatus || "PASS",
-                season: source.cropSeason?.name || "Vụ sầu riêng 2026",
+                season: source.cropSeason?.name || "Niên vụ 2025-2026",
                 cultivationSummary: source.snapshot?.cultivationSummarySnapshot ?? null,
                 cultivationLogs: (source.cropSeason?.farmingLogs || []).map((log) => ({
                     stage: log.stage,
