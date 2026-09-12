@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatVietnameseDate } from "@/lib/date-format";
+import { buildBaseHarvestCode, generateUniqueHarvestCode } from "@/lib/harvest-code";
 
 const varietyItemSchema = z.object({
     durianVariety: z.string().trim().min(1, "Vui lòng chọn giống sầu riêng."),
@@ -35,6 +36,7 @@ const quickHarvestSchema = z.object({
     buyerName: z.string().trim().min(1, "Vui lòng nhập hoặc chọn bên mua."),
     buyerFacilityId: z.string().optional().nullable(),
     pricePerKg: z.coerce.number().positive("Giá bán phải lớn hơn 0."),
+    harvestDate: z.string().optional().nullable(),
 });
 
 export async function GET() {
@@ -119,17 +121,12 @@ export async function POST(request: Request) {
             const buyerName = (facility ? facility.name : qData.buyerName).trim();
             const weight = qData.actualWeight;
             const price = qData.pricePerKg;
-
-            const day = new Date().toISOString().slice(0, 10).replaceAll("-", "");
-            const count = await prisma.harvestRecord.count({ where: { code: { startsWith: `TH-${day}` } } });
-            let codeIndex = count + 1;
-            let code = `TH-${day}-${String(codeIndex).padStart(3, "0")}`;
-            while (await prisma.harvestRecord.findUnique({ where: { code } })) {
-                codeIndex++;
-                code = `TH-${day}-${String(codeIndex).padStart(3, "0")}`;
-            }
-
-            const harvestDate = season.startedAt ? new Date(season.startedAt) : new Date();
+            const harvestDate = qData.harvestDate ? new Date(qData.harvestDate) : new Date();
+            const baseCode = buildBaseHarvestCode(season, harvestDate);
+            const code = await generateUniqueHarvestCode(baseCode, async (candidate) => {
+                const existing = await prisma.harvestRecord.findUnique({ where: { code: candidate } });
+                return Boolean(existing);
+            });
 
             const created = await prisma.harvestRecord.create({
                 data: {
@@ -142,8 +139,8 @@ export async function POST(request: Request) {
                     buyerUserId,
                     status: "COMPLETED",
                     expectedHarvestDate: harvestDate,
-                    actualHarvestedAt: new Date(),
-                    completedAt: new Date(),
+                    actualHarvestedAt: harvestDate,
+                    completedAt: harvestDate,
                     durianVariety: season.farm.durianVariety || "Ri6",
                     expectedWeight: weight,
                     actualWeight: weight,
@@ -176,6 +173,25 @@ export async function POST(request: Request) {
                     buyerFacility: true,
                 },
             });
+
+            // Ghi nhật ký canh tác cho đợt thu hoạch để khớp với hồ sơ
+            try {
+                await prisma.farmingLog.create({
+                    data: {
+                        farmId: season.farmId,
+                        cropSeasonId: season.id,
+                        stage: "HARVEST",
+                        activityType: "HARVEST",
+                        actionDate: harvestDate,
+                        notes: `Thu hoạch sầu riêng ${season.farm.durianVariety || "Ri6"} (Mã hồ sơ: ${code}). Khối lượng: ${weight.toLocaleString("vi-VN")} kg. Bán cho ${buyerName} với giá ${price.toLocaleString("vi-VN")} đ/kg.`,
+                        pestsDetected: "Không phát hiện",
+                        isGACCCompliant: true,
+                        harvestRecordId: created.id,
+                    },
+                });
+            } catch (logErr) {
+                console.warn("Could not auto-create farming log for harvest:", logErr);
+            }
 
             return NextResponse.json({
                 success: true,
@@ -258,14 +274,11 @@ export async function POST(request: Request) {
             ? (value.deliveryMethod as "BUYER_PICKUP" | "FARMER_DELIVERY" | "OTHER")
             : null;
 
-        const day = new Date().toISOString().slice(0, 10).replaceAll("-", "");
-        const count = await prisma.harvestRecord.count({ where: { code: { startsWith: `TH-${day}` } } });
-        let codeIndex = count + 1;
-        let code = `TH-${day}-${String(codeIndex).padStart(3, "0")}`;
-        while (await prisma.harvestRecord.findUnique({ where: { code } })) {
-            codeIndex++;
-            code = `TH-${day}-${String(codeIndex).padStart(3, "0")}`;
-        }
+        const baseCode = buildBaseHarvestCode(activeSeason, harvestDate);
+        const code = await generateUniqueHarvestCode(baseCode, async (candidate) => {
+            const existing = await prisma.harvestRecord.findUnique({ where: { code: candidate } });
+            return Boolean(existing);
+        });
 
         const waiting = Boolean(facility);
 

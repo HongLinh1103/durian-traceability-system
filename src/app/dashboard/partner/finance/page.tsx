@@ -334,8 +334,8 @@ export default async function Page({
         };
     });
 
-    if (formattedSales.length === 0) {
-        formattedSales = facility.type === "PROCESSING_FACILITY" ? defaultProcessingSales : defaultCollectorSales;
+    if (formattedSales.length === 0 && facility.type !== "PROCESSING_FACILITY") {
+        formattedSales = defaultCollectorSales;
     }
 
     // 2. Process and normalize Operating Expenses & Payables
@@ -391,8 +391,8 @@ export default async function Page({
         })),
     }));
 
-    if (!formattedExpenses.length) {
-        formattedExpenses = facility.type === "PROCESSING_FACILITY" ? defaultProcessingExpenses : defaultCollectorExpenses;
+    if (!formattedExpenses.length && facility.type !== "PROCESSING_FACILITY") {
+        formattedExpenses = defaultCollectorExpenses;
     }
 
     // Default harvest purchases matching the processing facility
@@ -502,8 +502,8 @@ export default async function Page({
         };
     });
 
-    if (formattedHarvestPurchases.length === 0) {
-        formattedHarvestPurchases = facility.type === "PROCESSING_FACILITY" ? defaultProcessingPurchases : [];
+    if (formattedHarvestPurchases.length === 0 && facility.type !== "PROCESSING_FACILITY") {
+        formattedHarvestPurchases = [];
     }
 
     // 3. Recompute KPIs from normalized sales and expenses
@@ -571,63 +571,6 @@ export default async function Page({
         expenseCategory: p.expense?.category,
     }));
 
-    if (facility.type === "PROCESSING_FACILITY") {
-        const hasExpenses = formattedPaymentHistory.some((p) => p.type === "EXPENSE" || p.type === "PAYMENT");
-        if (!hasExpenses) {
-            const defaultExpensePayments = [
-                {
-                    id: "pay-hist-3",
-                    type: "EXPENSE",
-                    amount: 38000000,
-                    paymentDate: "2026-08-23T08:00:00.000Z",
-                    paymentMethod: "Chuyển khoản",
-                    payerName: null,
-                    receiverName: "Tổ nhân công Trị An",
-                    note: "Chi trả tiền công nhân công ca bóc tách múi",
-                    expenseTitle: "Nhân công bóc tách múi & đóng khay xuất khẩu tháng 8",
-                    expenseCategory: "PROCESSING_LABOR" as PartnerExpenseCategory,
-                },
-                {
-                    id: "pay-hist-4",
-                    type: "EXPENSE",
-                    amount: 16000000,
-                    paymentDate: "2026-08-24T08:00:00.000Z",
-                    paymentMethod: "Chuyển khoản",
-                    payerName: null,
-                    receiverName: "Công ty Bao bì Xanh",
-                    note: "Tạm ứng tiền bao bì thùng carton GACC",
-                    expenseTitle: "Bao bì hút chân không & thùng carton chuẩn GACC",
-                    expenseCategory: "PACKAGING" as PartnerExpenseCategory,
-                },
-                {
-                    id: "pay-hist-5",
-                    type: "EXPENSE",
-                    amount: 10000000,
-                    paymentDate: "2026-08-25T08:00:00.000Z",
-                    paymentMethod: "Chuyển khoản",
-                    payerName: null,
-                    receiverName: "Điện lực Trảng Bom - Đồng Nai",
-                    note: "Thanh toán đợt 1 tiền điện kho lạnh IQF",
-                    expenseTitle: "Tiền điện kho lạnh cấp đông sâu IQF (-35°C)",
-                    expenseCategory: "COLD_STORAGE_ELECTRICITY" as PartnerExpenseCategory,
-                },
-                {
-                    id: "pay-hist-6",
-                    type: "EXPENSE",
-                    amount: 22000000,
-                    paymentDate: "2026-08-28T08:00:00.000Z",
-                    paymentMethod: "Chuyển khoản",
-                    payerName: null,
-                    receiverName: "Công ty Logistics Tân Cảng",
-                    note: "Cước vận chuyển container lạnh xuất khẩu Cửa khẩu Hữu Nghị",
-                    expenseTitle: "Vận chuyển container lạnh xuất khẩu Cửa khẩu Hữu Nghị",
-                    expenseCategory: "LOGISTICS_TRANSPORT" as PartnerExpenseCategory,
-                },
-            ];
-            formattedPaymentHistory = [...formattedPaymentHistory, ...defaultExpensePayments];
-        }
-    }
-
     let formattedBatches = processingBatches.map((b) => {
         const inW = Number(b.totalInputWeight || 0);
         const outW = Number(b.totalOutputWeight || 0);
@@ -644,29 +587,6 @@ export default async function Page({
             lossPercent: lossP,
         };
     });
-
-    if (formattedBatches.length === 0 && facility.type === "PROCESSING_FACILITY") {
-        formattedBatches = [
-            {
-                batchCode: "FP-FRESH-20260830-001",
-                date: "2026-08-30",
-                inputWeight: 3100,
-                outputWeight: 3100,
-                lossWeight: 0,
-                yieldPercent: 100,
-                lossPercent: 0,
-            },
-            {
-                batchCode: "PB-20260830-001",
-                date: "2026-08-30",
-                inputWeight: 1020,
-                outputWeight: 326,
-                lossWeight: 694,
-                yieldPercent: 31.96,
-                lossPercent: 68.04,
-            },
-        ];
-    }
 
     const chartData = computePartnerChartData({
         facilityType: facility.type as "COLLECTOR" | "PROCESSING_FACILITY",

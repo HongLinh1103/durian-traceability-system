@@ -12,6 +12,7 @@ import {
     Plus,
     Scale,
     Search,
+    Sparkles,
     Trash2,
     Wheat,
     X,
@@ -21,6 +22,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
 import { formatSeasonName } from "@/lib/crop-season";
+import { formatVietnameseDate } from "@/lib/date-format";
+import {
+    buildBaseHarvestCode,
+    formatHarvestDateCode,
+    formatSeasonCode,
+    previewNextHarvestCode,
+} from "@/lib/harvest-code";
 
 export type HarvestRow = {
     id: string;
@@ -32,6 +40,8 @@ export type HarvestRow = {
         year: number;
         status: string;
     } | null;
+    actualHarvestedAt?: string | Date | null;
+    expectedHarvestDate?: string | Date | null;
     actualWeight?: number | string | null;
     expectedWeight?: number | string | null;
     expectedPricePerKg?: number | string | null;
@@ -106,6 +116,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
 
     // Form inputs
     const [formSeasonId, setFormSeasonId] = useState("");
+    const [formHarvestDate, setFormHarvestDate] = useState("");
     const [formWeight, setFormWeight] = useState("");
     const [buyerMode, setBuyerMode] = useState<"FACILITY" | "CUSTOM">("FACILITY");
     const [formFacilityId, setFormFacilityId] = useState("");
@@ -120,6 +131,29 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
         const active = seasons.find(s => s.status === "ACTIVE");
         return active?.id || (seasons.length > 0 ? seasons[0].id : "");
     }, [seasons]);
+
+    // Selected season object for form
+    const selectedSeason = useMemo(() => {
+        return seasons.find(s => s.id === formSeasonId) || null;
+    }, [seasons, formSeasonId]);
+
+    // Live preview code generated automatically
+    const previewCode = useMemo(() => {
+        if (editingItem) {
+            const initialDate = editingItem.actualHarvestedAt || editingItem.expectedHarvestDate || editingItem.createdAt;
+            const initialDateStr = initialDate ? new Date(initialDate).toISOString().slice(0, 10) : "";
+            const initialSeasonId = editingItem.cropSeasonId || editingItem.cropSeason?.id;
+            if (formSeasonId === initialSeasonId && formHarvestDate === initialDateStr) {
+                return editingItem.code;
+            }
+        }
+        if (!selectedSeason || !formHarvestDate) {
+            return "TH-2526-2007";
+        }
+        const baseCode = buildBaseHarvestCode(selectedSeason, formHarvestDate);
+        const existingCodes = rows.map(r => r.code);
+        return previewNextHarvestCode(baseCode, existingCodes, editingItem?.code);
+    }, [selectedSeason, formHarvestDate, rows, editingItem]);
 
     // Live auto-calculated total amount
     const computedTotalAmount = useMemo(() => {
@@ -143,15 +177,19 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
             // Search query filter
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase().trim();
+                const codeStr = (item.code || "").toLowerCase();
                 const buyer = getBuyerName(item).toLowerCase();
                 const seasonName = (item.cropSeason ? formatSeasonName(item.cropSeason) : "").toLowerCase();
                 const weightStr = String(item.actualWeight ?? item.expectedWeight ?? "");
                 const priceStr = String(item.expectedPricePerKg ?? "");
+                const dateStr = formatVietnameseDate(item.actualHarvestedAt || item.expectedHarvestDate || item.createdAt).toLowerCase();
                 if (
+                    !codeStr.includes(q) &&
                     !buyer.includes(q) &&
                     !seasonName.includes(q) &&
                     !weightStr.includes(q) &&
-                    !priceStr.includes(q)
+                    !priceStr.includes(q) &&
+                    !dateStr.includes(q)
                 ) {
                     return false;
                 }
@@ -181,6 +219,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
     function openCreateModal() {
         setEditingItem(null);
         setFormSeasonId(defaultSeasonId);
+        setFormHarvestDate(new Date().toISOString().slice(0, 10));
         setFormWeight("");
         setBuyerMode(facilities.length > 0 ? "FACILITY" : "CUSTOM");
         setFormFacilityId(facilities.length > 0 ? facilities[0].id : "");
@@ -193,6 +232,9 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
     function openEditModal(row: HarvestRow) {
         setEditingItem(row);
         setFormSeasonId(row.cropSeasonId || (row.cropSeason?.id ?? defaultSeasonId));
+        const d = row.actualHarvestedAt || row.expectedHarvestDate || row.createdAt;
+        const dateStr = d ? new Date(d).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+        setFormHarvestDate(dateStr);
         setFormWeight(String(row.actualWeight ?? row.expectedWeight ?? ""));
         setFormPrice(String(row.expectedPricePerKg ?? ""));
 
@@ -286,6 +328,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                     pricePerKg: price,
                     buyerName,
                     buyerFacilityId,
+                    harvestDate: formHarvestDate ? new Date(formHarvestDate).toISOString() : undefined,
                 }),
             });
 
@@ -369,9 +412,9 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                    <div className="flex items-center gap-2.5 sm:gap-3 flex-nowrap overflow-x-auto pb-0.5 sm:pb-0">
                         {/* Search input */}
-                        <div className="relative min-w-[180px] flex-1 sm:w-60 sm:flex-initial">
+                        <div className="relative w-44 sm:w-56 md:w-64 shrink-0">
                             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <input
                                 type="text"
@@ -391,7 +434,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                         </div>
 
                         {/* Season filter */}
-                        <div className="relative min-w-[160px]">
+                        <div className="relative w-36 sm:w-44 md:w-48 shrink-0">
                             <select
                                 value={selectedSeasonFilter}
                                 onChange={e => setSelectedSeasonFilter(e.target.value)}
@@ -413,10 +456,10 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                         {/* Add Button */}
                         <Button
                             onClick={openCreateModal}
-                            className="h-10 rounded-2xl bg-brand-600 px-4 font-bold text-white shadow-soft hover:bg-brand-700 transition flex items-center gap-1.5 shrink-0 text-xs sm:text-sm"
+                            className="h-10 rounded-2xl bg-brand-600 px-3.5 sm:px-4 font-bold text-white shadow-soft hover:bg-brand-700 transition flex items-center gap-1.5 shrink-0 whitespace-nowrap text-xs sm:text-sm"
                         >
-                            <Plus className="h-4 w-4" />
-                            <span>Thêm hồ sơ</span>
+                            <Plus className="h-4 w-4 shrink-0" />
+                            <span>Thêm ghi nhận</span>
                         </Button>
                     </div>
                 </div>
@@ -428,12 +471,14 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                     <table className="w-full text-left text-sm">
                         <thead>
                             <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-600">
-                                <th className="py-4 pl-6 pr-4">Niên vụ</th>
-                                <th className="px-4 py-4">Tổng sản lượng</th>
-                                <th className="px-4 py-4">Bên mua</th>
-                                <th className="px-4 py-4">Giá bán</th>
-                                <th className="px-4 py-4">Thành tiền</th>
-                                <th className="py-4 pl-4 pr-6 text-right">Thao tác</th>
+                                <th className="py-3.5 pl-4 sm:pl-5 pr-3 whitespace-nowrap">Mã lô TH</th>
+                                <th className="px-3 py-3.5 whitespace-nowrap">Niên vụ</th>
+                                <th className="px-3 sm:px-4 py-3.5 whitespace-nowrap">Ngày thu hoạch</th>
+                                <th className="px-3 sm:px-4 py-3.5 whitespace-nowrap">Tổng sản lượng</th>
+                                <th className="px-3 sm:px-4 py-3.5 whitespace-nowrap">Bên mua</th>
+                                <th className="px-3 sm:px-4 py-3.5 whitespace-nowrap">Giá bán</th>
+                                <th className="px-3 sm:px-4 py-3.5 whitespace-nowrap">Thành tiền</th>
+                                <th className="py-3.5 pl-2 pr-4 sm:pr-5 text-right whitespace-nowrap">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -442,59 +487,67 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                                 const price = Number(row.expectedPricePerKg ?? 0);
                                 const buyer = getBuyerName(row);
                                 const seasonName = row.cropSeason ? formatSeasonName(row.cropSeason) : "Chưa xác định";
+                                const harvestDate = formatVietnameseDate(row.actualHarvestedAt || row.expectedHarvestDate || row.createdAt);
 
                                 return (
                                     <tr key={row.id} className="transition hover:bg-slate-50/60">
+                                        {/* Mã lô TH */}
+                                        <td className="py-3.5 pl-4 sm:pl-5 pr-3 whitespace-nowrap text-sm text-slate-900">
+                                            {row.code}
+                                        </td>
+
                                         {/* Niên vụ */}
-                                        <td className="py-4 pl-6 pr-4 font-bold text-slate-900 whitespace-nowrap">
+                                        <td className="px-3 py-3.5 whitespace-nowrap text-sm text-slate-900">
                                             {seasonName}
                                         </td>
 
+                                        {/* Ngày thu hoạch */}
+                                        <td className="px-3 sm:px-4 py-3.5 whitespace-nowrap text-sm text-slate-900">
+                                            {harvestDate}
+                                        </td>
+
                                         {/* Tổng sản lượng */}
-                                        <td className="px-4 py-4 font-semibold text-slate-800 whitespace-nowrap">
+                                        <td className="px-3 sm:px-4 py-3.5 whitespace-nowrap text-sm text-slate-900">
                                             {formatKg(weight)}
                                         </td>
 
                                         {/* Bên mua */}
-                                        <td className="px-4 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-1.5">
-                                                <Building2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                                                <span className="font-medium text-slate-900">{buyer}</span>
-                                            </div>
+                                        <td className="px-3 sm:px-4 py-3.5 whitespace-nowrap text-sm text-slate-900">
+                                            {buyer}
                                         </td>
 
                                         {/* Giá bán */}
-                                        <td className="px-4 py-4 text-slate-700 whitespace-nowrap">
+                                        <td className="px-3 sm:px-4 py-3.5 whitespace-nowrap text-sm text-slate-900">
                                             {formatPricePerKg(price)}
                                         </td>
 
                                         {/* Thành tiền */}
-                                        <td className="px-4 py-4 font-black text-emerald-700 whitespace-nowrap text-base">
+                                        <td className="px-3 sm:px-4 py-3.5 whitespace-nowrap text-sm text-slate-900">
                                             {formatTotal(weight, price)}
                                         </td>
 
                                         {/* Thao tác */}
-                                        <td className="py-4 pl-4 pr-6 text-right whitespace-nowrap">
-                                            <div className="inline-flex items-center justify-end gap-1.5">
+                                        <td className="py-3.5 pl-2 pr-4 sm:pr-5 text-right whitespace-nowrap">
+                                            <div className="inline-flex items-center justify-end gap-1">
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => openEditModal(row)}
-                                                    className="h-8 rounded-xl px-2.5 text-xs font-bold text-brand-700 hover:bg-brand-50 hover:text-brand-800 transition"
+                                                    className="h-8 w-8 p-0 rounded-xl text-brand-700 hover:bg-brand-50 hover:text-brand-800 transition"
                                                     title="Sửa hồ sơ"
+                                                    aria-label="Sửa hồ sơ"
                                                 >
-                                                    <Pencil className="h-3.5 w-3.5 mr-1" />
-                                                    Sửa
+                                                    <Pencil className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => openDeleteModal(row)}
-                                                    className="h-8 rounded-xl px-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition"
+                                                    className="h-8 w-8 p-0 rounded-xl text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition"
                                                     title="Xóa hồ sơ"
+                                                    aria-label="Xóa hồ sơ"
                                                 >
-                                                    <Trash2 className="h-3.5 w-3.5 mr-1" />
-                                                    Xóa
+                                                    <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         </td>
@@ -595,7 +648,46 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                                     </div>
                                 </div>
 
-                                {/* 2. Tổng sản lượng thu hoạch * */}
+                                {/* 2. Ngày thu hoạch * */}
+                                <div>
+                                    <Label htmlFor="harvestDateInput" className="text-xs font-bold uppercase text-slate-600">
+                                        Ngày thu hoạch <span className="text-rose-500">*</span>
+                                    </Label>
+                                    <div className="relative mt-1">
+                                        <Calendar className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-brand-600" />
+                                        <Input
+                                            id="harvestDateInput"
+                                            type="date"
+                                            value={formHarvestDate}
+                                            onChange={e => setFormHarvestDate(e.target.value)}
+                                            required
+                                            className="h-11 rounded-2xl pl-9 text-sm font-semibold text-slate-900"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Mã lô thu hoạch tự động sinh (Read-only Preview) */}
+                                <div className="rounded-2xl border border-brand-200/80 bg-brand-50/50 p-3.5 space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-brand-800 flex items-center gap-1.5">
+                                            <Sparkles className="h-3.5 w-3.5 text-brand-600" />
+                                            Mã lô TH (Hệ thống tự sinh)
+                                        </Label>
+                                        <span className="text-[11px] font-medium text-slate-500">
+                                            Tự động theo Niên vụ &amp; Ngày
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 pt-0.5">
+                                        <span className="font-mono text-base font-black tracking-wide text-brand-950 bg-white px-2.5 py-1 rounded-xl border border-brand-200/80 shadow-xs">
+                                            {previewCode}
+                                        </span>
+                                        <span className="rounded-md bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold text-brand-800">
+                                            {editingItem ? "Mã lô" : "Tự động"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* 3. Tổng sản lượng thu hoạch * */}
                                 <div>
                                     <Label htmlFor="actualWeightInput" className="text-xs font-bold uppercase text-slate-600">
                                         Tổng sản lượng thu hoạch (kg) <span className="text-rose-500">*</span>
@@ -630,11 +722,10 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                                             <button
                                                 type="button"
                                                 onClick={() => setBuyerMode("FACILITY")}
-                                                className={`rounded-lg px-2 py-0.5 font-bold transition ${
-                                                    buyerMode === "FACILITY"
-                                                        ? "bg-brand-100 text-brand-800"
-                                                        : "text-slate-500 hover:text-slate-800"
-                                                }`}
+                                                className={`rounded-lg px-2 py-0.5 font-bold transition ${buyerMode === "FACILITY"
+                                                    ? "bg-brand-100 text-brand-800"
+                                                    : "text-slate-500 hover:text-slate-800"
+                                                    }`}
                                             >
                                                 Cơ sở đối tác
                                             </button>
@@ -642,11 +733,10 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                                             <button
                                                 type="button"
                                                 onClick={() => setBuyerMode("CUSTOM")}
-                                                className={`rounded-lg px-2 py-0.5 font-bold transition ${
-                                                    buyerMode === "CUSTOM"
-                                                        ? "bg-brand-100 text-brand-800"
-                                                        : "text-slate-500 hover:text-slate-800"
-                                                }`}
+                                                className={`rounded-lg px-2 py-0.5 font-bold transition ${buyerMode === "CUSTOM"
+                                                    ? "bg-brand-100 text-brand-800"
+                                                    : "text-slate-500 hover:text-slate-800"
+                                                    }`}
                                             >
                                                 Tự nhập tên
                                             </button>

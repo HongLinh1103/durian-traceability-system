@@ -80,7 +80,7 @@ export default async function HarvestsPage() {
     });
 
     return (
-        <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+        <main className="mx-auto w-full max-w-[1440px] space-y-6 px-2.5 sm:px-4 lg:px-6 py-5 sm:py-6">
             <FarmerHarvests
                 initialRows={JSON.parse(JSON.stringify(records))}
                 seasons={seasons}

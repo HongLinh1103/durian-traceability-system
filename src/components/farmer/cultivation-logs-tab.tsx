@@ -891,10 +891,10 @@ export function CultivationLogsTab({
                         }}
                     >
                         <div
-                            className="my-auto w-full max-w-2xl rounded-3xl bg-white p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto"
+                            className="my-auto flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 sm:px-6 py-4 bg-white">
                                 <div className="flex items-center gap-2.5">
                                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
                                         <Pencil className="h-5 w-5" />
@@ -914,7 +914,8 @@ export function CultivationLogsTab({
                                 </button>
                             </div>
 
-                            <form onSubmit={handleSaveEdit} className="space-y-4">
+                            <form onSubmit={handleSaveEdit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                                <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-4">
                                 {/* Ngày và giờ thực hiện */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
@@ -1108,9 +1109,10 @@ export function CultivationLogsTab({
                                         </label>
                                     </div>
                                 </div>
+                                </div>
 
                                 {/* Nút hành động */}
-                                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                                <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-slate-100 bg-slate-50/80 px-5 sm:px-6 py-3.5">
                                     <Button
                                         type="button"
                                         variant="outline"
@@ -1155,7 +1157,7 @@ export function CultivationLogsTab({
                         }}
                     >
                         <div
-                            className="my-auto w-full max-w-md rounded-3xl bg-white p-5 sm:p-6 shadow-2xl space-y-4"
+                            className="my-auto w-full max-w-md rounded-3xl bg-white p-5 sm:p-6 shadow-2xl space-y-4 overflow-hidden"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="flex items-center gap-3">

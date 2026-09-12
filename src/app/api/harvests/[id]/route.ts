@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import type { HarvestStatus } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildBaseHarvestCode, generateUniqueHarvestCode } from "@/lib/harvest-code";
 
 const transitions: Record<string, Record<string, string[]>> = {
     COLLECTOR: { CONFIRM: ["WAITING_CONFIRMATION"], REJECT: ["WAITING_CONFIRMATION"], RECEIVE: ["DELIVERY_CONFIRMED", "HARVESTED"] },
@@ -217,6 +218,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         const buyerUserId = facility ? facility.ownerId : null;
         const finalBuyerName = (facility ? facility.name : buyerName || "").trim();
 
+        const harvestDate = body.harvestDate ? new Date(body.harvestDate) : undefined;
+        const validHarvestDate = harvestDate && !Number.isNaN(harvestDate.getTime()) ? harvestDate : undefined;
+
         const updated = await prisma.$transaction(async (tx) => {
             await tx.harvestVarietyItem.deleteMany({ where: { harvestId: record.id } });
             await tx.harvestVarietyItem.create({
@@ -228,9 +232,21 @@ export async function PUT(request: Request, { params }: { params: { id: string }
                 },
             });
 
-            return await tx.harvestRecord.update({
+            let newCode = record.code;
+            const targetDate = validHarvestDate || record.actualHarvestedAt || record.expectedHarvestDate || new Date();
+            const baseCode = buildBaseHarvestCode(season, targetDate);
+            if (!record.code.startsWith(baseCode)) {
+                newCode = await generateUniqueHarvestCode(baseCode, async (candidate) => {
+                    if (candidate === record.code) return false;
+                    const existing = await tx.harvestRecord.findUnique({ where: { code: candidate } });
+                    return Boolean(existing);
+                });
+            }
+
+            const updatedHarvest = await tx.harvestRecord.update({
                 where: { id: record.id },
                 data: {
+                    code: newCode,
                     cropSeasonId: season.id,
                     farmId: season.farmId,
                     actualWeight: weight,
@@ -239,6 +255,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
                     receivedWeight: weight,
                     expectedSaleWeight: weight,
                     expectedPricePerKg: price,
+                    ...(validHarvestDate ? { actualHarvestedAt: validHarvestDate, expectedHarvestDate: validHarvestDate } : {}),
                     buyerFacilityId: facility?.id || null,
                     buyerUserId,
                     buyerType: safeBuyerType,
@@ -250,6 +267,27 @@ export async function PUT(request: Request, { params }: { params: { id: string }
                     buyerFacility: true,
                 },
             });
+
+            // Đồng bộ lại mã lô nếu có
+            if (newCode !== record.code) {
+                await tx.harvestLot.updateMany({
+                    where: { harvestRecordId: record.id },
+                    data: { lotCode: `HL-${newCode}` },
+                });
+            }
+
+            // Đồng bộ lại nhật ký canh tác liên kết
+            await tx.farmingLog.updateMany({
+                where: { harvestRecordId: record.id },
+                data: {
+                    cropSeasonId: season.id,
+                    farmId: season.farmId,
+                    ...(validHarvestDate ? { actionDate: validHarvestDate } : {}),
+                    notes: `Thu hoạch sầu riêng ${season.farm.durianVariety || "Ri6"} (Mã hồ sơ: ${newCode}). Khối lượng: ${weight.toLocaleString("vi-VN")} kg. Bán cho ${finalBuyerName || record.transactionNote || "đối tác"} với giá ${price.toLocaleString("vi-VN")} đ/kg.`,
+                },
+            });
+
+            return updatedHarvest;
         });
 
         return NextResponse.json({

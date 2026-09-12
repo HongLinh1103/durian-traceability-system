@@ -170,7 +170,7 @@ export async function GET(
                 })),
                 treatments: book.treatments.map((tr) => ({
                     ...tr,
-                    treatmentDate: tr.treatmentDate.toISOString(),
+                    treatmentDate: (tr.farmingLog?.actionDate || tr.treatmentDate).toISOString(),
                     createdAt: tr.createdAt.toISOString(),
                     updatedAt: tr.updatedAt.toISOString(),
                     farmingLog: tr.farmingLog

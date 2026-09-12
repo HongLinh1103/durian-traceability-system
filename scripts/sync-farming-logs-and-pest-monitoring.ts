@@ -585,11 +585,46 @@ async function main() {
                 notes: "Kiểm tra bẫy ruồi đục trái giai đoạn đậu trái non: Ghi nhận 1 con ở bẫy BAY-02, bẫy hoạt động tốt, mật độ an toàn.",
             },
             {
+                actionDate: new Date("2026-02-07T08:00:00Z"),
+                stage: "FRUIT_SETTING" as const,
+                activityType: "IRRIGATE" as const,
+                pestsDetected: "Ruồi đục trái",
+                notes: "Tưới nước duy trì độ ẩm đất giai đoạn đậu trái, theo dõi ruồi đục trái.",
+            },
+            {
+                actionDate: new Date("2026-02-09T01:00:00Z"),
+                stage: "FRUIT_SETTING" as const,
+                activityType: "PEST_INSPECTION" as const,
+                pestsDetected: "Ruồi đục trái",
+                notes: "Kiểm tra sâu bệnh định kỳ giai đoạn đậu trái: Phát hiện Ruồi đục trái.",
+            },
+            {
                 actionDate: new Date("2026-02-12T07:30:00Z"),
                 stage: "FRUIT_SETTING" as const,
                 activityType: "FRUIT_THINNING" as const,
                 pestsDetected: "Không phát hiện",
                 notes: "Tỉa trái non đợt 1 sau xổ nhụy: Loại bỏ trái méo, cuống nhỏ, trái bị sâu đục nhỏ hoặc trầy xước.",
+            },
+            {
+                actionDate: new Date("2026-02-14T01:00:00Z"),
+                stage: "FRUIT_SETTING" as const,
+                activityType: "PEST_INSPECTION" as const,
+                pestsDetected: "Ruồi đục trái",
+                notes: "Kiểm tra bẫy và vườn giai đoạn đậu trái: Phát hiện Ruồi đục trái.",
+            },
+            {
+                actionDate: new Date("2026-02-15T00:00:00Z"),
+                stage: "FRUIT_SETTING" as const,
+                activityType: "WEEDING" as const,
+                pestsDetected: "Ruồi đục trái",
+                notes: "Làm sạch cỏ gốc và mặt liếp giai đoạn đậu trái, quan sát Ruồi đục trái.",
+            },
+            {
+                actionDate: new Date("2026-02-19T08:00:00Z"),
+                stage: "FRUIT_SETTING" as const,
+                activityType: "PEST_INSPECTION" as const,
+                pestsDetected: "Không phát hiện",
+                notes: "Kiểm tra sâu bệnh giai đoạn đậu trái: Không phát hiện sâu bệnh gây hại.",
             },
             {
                 actionDate: new Date("2026-02-22T08:00:00Z"),
@@ -650,24 +685,66 @@ async function main() {
                 pestsDetected: "Không phát hiện",
                 notes: "Kiểm tra dư lượng an toàn PHI trước thu hoạch (> 21 ngày cách ly), đo độ brix mẫu ngẫu nhiên: Không phát hiện sâu bệnh gây hại.",
             },
-            {
-                actionDate: new Date("2026-05-20T06:00:00Z"),
-                stage: "HARVEST" as const,
-                activityType: "HARVEST" as const,
-                pestsDetected: "Không phát hiện",
-                notes: "Thu hoạch chính vụ đợt 1: Cắt các trái già đạt độ chín 8.5 - 9 tuổi (gai nở, thơm nhẹ).",
-            },
-            {
-                actionDate: new Date("2026-05-28T08:00:00Z"),
+        ];
+
+        // Lấy các hồ sơ thu hoạch thực tế của vụ 2025-2026 để đồng bộ khớp hoàn toàn với nhật ký
+        const harvestRecords2026 = await prisma.harvestRecord.findMany({
+            where: { farmId: farm.id, cropSeasonId: season2026.id },
+            include: { buyerFacility: true },
+            orderBy: { actualHarvestedAt: "asc" },
+        });
+
+        const harvestLogsData2026: any[] = [];
+        if (harvestRecords2026.length > 0) {
+            for (let i = 0; i < harvestRecords2026.length; i++) {
+                const hr = harvestRecords2026[i];
+                const weight = Number(hr.actualWeight ?? hr.expectedWeight ?? 0);
+                const price = Number(hr.expectedPricePerKg ?? 0);
+                const buyer = hr.buyerFacility?.name || hr.transactionNote || "đối tác thu mua";
+                const dotNumber = i + 1;
+                const dotName = dotNumber === 1 ? "đợt 1 (cắt bói)" : dotNumber === harvestRecords2026.length ? `đợt ${dotNumber} (vét cuối vụ)` : `đợt ${dotNumber} (chính vụ)`;
+                harvestLogsData2026.push({
+                    actionDate: hr.actualHarvestedAt || hr.expectedHarvestDate || hr.createdAt,
+                    stage: "HARVEST" as const,
+                    activityType: "HARVEST" as const,
+                    pestsDetected: "Không phát hiện",
+                    harvestRecordId: hr.id,
+                    notes: `Thu hoạch ${dotName} (Mã hồ sơ: ${hr.code}). Khối lượng: ${weight.toLocaleString("vi-VN")} kg sầu riêng ${hr.durianVariety || "Ri6"}. Bán cho ${buyer} với giá ${price.toLocaleString("vi-VN")} đ/kg.`,
+                });
+            }
+            const lastHarvest = harvestRecords2026[harvestRecords2026.length - 1];
+            const lastHarvestDate = lastHarvest.actualHarvestedAt || lastHarvest.createdAt;
+            const sanitationDate = new Date(new Date(lastHarvestDate).getTime() + 3 * 24 * 60 * 60 * 1000);
+            harvestLogsData2026.push({
+                actionDate: sanitationDate,
                 stage: "HARVEST" as const,
                 activityType: "GARDEN_SANITATION" as const,
                 pestsDetected: "Không phát hiện",
                 notes: "Thu dọn tàn dư sau thu hoạch, dọn sạch vườn chuẩn bị bước vào chu kỳ phục hồi vụ tiếp theo.",
-            },
-        ];
+            });
+        } else {
+            harvestLogsData2026.push(
+                {
+                    actionDate: new Date("2026-08-29T06:00:00Z"),
+                    stage: "HARVEST" as const,
+                    activityType: "HARVEST" as const,
+                    pestsDetected: "Không phát hiện",
+                    notes: "Thu hoạch chính vụ: Cắt các trái già đạt độ chín 8.5 - 9 tuổi (gai nở, thơm nhẹ).",
+                },
+                {
+                    actionDate: new Date("2026-09-05T08:00:00Z"),
+                    stage: "HARVEST" as const,
+                    activityType: "GARDEN_SANITATION" as const,
+                    pestsDetected: "Không phát hiện",
+                    notes: "Thu dọn tàn dư sau thu hoạch, dọn sạch vườn chuẩn bị bước vào chu kỳ phục hồi vụ tiếp theo.",
+                },
+            );
+        }
+
+        const allLogsData2026 = [...logsData2026, ...harvestLogsData2026];
 
         const createdLogs2026: any[] = [];
-        for (const l of logsData2026) {
+        for (const l of allLogsData2026) {
             const created = await prisma.farmingLog.create({
                 data: {
                     farmId: farm.id,
@@ -680,6 +757,7 @@ async function main() {
                     phiDays: (l as any).phiDays ?? null,
                     pestsDetected: l.pestsDetected,
                     isGACCCompliant: true,
+                    harvestRecordId: (l as any).harvestRecordId || null,
                     notes: l.notes,
                     images: [],
                 },

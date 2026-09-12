@@ -340,8 +340,8 @@ export async function GET() {
         };
     });
 
-    if (formattedSales.length === 0) {
-        formattedSales = facility.type === "PROCESSING_FACILITY" ? defaultProcessingSales : defaultCollectorSales;
+    if (formattedSales.length === 0 && facility.type !== "PROCESSING_FACILITY") {
+        formattedSales = defaultCollectorSales;
     }
 
     // 2. Process and normalize Operating Expenses & Payables
@@ -397,8 +397,8 @@ export async function GET() {
         })),
     }));
 
-    if (!formattedExpenses.length) {
-        formattedExpenses = facility.type === "PROCESSING_FACILITY" ? defaultProcessingExpenses : defaultCollectorExpenses;
+    if (!formattedExpenses.length && facility.type !== "PROCESSING_FACILITY") {
+        formattedExpenses = defaultCollectorExpenses;
     }
 
     const defaultProcessingPurchases = [
@@ -507,8 +507,8 @@ export async function GET() {
         };
     });
 
-    if (formattedHarvestPurchases.length === 0 && facility.type === "PROCESSING_FACILITY") {
-        formattedHarvestPurchases = defaultProcessingPurchases;
+    if (formattedHarvestPurchases.length === 0 && facility.type !== "PROCESSING_FACILITY") {
+        formattedHarvestPurchases = [];
     }
 
     // Compute Overall KPIs
@@ -630,83 +630,6 @@ export async function GET() {
         expenseCategory: p.expense?.category,
     }));
 
-    if (formattedPaymentHistory.length === 0 && facility.type === "PROCESSING_FACILITY") {
-        formattedPaymentHistory = [
-            {
-                id: "pay-hist-1",
-                type: "RECEIPT",
-                amount: 106380000,
-                paymentDate: "2026-09-04T18:00:00.000Z",
-                paymentMethod: "Chuyển khoản",
-                payerName: "Công ty TNHH Nông sản Vân Nam",
-                receiverName: facility.name,
-                note: "Thanh toán 100% hợp đồng lô xuất khẩu EXP-20260904-001",
-                commercialLotCode: "EXP-20260904-001",
-                commercialProductName: "Sầu riêng tươi xuất khẩu (Ri6)",
-            },
-            {
-                id: "pay-hist-2",
-                type: "RECEIPT",
-                amount: 30520000,
-                paymentDate: "2026-09-04T18:30:00.000Z",
-                paymentMethod: "Chuyển khoản",
-                payerName: "Hệ thống Siêu thị WinMart Miền Nam",
-                receiverName: facility.name,
-                note: "Thanh toán 100% lô cơm sầu riêng DOM-20260904-001",
-                commercialLotCode: "DOM-20260904-001",
-                commercialProductName: "Cơm sầu riêng bóc múi hút chân không (Khay 500g)",
-            },
-            {
-                id: "pay-hist-3",
-                type: "EXPENSE",
-                amount: 38000000,
-                paymentDate: "2026-08-23T08:00:00.000Z",
-                paymentMethod: "Chuyển khoản",
-                payerName: null,
-                receiverName: "Tổ nhân công Trị An",
-                note: "Chi trả tiền công nhân công ca bóc tách múi",
-                expenseTitle: "Nhân công bóc tách múi & đóng khay xuất khẩu tháng 8",
-                expenseCategory: "PROCESSING_LABOR" as PartnerExpenseCategory,
-            },
-            {
-                id: "pay-hist-4",
-                type: "EXPENSE",
-                amount: 16000000,
-                paymentDate: "2026-08-24T08:00:00.000Z",
-                paymentMethod: "Chuyển khoản",
-                payerName: null,
-                receiverName: "Công ty Bao bì Xanh",
-                note: "Tạm ứng tiền bao bì thùng carton GACC",
-                expenseTitle: "Bao bì hút chân không & thùng carton chuẩn GACC",
-                expenseCategory: "PACKAGING" as PartnerExpenseCategory,
-            },
-            {
-                id: "pay-hist-5",
-                type: "EXPENSE",
-                amount: 10000000,
-                paymentDate: "2026-08-25T08:00:00.000Z",
-                paymentMethod: "Chuyển khoản",
-                payerName: null,
-                receiverName: "Điện lực Trảng Bom - Đồng Nai",
-                note: "Thanh toán đợt 1 tiền điện kho lạnh IQF",
-                expenseTitle: "Tiền điện kho lạnh cấp đông sâu IQF (-35°C)",
-                expenseCategory: "COLD_STORAGE_ELECTRICITY" as PartnerExpenseCategory,
-            },
-            {
-                id: "pay-hist-6",
-                type: "EXPENSE",
-                amount: 22000000,
-                paymentDate: "2026-08-28T08:00:00.000Z",
-                paymentMethod: "Chuyển khoản",
-                payerName: null,
-                receiverName: "Công ty Logistics Tân Cảng",
-                note: "Cước vận chuyển container lạnh xuất khẩu Cửa khẩu Hữu Nghị",
-                expenseTitle: "Vận chuyển container lạnh xuất khẩu Cửa khẩu Hữu Nghị",
-                expenseCategory: "LOGISTICS_TRANSPORT" as PartnerExpenseCategory,
-            },
-        ];
-    }
-
     let batchYieldList = processingBatches.map((b) => {
         const inW = Number(b.totalInputWeight || 0);
         const outW = Number(b.totalOutputWeight || 0);
@@ -723,29 +646,6 @@ export async function GET() {
             lossPercent: lossP,
         };
     });
-
-    if (batchYieldList.length === 0 && facility.type === "PROCESSING_FACILITY") {
-        batchYieldList = [
-            {
-                batchCode: "FP-FRESH-20260830-001",
-                date: "2026-08-30",
-                inputWeight: 3100,
-                outputWeight: 3100,
-                lossWeight: 0,
-                yieldPercent: 100,
-                lossPercent: 0,
-            },
-            {
-                batchCode: "PB-20260830-001",
-                date: "2026-08-30",
-                inputWeight: 1020,
-                outputWeight: 326,
-                lossWeight: 694,
-                yieldPercent: 31.96,
-                lossPercent: 68.04,
-            },
-        ];
-    }
 
     // Add Sales to monthly data
     formattedSales.forEach((lot) => {

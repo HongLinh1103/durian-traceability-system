@@ -56,15 +56,35 @@ export async function exportPestBook(root: HTMLElement, filename: string) {
         for (let column = 1; column <= included.length; column++) {
             header.getCell(column).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
         }
+        const occupiedUntil = new Map<number, number>();
+        const verticalMerges: Array<[number, number, number]> = [];
         for (const tr of Array.from(table.querySelectorAll("tbody tr"))) {
             const cells = Array.from(tr.querySelectorAll("td"));
             if (cells.length === 1 && cells[0].colSpan > 1) {
                 const row = sheet.addRow(["Chưa có dữ liệu"]);
                 sheet.mergeCells(row.number, 1, row.number, included.length);
             } else {
-                // Explicit strings prevent user text beginning with '=' becoming formulas.
-                sheet.addRow(included.map(index => cells[index] ? text(cells[index]) : ""));
+                const row = sheet.addRow([]);
+                let sourceColumn = 0;
+                for (const cell of cells) {
+                    while ((occupiedUntil.get(sourceColumn) || 0) >= row.number) sourceColumn++;
+                    const outputColumn = included.indexOf(sourceColumn) + 1;
+                    if (outputColumn > 0) {
+                        // Explicit strings preserve free text, including a leading '='.
+                        row.getCell(outputColumn).value = text(cell);
+                        if (cell.rowSpan > 1) {
+                            const end = row.number + cell.rowSpan - 1;
+                            occupiedUntil.set(sourceColumn, end);
+                            verticalMerges.push([row.number, end, outputColumn]);
+                        }
+                    }
+                    sourceColumn += cell.colSpan || 1;
+                }
             }
+        }
+        for (const [start, end, column] of verticalMerges) {
+            sheet.mergeCells(start, column, end, column);
+            sheet.getCell(start, column).alignment = { vertical: "middle", wrapText: true };
         }
         for (let rowNumber = header.number; rowNumber <= sheet.rowCount; rowNumber++) {
             for (let column = 1; column <= included.length; column++) {

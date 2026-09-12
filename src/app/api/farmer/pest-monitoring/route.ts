@@ -22,9 +22,7 @@ const createBookSchema = z.object({
     startDate: z.string().optional().nullable(),
     checkFrequencyDays: z.coerce.number().int().min(1).default(7),
     notes: z.string().trim().max(1000).optional().nullable(),
-    treatmentMethod: z.enum(["TRAP", "SPRAY"]).optional().nullable(),
-    treatmentProduct: z.string().trim().max(200).optional().nullable(),
-    treatmentPhi: z.coerce.number().int().min(0).optional().nullable(),
+    useTraps: z.boolean().optional(),
     traps: z
         .array(
             z.object({
@@ -256,17 +254,15 @@ export async function POST(request: Request) {
             startDate,
             checkFrequencyDays,
             notes,
-            treatmentMethod,
-            treatmentProduct,
-            treatmentPhi,
+            useTraps,
             traps,
             initialTraps,
         } = parsed.data;
 
-        const isSpray = treatmentMethod === "SPRAY";
-        const effectiveTraps = (!isSpray && traps && traps.length > 0)
+        const enableTraps = useTraps ?? Boolean(traps?.length || initialTraps?.length);
+        const effectiveTraps = (enableTraps && traps && traps.length > 0)
             ? traps
-            : (!isSpray && initialTraps && initialTraps.length > 0)
+            : (enableTraps && initialTraps && initialTraps.length > 0)
             ? initialTraps.map((t: any) => ({
                 trapCode: t.trapCode,
                 trapType: t.trapType || trapType || "Bẫy lồng",
@@ -279,11 +275,9 @@ export async function POST(request: Request) {
             : [];
 
         const hasTraps = effectiveTraps.length > 0;
-        const mainTrapType = hasTraps ? effectiveTraps[0].trapType : (isSpray ? null : (trapType || null));
-        const mainAttractant = hasTraps ? (effectiveTraps[0].attractant || attractant || null) : (isSpray ? null : (attractant || null));
-        const finalMethods = monitoringMethods && monitoringMethods.length > 0
-            ? monitoringMethods
-            : (hasTraps ? ["Kiểm tra bẫy"] : (isSpray ? ["Quan sát trực tiếp", "Phun thuốc"] : ["Quan sát trực tiếp"]));
+        const mainTrapType = hasTraps ? effectiveTraps[0].trapType : (enableTraps ? trapType || null : null);
+        const mainAttractant = hasTraps ? (effectiveTraps[0].attractant || attractant || null) : (enableTraps ? attractant || null : null);
+        const finalMethods = enableTraps ? ["Kiểm tra bẫy"] : ["Quan sát trực tiếp"];
 
         const book = await prisma.pestMonitoringBook.create({
             data: {
@@ -323,20 +317,6 @@ export async function POST(request: Request) {
                 cropSeason: { select: { name: true } },
             },
         });
-
-        if (isSpray && treatmentProduct) {
-            await prisma.pestTreatment.create({
-                data: {
-                    monitoringBookId: book.id,
-                    treatmentDate: firstDetectedDate ? new Date(firstDetectedDate) : new Date(),
-                    treatmentType: "Phun thuốc BVTV",
-                    productUsed: treatmentProduct,
-                    phiDays: treatmentPhi ?? null,
-                    areaTreated: "Toàn vườn",
-                    resultNotes: `Phun thuốc xử lý ${pestName}.`,
-                },
-            });
-        }
 
         return NextResponse.json({ success: true, data: book, message: "Đã tạo sổ theo dõi sinh vật gây hại thành công." }, { status: 201 });
     } catch (error: any) {

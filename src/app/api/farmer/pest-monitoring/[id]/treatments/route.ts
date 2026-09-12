@@ -84,10 +84,15 @@ export async function POST(
             farmingLogId,
         } = parsed.data;
 
+        const linkedLog = farmingLogId ? await prisma.farmingLog.findFirst({
+            where: { id: farmingLogId, farmId: book.farmId, cropSeasonId: book.cropSeasonId },
+            select: { actionDate: true },
+        }) : null;
+        if (farmingLogId && !linkedLog) return NextResponse.json({ success: false, message: "Nhật ký không thuộc vườn và niên vụ của sổ." }, { status: 400 });
         const treatment = await prisma.pestTreatment.create({
             data: {
                 monitoringBookId: book.id,
-                treatmentDate: treatmentDate ? new Date(treatmentDate) : new Date(),
+                treatmentDate: linkedLog?.actionDate || (treatmentDate ? new Date(treatmentDate) : new Date()),
                 treatmentType,
                 productUsed: productUsed || null,
                 dosage: dosage || null,
@@ -178,10 +183,16 @@ export async function PUT(
             return NextResponse.json({ success: false, message: "Không tìm thấy biện pháp xử lý." }, { status: 404 });
         }
 
+        const linkedLogId = farmingLogId !== undefined ? farmingLogId : existing.farmingLogId;
+        const linkedLog = linkedLogId ? await prisma.farmingLog.findFirst({
+            where: { id: linkedLogId, farmId: book.farmId, cropSeasonId: book.cropSeasonId },
+            select: { actionDate: true },
+        }) : null;
+        if (linkedLogId && !linkedLog) return NextResponse.json({ success: false, message: "Nhật ký không thuộc vườn và niên vụ của sổ." }, { status: 400 });
         const updated = await prisma.pestTreatment.update({
             where: { id: treatmentId },
             data: {
-                treatmentDate: treatmentDate ? new Date(treatmentDate) : existing.treatmentDate,
+                treatmentDate: linkedLog?.actionDate || (treatmentDate ? new Date(treatmentDate) : existing.treatmentDate),
                 treatmentType,
                 productUsed: productUsed !== undefined ? productUsed : existing.productUsed,
                 dosage: dosage !== undefined ? dosage : existing.dosage,
