@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { partnerRegistrationSchema } from "@/lib/partner";
+import { generateNewPHCCode } from "@/lib/puc-phc";
 
 export async function POST(request: Request) {
     const limit = checkRateLimit(`partner-register:${getClientIp(request)}`, 5, 60_000);
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
             ward: data.ward || null, contactPerson: data.contactPerson || null, purchasingAreas: data.purchasingAreas,
             processingTypes: data.type === "PROCESSING_FACILITY" ? data.processingTypes : [], expectedCapacity: data.expectedCapacity,
             capacityUnit: data.capacityUnit || null, description: data.description || null, status: "PENDING",
+            code: await generateNewPHCCode(data.province, "Sầu riêng"),
         } },
     } });
     return NextResponse.json({ success: true, userId: user.id, message: "Hồ sơ đã được gửi đến Admin." }, { status: 201 });

@@ -678,6 +678,8 @@ model PartnerFacility {
   id                  String               @id @default(cuid())
   ownerId             String               @unique
   type                PartnerType
+  code                String?              @unique
+  approvalCode        String?
   representativeName  String
   representativePhone String
   representativeEmail String?

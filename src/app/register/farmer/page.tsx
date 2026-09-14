@@ -297,8 +297,8 @@ export default function RegisterPage() {
                                                         <Field label="Địa chỉ chi tiết *" error={error?.detailedAddress?.message}>
                                                             <Input placeholder="Số nhà, ấp, tổ, đường..." {...form.register(`farms.${index}.detailedAddress`)} />
                                                         </Field>
-                                                        <Field label="Mã vùng trồng *" error={error?.growingRegionCode?.message}>
-                                                            <Input placeholder="Ví dụ: MSVT-DN-TRIAN-001" {...form.register(`farms.${index}.growingRegionCode`)} />
+                                                        <Field label="Mã số vùng trồng (PUC) *" error={error?.growingRegionCode?.message}>
+                                                            <Input placeholder="Ví dụ: 75-PUC-SR-00001 hoặc 75-PUC-SR-00001-CHN" {...form.register(`farms.${index}.growingRegionCode`)} />
                                                         </Field>
 
                                                         {/* Giống sầu riêng */}
@@ -448,7 +448,7 @@ export default function RegisterPage() {
                                                     {` · ${farm.totalTrees} cây · Giống: ${farm.durianVarieties.filter(Boolean).join(", ")}`}
                                                 </p>
                                                 <p className="text-xs text-slate-600">
-                                                    <b>Mã vùng trồng:</b> {farm.growingRegionCode}
+                                                    <b>Mã vùng trồng (PUC):</b> {farm.growingRegionCode}
                                                     {farm.latitude && farm.longitude ? ` · Tọa độ tâm GPS: ${farm.latitude}, ${farm.longitude}` : ""}
                                                 </p>
                                                 <p className="text-xs text-slate-500">

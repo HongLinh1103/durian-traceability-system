@@ -46,7 +46,7 @@ export async function GET() {
             const latestLogDate = farm.farmingLogs?.[0]?.actionDate ?? null;
             return {
                 id: farm.id,
-                farmCode: farm.farmCode || "MSVT-CHUA-CAP",
+                farmCode: farm.farmCode || "PUC-CHUA-CAP",
                 farmName: farm.farmName || "Vườn chưa đặt tên",
                 ownerName: farm.farmer?.fullName ?? farm.farmer?.phone ?? "Chưa rõ",
                 ownerId: farm.farmer?.id ?? "",

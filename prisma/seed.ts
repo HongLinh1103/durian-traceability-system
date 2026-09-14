@@ -71,7 +71,7 @@ async function main() {
 
     // ─── Trưởng ban quản lý vùng trồng Trị An, Vĩnh Cửu, Đồng Nai ───
     const triAnRegion = await prisma.growingRegion.upsert({
-        where: { code: "MSVT-DN-TRIAN-001" },
+        where: { code: "75-PUC-SR-00001" },
         update: {
             name: "Vùng trồng sầu riêng Trị An",
             province: "Đồng Nai",
@@ -83,7 +83,7 @@ async function main() {
             validUntil: null,
         },
         create: {
-            code: "MSVT-DN-TRIAN-001",
+            code: "75-PUC-SR-00001",
             name: "Vùng trồng sầu riêng Trị An",
             province: "Đồng Nai",
             district: "Vĩnh Cửu",
@@ -176,7 +176,7 @@ async function main() {
             managedRegions: [managedRegion],
         },
     });
-    console.log("   [OK] Seeded AREA_MANAGER 0909123456 and region MSVT-DN-TRIAN-001");
+    console.log("   [OK] Seeded AREA_MANAGER 0909123456 and region 75-PUC-SR-00001");
 
     console.log("\n============================================");
     console.log("[INFO] All seed accounts created/updated:");

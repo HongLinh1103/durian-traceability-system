@@ -34,7 +34,6 @@ export const ACCOUNT_PERMISSIONS_BY_ROLE: Record<string, AccountPermission[]> = 
     ],
     COLLECTOR: [
         { key: "COLLECTOR_DASHBOARD", label: "Tổng quan vựa thu mua", path: "/dashboard/partner" },
-        { key: "COLLECTOR_HARVESTS", label: "Phiếu thu hoạch", path: "/dashboard/partner/harvests" },
         { key: "COLLECTOR_ORDERS", label: "Đơn thu mua", path: "/dashboard/partner/orders" },
         { key: "COLLECTOR_LOTS", label: "Lô hàng", path: "/dashboard/partner/lots" },
         { key: "COLLECTOR_TRACEABILITY", label: "Tạo mã QR truy xuất", path: "/dashboard/partner/traceability" },
@@ -42,12 +41,12 @@ export const ACCOUNT_PERMISSIONS_BY_ROLE: Record<string, AccountPermission[]> = 
         { key: "CHINA_PORT", label: "China Port", path: "/china-port" }, ...shared,
     ],
     PROCESSING_FACILITY: [
-        { key: "PROCESSING_DASHBOARD", label: "Tổng quan cơ sở chế biến", path: "/dashboard/processing" },
+        { key: "PROCESSING_DASHBOARD", label: "Tổng quan", path: "/dashboard/processing" },
         { key: "CHINA_PORT", label: "China Port", path: "/china-port" },
-        { key: "PROCESSING_RAW_MATERIALS", label: "Tiếp nhận & Phân loại", path: "/dashboard/processing/raw-materials" },
+        { key: "PROCESSING_PURCHASES", label: "Hồ sơ thu mua", path: "/dashboard/processing/purchases" },
+        { key: "PROCESSING_GRADING", label: "Phân loại", path: "/dashboard/processing/grading" },
         { key: "PROCESSING_BATCHES", label: "Chế biến & Đóng gói", path: "/dashboard/processing/processing" },
         { key: "PROCESSING_SHIPMENTS", label: "Xuất hàng", path: "/dashboard/processing/shipments" },
-        { key: "PROCESSING_TRACEABILITY", label: "Tạo mã QR truy xuất", path: "/dashboard/processing/traceability" },
         { key: "PROCESSING_FINANCE", label: "Tài chính", path: "/dashboard/processing/finance" }, ...shared,
     ],
     STORE_OWNER: [

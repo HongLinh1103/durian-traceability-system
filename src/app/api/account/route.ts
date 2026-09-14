@@ -46,6 +46,24 @@ const facilitySchema = z.object({
     description: z.string().trim().optional(),
 });
 
+const farmerSchema = z.object({
+    action: z.literal("farmer"),
+    fullName: z.string().trim().min(2, "Họ tên phải có ít nhất 2 ký tự.").max(120),
+    phone: z.string().trim().regex(/^0\d{9}$/, "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0."),
+    email: z.string().trim().email("Email không hợp lệ."),
+    birthDate: z.string().trim().optional(),
+    gender: z.enum(["FEMALE", "MALE", "OTHER", ""]).optional(),
+    avatar: z.string().max(1_500_000, "Ảnh đại diện quá lớn.").nullable().optional(),
+    farmName: z.string().trim().optional(),
+    areaSize: z.union([z.number(), z.string().transform((v) => (v ? Number(v.replace(",", ".")) : null))]).nullable().optional(),
+    totalTrees: z.union([z.number(), z.string().transform((v) => (v ? Number(v) : null))]).nullable().optional(),
+    durianVariety: z.string().trim().optional(),
+    province: z.string().trim().optional(),
+    district: z.string().trim().optional(),
+    ward: z.string().trim().optional(),
+    address: z.string().trim().optional(),
+});
+
 export async function PATCH(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -159,6 +177,55 @@ export async function PATCH(request: Request) {
             }
 
             return NextResponse.json({ success: true, message: "Đã cập nhật thông tin cơ sở thành công." });
+        }
+
+        if (action === "farmer") {
+            const parsed = farmerSchema.safeParse(body);
+            if (!parsed.success) {
+                return NextResponse.json({ success: false, message: parsed.error.issues[0]?.message || "Thông tin không hợp lệ." }, { status: 400 });
+            }
+            const data = parsed.data;
+            await prisma.user.update({
+                where: { id: session.user.id },
+                data: {
+                    fullName: data.fullName,
+                    phone: data.phone,
+                    email: data.email.toLowerCase(),
+                    birthDate: data.birthDate ? new Date(`${data.birthDate}T00:00:00.000Z`) : null,
+                    gender: data.gender || null,
+                    ...(data.avatar !== undefined ? { avatar: data.avatar } : {}),
+                    ...(data.address ? { address: data.address } : {}),
+                    ...(data.province ? { province: data.province } : {}),
+                    ...(data.district ? { district: data.district } : {}),
+                    ...(data.ward ? { ward: data.ward } : {}),
+                    ...(data.farmName ? { registrationName: data.farmName } : {}),
+                    ...(data.areaSize != null ? { registeredAreaSize: data.areaSize } : {}),
+                    ...(data.totalTrees != null ? { registeredTotalTrees: data.totalTrees } : {}),
+                    ...(data.durianVariety ? { registeredDurianVariety: data.durianVariety } : {}),
+                },
+            });
+
+            const userFarm = await prisma.farm.findFirst({
+                where: { farmerId: session.user.id },
+                orderBy: { createdAt: "asc" },
+            });
+            if (userFarm) {
+                await prisma.farm.update({
+                    where: { id: userFarm.id },
+                    data: {
+                        ...(data.farmName ? { farmName: data.farmName } : {}),
+                        ...(data.areaSize != null ? { areaSize: data.areaSize } : {}),
+                        ...(data.totalTrees != null ? { totalTrees: data.totalTrees } : {}),
+                        ...(data.durianVariety ? { durianVariety: data.durianVariety } : {}),
+                        ...(data.address ? { address: data.address } : {}),
+                        ...(data.province ? { province: data.province } : {}),
+                        ...(data.district ? { district: data.district } : {}),
+                        ...(data.ward ? { ward: data.ward } : {}),
+                    },
+                });
+            }
+
+            return NextResponse.json({ success: true, message: "Đã cập nhật thông tin nhà vườn thành công." });
         }
 
         return NextResponse.json({ success: false, message: "Thao tác không hợp lệ." }, { status: 400 });

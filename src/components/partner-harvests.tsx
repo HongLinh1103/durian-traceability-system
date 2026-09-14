@@ -1658,7 +1658,7 @@ function ConfirmHarvestModal({
                             <input
                                 type="text"
                                 readOnly
-                                value={`${row.farm.farmName}${row.farm.region?.code ? ` (MSVT: ${row.farm.region.code})` : ""}`}
+                                value={`${row.farm.farmName}${row.farm.region?.code ? ` (PUC: ${row.farm.region.code})` : ""}`}
                                 className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 focus:outline-none"
                             />
                         </div>

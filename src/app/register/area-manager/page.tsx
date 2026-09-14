@@ -140,7 +140,7 @@ export default function AreaManagerRegistrationPage() {
 
                         <div data-registration-step="2" className={step === 2 ? "space-y-6" : "hidden"}>
                             <div className="grid gap-5 rounded-2xl border p-5 md:grid-cols-2">
-                                <Field label="Mã số vùng trồng (MSVT)"><Input name="regionCode" required /></Field>
+                                <Field label="Mã số vùng trồng (PUC)"><Input name="regionCode" placeholder="Ví dụ: 75-PUC-SR-00001" required /></Field>
                                 <Field label="Tên vùng trồng / vùng canh tác"><Input name="regionName" required /></Field>
                                 <Field label="Tỉnh / Thành phố"><Input name="regionProvince" required /></Field>
                                 <Field label="Quận / Huyện"><Input name="regionDistrict" required /></Field>

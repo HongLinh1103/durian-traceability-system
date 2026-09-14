@@ -114,8 +114,8 @@ const navigationByRole: Record<string, RoleNavigation> = {
     COLLECTOR: {
         items: [
             { label: "Tổng quan", href: "/dashboard/partner", icon: Home },
-            { label: "Phiếu thu hoạch", href: "/dashboard/partner/harvests", icon: Wheat, badgeKey: "collectorHarvests", matches: ["/dashboard/partner/harvests"] },
             { label: "Đơn thu mua", href: "/dashboard/partner/orders", icon: ClipboardList, badgeKey: "collectorOrders", matches: ["/dashboard/partner/orders"] },
+            { label: "Lô hàng", href: "/dashboard/partner/lots", icon: Package, badgeKey: "collectorLots", matches: ["/dashboard/partner/lots"] },
             { label: "Cá nhân", href: "/account", icon: UserRound, matches: ["/account"] },
         ],
         actions: [
@@ -123,17 +123,17 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Tạo QR", description: "Tạo mã QR truy xuất nguồn gốc cho lô hàng", href: "/dashboard/partner/traceability", icon: QrCode },
             { label: "Tài chính", description: "Báo cáo doanh thu và chi phí thu mua", href: "/dashboard/partner/finance", icon: CircleDollarSign },
-            { label: "Lô hàng", description: "Xem và quản lý các lô hàng đã tiếp nhận", href: "/dashboard/partner/lots", icon: Package },
         ],
     },
     PROCESSING_FACILITY: {
         items: [
             { label: "Tổng quan", href: "/dashboard/processing", icon: Home },
-            { label: "Tiếp nhận", href: "/dashboard/processing/raw-materials", icon: Boxes, badgeKey: "processingIncoming", matches: ["/dashboard/processing/raw-materials"] },
-            { label: "Chế biến", href: "/dashboard/processing/processing", icon: Factory, badgeKey: "processingReady", matches: ["/dashboard/processing/processing"] },
-            { label: "Xuất hàng", href: "/dashboard/processing/shipments", icon: Package, matches: ["/dashboard/processing/shipments"] },
+            { label: "Thu mua", href: "/dashboard/processing/purchases", icon: ClipboardList, matches: ["/dashboard/processing/purchases"] },
+            { label: "Phân loại", href: "/dashboard/processing/grading", icon: Boxes, matches: ["/dashboard/processing/grading"] },
+            { label: "Chế biến", href: "/dashboard/processing/processing", icon: Factory, matches: ["/dashboard/processing/processing"] },
         ],
         actions: [
+            { label: "Xuất hàng", description: "Hồ sơ xuất hàng & phát hành QR truy xuất", href: "/dashboard/processing/shipments", icon: Package },
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Tài chính", description: "Báo cáo doanh thu, chi phí và hiệu quả chế biến", href: "/dashboard/processing/finance", icon: CircleDollarSign },
             { label: "Cá nhân", description: "Quản lý thông tin tài khoản và đổi mật khẩu", href: "/account", icon: UserRound },
@@ -188,10 +188,9 @@ export function MobileBottomNavigation() {
                     const payload = await response.json();
                     if (!payload.success || cancelled) return;
                     const rows = payload.data ?? [];
-                    const collectorHarvests = rows.filter((item: { status: string }) => item.status === "WAITING_CONFIRMATION").length;
                     const collectorOrders = rows.filter((item: { status: string }) => ["CONFIRMED", "HARVESTING", "HARVESTED"].includes(item.status)).length;
                     const collectorLots = rows.filter((item: { status: string }) => item.status === "DELIVERY_CONFIRMED").length;
-                    setBadges({ collectorHarvests, collectorOrders, collectorLots });
+                    setBadges({ collectorOrders, collectorLots });
                     return;
                 }
 

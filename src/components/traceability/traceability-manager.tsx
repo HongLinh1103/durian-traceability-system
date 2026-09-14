@@ -513,7 +513,7 @@ export function TraceabilityManager({
                             </div>
                             <p className="text-xs sm:text-sm text-slate-500 mt-1">
                                 {dispatchMode === "EXPORT"
-                                    ? "Lập hồ sơ lô sầu riêng xuất khẩu chính ngạch sang Trung Quốc / Quốc tế, đối soát mã số vùng trồng (MSVT) & mã cơ sở đóng gói (MSCSĐG)."
+                                    ? "Lập hồ sơ lô sầu riêng xuất khẩu chính ngạch sang Trung Quốc / Quốc tế, đối soát mã số vùng trồng (PUC) & mã cơ sở đóng gói (PHC)."
                                     : "Lập phiếu xuất bán sầu riêng cho siêu thị, chợ đầu mối, đại lý nội địa, ghi nhận giá xuất và tạo mã QR truy xuất."}
                             </p>
                         </div>

@@ -664,7 +664,7 @@ export function QrStoryAnimationSection() {
                                                                 Vườn Minh Phát
                                                             </p>
                                                             <p className="font-mono text-[7px] text-emerald-700 sm:text-[8px]">
-                                                                MSVT-DN-LK-001 · Giống: Ri6
+                                                                75-PUC-SR-00001 · Giống: Ri6
                                                             </p>
                                                         </div>
                                                     </div>

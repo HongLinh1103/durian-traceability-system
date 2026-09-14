@@ -453,12 +453,12 @@ export function ChinaPortView() {
                         {/* Mã đăng ký nước ngoài */}
                         <div className="space-y-1">
                             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide">
-                                Mã đăng ký nước ngoài (MSVT/MSCSĐG)
+                                Mã đăng ký nước ngoài (PUC / PHC)
                             </label>
                             <input
                                 value={overseasOfficialRegNo}
                                 onChange={(e) => setOverseasOfficialRegNo(e.target.value)}
-                                placeholder="Ví dụ: TS 647, VN - DTOR - 0574"
+                                placeholder="Ví dụ: 75-PUC-SR-00001, 75-PHC-SR-00001-CHN"
                                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:border-emerald-500 focus:outline-none h-10"
                             />
                         </div>
@@ -937,7 +937,7 @@ export function ChinaPortView() {
                                     </div>
 
                                     <div>
-                                        <span className="text-slate-400 font-bold uppercase block text-[10px]">Mã nước ngoài (MSVT/MSCSĐG):</span>
+                                        <span className="text-slate-400 font-bold uppercase block text-[10px]">Mã nước ngoài (PUC / PHC):</span>
                                         <span className="font-mono font-black text-emerald-800 text-sm">
                                             {clean(selectedDetailRow.overseasOfficialRegNo) || "—"}
                                         </span>

@@ -1,13 +1,13 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { ProcessingProductionUnifiedView } from "@/components/processing/processing-production-unified-view";
+import { ProcessingGradingView } from "@/components/processing/processing-grading-view";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-    title: "Chế biến & Đóng gói · Cơ sở Chế biến TriViet",
-    description: "Quy trình chế biến và đóng gói: Tab 1 Trái tươi, Tab 2 Chế biến khác, Tab 3 Lô thành phẩm.",
+    title: "Phân loại nguyên liệu · Cơ sở Chế biến TriViet",
+    description: "Phân loại nguyên liệu đầu vào: Trái tươi (chuẩn bị đóng gói) và Chế biến khác (chuẩn bị chế biến sâu).",
 };
 
 export default async function Page() {
@@ -18,7 +18,7 @@ export default async function Page() {
 
     return (
         <main className="mx-auto w-full max-w-[1650px] px-3 sm:px-6 py-6 space-y-6">
-            <ProcessingProductionUnifiedView />
+            <ProcessingGradingView />
         </main>
     );
 }

@@ -8,8 +8,13 @@ import { getManagedRegionScope } from "@/lib/region-manager-scope";
 
 export const runtime = "nodejs";
 
-function officialFarmCode(index: number) {
-    return `MSVT-${Date.now().toString(36).toUpperCase()}-${index + 1}-${Math.floor(Math.random() * 9000 + 1000)}`;
+function officialFarmCode(index: number, regionCode?: string) {
+    if (regionCode) {
+        const farmSeq = String(index + 1).padStart(3, "0");
+        return `${regionCode}-F${farmSeq}`;
+    }
+    const timestamp = Date.now().toString(36).toUpperCase();
+    return `75-PUC-SR-F${timestamp}-${index + 1}`;
 }
 
 async function managerContext() {
@@ -164,7 +169,7 @@ export async function POST(request: Request) {
                     create: farms.map((farm: Record<string, unknown>, index: number) => {
                         const region = allowedRegions.find((item) => item.id === farm.growingRegionId)!;
                         return {
-                            farmCode: officialFarmCode(index), farmName: String(farm.farmName || "").trim(),
+                            farmCode: officialFarmCode(index, region.code), farmName: String(farm.farmName || "").trim(),
                             areaSize: Number(farm.areaSize), totalTrees: Number(farm.totalTrees),
                             durianVariety: String(farm.durianVariety || ""), address: String(farm.address || ""),
                             province: String(farm.province || region.province), district: String(farm.district || region.district || ""),
@@ -227,7 +232,7 @@ export async function PATCH(request: Request) {
             await tx.user.update({ where: { id: farmer.id }, data: { accountStatus: toStatus, isApproved: true, approvedAt: new Date(), isLocked: false } });
             await Promise.all(farmer.farms.map((farm, index) => tx.farm.update({
                 where: { id: farm.id },
-                data: { farmCode: farm.farmCode.startsWith("PENDING-") ? officialFarmCode(index) : farm.farmCode, isActive: true },
+                data: { farmCode: farm.farmCode.startsWith("PENDING-") ? officialFarmCode(index, farm.region?.code) : farm.farmCode, isActive: true },
             })));
         } else if (body.action === "supplement") {
             toStatus = "NEEDS_SUPPLEMENT";

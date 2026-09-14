@@ -309,7 +309,7 @@ export function ProcessingQrGeneratorView({ shipments: initialShipments }: Proce
                                     <span>Cơ sở đóng gói</span>
                                 </div>
                                 <p className="text-xs font-bold text-slate-900">{activeShipment.facilityName}</p>
-                                <p className="text-[11px] text-slate-500">Mã CS: CS-TV-001</p>
+                                <p className="text-[11px] text-slate-500 font-mono">PHC: 75-PHC-SR-00002-CHN</p>
                             </div>
 
                             <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 space-y-1.5">
@@ -327,7 +327,7 @@ export function ProcessingQrGeneratorView({ shipments: initialShipments }: Proce
                                     <span>Farm / Vùng trồng</span>
                                 </div>
                                 <p className="text-xs font-bold text-slate-900">{activeShipment.farmName || "Vườn sầu riêng Minh Phát"}</p>
-                                <p className="text-[11px] text-slate-500">MSVT: VN-DL-0089</p>
+                                <p className="text-[11px] text-slate-500 font-mono">PUC: 75-PUC-SR-00001-CHN</p>
                             </div>
 
                             <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 space-y-1.5">

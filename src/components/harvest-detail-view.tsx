@@ -316,7 +316,7 @@ export function HarvestDetailView({ harvest: initialData }: { harvest: HarvestDa
                                 <p className="font-bold text-slate-900">{harvest.farm.farmName}</p>
                             </div>
                             <div>
-                                <p className="text-slate-500">Mã số vùng trồng (MSVT):</p>
+                                <p className="text-slate-500">Mã số vùng trồng (PUC):</p>
                                 <span className="inline-flex items-center rounded-lg bg-brand-50 px-2.5 py-0.5 font-bold text-brand-700">
                                     {harvest.farm.farmCode}
                                 </span>

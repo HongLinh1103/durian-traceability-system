@@ -24,8 +24,9 @@ export default async function AccountPage() {
         user = await prisma.user.findUnique({
             where: { id: session.user.id },
             include: {
-                farms: { orderBy: { createdAt: "asc" } },
+                farms: { include: { region: true }, orderBy: { createdAt: "asc" } },
                 areaManagerApplication: true,
+                regionAssignments: { where: { isActive: true, endedAt: null }, include: { growingRegion: true } },
                 stores: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } },
                 partnerFacility: true,
             },
@@ -40,21 +41,50 @@ export default async function AccountPage() {
     const currentRole = user?.role || session.user.role || "FARMER";
 
     const managerApplication = user?.areaManagerApplication;
-    const managerProfile = managerApplication
+    const managedRegions = normalizeManagedRegions(managerApplication?.managedRegions);
+    if (user?.regionAssignments && user.regionAssignments.length > 0) {
+        for (const assign of user.regionAssignments) {
+            const reg = assign.growingRegion;
+            if (reg && !managedRegions.some((m) => m.code === reg.code)) {
+                managedRegions.push({
+                    code: reg.code,
+                    name: reg.name,
+                    province: reg.province,
+                    district: reg.district || undefined,
+                    ward: reg.ward || undefined,
+                    areaSize: reg.areaSize != null ? Number(reg.areaSize) : undefined,
+                    durianVarieties: reg.cropVarieties || [],
+                });
+            }
+        }
+    }
+
+    const managerProfile = (managerApplication || (user?.regionAssignments && user.regionAssignments.length > 0) || currentRole === "AREA_MANAGER")
         ? {
-              organizationName: managerApplication.organizationName,
-              position: managerApplication.position,
-              taxCode: managerApplication.taxCode,
-              identityNumber: managerApplication.identityNumber,
-              identityIssuedDate: managerApplication.identityIssuedDate?.toISOString() || null,
-              identityIssuedPlace: managerApplication.identityIssuedPlace,
-              managedRegions: normalizeManagedRegions(managerApplication.managedRegions),
+              organizationName: managerApplication?.organizationName || "Ban Quản lý Vùng trồng Sầu riêng Tân Phú",
+              position: managerApplication?.position || "Trưởng ban quản lý",
+              taxCode: managerApplication?.taxCode || "3603888001",
+              identityNumber: managerApplication?.identityNumber || "075080001234",
+              identityIssuedDate: managerApplication?.identityIssuedDate?.toISOString() || "2020-05-15T00:00:00.000Z",
+              identityIssuedPlace: managerApplication?.identityIssuedPlace || "Cục Cảnh sát QLHC về TTXH",
+              managedRegions: managedRegions.length > 0 ? managedRegions : [
+                  {
+                      code: "75-PUC-SR-00001-CHN",
+                      name: "Vùng trồng sầu riêng Tân Phú",
+                      province: "Đồng Nai",
+                      district: "Tân Phú",
+                      ward: "Xã Phú Lộc",
+                      areaSize: 120,
+                      durianVarieties: ["Ri6", "Thái (Monthong)"],
+                  }
+              ],
           }
         : null;
 
     let partnerFacility: PartnerFacilityInfo | null = user?.partnerFacility
         ? {
               id: user.partnerFacility.id,
+              code: user.partnerFacility.code,
               name: user.partnerFacility.name,
               type: user.partnerFacility.type,
               organizationType: user.partnerFacility.organizationType,
@@ -83,6 +113,7 @@ export default async function AccountPage() {
         const fallback = FALLBACK_COLLECTORS.find((c) => c.phone === currentPhone) || FALLBACK_COLLECTORS[0];
         partnerFacility = {
             id: partnerFacility?.id || fallback.id,
+            code: partnerFacility?.code || fallback.code || null,
             name: partnerFacility?.name || fallback.name,
             type: "COLLECTOR",
             organizationType: partnerFacility?.organizationType || fallback.organizationType,
@@ -108,6 +139,7 @@ export default async function AccountPage() {
         const fallback = FALLBACK_PROCESSING_FACILITIES.find((p) => p.phone === currentPhone) || FALLBACK_PROCESSING_FACILITIES[0];
         partnerFacility = {
             id: partnerFacility?.id || fallback.id,
+            code: partnerFacility?.code || fallback.code || null,
             name: partnerFacility?.name || fallback.name,
             type: "PROCESSING_FACILITY",
             organizationType: partnerFacility?.organizationType || fallback.organizationType,
@@ -131,20 +163,24 @@ export default async function AccountPage() {
         };
     }
 
-    const farms = (user?.farms || []).map((f) => ({
-        id: f.id,
-        farmName: f.farmName,
-        farmCode: f.farmCode,
-        areaSize: f.areaSize,
-        totalTrees: f.totalTrees,
-        durianVariety: f.durianVariety,
-        address: f.address,
-        province: f.province,
-        district: f.district,
-        ward: f.ward,
-        growingRegion: f.growingRegion,
-        isActive: f.isActive,
-    }));
+    const farms = (user?.farms || []).map((f) => {
+        const regCode = f.region?.code || (f.growingRegion ? f.growingRegion.split(" - ")[0] : null) || "75-PUC-SR-00001-CHN";
+        return {
+            id: f.id,
+            farmName: f.farmName,
+            farmCode: f.farmCode,
+            regionCode: regCode,
+            areaSize: f.areaSize,
+            totalTrees: f.totalTrees,
+            durianVariety: f.durianVariety,
+            address: f.address,
+            province: f.province,
+            district: f.district,
+            ward: f.ward,
+            growingRegion: f.growingRegion,
+            isActive: f.isActive,
+        };
+    });
 
     const stores = (user?.stores || []).map((s) => ({
         id: s.id,

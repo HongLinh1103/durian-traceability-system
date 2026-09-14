@@ -438,21 +438,10 @@ export const PERMISSION_MODULES: ModuleDef[] = [
         id: "COLLECTOR_PROCUREMENT",
         name: "QUẢN LÝ THU MUA & THU GOM",
         title: "Thu mua sầu riêng & tạo lô gom hàng",
-        description: "Tiếp nhận phiếu thu hoạch từ nông dân, tạo đơn thu mua và gom thành các lô hàng xuất bán",
+        description: "Tạo đơn thu mua và gom thành các lô hàng xuất bán",
         iconName: "Handshake",
         isSingleEntity: false,
         features: [
-            {
-                id: "collector_inbox",
-                name: "Phiếu thu hoạch gửi đến",
-                description: "Xử lý các đề xuất thu hoạch do các chủ vườn gửi trực tiếp đến vựa",
-                actions: {
-                    view: { key: "COLLECTOR_INBOX_VIEW", label: "Xem", action: "view", description: "Xem phiếu thu hoạch gửi đến vựa" },
-                    accept: { key: "COLLECTOR_INBOX_ACCEPT", label: "Xác nhận tiếp nhận", action: "approve", description: "Chấp thuận thu mua phiếu thu hoạch" },
-                    reject: { key: "COLLECTOR_INBOX_REJECT", label: "Từ chối tiếp nhận", action: "edit", description: "Từ chối nhận thu mua lô sầu riêng" },
-                    receive: { key: "COLLECTOR_INBOX_RECEIVE", label: "Xác nhận nhận hàng", action: "deliver", description: "Xác nhận đã nhận hàng nông sản thực tế tại vựa" },
-                }
-            },
             {
                 id: "purchase_order",
                 name: "Đơn thu mua",
@@ -805,8 +794,8 @@ export const PERMISSION_MODULES: ModuleDef[] = [
     {
         id: "GROWING_REGION_MANAGEMENT",
         name: "QUẢN LÝ VÙNG TRỒNG",
-        title: "Mã số vùng trồng (MSVT), ban quản lý & nông hộ liên kết",
-        description: "Quản trị cơ sở dữ liệu mã vùng trồng được cấp phép, phân công trưởng ban và duyệt hộ liên kết",
+        title: "Mã số vùng trồng (PUC), ban quản lý & nông hộ liên kết",
+        description: "Quản trị cơ sở dữ liệu mã số vùng trồng (PUC) được cấp phép, phân công trưởng ban và duyệt hộ liên kết",
         iconName: "MapPin",
         isSingleEntity: false,
         features: [
@@ -1136,10 +1125,6 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, { moduleEnabled: Record<st
         },
         permissions: [
             // Thu mua & Thu gom
-            "COLLECTOR_INBOX_VIEW",
-            "COLLECTOR_INBOX_ACCEPT",
-            "COLLECTOR_INBOX_REJECT",
-            "COLLECTOR_INBOX_RECEIVE",
             "PURCHASE_ORDER_VIEW",
             "PURCHASE_ORDER_CREATE",
             "PURCHASE_ORDER_EDIT",

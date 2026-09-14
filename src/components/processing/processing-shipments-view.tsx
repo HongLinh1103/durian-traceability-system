@@ -378,12 +378,14 @@ interface ProcessingShipmentsViewProps {
     initialShipments: ShipmentItemRow[];
     availableFinishedLots: AvailableFinishedLot[];
     facilityName?: string;
+    facilityCode?: string;
 }
 
 export function ProcessingShipmentsView({
     initialShipments,
     availableFinishedLots,
     facilityName = "Cơ sở Chế biến & Đóng gói Xuất khẩu",
+    facilityCode = "75-PHC-SR-00002-CHN",
 }: ProcessingShipmentsViewProps) {
     const { toast } = useToast();
     const [shipments, setShipments] = useState<ShipmentItemRow[]>(initialShipments);
@@ -867,7 +869,7 @@ export function ProcessingShipmentsView({
                 hasQrCode: true,
                 qrPublicToken: token,
                 farmName: selectedLot.farmName || "Vườn sầu riêng liên kết",
-                regionCode: selectedLot.regionCode || "MSVT-VN-DL",
+                regionCode: selectedLot.regionCode || "75-PUC-SR-00001",
                 rawLotCode: selectedLot.rawLotCode || "NVL-001",
                 facilityName,
                 previewPayload,
@@ -1767,7 +1769,7 @@ export function ProcessingShipmentsView({
                                                             {selectedLot?.farmName || "Vườn sầu riêng liên kết"}
                                                         </p>
                                                         <p className="text-[11px] font-mono font-semibold text-emerald-700">
-                                                            {selectedLot?.regionCode || "MSVT-VN-DL-0089"}
+                                                            {selectedLot?.regionCode || "75-PUC-SR-00001-CHN"}
                                                         </p>
                                                     </div>
 
@@ -1781,7 +1783,7 @@ export function ProcessingShipmentsView({
                                                             {facilityName}
                                                         </p>
                                                         <p className="text-[11px] font-mono text-slate-500">
-                                                            Mã CS: CS-TV-001
+                                                            Mã PHC: {facilityCode || "75-PHC-SR-00002-CHN"}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -1963,7 +1965,7 @@ export function ProcessingShipmentsView({
                                                     <div className="rounded-xl bg-slate-50 p-3 space-y-1">
                                                         <span className="text-[10px] font-bold uppercase text-slate-400">Farm / Vùng trồng nguồn</span>
                                                         <p className="font-bold text-slate-900">{viewQrShipment.farmName || "Vườn sầu riêng liên kết"}</p>
-                                                        <p className="text-[11px] text-slate-500 font-mono">MSVT: {viewQrShipment.regionCode || "VN-DL-0089"}</p>
+                                                        <p className="text-[11px] text-slate-500 font-mono">PUC: {viewQrShipment.regionCode || "75-PUC-SR-00001-CHN"}</p>
                                                     </div>
 
                                                     <div className="rounded-xl bg-slate-50 p-3 space-y-1">

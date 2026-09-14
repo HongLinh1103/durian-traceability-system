@@ -727,7 +727,7 @@ export default function NewFarmingLogPage() {
                 <CardContent>
                     <form className="min-w-0 space-y-6" onSubmit={onSubmit}>
                         <div>
-                            <Label htmlFor="farmId">Mã MSVT</Label>
+                            <Label htmlFor="farmId">Vườn canh tác / Mã vùng trồng (PUC)</Label>
                             <select id="farmId" className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" {...form.register("farmId")}>
                                 {farmsLoading && <option value="">Đang tải danh sách vườn...</option>}
                                 {!farmsLoading && farms.length === 0 && <option value="">Hãy bắt đầu vụ mùa trước</option>}

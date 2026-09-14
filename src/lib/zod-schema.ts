@@ -49,7 +49,7 @@ export const farmRegistrationSchema = z.object({
     centerLatitude: optionalCoordinate,
     centerLongitude: optionalCoordinate,
     boundary: z.any().optional(),
-    growingRegionCode: z.string().trim().min(1, "Vui lòng nhập mã vùng trồng"),
+    growingRegionCode: z.string().trim().min(1, "Vui lòng nhập mã số vùng trồng (PUC)"),
     growingRegionId: z.string().trim().optional().default(""),
     growingRegionLabel: z.string().trim().optional().default(""),
 });
@@ -189,7 +189,7 @@ export const resetPasswordSchema = z
     });
 
 export const farmingLogSchema = z.object({
-    farmId: z.string().min(1, "Chọn mã MSVT"),
+    farmId: z.string().min(1, "Chọn vườn / mã số vùng trồng (PUC)"),
     stage: z.enum(growthStages),
     actionDate: z.string().min(1, "Chọn ngày thực hiện").refine(isValidVietnameseDate, "Ngày phải có định dạng dd/mm/yyyy"),
     actionTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Giờ phải có định dạng HH:mm"),

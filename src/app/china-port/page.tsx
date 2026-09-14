@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function ChinaPortPage() {
     return (
         <main className="min-h-screen bg-slate-50/50 py-8">
-            <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="container mx-auto max-w-[1650px] px-3 sm:px-6">
                 <ChinaPortView />
             </div>
         </main>

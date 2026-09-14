@@ -107,6 +107,25 @@ body {
     }
 }
 
+@layer components {
+    /* Đảm bảo nội dung trong badge trạng thái và button luôn trên 1 hàng, không bị xuống dòng ở mobile */
+    button:not(.whitespace-normal),
+    [role="button"]:not(.whitespace-normal),
+    .badge,
+    [class*="rounded-full"][class*="px-"],
+    [class*="rounded-full"][class*="py-"] {
+        white-space: nowrap;
+    }
+
+    button:not(.whitespace-normal) svg,
+    [role="button"]:not(.whitespace-normal) svg,
+    .badge svg,
+    [class*="rounded-full"][class*="px-"] svg,
+    [class*="rounded-full"][class*="py-"] svg {
+        flex-shrink: 0;
+    }
+}
+
 @media print {
     .no-print,
     header,

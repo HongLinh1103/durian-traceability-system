@@ -582,7 +582,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
     const seasonStartedAt = earliestDate(sources.map((s) => s.cropSeason?.startedAt)) || new Date("2026-02-01");
     const seasonNames = [...new Set(sources.map((s) => s.cropSeason?.name).filter(Boolean))].join(", ") || "Niên vụ 2025-2026";
     const farmNames = [...new Set(sources.map((s) => s.farm?.farmName).filter(Boolean))].join(", ") || "Vườn sầu riêng liên kết";
-    const regionCodes = [...new Set(sources.map((s) => s.farm?.region?.code || s.farm?.farmCode).filter(Boolean))].filter(Boolean).join(", ") || "MSVT-DN-LK-001";
+    const regionCodes = [...new Set(sources.map((s) => s.farm?.region?.code || s.farm?.farmCode).filter(Boolean))].filter(Boolean).join(", ") || "75-PUC-SR-00001";
     const farmLocations = [...new Set(sources.map((s) => [s.farm?.district, s.farm?.province].filter(Boolean).join(", ") || s.farm?.address).filter(Boolean))].filter(Boolean).join("; ") || "Long Khánh, Đồng Nai";
     const varieties = [...new Set(sources.map((s) => s.farm?.durianVariety).filter(Boolean))].filter(Boolean).join(", ") || "Ri6";
 
@@ -599,7 +599,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
         fields: [
             { label: "Vụ mùa", value: seasonNames },
             { label: "Vườn", value: farmNames, highlight: true },
-            { label: "Mã số vùng sản xuất", value: regionCodes, highlight: true },
+            { label: "Mã số vùng trồng (PUC)", value: regionCodes, highlight: true },
             { label: "Địa phương", value: farmLocations },
             { label: "Giống", value: varieties, highlight: true },
         ],
@@ -1201,7 +1201,7 @@ async function buildPreviewTraceObject(cleanToken: string, preview: PreviewTrace
             fields: [
                 { label: "Vụ mùa", value: previewFarm.cropSeasons?.[0]?.name || "Niên vụ 2025-2026" },
                 { label: "Vườn", value: previewFarm.farmName, highlight: true },
-                { label: "Mã số vùng sản xuất", value: previewFarm.farmCode, highlight: true },
+                { label: "Mã số vùng trồng (PUC)", value: previewFarm.farmCode, highlight: true },
                 { label: "Giống", value: previewFarm.durianVariety || "Ri6", highlight: true },
             ],
         });

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 export type FacilityItem = {
     id: string;
+    code?: string | null;
     type: "COLLECTOR" | "PROCESSING_FACILITY";
     name: string;
     representativeName: string;
@@ -30,6 +31,7 @@ export type FacilityItem = {
 export const FALLBACK_COLLECTORS: FacilityItem[] = [
     {
         id: "collector-1",
+        code: "75-PHC-SR-00001-CHN",
         type: "COLLECTOR",
         name: "Vựa Sầu riêng Thành Phát",
         representativeName: "Nguyễn Thành Phát",
@@ -57,6 +59,7 @@ export const FALLBACK_COLLECTORS: FacilityItem[] = [
     },
     {
         id: "collector-2",
+        code: "70-PHC-SR-00001-CHN",
         type: "COLLECTOR",
         name: "Vựa Sầu riêng Hoàng Long",
         representativeName: "Hoàng Văn Long",
@@ -84,6 +87,7 @@ export const FALLBACK_COLLECTORS: FacilityItem[] = [
     },
     {
         id: "collector-3",
+        code: "66-PHC-SR-00001-CHN",
         type: "COLLECTOR",
         name: "Vựa Thu Mua Nông Sản Tây Nguyên",
         representativeName: "Đặng Quốc Thái",
@@ -111,6 +115,7 @@ export const FALLBACK_COLLECTORS: FacilityItem[] = [
     },
     {
         id: "collector-4",
+        code: "82-PHC-SR-00001-CHN",
         type: "COLLECTOR",
         name: "Vựa Sầu riêng Mekong Fruit",
         representativeName: "Lê Thị Mai",
@@ -141,6 +146,7 @@ export const FALLBACK_COLLECTORS: FacilityItem[] = [
 export const FALLBACK_PROCESSING_FACILITIES: FacilityItem[] = [
     {
         id: "processing-1",
+        code: "75-PHC-SR-00002-CHN",
         type: "PROCESSING_FACILITY",
         name: "Cơ sở Chế biến Sầu riêng Trị An",
         representativeName: "Trần Minh Anh",
@@ -170,6 +176,7 @@ export const FALLBACK_PROCESSING_FACILITIES: FacilityItem[] = [
     },
     {
         id: "processing-2",
+        code: "70-PHC-SR-00002-CHN",
         type: "PROCESSING_FACILITY",
         name: "Nhà máy Chế biến & Đóng gói Sầu riêng Đồng Phú",
         representativeName: "Phạm Thanh Hải",
@@ -204,6 +211,7 @@ export const FALLBACK_PROCESSING_FACILITIES: FacilityItem[] = [
     },
     {
         id: "processing-3",
+        code: "66-PHC-SR-00002-CHN",
         type: "PROCESSING_FACILITY",
         name: "Trung tâm Chế biến Nông sản Xuất khẩu Krông Pắc",
         representativeName: "Vũ Đức Trọng",
@@ -236,6 +244,7 @@ export const FALLBACK_PROCESSING_FACILITIES: FacilityItem[] = [
     },
     {
         id: "processing-4",
+        code: "82-PHC-SR-00002-CHN",
         type: "PROCESSING_FACILITY",
         name: "Nhà máy Đóng gói Trái cây Miền Tây Nam Bộ",
         representativeName: "Võ Hoàng Nam",
@@ -310,6 +319,7 @@ export async function getCollectors(): Promise<FacilityItem[]> {
                 const fallback = FALLBACK_COLLECTORS[idx % FALLBACK_COLLECTORS.length];
                 return {
                     id: item.id,
+                    code: item.code || fallback.code,
                     type: "COLLECTOR",
                     name: item.name,
                     representativeName: item.representativeName || item.owner?.fullName || fallback.representativeName,
@@ -394,6 +404,7 @@ export async function getProcessingFacilities(): Promise<FacilityItem[]> {
                 const fallback = FALLBACK_PROCESSING_FACILITIES[idx % FALLBACK_PROCESSING_FACILITIES.length];
                 return {
                     id: item.id,
+                    code: item.code || fallback.code,
                     type: "PROCESSING_FACILITY",
                     name: item.name,
                     representativeName: item.representativeName || item.owner?.fullName || fallback.representativeName,

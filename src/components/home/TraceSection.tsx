@@ -48,8 +48,8 @@ export function TraceSection() {
                                     <Sprout className="h-4 w-4" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <h4 className="text-xs font-bold text-slate-900">Mã số vùng trồng & Nông hộ</h4>
-                                    <p className="text-xs text-slate-500">Định danh chuẩn MSVT, vị trí vườn và hồ sơ kỹ thuật.</p>
+                                    <h4 className="text-xs font-bold text-slate-900">Mã số vùng trồng (PUC) & Nông hộ</h4>
+                                    <p className="text-xs text-slate-500">Định danh chuẩn PUC, vị trí vườn và hồ sơ kỹ thuật.</p>
                                 </div>
                             </div>
 

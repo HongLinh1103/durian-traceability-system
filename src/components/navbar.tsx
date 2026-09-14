@@ -60,15 +60,15 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/store/orders", label: "Đơn hàng", roles: ["STORE_OWNER"] },
     { href: "/dashboard/store/finance", label: "Tài chính", roles: ["STORE_OWNER"] },
     { href: "/dashboard/partner", label: "Tổng quan", roles: ["COLLECTOR"] },
-    { href: "/dashboard/partner/harvests", label: "Phiếu thu hoạch", roles: ["COLLECTOR"], collectorBadge: true },
     { href: "/dashboard/partner/orders", label: "Đơn thu mua", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/lots", label: "Lô hàng", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/traceability", label: "Tạo QR", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/finance", label: "Tài chính", roles: ["COLLECTOR"] },
     { href: "/dashboard/processing", label: "Tổng quan", roles: ["PROCESSING_FACILITY"] },
     { href: "/china-port", label: "China Port", roles: ["PROCESSING_FACILITY"] },
-    { href: "/dashboard/processing/raw-materials", label: "Tiếp nhận & Phân loại", roles: ["PROCESSING_FACILITY"], collectorBadge: true },
-    { href: "/dashboard/processing/processing", label: "Chế biến & Đóng gói", roles: ["PROCESSING_FACILITY"], processingBadge: true },
+    { href: "/dashboard/processing/purchases", label: "Hồ sơ thu mua", roles: ["PROCESSING_FACILITY"] },
+    { href: "/dashboard/processing/grading", label: "Phân loại", roles: ["PROCESSING_FACILITY"] },
+    { href: "/dashboard/processing/processing", label: "Chế biến & Đóng gói", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/shipments", label: "Xuất hàng", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/finance", label: "Tài chính", roles: ["PROCESSING_FACILITY"] },
 ];
@@ -200,37 +200,31 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
     }, [isAuthed, pathname, userRole]);
 
     useEffect(() => {
-        if (!isAuthed || !["COLLECTOR", "PROCESSING_FACILITY"].includes(userRole ?? "")) {
+        if (!isAuthed || userRole !== "PROCESSING_FACILITY") {
             setCollectorNoticeCount(0);
             setProcessingNoticeCount(0);
             return;
         }
         let cancelled = false;
-        const fetchCollectorNotices = async () => {
+        const fetchProcessingNotices = async () => {
             try {
-                const response = await fetch(userRole === "PROCESSING_FACILITY" ? "/api/processing/raw-materials" : "/api/harvests", { cache: "no-store" });
+                const response = await fetch("/api/processing/raw-materials", { cache: "no-store" });
                 const payload = await response.json();
                 if (!cancelled && payload.success) {
-                    if (userRole === "PROCESSING_FACILITY") {
-                        setCollectorNoticeCount(payload.actionRequiredCount ?? 0);
-                        setProcessingNoticeCount(payload.processingReadyCount ?? 0);
-                        return;
-                    }
-                    const rows = payload.data ?? [];
-                    const count = rows.filter((item: { status: string }) => ["WAITING_CONFIRMATION", "CONFIRMED", "HARVESTING", "HARVESTED"].includes(item.status)).length;
-                    setCollectorNoticeCount(count);
+                    setCollectorNoticeCount(payload.actionRequiredCount ?? 0);
+                    setProcessingNoticeCount(payload.processingReadyCount ?? 0);
                 }
             } catch {
                 // non-blocking
             }
         };
-        void fetchCollectorNotices();
-        const interval = window.setInterval(fetchCollectorNotices, 60_000);
-        window.addEventListener("processing-classified-updated", fetchCollectorNotices);
+        void fetchProcessingNotices();
+        const interval = window.setInterval(fetchProcessingNotices, 60_000);
+        window.addEventListener("processing-classified-updated", fetchProcessingNotices);
         return () => {
             cancelled = true;
             window.clearInterval(interval);
-            window.removeEventListener("processing-classified-updated", fetchCollectorNotices);
+            window.removeEventListener("processing-classified-updated", fetchProcessingNotices);
         };
     }, [isAuthed, pathname, userRole]);
 

@@ -853,7 +853,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                                             <input
                                                 type="text"
                                                 readOnly
-                                                value={`${confirmingItem.farmName}${confirmingItem.regionCode ? ` (MSVT: ${confirmingItem.regionCode})` : ""}`}
+                                                value={`${confirmingItem.farmName}${confirmingItem.regionCode ? ` (PUC: ${confirmingItem.regionCode})` : ""}`}
                                                 className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 focus:outline-none"
                                             />
                                         </div>

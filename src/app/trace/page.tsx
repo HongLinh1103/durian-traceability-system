@@ -63,7 +63,7 @@ export default function TraceScannerPage() {
                                 <Sprout className="h-4 w-4" />
                             </div>
                             <h3 className="mt-3 text-sm font-bold text-slate-900">1. Vườn & Vùng trồng</h3>
-                            <p className="mt-1 text-xs text-slate-500">Mã số vùng trồng (MSVT), giống sầu riêng (Ri6, Dona), vị trí địa lý nông hộ.</p>
+                            <p className="mt-1 text-xs text-slate-500">Mã số vùng trồng (PUC), giống sầu riêng (Ri6, Dona), vị trí địa lý nông hộ.</p>
                         </div>
 
                         <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">

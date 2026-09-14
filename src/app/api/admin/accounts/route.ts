@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+import { getProvinceCode, generateNewPHCCode } from "@/lib/puc-phc";
+
 type ManagedRegionAssignment = { code?: string; name?: string };
 
 function getManagedRegionAssignments(value: unknown): ManagedRegionAssignment[] {
@@ -12,10 +14,14 @@ function getManagedRegionAssignments(value: unknown): ManagedRegionAssignment[] 
     return value && typeof value === "object" ? [value as ManagedRegionAssignment] : [];
 }
 
-function generateOfficialFarmCode(index: number) {
+function generateOfficialFarmCode(regionCode: string | null | undefined, index: number, province?: string | null) {
+    if (regionCode) {
+        const farmSeq = String(index + 1).padStart(3, "0");
+        return `${regionCode}-F${farmSeq}`;
+    }
+    const pCode = getProvinceCode(province);
     const timestamp = Date.now().toString(36).toUpperCase();
-    const random = Math.floor(Math.random() * 9000 + 1000);
-    return `MSVT-${timestamp}-${index + 1}-${random}`;
+    return `${pCode}-PUC-SR-F${timestamp}-${index + 1}`;
 }
 
 export const runtime = "nodejs";
@@ -331,7 +337,7 @@ export async function PATCH(request: Request) {
                     where: { deletedAt: null },
                     select: { id: true, name: true, status: true },
                 },
-                partnerFacility: { select: { id: true, status: true } },
+                partnerFacility: { select: { id: true, status: true, code: true, province: true } },
                 areaManagerApplication: { select: { managedRegions: true, status: true } },
             },
         });
@@ -395,7 +401,7 @@ export async function PATCH(request: Request) {
                 })
                 : null;
             if (user.role === "AREA_MANAGER" && !matchedManagerRegion) {
-                return NextResponse.json({ success: false, message: "Không thể duyệt: không tìm thấy vùng trồng đang hoạt động có MSVT trùng khớp với hồ sơ khai báo." }, { status: 400 });
+                return NextResponse.json({ success: false, message: "Không thể duyệt: không tìm thấy vùng trồng đang hoạt động có mã PUC trùng khớp với hồ sơ khai báo." }, { status: 400 });
             }
             if (matchedManagerRegion?.managerAssignments.some((assignment) => assignment.areaManagerId !== user.id)) {
                 return NextResponse.json({ success: false, message: "Vùng trồng này đang có Trưởng ban phụ trách. Hãy dùng chức năng Thay đổi Trưởng ban và nhập lý do." }, { status: 409 });
@@ -467,7 +473,21 @@ export async function PATCH(request: Request) {
                         });
                     }));
                 }
-                if (user.partnerFacility) await tx.partnerFacility.update({ where: { id: user.partnerFacility.id }, data: { status: "APPROVED", reviewReason: null, approvedAt: new Date() } });
+                if (user.partnerFacility) {
+                    let phcCode = user.partnerFacility.code;
+                    if (!phcCode) {
+                        phcCode = await generateNewPHCCode(user.partnerFacility.province, "Sầu riêng");
+                    }
+                    await tx.partnerFacility.update({
+                        where: { id: user.partnerFacility.id },
+                        data: {
+                            code: phcCode,
+                            status: "APPROVED",
+                            reviewReason: null,
+                            approvedAt: new Date(),
+                        },
+                    });
+                }
                 if (user.role === "AREA_MANAGER" && user.areaManagerApplication) {
                     if (!matchedManagerRegion) throw new Error("AREA_MANAGER_REGION_MATCH_REQUIRED");
                     await tx.areaManagerApplication.update({ where: { userId: user.id }, data: { status: "APPROVED", reviewedAt: new Date(), reviewReason: null } });
@@ -479,7 +499,7 @@ export async function PATCH(request: Request) {
                         tx.farm.update({
                             where: { id: farm.id },
                             data: {
-                                farmCode: generateOfficialFarmCode(index),
+                                farmCode: generateOfficialFarmCode(region?.code, index, farm.province),
                                 growingRegionId: region?.id ?? null,
                                 growingRegion: region ? `${region.code} - ${region.name}` : null,
                                 isActive: true,
