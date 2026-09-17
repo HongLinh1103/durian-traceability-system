@@ -29,7 +29,9 @@
         "seed:farming-history": "node scripts/seed-farming-history.cjs",
         "seed:traceability": "tsx scripts/seed-traceability-demo.ts",
         "seed:partner-finance": "npx tsx scripts/seed-partner-finance-data.ts",
-        "test:traceability": "tsx scripts/test-traceability.ts"
+        "test:traceability": "tsx scripts/test-traceability.ts",
+        "test:processing-gmp": "tsc scripts/test-processing-gmp.ts --outDir scratch/gmp-test --module commonjs --target ES2022 --esModuleInterop --skipLibCheck && node scratch/gmp-test/scripts/test-processing-gmp.js",
+        "seed:processing-gmp": "tsc scripts/seed-processing-gmp.ts --outDir scratch/gmp-test --module commonjs --target ES2022 --esModuleInterop --skipLibCheck && node scratch/gmp-test/scripts/seed-processing-gmp.js"
     },
     "dependencies": {
         "@hookform/resolvers": "^3.10.0",
@@ -44,6 +46,7 @@
         "clsx": "^2.1.1",
         "exceljs": "^4.4.0",
         "idb": "^8.0.3",
+        "jszip": "^3.10.1",
         "leaflet": "^1.9.4",
         "lucide-react": "^0.446.0",
         "next": "14.2.17",

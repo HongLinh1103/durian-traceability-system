@@ -211,7 +211,7 @@ export function ProcessingPurchasesView() {
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Hồ sơ thu mua</h1>
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Sổ thu mua</h1>
                 <p className="mt-1 text-sm text-slate-500">
                     Nơi dữ liệu bắt đầu đi vào hệ thống. Mỗi lô thu mua sẽ tự động tạo Lô chờ phân loại và Khoản phải trả trong module Tài chính.
                 </p>

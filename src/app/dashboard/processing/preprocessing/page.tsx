@@ -7,5 +7,5 @@ export const dynamic = "force-dynamic";
 export default async function Page() {
  const session=await getServerSession(authOptions);
  if(!session?.user?.id || session.user.role!=="PROCESSING_FACILITY") redirect("/login");
- return <main className="mx-auto w-full max-w-[1650px] space-y-6 px-3 py-6 sm:px-6"><ProcessingGmpView screen="finance"/></main>;
+ return <main className="mx-auto w-full max-w-[1650px] space-y-6 px-3 py-6 sm:px-6"><ProcessingGmpView screen="preprocessing"/></main>;
 }

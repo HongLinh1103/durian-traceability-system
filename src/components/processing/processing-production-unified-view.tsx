@@ -288,8 +288,8 @@ export function ProcessingProductionUnifiedView() {
                 <button
                     onClick={() => setActiveTab("fresh")}
                     className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition ${activeTab === "fresh"
-                            ? "bg-white text-emerald-800 shadow-md shadow-slate-200/50"
-                            : "text-slate-600 hover:text-slate-900"
+                        ? "bg-white text-emerald-800 shadow-md shadow-slate-200/50"
+                        : "text-slate-600 hover:text-slate-900"
                         }`}
                 >
                     <Sparkles className="h-4 w-4 text-emerald-600" />
@@ -299,8 +299,8 @@ export function ProcessingProductionUnifiedView() {
                 <button
                     onClick={() => setActiveTab("processed")}
                     className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition ${activeTab === "processed"
-                            ? "bg-white text-amber-800 shadow-md shadow-slate-200/50"
-                            : "text-slate-600 hover:text-slate-900"
+                        ? "bg-white text-amber-800 shadow-md shadow-slate-200/50"
+                        : "text-slate-600 hover:text-slate-900"
                         }`}
                 >
                     <Layers className="h-4 w-4 text-amber-600" />
@@ -310,12 +310,12 @@ export function ProcessingProductionUnifiedView() {
                 <button
                     onClick={() => setActiveTab("finished")}
                     className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition ${activeTab === "finished"
-                            ? "bg-white text-teal-800 shadow-md shadow-slate-200/50"
-                            : "text-slate-600 hover:text-slate-900"
+                        ? "bg-white text-teal-800 shadow-md shadow-slate-200/50"
+                        : "text-slate-600 hover:text-slate-900"
                         }`}
                 >
                     <PackageCheck className="h-4 w-4 text-teal-600" />
-                    <span>Lô thành phẩm ({state.finishedLots.length})</span>
+                    <span>c:\Users\HP Slim\Pictures\Screenshots\Screenshot 2026-09-15 090617.pngLô thành phẩm ({state.finishedLots.length})</span>
                 </button>
             </div>
 
@@ -814,8 +814,8 @@ export function ProcessingProductionUnifiedView() {
                                                 key={m}
                                                 onClick={() => handleMethodSelect(m)}
                                                 className={`rounded-xl border p-2.5 text-xs font-bold text-left transition ${deepMethod === m
-                                                        ? "border-amber-600 bg-amber-50 text-amber-900 ring-2 ring-amber-600/20"
-                                                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                                                    ? "border-amber-600 bg-amber-50 text-amber-900 ring-2 ring-amber-600/20"
+                                                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                                                     }`}
                                             >
                                                 {m}

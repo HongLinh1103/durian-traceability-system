@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, Leaf, LogIn, LogOut, Menu, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ProcessingNavbarLinks } from "@/components/processing/processing-navbar-links";
 
 const publicLinks = [
     { href: "/", label: "Trang chủ" },
@@ -38,7 +39,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/china-port", label: "China Port", roles: ["FARMER", "COLLECTOR"] },
     { href: "/dashboard/farmer/plans", label: "Kế hoạch", roles: ["FARMER"], planBadge: true },
     { href: "/dashboard/farmer/journal", label: "Nhật ký", roles: ["FARMER"] },
-    { href: "/dashboard/farmer/harvests", label: "Hồ sơ thu hoạch", roles: ["FARMER"] },
+    { href: "/dashboard/farmer/harvests", label: "Sổ thu hoạch", roles: ["FARMER"] },
     { href: "/dashboard/farmer/traceability", label: "Tạo QR", roles: ["FARMER"] },
     { href: "/dashboard/farmer/statistics", label: "Thống kê", roles: ["FARMER"] },
     { href: "/materials", label: "Tất cả vật tư", roles: ["FARMER"] },
@@ -67,9 +68,12 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/processing", label: "Tổng quan", roles: ["PROCESSING_FACILITY"] },
     { href: "/china-port", label: "China Port", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/purchases", label: "Hồ sơ thu mua", roles: ["PROCESSING_FACILITY"] },
-    { href: "/dashboard/processing/grading", label: "Phân loại", roles: ["PROCESSING_FACILITY"] },
-    { href: "/dashboard/processing/processing", label: "Chế biến & Đóng gói", roles: ["PROCESSING_FACILITY"] },
-    { href: "/dashboard/processing/shipments", label: "Xuất hàng", roles: ["PROCESSING_FACILITY"] },
+    { href: "/dashboard/processing/grading", label: "Nhập hàng", roles: ["PROCESSING_FACILITY"] },
+    { href: "/dashboard/processing/preprocessing", label: "Tiếp nhận & Sơ chế", roles: ["PROCESSING_FACILITY"] },
+    { href: "/dashboard/processing/processing", label: "Đóng gói & Nhập kho", roles: ["PROCESSING_FACILITY"] },
+    { href: "/dashboard/processing/inspection", label: "Kiểm tra trước xuất bán", roles: ["PROCESSING_FACILITY"] },
+    { href: "/dashboard/processing/shipments", label: "Xuất bán", roles: ["PROCESSING_FACILITY"] },
+    { href: "/dashboard/processing/aftersales", label: "Sau xuất bán", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/finance", label: "Tài chính", roles: ["PROCESSING_FACILITY"] },
 ];
 
@@ -305,7 +309,10 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                 isAuthPage && "hidden",
             )}
         >
-            <nav className="flex h-[64px] w-full items-center gap-2 px-3 pt-2 sm:px-4 xl:px-5">
+            <nav className={cn(
+                "flex h-[64px] w-full items-center gap-2 px-3 pt-2 sm:px-4 xl:px-5",
+                userRole === "PROCESSING_FACILITY" && "xl:h-auto xl:gap-4 xl:py-2",
+            )}>
                 {/* Logo */}
                 <Link href={getLogoHref()} className="flex shrink-0 items-center gap-2">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600">
@@ -320,8 +327,11 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                 </Link>
 
                 {/* Desktop Navigation */}
-                <div className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-visible px-1 py-2 xl:flex">
-                    {visiblePublicLinks.map((link) => (
+                <div className={cn(
+                    "hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-visible px-1 py-2 xl:flex",
+                )}>
+                    {isProcessingFacility && <ProcessingNavbarLinks />}
+                    {!isProcessingFacility && visiblePublicLinks.map((link) => (
                         <Link
                             key={link.href}
                             href={link.href}
@@ -340,7 +350,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                             )}
                         </Link>
                     ))}
-                    {isAuthed &&
+                    {isAuthed && !isProcessingFacility &&
                         primaryDashboardLinks.map((link) => (
                             <Link
                                 key={link.href}
@@ -391,7 +401,9 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                 </div>
 
                 {/* Desktop Auth */}
-                <div className="hidden min-h-10 shrink-0 items-center justify-end gap-2 xl:flex">
+                <div className={cn(
+                    "hidden min-h-10 shrink-0 items-center justify-end gap-2 xl:flex",
+                )}>
                     {isLoading ? (
                         <div className="h-9 w-32 animate-pulse rounded-2xl bg-slate-100" aria-label="Dang kiem tra dang nhap" />
                     ) : isAuthed ? (

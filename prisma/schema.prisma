@@ -2437,3 +2437,12 @@ model PermissionAuditLog {
   @@index([roleKey, createdAt])
   @@map("permission_audit_logs")
 }
+// Account-scoped GMP workspace. Revision guards concurrent edits across tabs/devices.
+model ProcessingGmpWorkspace {
+  ownerId   String   @id
+  revision  Int      @default(0)
+  data      Json
+  updatedAt DateTime @updatedAt
+
+  @@map("processing_gmp_workspaces")
+}

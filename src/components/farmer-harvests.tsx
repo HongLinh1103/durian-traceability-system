@@ -8,6 +8,8 @@ import {
     Calendar,
     ChevronDown,
     DollarSign,
+    Download,
+    MapPin,
     Pencil,
     Plus,
     Scale,
@@ -23,6 +25,11 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
 import { formatSeasonName } from "@/lib/crop-season";
 import { formatVietnameseDate } from "@/lib/date-format";
+import {
+    getBuyerName,
+    getBuyerAddress,
+    exportHarvestRecordsToExcel,
+} from "@/lib/export-harvests";
 import {
     buildBaseHarvestCode,
     formatHarvestDateCode,
@@ -49,6 +56,9 @@ export type HarvestRow = {
         id: string;
         name: string;
         phone?: string | null;
+        address?: string | null;
+        province?: string | null;
+        ward?: string | null;
     } | null;
     transactionNote?: string | null;
     farm?: {
@@ -74,6 +84,9 @@ export type PartnerFacilityOption = {
     type: string;
     representativeName?: string | null;
     phone?: string | null;
+    address?: string | null;
+    province?: string | null;
+    ward?: string | null;
 };
 
 interface FarmerHarvestsProps {
@@ -97,14 +110,11 @@ function formatTotal(weight: number | string | null | undefined, price: number |
     return `${total.toLocaleString("vi-VN")} đ`;
 }
 
-function getBuyerName(item: HarvestRow): string {
-    return (item.buyerFacility?.name || item.transactionNote || "Chưa xác định").trim();
-}
-
 export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarvestsProps) {
     const [rows, setRows] = useState<HarvestRow[]>(initialRows);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedSeasonFilter, setSelectedSeasonFilter] = useState("ALL");
+    const [isExporting, setIsExporting] = useState(false);
 
     // Modal state for Add/Edit
     const [modalOpen, setModalOpen] = useState(false);
@@ -121,6 +131,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
     const [buyerMode, setBuyerMode] = useState<"FACILITY" | "CUSTOM">("FACILITY");
     const [formFacilityId, setFormFacilityId] = useState("");
     const [formBuyerName, setFormBuyerName] = useState("");
+    const [formBuyerAddress, setFormBuyerAddress] = useState("");
     const [formPrice, setFormPrice] = useState("");
     const [formBusy, setFormBusy] = useState(false);
 
@@ -179,6 +190,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                 const q = searchQuery.toLowerCase().trim();
                 const codeStr = (item.code || "").toLowerCase();
                 const buyer = getBuyerName(item).toLowerCase();
+                const addressStr = getBuyerAddress(item).toLowerCase();
                 const seasonName = (item.cropSeason ? formatSeasonName(item.cropSeason) : "").toLowerCase();
                 const weightStr = String(item.actualWeight ?? item.expectedWeight ?? "");
                 const priceStr = String(item.expectedPricePerKg ?? "");
@@ -186,6 +198,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                 if (
                     !codeStr.includes(q) &&
                     !buyer.includes(q) &&
+                    !addressStr.includes(q) &&
                     !seasonName.includes(q) &&
                     !weightStr.includes(q) &&
                     !priceStr.includes(q) &&
@@ -195,6 +208,11 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                 }
             }
             return true;
+        }).sort((a, b) => {
+            const timeA = new Date(a.actualHarvestedAt || a.expectedHarvestDate || a.createdAt || 0).getTime();
+            const timeB = new Date(b.actualHarvestedAt || b.expectedHarvestDate || b.createdAt || 0).getTime();
+            if (timeA !== timeB) return timeB - timeA;
+            return (b.code || "").localeCompare(a.code || "");
         });
     }, [rows, selectedSeasonFilter, searchQuery]);
 
@@ -224,6 +242,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
         setBuyerMode(facilities.length > 0 ? "FACILITY" : "CUSTOM");
         setFormFacilityId(facilities.length > 0 ? facilities[0].id : "");
         setFormBuyerName("");
+        setFormBuyerAddress("");
         setFormPrice("");
         setModalOpen(true);
     }
@@ -242,10 +261,23 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
             setBuyerMode("FACILITY");
             setFormFacilityId(row.buyerFacility.id);
             setFormBuyerName("");
+            setFormBuyerAddress("");
         } else {
             setBuyerMode("CUSTOM");
             setFormFacilityId("");
-            setFormBuyerName(row.transactionNote || "");
+            const note = row.transactionNote || "";
+            if (note.includes(" · ")) {
+                const [n, ...rest] = note.split(" · ");
+                setFormBuyerName(n.trim());
+                setFormBuyerAddress(rest.join(" · ").trim());
+            } else if (note.includes(" - ")) {
+                const [n, ...rest] = note.split(" - ");
+                setFormBuyerName(n.trim());
+                setFormBuyerAddress(rest.join(" - ").trim());
+            } else {
+                setFormBuyerName(note);
+                setFormBuyerAddress("");
+            }
         }
         setModalOpen(true);
     }
@@ -253,6 +285,32 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
     // Open Delete Modal
     function openDeleteModal(row: HarvestRow) {
         setDeletingItem(row);
+    }
+
+    // Export File
+    async function handleExportFile() {
+        if (filteredRows.length === 0) return;
+        setIsExporting(true);
+        try {
+            const activeSeasonObj = seasons.find(s => s.id === selectedSeasonFilter);
+            const seasonLabel = activeSeasonObj
+                ? formatSeasonName(activeSeasonObj)
+                : (selectedSeasonFilter === "ALL" ? "Tất cả niên vụ" : "Niên vụ");
+            await exportHarvestRecordsToExcel(filteredRows, seasonLabel, activeSeasonObj?.farmName);
+            toast({
+                title: "Xuất file thành công",
+                description: `Đã xuất ${filteredRows.length} hồ sơ thu hoạch ra file Excel.`,
+                variant: "success",
+            });
+        } catch (error) {
+            toast({
+                title: "Không thể xuất file",
+                description: error instanceof Error ? error.message : "Đã có lỗi xảy ra.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsExporting(false);
+        }
     }
 
     // Submit Add or Edit Form
@@ -302,15 +360,17 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
             buyerName = fac.name;
             buyerFacilityId = fac.id;
         } else {
-            buyerName = formBuyerName.trim();
-            if (!buyerName) {
+            const name = formBuyerName.trim();
+            if (!name) {
                 toast({
                     title: "Lỗi nhập liệu",
-                    description: "Vui lòng nhập tên bên mua.",
+                    description: "Vui lòng nhập tên người mua.",
                     variant: "destructive",
                 });
                 return;
             }
+            const addr = formBuyerAddress.trim();
+            buyerName = addr ? `${name} · ${addr}` : name;
         }
 
         setFormBusy(true);
@@ -405,7 +465,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                         <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
-                            HỒ SƠ THU HOẠCH
+                            SỔ THU HOẠCH
                         </h1>
                         <p className="mt-1 text-xs text-slate-500 sm:text-sm">
                             Theo dõi sản lượng thu hoạch và kết quả bán ra theo từng niên vụ.
@@ -453,6 +513,18 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         </div>
 
+                        {/* Export Button */}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleExportFile}
+                            disabled={filteredRows.length === 0 || isExporting}
+                            className="h-10 rounded-2xl border-slate-200 bg-white px-3.5 sm:px-4 font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition flex items-center gap-1.5 shrink-0 whitespace-nowrap text-xs sm:text-sm shadow-sm"
+                        >
+                            <Download className="h-4 w-4 shrink-0 text-slate-500" />
+                            <span>{isExporting ? "Đang xuất..." : "Xuất file"}</span>
+                        </Button>
+
                         {/* Add Button */}
                         <Button
                             onClick={openCreateModal}
@@ -465,75 +537,82 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                 </div>
             </div>
 
-            {/* Bảng danh sách chính */}
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            {/* Bảng danh sách chính - có kẻ ô theo format cơ sở chế biến */}
+            <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead>
-                            <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-600">
-                                <th className="py-3.5 pl-4 sm:pl-5 pr-3 whitespace-nowrap">Mã lô TH</th>
-                                <th className="px-3 py-3.5 whitespace-nowrap">Niên vụ</th>
-                                <th className="px-3 sm:px-4 py-3.5 whitespace-nowrap">Ngày thu hoạch</th>
-                                <th className="px-3 sm:px-4 py-3.5 whitespace-nowrap">Tổng sản lượng</th>
-                                <th className="px-3 sm:px-4 py-3.5 whitespace-nowrap">Bên mua</th>
-                                <th className="px-3 sm:px-4 py-3.5 whitespace-nowrap">Giá bán</th>
-                                <th className="px-3 sm:px-4 py-3.5 whitespace-nowrap">Thành tiền</th>
-                                <th className="py-3.5 pl-2 pr-4 sm:pr-5 text-right whitespace-nowrap">Thao tác</th>
+                    <table className="w-full border-collapse border border-slate-300 text-left text-sm min-w-[1050px]">
+                        <thead className="bg-slate-100/90 text-xs text-slate-700">
+                            <tr>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Mã lô TH</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Niên vụ</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Ngày thu hoạch</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Tổng sản lượng (kg)</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Người mua</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle min-w-[180px]">Địa chỉ</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Giá bán</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Thành tiền</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Thao tác</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 text-slate-700">
+                        <tbody>
                             {filteredRows.map(row => {
                                 const weight = Number(row.actualWeight ?? row.expectedWeight ?? 0);
                                 const price = Number(row.expectedPricePerKg ?? 0);
                                 const buyer = getBuyerName(row);
+                                const address = getBuyerAddress(row);
                                 const seasonName = row.cropSeason ? formatSeasonName(row.cropSeason) : "Chưa xác định";
                                 const harvestDate = formatVietnameseDate(row.actualHarvestedAt || row.expectedHarvestDate || row.createdAt);
 
                                 return (
-                                    <tr key={row.id} className="transition hover:bg-slate-50/60">
+                                    <tr key={row.id} className="hover:bg-slate-50/70 transition">
                                         {/* Mã lô TH */}
-                                        <td className="py-3.5 pl-4 sm:pl-5 pr-3 whitespace-nowrap text-sm text-slate-900">
+                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 text-center font-mono font-bold text-emerald-700">
                                             {row.code}
                                         </td>
 
                                         {/* Niên vụ */}
-                                        <td className="px-3 py-3.5 whitespace-nowrap text-sm text-slate-900">
+                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 text-center text-slate-600">
                                             {seasonName}
                                         </td>
 
                                         {/* Ngày thu hoạch */}
-                                        <td className="px-3 sm:px-4 py-3.5 whitespace-nowrap text-sm text-slate-900">
+                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 text-center text-slate-600 font-medium">
                                             {harvestDate}
                                         </td>
 
-                                        {/* Tổng sản lượng */}
-                                        <td className="px-3 sm:px-4 py-3.5 whitespace-nowrap text-sm text-slate-900">
-                                            {formatKg(weight)}
+                                        {/* Tổng sản lượng (kg) */}
+                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 font-mono font-bold text-slate-900 text-right">
+                                            {weight.toLocaleString("vi-VN")}
                                         </td>
 
-                                        {/* Bên mua */}
-                                        <td className="px-3 sm:px-4 py-3.5 whitespace-nowrap text-sm text-slate-900">
+                                        {/* Người mua */}
+                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 font-bold text-slate-900">
                                             {buyer}
                                         </td>
 
+                                        {/* Địa chỉ */}
+                                        <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-600 min-w-[180px] max-w-xs text-left" title={address !== "—" ? address : undefined}>
+                                            {address}
+                                        </td>
+
                                         {/* Giá bán */}
-                                        <td className="px-3 sm:px-4 py-3.5 whitespace-nowrap text-sm text-slate-900">
+                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 font-mono text-slate-700 text-right">
                                             {formatPricePerKg(price)}
                                         </td>
 
                                         {/* Thành tiền */}
-                                        <td className="px-3 sm:px-4 py-3.5 whitespace-nowrap text-sm text-slate-900">
+                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 font-mono font-black text-emerald-800 text-right">
                                             {formatTotal(weight, price)}
                                         </td>
 
                                         {/* Thao tác */}
-                                        <td className="py-3.5 pl-2 pr-4 sm:pr-5 text-right whitespace-nowrap">
-                                            <div className="inline-flex items-center justify-end gap-1">
+                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 text-center">
+                                            <div className="flex items-center justify-center gap-1">
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => openEditModal(row)}
-                                                    className="h-8 w-8 p-0 rounded-xl text-brand-700 hover:bg-brand-50 hover:text-brand-800 transition"
+                                                    className="h-8 w-8 p-0 rounded-xl text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 transition"
                                                     title="Sửa hồ sơ"
                                                     aria-label="Sửa hồ sơ"
                                                 >
@@ -568,7 +647,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                         <p className="mt-1 text-xs text-slate-500">
                             {searchQuery || selectedSeasonFilter !== "ALL"
                                 ? "Không tìm thấy hồ sơ phù hợp với bộ lọc hiện tại."
-                                : "Bấm vào nút “Thêm hồ sơ” ở phía trên để ghi nhận kết quả thu hoạch."}
+                                : "Bấm vào nút “Thêm ghi nhận” ở phía trên để ghi nhận kết quả thu hoạch."}
                         </p>
                     </div>
                 )}
@@ -606,7 +685,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                             <div className="flex items-start justify-between border-b border-slate-100 pb-3">
                                 <div>
                                     <span className="text-xs font-bold uppercase tracking-wider text-brand-700">
-                                        Hồ sơ thu hoạch
+                                        Sổ thu hoạch
                                     </span>
                                     <h2 className="mt-1 text-xl font-black text-slate-900">
                                         {editingItem ? "Chỉnh sửa hồ sơ thu hoạch" : "Thêm hồ sơ thu hoạch mới"}
@@ -712,11 +791,11 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                                     </div>
                                 </div>
 
-                                {/* 3. Bên mua * */}
+                                {/* 3. Người mua * */}
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <Label className="text-xs font-bold uppercase text-slate-600">
-                                            Bên mua <span className="text-rose-500">*</span>
+                                            Người mua <span className="text-rose-500">*</span>
                                         </Label>
                                         <div className="flex items-center gap-2 text-xs">
                                             <button
@@ -744,40 +823,62 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                                     </div>
 
                                     {buyerMode === "FACILITY" && (
-                                        <div className="relative">
-                                            <Building2 className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-brand-600" />
-                                            <select
-                                                value={formFacilityId}
-                                                onChange={e => setFormFacilityId(e.target.value)}
-                                                className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-9 pr-8 text-sm font-semibold text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                                            >
-                                                {facilities.map(f => (
-                                                    <option key={f.id} value={f.id}>
-                                                        {f.name} ({f.type === "COLLECTOR" ? "Vựa thu mua" : "Cơ sở chế biến"})
-                                                    </option>
-                                                ))}
-                                                {facilities.length === 0 && (
-                                                    <option value="">Chưa có đối tác trong hệ thống</option>
-                                                )}
-                                            </select>
+                                        <div className="space-y-1.5">
+                                            <div className="relative">
+                                                <Building2 className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-brand-600" />
+                                                <select
+                                                    value={formFacilityId}
+                                                    onChange={e => setFormFacilityId(e.target.value)}
+                                                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-9 pr-8 text-sm font-semibold text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                                >
+                                                    {facilities.map(f => (
+                                                        <option key={f.id} value={f.id}>
+                                                            {f.name} ({f.type === "COLLECTOR" ? "Vựa thu mua" : "Cơ sở chế biến"})
+                                                        </option>
+                                                    ))}
+                                                    {facilities.length === 0 && (
+                                                        <option value="">Chưa có đối tác trong hệ thống</option>
+                                                    )}
+                                                </select>
+                                            </div>
+                                            {(() => {
+                                                const fac = facilities.find(f => f.id === formFacilityId);
+                                                const addr = fac ? [fac.address, fac.ward, fac.province].filter(Boolean).join(", ") : "";
+                                                if (!addr) return null;
+                                                return (
+                                                    <p className="text-xs text-slate-500 pl-1">
+                                                        Địa chỉ: <span className="font-medium text-slate-700">{addr}</span>
+                                                    </p>
+                                                );
+                                            })()}
                                         </div>
                                     )}
 
                                     {buyerMode === "CUSTOM" && (
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-2">
                                             <div className="relative">
                                                 <Building2 className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-brand-600" />
                                                 <Input
                                                     type="text"
-                                                    placeholder="Nhập tên vựa, thương lái, cơ sở..."
+                                                    placeholder="Nhập tên người mua, vựa, thương lái..."
                                                     value={formBuyerName}
                                                     onChange={e => setFormBuyerName(e.target.value)}
                                                     className="h-11 rounded-2xl pl-9 text-sm font-semibold text-slate-900"
                                                     required={buyerMode === "CUSTOM"}
                                                 />
                                             </div>
+                                            <div className="relative">
+                                                <MapPin className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                                                <Input
+                                                    type="text"
+                                                    placeholder="Địa chỉ người mua (ví dụ: Cai Lậy, Tiền Giang)..."
+                                                    value={formBuyerAddress}
+                                                    onChange={e => setFormBuyerAddress(e.target.value)}
+                                                    className="h-11 rounded-2xl pl-9 text-sm text-slate-800"
+                                                />
+                                            </div>
                                             {/* Quick suggestion chips */}
-                                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                                                 <span className="text-[11px] text-slate-400">Gợi ý nhanh:</span>
                                                 {["Vựa Minh Phát", "Cơ sở chế biến A", "Vựa Thành Công"].map(chip => (
                                                     <button

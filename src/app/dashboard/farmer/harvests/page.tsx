@@ -42,6 +42,9 @@ export default async function HarvestsPage() {
             type: true,
             representativeName: true,
             phone: true,
+            address: true,
+            province: true,
+            ward: true,
         },
         orderBy: { name: "asc" },
     });
@@ -70,11 +73,15 @@ export default async function HarvestsPage() {
                     id: true,
                     name: true,
                     phone: true,
+                    address: true,
+                    province: true,
+                    ward: true,
                 },
             },
         },
         orderBy: [
-            { cropSeason: { startedAt: "desc" } },
+            { actualHarvestedAt: "desc" },
+            { expectedHarvestDate: "desc" },
             { createdAt: "desc" },
         ],
     });

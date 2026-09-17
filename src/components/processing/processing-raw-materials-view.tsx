@@ -247,6 +247,11 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
                 if (varietyFilter === "Khác" && (v.includes("ri6") || v.includes("monthong") || v.includes("dona"))) return false;
             }
             return true;
+        }).sort((a, b) => {
+            const timeA = new Date(a.harvestDate || a.receivedAt || 0).getTime();
+            const timeB = new Date(b.harvestDate || b.receivedAt || 0).getTime();
+            if (timeA !== timeB) return timeB - timeA;
+            return b.code.localeCompare(a.code);
         });
     }, [items, searchQuery, dateFilter, statusFilter, varietyFilter]);
 

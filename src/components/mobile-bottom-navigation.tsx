@@ -57,7 +57,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
         items: [
             { label: "Tổng quan", href: "/dashboard/farmer", icon: Home },
             { label: "Nhật ký", href: "/dashboard/farmer/journal", icon: NotebookPen, matches: ["/dashboard/farmer/journal", "/dashboard/farmer/logs"] },
-            { label: "Hồ sơ thu hoạch", href: "/dashboard/farmer/harvests", icon: Wheat, matches: ["/dashboard/farmer/harvests", "/harvests"] },
+            { label: "Sổ thu hoạch", href: "/dashboard/farmer/harvests", icon: Wheat, matches: ["/dashboard/farmer/harvests", "/harvests"] },
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
@@ -119,7 +119,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Cá nhân", href: "/account", icon: UserRound, matches: ["/account"] },
         ],
         actions: [
-            { label: "Xuất hàng", description: "Tạo lô xuất khẩu và thông tin container", href: "/dashboard/processing/shipments", icon: Package },
+            { label: "Xuất bán", description: "Tạo lô xuất khẩu và thông tin container", href: "/dashboard/processing/shipments", icon: Package },
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Tạo QR", description: "Tạo mã QR truy xuất nguồn gốc cho lô hàng", href: "/dashboard/partner/traceability", icon: QrCode },
             { label: "Tài chính", description: "Báo cáo doanh thu và chi phí thu mua", href: "/dashboard/partner/finance", icon: CircleDollarSign },
@@ -129,11 +129,14 @@ const navigationByRole: Record<string, RoleNavigation> = {
         items: [
             { label: "Tổng quan", href: "/dashboard/processing", icon: Home },
             { label: "Thu mua", href: "/dashboard/processing/purchases", icon: ClipboardList, matches: ["/dashboard/processing/purchases"] },
-            { label: "Phân loại", href: "/dashboard/processing/grading", icon: Boxes, matches: ["/dashboard/processing/grading"] },
-            { label: "Chế biến", href: "/dashboard/processing/processing", icon: Factory, matches: ["/dashboard/processing/processing"] },
+            { label: "Nhập hàng", href: "/dashboard/processing/grading", icon: Boxes, matches: ["/dashboard/processing/grading"] },
+            { label: "Đóng gói", href: "/dashboard/processing/processing", icon: Factory, matches: ["/dashboard/processing/processing"] },
         ],
         actions: [
-            { label: "Xuất hàng", description: "Hồ sơ xuất hàng & phát hành QR truy xuất", href: "/dashboard/processing/shipments", icon: Package },
+            { label: "Tiếp nhận & Sơ chế", description: "Sổ BM-GMP-02", href: "/dashboard/processing/preprocessing", icon: ClipboardList },
+            { label: "Kiểm tra trước xuất bán", description: "Sổ BM-GMP-04", href: "/dashboard/processing/inspection", icon: ClipboardList },
+            { label: "Xuất bán", description: "Sổ BM-GMP-05", href: "/dashboard/processing/shipments", icon: Package },
+            { label: "Sau xuất bán", description: "Sổ BM-GMP-06", href: "/dashboard/processing/aftersales", icon: ClipboardList },
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Tài chính", description: "Báo cáo doanh thu, chi phí và hiệu quả chế biến", href: "/dashboard/processing/finance", icon: CircleDollarSign },
             { label: "Cá nhân", description: "Quản lý thông tin tài khoản và đổi mật khẩu", href: "/account", icon: UserRound },
