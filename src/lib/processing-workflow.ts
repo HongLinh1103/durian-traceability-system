@@ -15,7 +15,7 @@ export interface PurchaseRecord {
     pricePerKg: number;
     totalAmount: number; // weightKg * pricePerKg
     farmName: string;
-    pucCode: string; // e.g. "75-PUC-SR-00001-CHN"
+    pucCode: string; // e.g. "VN-DNOR-0269"
     notes?: string;
     createdAt: string;
     gradingStatus: "PENDING" | "COMPLETED";
@@ -68,7 +68,7 @@ export interface FinishedProductLot {
     sellerName: string;
     farmName: string;
     pucCode: string;
-    phcCode: string; // 75-PHC-SR-00001-CHN
+    phcCode: string; // VN-DNPH-131
     facilityName: string;
     durianVariety: string;
 }
@@ -166,10 +166,10 @@ export interface ProcessingWorkflowState {
 const STORAGE_KEY = "triviet_processing_workflow_v2";
 
 export const DEFAULT_FACILITY_INFO = {
-    name: "Cơ sở Chế biến & Đóng gói Sầu riêng Trị An",
-    phcCode: "75-PHC-SR-00001-CHN",
+    name: "Kim Quy OneMember LimitedLiabilityCompany",
+    phcCode: "VN-DNPH-131",
     phone: "0909000003",
-    address: "Ấp 1, Xã Trị An, Huyện Vĩnh Cửu, Tỉnh Đồng Nai",
+    address: "Hamlet 9, Nam Cat Tien Commune, Dong Nai Province, Vietnam",
     representative: "Trần Minh Anh",
 };
 
@@ -188,7 +188,7 @@ const SEED_PURCHASES: PurchaseRecord[] = [
         pricePerKg: 55000,
         totalAmount: 247500000,
         farmName: "Vườn sầu riêng Minh Phát",
-        pucCode: "75-PUC-SR-00001-CHN",
+        pucCode: "VN-DNOR-0269",
         notes: "Thu mua từ phiếu thu hoạch TH-2526-2908 của nông dân Trần Văn Minh (Vườn sầu riêng Minh Phát)",
         createdAt: "2026-08-29T08:30:00Z",
         gradingStatus: "COMPLETED",
@@ -206,7 +206,7 @@ const SEED_PURCHASES: PurchaseRecord[] = [
         pricePerKg: 52000,
         totalAmount: 59280000,
         farmName: "Vườn sầu riêng Minh Phát",
-        pucCode: "75-PUC-SR-00001-CHN",
+        pucCode: "VN-DNOR-0269",
         notes: "Thu mua từ phiếu thu hoạch TH-2526-2007 của nông dân Trần Văn Minh (Vườn sầu riêng Minh Phát)",
         createdAt: "2026-07-20T08:00:00Z",
         gradingStatus: "COMPLETED",
@@ -224,7 +224,7 @@ const SEED_PURCHASES: PurchaseRecord[] = [
         pricePerKg: 85000,
         totalAmount: 425000000,
         farmName: "Vườn Sầu Riêng Bác Ba",
-        pucCode: "75-PUC-SR-00001-CHN",
+        pucCode: "VN-DNOR-0269",
         notes: "Thu mua đợt 1 đầu vụ, trái nở gai đều, cơm vàng hạt lép",
         createdAt: "2026-03-05T08:00:00Z",
         gradingStatus: "COMPLETED",
@@ -290,13 +290,13 @@ const SEED_PURCHASES: PurchaseRecord[] = [
         purchaseDate: "2026-03-15",
         sellerName: "Nguyễn Thành Long",
         sellerPhone: "0918776655",
-        sellerAddress: "Ấp 2, Xã Trị An, Huyện Vĩnh Cửu, Tỉnh Đồng Nai",
+        sellerAddress: "Xã Nam Cát Tiên, tỉnh Đồng Nai",
         durianVariety: "Ri6",
         weightKg: 2500,
         pricePerKg: 86000,
         totalAmount: 215000000,
         farmName: "Vườn Sầu Riêng Ba Long",
-        pucCode: "75-PUC-SR-00001-CHN",
+        pucCode: "VN-DNOR-0269",
         notes: "Lô thu mua mới nhập về bãi kiểm định sáng nay",
         createdAt: "2026-03-15T07:30:00Z",
         gradingStatus: "PENDING",
@@ -319,7 +319,7 @@ const SEED_GRADINGS: GradingRecord[] = [
         notes: "Phân loại theo phiếu thu hoạch TH-2526-2908 (Trần Văn Minh - Vườn Minh Phát)",
         sellerName: "Trần Văn Minh",
         farmName: "Vườn sầu riêng Minh Phát",
-        pucCode: "75-PUC-SR-00001-CHN",
+        pucCode: "VN-DNOR-0269",
         freshStatus: "WAITING_PACKAGING",
         processedStatus: "WAITING_PROCESSING",
     },
@@ -338,7 +338,7 @@ const SEED_GRADINGS: GradingRecord[] = [
         notes: "Phân loại theo phiếu thu hoạch TH-2526-2007 (Trần Văn Minh - Vườn Minh Phát)",
         sellerName: "Trần Văn Minh",
         farmName: "Vườn sầu riêng Minh Phát",
-        pucCode: "75-PUC-SR-00001-CHN",
+        pucCode: "VN-DNOR-0269",
         freshStatus: "WAITING_PACKAGING",
         processedStatus: "WAITING_PROCESSING",
     },
@@ -395,7 +395,7 @@ const SEED_GRADINGS: GradingRecord[] = [
         notes: "70% đạt chuẩn xuất trái tươi, 30% trái nhỏ chuyển bóc múi cấp đông",
         sellerName: "Nguyễn Văn Nam",
         farmName: "Vườn Sầu Riêng Bác Ba",
-        pucCode: "75-PUC-SR-00001-CHN",
+        pucCode: "VN-DNOR-0269",
         freshStatus: "COMPLETED",
         processedStatus: "COMPLETED",
     },
@@ -442,9 +442,9 @@ const SEED_FINISHED_LOTS: FinishedProductLot[] = [
         purchaseCode: "TM-2026-0503",
         sellerName: "Nguyễn Văn Nam",
         farmName: "Vườn Sầu Riêng Bác Ba",
-        pucCode: "75-PUC-SR-00001-CHN",
-        phcCode: "75-PHC-SR-00001-CHN",
-        facilityName: "Cơ sở Chế biến & Đóng gói Sầu riêng Trị An",
+        pucCode: "VN-DNOR-0269",
+        phcCode: "VN-DNPH-131",
+        facilityName: "Công ty TNHH MTV Kim Quy",
         durianVariety: "Ri6",
     },
     {
@@ -468,9 +468,9 @@ const SEED_FINISHED_LOTS: FinishedProductLot[] = [
         purchaseCode: "TM-2026-0503",
         sellerName: "Nguyễn Văn Nam",
         farmName: "Vườn Sầu Riêng Bác Ba",
-        pucCode: "75-PUC-SR-00001-CHN",
-        phcCode: "75-PHC-SR-00001-CHN",
-        facilityName: "Cơ sở Chế biến & Đóng gói Sầu riêng Trị An",
+        pucCode: "VN-DNOR-0269",
+        phcCode: "VN-DNPH-131",
+        facilityName: "Công ty TNHH MTV Kim Quy",
         durianVariety: "Ri6",
     },
     {
@@ -495,8 +495,8 @@ const SEED_FINISHED_LOTS: FinishedProductLot[] = [
         sellerName: "Trần Thị Mai",
         farmName: "Vườn Hoàng Long",
         pucCode: "67-PUC-SR-00002-CHN",
-        phcCode: "75-PHC-SR-00001-CHN",
-        facilityName: "Cơ sở Chế biến & Đóng gói Sầu riêng Trị An",
+        phcCode: "VN-DNPH-131",
+        facilityName: "Công ty TNHH MTV Kim Quy",
         durianVariety: "Monthong",
     },
 ];
@@ -507,8 +507,8 @@ const SEED_SHIPMENTS: ShipmentRecord[] = [
         shipmentCode: "XH-2526-001",
         shipmentDate: "2026-03-10",
         contractType: "EXPORT",
-        sellerFacilityName: "Cơ sở Chế biến & Đóng gói Sầu riêng Trị An",
-        sellerPhcCode: "75-PHC-SR-00001-CHN",
+        sellerFacilityName: "Công ty TNHH MTV Kim Quy",
+        sellerPhcCode: "VN-DNPH-131",
         departurePort: "Cảng Cát Lái, TP. Hồ Chí Minh",
         buyerName: "Tập đoàn Nông sản Quảng Tây (Guangxi Agri-Trade Group)",
         destinationMarket: "Trung Quốc",
@@ -528,14 +528,12 @@ const SEED_SHIPMENTS: ShipmentRecord[] = [
         carrierName: "Công ty TNHH Vận tải & Tiếp vận Biển Đông",
         containerTemp: "+13°C (Độ ẩm 85%)",
         farmName: "Vườn Sầu Riêng Bác Ba",
-        pucCode: "75-PUC-SR-00001-CHN",
-        facilityName: "Cơ sở Chế biến & Đóng gói Sầu riêng Trị An",
-        phcCode: "75-PHC-SR-00001-CHN",
+        pucCode: "VN-DNOR-0269",
+        facilityName: "Công ty TNHH MTV Kim Quy",
+        phcCode: "VN-DNPH-131",
         purchaseCode: "TM-2026-0503",
         durianVariety: "Ri6",
-        qrIssued: true,
-        qrCodeUrl: "/trace?code=XH-2526-001",
-        issuedAt: "2026-03-10T10:30:00Z",
+        qrIssued: false,
     },
 ];
 

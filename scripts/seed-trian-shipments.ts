@@ -221,19 +221,6 @@ async function main() {
         },
     });
 
-    // TraceabilityCode 1
-    await prisma.traceabilityCode.create({
-        data: {
-            code: qrCode1,
-            publicToken: publicToken1,
-            commercialLotId: commLot1.id,
-            status: "ACTIVE",
-            issuedAt: exportDate1,
-            issuedById: ownerId,
-            issuedByRole: "PROCESSING_FACILITY",
-            activatedAt: exportDate1,
-        },
-    });
 
     // PartnerPaymentRecord 1 (Finance)
     await prisma.partnerPaymentRecord.create({
@@ -408,19 +395,6 @@ async function main() {
         },
     });
 
-    // TraceabilityCode 2
-    await prisma.traceabilityCode.create({
-        data: {
-            code: qrCode2,
-            publicToken: publicToken2,
-            commercialLotId: commLot2.id,
-            status: "ACTIVE",
-            issuedAt: exportDate2,
-            issuedById: ownerId,
-            issuedByRole: "PROCESSING_FACILITY",
-            activatedAt: exportDate2,
-        },
-    });
 
     // PartnerPaymentRecord 2 (Finance)
     await prisma.partnerPaymentRecord.create({

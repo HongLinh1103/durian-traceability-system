@@ -124,7 +124,7 @@ export function ProcessingRawMaterialsView({ initialItems }: { initialItems: Raw
     // Handler: Open Confirm Modal
     const handleOpenConfirm = (item: RawMaterialItem) => {
         setConfirmingItem(item);
-        setConfirmNoteInput("Cơ sở Chế biến Sầu riêng Trị An xác nhận tiếp nhận nguồn nguyên liệu theo kế hoạch thu hoạch của Farm.");
+        setConfirmNoteInput("Công ty TNHH MTV Kim Quy xác nhận tiếp nhận nguồn nguyên liệu theo kế hoạch thu hoạch của vườn.");
     };
 
     // Handler: Confirm Harvest Ticket (Chuẩn hóa: POST /api/harvest-receptions/[id]/accept)

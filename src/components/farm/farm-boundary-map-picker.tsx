@@ -727,8 +727,8 @@ export function FarmBoundaryMapPicker({
 
             {/* Coordinate list for every unique polygon vertex. */}
             {points.length > 0 && (
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-                    <div className="flex flex-col gap-1 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
+                    <div className="flex flex-col gap-1 border-b border-slate-300 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h4 className="text-sm font-black text-slate-900">Bảng tọa độ các điểm ranh giới</h4>
                             <p className="text-xs text-slate-500">
@@ -741,26 +741,26 @@ export function FarmBoundaryMapPicker({
                     </div>
 
                     <div className="max-h-72 overflow-auto">
-                        <table className="w-full min-w-[520px] text-left text-sm">
-                            <thead className="sticky top-0 z-10 bg-white text-[11px] uppercase tracking-wide text-slate-500 shadow-[0_1px_0_0_#e2e8f0]">
+                        <table className="w-full min-w-[520px] border-collapse border border-slate-300 text-left text-sm">
+                            <thead className="sticky top-0 z-10 bg-slate-100/95 text-xs text-slate-700 shadow-xs">
                                 <tr>
-                                    <th className="w-20 px-4 py-3 font-bold">Điểm</th>
-                                    <th className="px-4 py-3 font-bold">Vĩ độ (Latitude)</th>
-                                    <th className="px-4 py-3 font-bold">Kinh độ (Longitude)</th>
+                                    <th className="w-20 border border-slate-300 px-3.5 py-2.5 font-semibold text-center align-middle">Điểm</th>
+                                    <th className="border border-slate-300 px-3.5 py-2.5 font-semibold align-middle">Vĩ độ (Latitude)</th>
+                                    <th className="border border-slate-300 px-3.5 py-2.5 font-semibold align-middle">Kinh độ (Longitude)</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody>
                                 {points.map((point, index) => (
-                                    <tr key={`${index}-${point.lat}-${point.lng}`} className="hover:bg-emerald-50/40">
-                                        <td className="px-4 py-2.5">
-                                            <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-xs font-black text-white ${index === 0 ? "bg-emerald-900" : "bg-emerald-600"}`}>
+                                    <tr key={`${index}-${point.lat}-${point.lng}`} className="hover:bg-slate-50/70 transition">
+                                        <td className="border border-slate-200 px-3.5 py-2 text-center">
+                                            <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs font-black text-white ${index === 0 ? "bg-emerald-900" : "bg-emerald-600"}`}>
                                                 {index + 1}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-2.5 font-mono text-xs font-semibold tabular-nums text-slate-800">
+                                        <td className="border border-slate-200 px-3.5 py-2 font-mono text-xs font-semibold tabular-nums text-slate-800">
                                             {point.lat.toFixed(7)}
                                         </td>
-                                        <td className="px-4 py-2.5 font-mono text-xs font-semibold tabular-nums text-slate-800">
+                                        <td className="border border-slate-200 px-3.5 py-2 font-mono text-xs font-semibold tabular-nums text-slate-800">
                                             {point.lng.toFixed(7)}
                                         </td>
                                     </tr>

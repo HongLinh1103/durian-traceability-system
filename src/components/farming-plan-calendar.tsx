@@ -448,7 +448,7 @@ export function FarmingPlanCalendar() {
           </div>
         </div>
       </section>
-      <section className="overflow-hidden rounded-3xl border bg-white shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
         <div className="space-y-3 p-3 md:hidden">
           {loading ? (
             <Loading />
@@ -457,7 +457,7 @@ export function FarmingPlanCalendar() {
               <PlanCard
                 key={plan.id}
                 plan={plan}
-                                        toggle={toggle}
+                toggle={toggle}
                 edit={openEdit}
                 remove={setDeleting}
               />
@@ -467,8 +467,8 @@ export function FarmingPlanCalendar() {
           )}
         </div>
         <div className="hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[900px] text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+          <table className="w-full min-w-[900px] border-collapse border border-slate-300 text-left text-sm">
+            <thead className="bg-slate-100/90 text-xs text-slate-700">
               <tr>
                 {[
                   "Ngày",
@@ -478,16 +478,16 @@ export function FarmingPlanCalendar() {
                   "Đã thực hiện",
                   "Thao tác",
                 ].map((label) => (
-                  <th key={label} className="p-4 text-center">
+                  <th key={label} className="border border-slate-300 px-3.5 py-3 text-center font-semibold align-middle">
                     {label}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={6} className="border border-slate-200 py-12 text-center">
                     <Loading />
                   </td>
                 </tr>
@@ -503,7 +503,7 @@ export function FarmingPlanCalendar() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={6} className="border border-slate-200 py-12 text-center text-slate-400">
                     <Empty />
                   </td>
                 </tr>
@@ -669,27 +669,27 @@ function PlanRow({ plan, toggle, edit, remove }: PlanActions) {
     new Date(plan.plannedDate).getTime() < Date.now() &&
     plan.status !== "COMPLETED";
   return (
-    <tr className="hover:bg-slate-50">
+    <tr className="hover:bg-slate-50/70 transition">
       <td
-        className={`p-4 text-center font-semibold ${overdue ? "text-rose-700" : ""}`}
+        className={`border border-slate-200 px-3.5 py-2.5 text-center font-semibold ${overdue ? "text-rose-700" : ""}`}
       >
         {formatVietnameseDate(new Date(`${dateKey(plan.plannedDate)}T00:00:00`))}
         {overdue && <small className="block text-[10px]">Quá hạn</small>}
       </td>
-      <td className="p-4 text-center">{timeText(plan.plannedDate)}</td>
-      <td className="p-4 font-semibold">
+      <td className="border border-slate-200 px-3.5 py-2.5 text-center">{timeText(plan.plannedDate)}</td>
+      <td className="border border-slate-200 px-3.5 py-2.5 font-semibold text-slate-800">
         {plan.otherActivity || activityLabels[plan.activityType] || plan.title}
       </td>
-      <td className="p-4">
+      <td className="border border-slate-200 px-3.5 py-2.5">
         <Material plan={plan} />
       </td>
-      <td className="p-4 text-center">
+      <td className="border border-slate-200 px-3.5 py-2.5 text-center">
         <CheckBox
           checked={plan.status === "COMPLETED"}
           onChange={(checked) => void toggle(plan, checked)}
         />
       </td>
-      <td className="p-4">
+      <td className="border border-slate-200 px-3.5 py-2.5 text-center">
         <div className="flex justify-center gap-1">
           <IconButton label="Chỉnh sửa" onClick={() => edit(plan)}>
             <Pencil className="h-4 w-4" />

@@ -8,10 +8,15 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
+const vietnamPhoneSchema = z.preprocess(
+    (value) => typeof value === "string" ? value.trim().replace(/[\s.-]+/g, "") : value,
+    z.string().regex(/^0\d{9}$/, "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0."),
+);
+
 const profileSchema = z.object({
     action: z.literal("profile"),
     fullName: z.string().trim().min(2, "Họ tên phải có ít nhất 2 ký tự.").max(120),
-    phone: z.string().trim().regex(/^0\d{9}$/, "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0."),
+    phone: vietnamPhoneSchema,
     email: z.string().trim().email("Email không hợp lệ."),
     birthDate: z.string().trim().optional(),
     gender: z.enum(["FEMALE", "MALE", "OTHER", ""]).optional(),
@@ -49,7 +54,7 @@ const facilitySchema = z.object({
 const farmerSchema = z.object({
     action: z.literal("farmer"),
     fullName: z.string().trim().min(2, "Họ tên phải có ít nhất 2 ký tự.").max(120),
-    phone: z.string().trim().regex(/^0\d{9}$/, "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0."),
+    phone: vietnamPhoneSchema,
     email: z.string().trim().email("Email không hợp lệ."),
     birthDate: z.string().trim().optional(),
     gender: z.enum(["FEMALE", "MALE", "OTHER", ""]).optional(),

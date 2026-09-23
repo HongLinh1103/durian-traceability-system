@@ -69,11 +69,11 @@ export default async function AccountPage() {
               identityIssuedPlace: managerApplication?.identityIssuedPlace || "Cục Cảnh sát QLHC về TTXH",
               managedRegions: managedRegions.length > 0 ? managedRegions : [
                   {
-                      code: "75-PUC-SR-00001-CHN",
-                      name: "Vùng trồng sầu riêng Tân Phú",
-                      province: "Đồng Nai",
-                      district: "Tân Phú",
-                      ward: "Xã Phú Lộc",
+                      code: "VN - DNOR - 0269",
+                      name: "Kim Quy One Member Limited Liability Company",
+                      province: "Dong Nai",
+                      district: "",
+                      ward: "",
                       areaSize: 120,
                       durianVarieties: ["Ri6", "Thái (Monthong)"],
                   }
@@ -164,12 +164,14 @@ export default async function AccountPage() {
     }
 
     const farms = (user?.farms || []).map((f) => {
-        const regCode = f.region?.code || (f.growingRegion ? f.growingRegion.split(" - ")[0] : null) || "75-PUC-SR-00001-CHN";
+        const regCode = f.region?.code || (f.growingRegion ? f.growingRegion.split(" - ")[0] : null) || "VN - DNOR - 0269";
         return {
             id: f.id,
             farmName: f.farmName,
             farmCode: f.farmCode,
             regionCode: regCode,
+            regionName: f.region?.name || null,
+            regionAddress: f.region?.address || null,
             areaSize: f.areaSize,
             totalTrees: f.totalTrees,
             durianVariety: f.durianVariety,

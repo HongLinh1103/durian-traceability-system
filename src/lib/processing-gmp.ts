@@ -2,8 +2,64 @@
 export type Stage = 'purchases' | 'receiving' | 'preprocessing' | 'packaging' | 'inspection' | 'sales' | 'aftersales';
 export type Values = Record<string, string | number>;
 export interface GmpRecord { id: string; sourceId: string; lotCode: string; season: string; values: Values; draft?: boolean }
+export interface Expense {
+    id: string;
+    code?: string;
+    date: string;
+    category: string;
+    content: string;
+    lotCode?: string;
+    amount: number;
+    method?: string;
+    notes?: string;
+}
+
+export interface ExpenseCategory {
+    name: string;
+    description: string;
+    example: string;
+}
+
+export const EXPENSE_CATEGORIES: readonly ExpenseCategory[] = [
+    {
+        name: 'Bao bì & đóng gói',
+        description: 'Thùng carton, khay, dây đai, tem nhãn, QR, màng bọc, pallet',
+        example: 'Mua 1.000 thùng carton',
+    },
+    {
+        name: 'Kiểm nghiệm & kiểm dịch',
+        description: 'Kiểm nghiệm Cadmium, Vàng O, dư lượng, kiểm dịch thực vật, lấy mẫu',
+        example: 'Phí kiểm nghiệm lô xuất khẩu',
+    },
+    {
+        name: 'Vận chuyển & logistics',
+        description: 'Xe vận chuyển, container, phí nâng/hạ, vận chuyển ra cửa khẩu/cảng',
+        example: 'Xe từ cơ sở Hữu Nghị',
+    },
+    {
+        name: 'Xuất khẩu',
+        description: 'Phí khai báo/hải quan, chứng từ, dịch vụ xuất khẩu, phí cảng/cửa khẩu',
+        example: 'Phí làm thủ tục lô hàng',
+    },
+    {
+        name: 'Nhân công',
+        description: 'Sơ chế, phân loại, đóng gói, bốc xếp, nhân công thời vụ',
+        example: 'Nhân công đóng gói',
+    },
+    {
+        name: 'Vận hành cơ sở',
+        description: 'Điện (bao gồm điện kho lạnh), nước, internet, vệ sinh, sửa chữa, bảo trì thiết bị, thuê kho. Tiền điện và tiền nước ghi thành hai khoản chi riêng.',
+        example: 'Tiền điện tháng 09 hoặc Tiền nước tháng 09 (mỗi khoản một phiếu chi)',
+    },
+    {
+        name: 'Khác',
+        description: 'Khoản phát sinh không thuộc các nhóm trên',
+        example: 'Sửa cân điện tử',
+    },
+] as const;
+
 export interface Payment { id: string; recordId: string; direction: 'IN' | 'OUT'; date: string; amount: number; method: string }
-export interface GmpState { records: Record<Stage, GmpRecord[]>; payments: Payment[]; demo: boolean }
+export interface GmpState { records: Record<Stage, GmpRecord[]>; payments: Payment[]; expenses?: Expense[]; demo: boolean }
 export interface Field { key: string; label: string; type?: 'number' | 'date' | 'time' | 'check' | 'finding'; required?: boolean; group?: string; inherited?: boolean; internal?: boolean }
 const f = (key: string, label: string, type: Field['type'] = undefined, extra: Partial<Field> = {}): Field => ({ key, label, type, ...extra });
 const n = (key: string, label: string, extra: Partial<Field> = {}) => f(key, label, 'number', extra);
@@ -14,12 +70,12 @@ const correction = f('correction', 'Hành động khắc phục');
 const supervisor = f('supervisor', 'Người giám sát', undefined, { required: true });
 export const STAGES: Stage[] = ['purchases', 'receiving', 'preprocessing', 'packaging', 'inspection', 'sales', 'aftersales'];
 export const REGISTERS: Record<Stage, { title: string; code: string; path: string; fields: Field[] }> = {
-    purchases: { title: 'SỔ THU MUA', code: 'THU MUA', path: 'purchases', fields: [day, f('seller', 'Người bán', undefined, { required: true }), n('weight', 'Khối lượng mua (kg)', { required: true }), n('price', 'Giá mua (đ/kg)', { required: true }), n('total', 'Thành tiền (đ)', { inherited: true }), f('phone', 'Điện thoại'), f('address', 'Địa chỉ người bán'), f('notes', 'Ghi chú')] },
-    receiving: { title: 'SỔ NHẬP HÀNG', code: 'THU MUA', path: 'grading', fields: [f('date', 'Ngày tiếp nhận', 'date', { required: true }), f('seller', 'Người bán', undefined, { inherited: true }), f('puc', 'Mã số vùng trồng', undefined, { required: true }), f('origin', 'Thông tin vùng nguyên liệu (tên vùng trồng và địa chỉ)', undefined, { required: true }), f('variety', 'Chủng loại', undefined, { required: true }), n('grade1', 'Loại 1', { group: 'Số lượng tiếp nhận (kg)', required: true }), n('grade2', 'Loại 2', { group: 'Số lượng tiếp nhận (kg)', required: true }), n('grade3', 'Loại 3', { group: 'Số lượng tiếp nhận (kg)', required: true }), n('rejected', 'Số lượng từ chối (kg)', { required: true }), f('receiver', 'Tên người tiếp nhận', undefined, { required: true }), f('lotCode', 'Chuyển sang sản xuất (mã số lô hàng)', undefined, { inherited: true })] },
+    purchases: { title: 'SỔ THU MUA', code: 'THU MUA', path: 'purchases', fields: [day, f('seller', 'Người bán', undefined, { required: true }), f('phone', 'Liên hệ'), f('puc', 'Mã số vùng trồng'), n('weight', 'Khối lượng mua (kg)', { required: true }), n('price', 'Giá mua (đ/kg)', { required: true }), n('total', 'Thành tiền (đ)', { inherited: true }), f('origin', 'Tên vùng trồng và địa chỉ'), f('notes', 'Ghi chú')] },
+    receiving: { title: 'SỔ NHẬP HÀNG', code: 'THU MUA', path: 'grading', fields: [f('date', 'Ngày tiếp nhận', 'date', { required: true }), f('seller', 'Người bán', undefined, { inherited: true }), f('puc', 'Mã số vùng trồng', undefined, { required: true, inherited: true }), f('origin', 'Tên vùng trồng và địa chỉ', undefined, { required: true, inherited: true }), f('variety', 'Chủng loại', undefined, { required: true }), n('grade1', 'Loại 1', { group: 'Số lượng tiếp nhận (kg)', required: true }), n('grade2', 'Loại 2', { group: 'Số lượng tiếp nhận (kg)', required: true }), n('grade3', 'Loại 3', { group: 'Số lượng tiếp nhận (kg)', required: true }), n('rejected', 'Số lượng từ chối (kg)', { required: true }), f('receiver', 'Tên người tiếp nhận', undefined, { required: true }), f('lotCode', 'Chuyển sang sản xuất (mã số lô hàng)', undefined, { inherited: true })] },
     preprocessing: { title: 'SỔ TIẾP NHẬN & SƠ CHẾ', code: 'SẢN XUẤT', path: 'preprocessing', fields: [day, lot, n('inputWeight', 'Khối lượng thực tế tiếp nhận sơ chế (kg)', { inherited: true }), c('supplierOk', 'Thông tin về nhà cung cấp nguyên liệu (Đ/K)', 'Kiểm tra đầu vào'), c('transportOk', 'Phương tiện, điều kiện vận chuyển nguyên liệu đảm bảo sạch (Đ/K)', 'Kiểm tra đầu vào'), c('materialOk', 'Chủng loại, cảm quan, chất lượng nguyên liệu (Đ/K)', 'Kiểm tra đầu vào'), c('brushOk', 'Vệ sinh bằng bàn chà (Đ/K)', 'Đánh giá công đoạn vệ sinh tạp chất (Đ/K)'), c('airOk', 'Thổi sạch bằng xịt cao áp (Đ/K)', 'Đánh giá công đoạn vệ sinh tạp chất (Đ/K)'), f('dryStart', 'Thời gian bắt đầu', 'time', { required: true, group: 'Đánh giá công đoạn phơi khô sản phẩm (Đ/K)' }), f('dryEnd', 'Thời gian kết thúc', 'time', { required: true, group: 'Đánh giá công đoạn phơi khô sản phẩm (Đ/K)' }), c('dryOk', 'Tình trạng sản phẩm (Đ/K)', 'Đánh giá công đoạn phơi khô sản phẩm (Đ/K)'), c('qualityOk', 'Chất lượng, quy cách sản phẩm sau sơ chế (Đ/K)', 'Kết quả'), n('outputWeight', 'Khối lượng thực tế sau sơ chế đưa sang đóng gói (kg)', { required: true }), correction, supervisor] },
     packaging: { title: 'SỔ ĐÓNG GÓI & NHẬP KHO', code: 'SẢN XUẤT', path: 'processing', fields: [day, lot, n('inputWeight', 'Khối lượng thực tế tiếp nhận đóng gói (kg)', { inherited: true }), c('toolsOk', 'Dụng cụ đóng gói đảm bảo sạch (Đ/K)', 'Vệ sinh'), c('labelsOk', 'Tình trạng vệ sinh bao bì, tem nhãn trước khi đóng gói (Đ/K)', 'Vệ sinh'), c('weighOk', 'Cân', 'Đánh giá công đoạn đóng gói - đóng thùng (Đ/K)'), c('stickerOk', 'Dán tem, nhãn', 'Đánh giá công đoạn đóng gói - đóng thùng (Đ/K)'), c('packOk', 'Đóng gói', 'Đánh giá công đoạn đóng gói - đóng thùng (Đ/K)'), c('qualityOk', 'Chất lượng, quy cách sản phẩm sau đóng gói (Đ/K)', 'Kết quả'), n('quantity_boxes', 'Số lượng nhập kho (thùng)', { group: 'Nhập kho thành phẩm', required: true }), n('weight_kg', 'Khối lượng nhập kho (kg)', { group: 'Nhập kho thành phẩm', required: true }), correction, supervisor] },
     inspection: { title: 'SỔ KIỂM TRA TRƯỚC XUẤT BÁN', code: 'SẢN XUẤT', path: 'inspection', fields: [f('date', 'Ngày kiểm tra', 'date', { required: true }), lot, n('inputBoxes', 'Số lượng (thùng)', { inherited: true, group: 'Số lượng/khối lượng tiếp nhận kiểm tra' }), n('inputWeight', 'Khối lượng (kg)', { inherited: true, group: 'Số lượng/khối lượng tiếp nhận kiểm tra' }), ...[1, 2, 3].map(i => n(`sample${i}`, `Loại ${i}`, { group: 'Số lượng kiểm tra 2% (thùng)', required: true })), ...[['mealybug', 'Rệp sáp'], ['fly', 'Ấu trùng ruồi đục quả'], ['soil', 'Đất'], ['leaves', 'Lá cây'], ['insects', 'Côn trùng khác'], ['other', 'Khác']].map(([key, label]) => f(key, label, 'finding', { group: 'Kết quả kiểm tra phát hiện/không đạt', required: true })), n('quantity_boxes', 'Số lượng (thùng)', { group: 'Số lượng/khối lượng đưa qua xuất bán', required: true }), n('weight_kg', 'Khối lượng (kg)', { group: 'Số lượng/khối lượng đưa qua xuất bán', required: true }), f('correction', 'Biện pháp khắc phục (nếu có)'), f('inspector', 'Người kiểm tra', undefined, { required: true })] },
-    sales: { title: 'SỔ THEO DÕI XUẤT BÁN', code: 'XUẤT BÁN', path: 'shipments', fields: [day, f('customer', 'Khách hàng', undefined, { required: true }), f('customerInfo', 'Thông tin khách hàng', undefined, { required: true }), f('lotCode', 'Mã số lô hàng', undefined, { inherited: true, group: 'Thông tin lô hàng' }), f('variety', 'Chủng loại', undefined, { inherited: true, group: 'Thông tin lô hàng' }), c('transportOk', 'Điều kiện phương tiện vận chuyển (Đ/K)', 'Thông tin lô hàng'), f('truck', 'Biển số xe', undefined, { group: 'Thông tin lô hàng' }), f('container', 'Số container', undefined, { required: true, group: 'Thông tin lô hàng' }), f('seal', 'Số Seal', undefined, { group: 'Thông tin lô hàng' }), n('quantity_boxes', 'Số lượng (thùng)', { inherited: true, group: 'Thông tin lô hàng' }), n('weight_kg', 'Khối lượng (kg)', { inherited: true, group: 'Thông tin lô hàng' }), f('exporter', 'Đơn vị xuất khẩu', undefined, { required: true }), f('departurePort', 'Cảng đi'), f('destinationPort', 'Cảng đến'), f('country', 'Nước nhập khẩu', undefined, { required: true }), f('notes', 'Ghi chú'), n('price', 'Giá bán (đ/kg)', { internal: true })] },
+    sales: { title: 'SỔ THEO DÕI XUẤT BÁN', code: 'XUẤT BÁN', path: 'shipments', fields: [day, f('customer', 'Khách hàng', undefined, { required: true }), f('customerInfo', 'Thông tin khách hàng', undefined, { required: true }), f('lotCode', 'Mã số lô hàng', undefined, { inherited: true, group: 'Thông tin lô hàng' }), f('variety', 'Chủng loại', undefined, { inherited: true, group: 'Thông tin lô hàng' }), c('transportOk', 'Điều kiện phương tiện vận chuyển (Đ/K)', 'Thông tin lô hàng'), f('truck', 'Biển số xe', undefined, { group: 'Thông tin lô hàng' }), f('container', 'Số container', undefined, { required: true, group: 'Thông tin lô hàng' }), f('seal', 'Số Seal', undefined, { group: 'Thông tin lô hàng' }), n('quantity_boxes', 'Số lượng (thùng)', { inherited: true, group: 'Thông tin lô hàng' }), n('weight_kg', 'Khối lượng (kg)', { inherited: true, group: 'Thông tin lô hàng' }), n('total', 'Giá trị (đ)', { inherited: true, group: 'Thông tin lô hàng' }), f('exporter', 'Đơn vị xuất khẩu', undefined, { required: true }), f('departurePort', 'Cảng/Cửa khẩu đi'), f('destinationPort', 'Cảng/Cửa khẩu đến'), f('country', 'Nước nhập khẩu', undefined, { required: true }), f('notes', 'Ghi chú'), n('price', 'Giá bán (đ/kg)', { internal: true })] },
     aftersales: {
         title: 'SỔ THEO DÕI SAU XUẤT BÁN',
         code: 'XUẤT BÁN',
@@ -83,11 +139,15 @@ export function inherit(state: GmpState, stage: Stage, source?: GmpRecord): Valu
     const v = source.values;
     const origin = state.records.receiving.find(r => r.lotCode === source.lotCode);
     const base: Values = { lotCode: source.lotCode, variety: origin?.values.variety || '', productLot: `${origin?.values.variety || ''} · ${source.lotCode}` };
-    if (stage === 'receiving') return { seller: v.seller, lotCode: '' };
+    if (stage === 'receiving') return { seller: v.seller, puc: v.puc || '', lotCode: '' };
     if (stage === 'preprocessing') return { ...base, supplier: v.seller || state.records.purchases.find(r => r.id === source.sourceId)?.values.seller || '', inputWeight: Number(v.grade1) + Number(v.grade2) + Number(v.grade3) };
     if (stage === 'packaging') return { ...base, inputWeight: v.outputWeight };
     if (stage === 'inspection') return { ...base, inputBoxes: v.quantity_boxes, inputWeight: v.weight_kg };
-    if (stage === 'sales') return { ...base, quantity_boxes: v.quantity_boxes, weight_kg: v.weight_kg };
+    if (stage === 'sales') {
+        const w = Number(v.weight_kg || 0);
+        const p = Number(v.price || 85000);
+        return { ...base, quantity_boxes: v.quantity_boxes, weight_kg: v.weight_kg, price: p, total: w * p };
+    }
     if (stage === 'aftersales') {
         const saleDate = String(v.date || '');
         const boxes = Number(v.quantity_boxes || 0);
@@ -96,7 +156,7 @@ export function inherit(state: GmpState, stage: Stage, source?: GmpRecord): Valu
         const departureDate = saleDate;
         const borderDate = saleDate ? addDaysStr(saleDate, 2) : '';
         const clearanceDate = saleDate ? addDaysStr(saleDate, 3) : '';
-        const checkDate = saleDate ? addDaysStr(saleDate, 4) : '';
+        const checkDate = saleDate ? addDaysStr(saleDate, 3) : '';
         return {
             ...base,
             date: checkDate || saleDate,
@@ -184,27 +244,216 @@ export function compareGmpRecordsNewestFirst(a: GmpRecord, b: GmpRecord): number
     return codeB.localeCompare(codeA);
 }
 
+export const KIM_QUY_SALES_RECORDS: Record<string, Partial<Values>> = {
+    'LH-2026-0809': {
+        date: '2026-09-11',
+        customer: 'Công ty Phân phối Hoa quả Quảng Tây',
+        customerInfo: 'Nam Ninh, Quảng Tây, Trung Quốc',
+        lotCode: 'LH-2026-0809',
+        variety: 'Monthong',
+        productLot: 'Monthong · LH-2026-0809',
+        transportOk: 'Đ',
+        truck: '51D-801.01',
+        container: 'MSCU1234566',
+        seal: 'HSS260911001',
+        quantity_boxes: 396,
+        weight_kg: 5940,
+        exporter: 'Kim Quy One Member Limited Liability Company',
+        departurePort: 'Cửa khẩu quốc tế Hữu Nghị, Lạng Sơn',
+        destinationPort: 'Hữu Nghị Quan, Quảng Tây, Trung Quốc',
+        country: 'Trung Quốc',
+        notes: '',
+    },
+    'LH-2026-0609': {
+        date: '2026-09-10',
+        customer: 'Công ty Thương mại Nông sản Bằng Tường',
+        customerInfo: 'Bằng Tường, Quảng Tây, Trung Quốc',
+        lotCode: 'LH-2026-0609',
+        variety: 'Ri6',
+        productLot: 'Ri6 · LH-2026-0609',
+        transportOk: 'Đ',
+        truck: '51D-806.02',
+        container: 'TGHU7654320',
+        seal: 'HSS260910002',
+        quantity_boxes: 274,
+        weight_kg: 5480,
+        exporter: 'Kim Quy One Member Limited Liability Company',
+        departurePort: 'Cửa khẩu quốc tế Hữu Nghị, Lạng Sơn',
+        destinationPort: 'Hữu Nghị Quan, Quảng Tây, Trung Quốc',
+        country: 'Trung Quốc',
+        notes: '',
+    },
+    'LH-2026-0509': {
+        date: '2026-09-08',
+        customer: 'Công ty Hoa quả Tươi Nam Ninh',
+        customerInfo: 'Nam Ninh, Quảng Tây, Trung Quốc',
+        lotCode: 'LH-2026-0509',
+        variety: 'Monthong',
+        productLot: 'Monthong · LH-2026-0509',
+        transportOk: 'Đ',
+        truck: '51D-805.03',
+        container: 'CMAU2468103',
+        seal: 'HSS260908003',
+        quantity_boxes: 284,
+        weight_kg: 4260,
+        exporter: 'Kim Quy One Member Limited Liability Company',
+        departurePort: 'Cửa khẩu quốc tế Hữu Nghị, Lạng Sơn',
+        destinationPort: 'Hữu Nghị Quan, Quảng Tây, Trung Quốc',
+        country: 'Trung Quốc',
+        notes: '',
+    },
+    'LH-2026-0309': {
+        date: '2026-09-05',
+        customer: 'Công ty Phân phối Trái cây Quảng Tây',
+        customerInfo: 'Nam Ninh, Quảng Tây, Trung Quốc',
+        lotCode: 'LH-2026-0309',
+        variety: 'Ri6',
+        productLot: 'Ri6 · LH-2026-0309',
+        transportOk: 'Đ',
+        truck: '51D-803.04',
+        container: 'MSCU6543212',
+        seal: 'HSS260905004',
+        quantity_boxes: 341,
+        weight_kg: 5115,
+        exporter: 'Kim Quy One Member Limited Liability Company',
+        departurePort: 'Cửa khẩu quốc tế Hữu Nghị, Lạng Sơn',
+        destinationPort: 'Hữu Nghị Quan, Quảng Tây, Trung Quốc',
+        country: 'Trung Quốc',
+        notes: '',
+    },
+    'LH-2026-0209': {
+        date: '2026-09-04',
+        customer: 'Công ty Nông sản Hữu nghị Quảng Tây',
+        customerInfo: 'Bằng Tường, Quảng Tây, Trung Quốc',
+        lotCode: 'LH-2026-0209',
+        variety: 'Monthong',
+        productLot: 'Monthong · LH-2026-0209',
+        transportOk: 'Đ',
+        truck: '51D-802.05',
+        container: 'TGHU2345673',
+        seal: 'HSS260904005',
+        quantity_boxes: 255,
+        weight_kg: 4590,
+        exporter: 'Kim Quy One Member Limited Liability Company',
+        departurePort: 'Cửa khẩu quốc tế Hữu Nghị, Lạng Sơn',
+        destinationPort: 'Hữu Nghị Quan, Quảng Tây, Trung Quốc',
+        country: 'Trung Quốc',
+        notes: '',
+    },
+    'LH-2026-2908': {
+        date: '2026-08-31',
+        customer: 'Công ty Thương mại Trái cây Bằng Tường',
+        customerInfo: 'Bằng Tường, Quảng Tây, Trung Quốc',
+        lotCode: 'LH-2026-2908',
+        variety: 'Ri6',
+        productLot: 'Ri6 · LH-2026-2908',
+        transportOk: 'Đ',
+        truck: '51D-829.06',
+        container: 'CMAU1357907',
+        seal: 'HSS260831006',
+        quantity_boxes: 258,
+        weight_kg: 4644,
+        exporter: 'Kim Quy One Member Limited Liability Company',
+        departurePort: 'Cửa khẩu quốc tế Hữu Nghị, Lạng Sơn',
+        destinationPort: 'Hữu Nghị Quan, Quảng Tây, Trung Quốc',
+        country: 'Trung Quốc',
+        notes: '',
+    },
+    'LH-2026-2007': {
+        date: '2026-07-22',
+        customer: 'Công ty Phân phối Hoa quả Nam Ninh',
+        customerInfo: 'Nam Ninh, Quảng Tây, Trung Quốc',
+        lotCode: 'LH-2026-2007',
+        variety: 'Ri6',
+        productLot: 'Ri6 · LH-2026-2007',
+        transportOk: 'Đ',
+        truck: '51D-720.07',
+        container: 'MSCU3456789',
+        seal: 'HSS260722007',
+        quantity_boxes: 204,
+        weight_kg: 4080,
+        exporter: 'Kim Quy One Member Limited Liability Company',
+        departurePort: 'Cửa khẩu quốc tế Hữu Nghị, Lạng Sơn',
+        destinationPort: 'Hữu Nghị Quan, Quảng Tây, Trung Quốc',
+        country: 'Trung Quốc',
+        notes: '',
+    },
+};
+
 export function normalizeGmpState(state: GmpState): { state: GmpState; changed: boolean } {
     let changed = false;
     const existingPurchaseCodes: string[] = [];
 
     const purchases = (state.records.purchases || []).map((r) => {
         let lotCode = r.lotCode || '';
+        let recordChanged = false;
+        const nextValues = { ...r.values };
+
+        const seller = String(nextValues.seller || '').trim();
+        let phone = String(nextValues.phone || '').trim();
+        if (seller.includes('Nguyễn Văn Nam') && (phone === '0901234567' || !phone)) {
+            phone = '0983456789';
+            nextValues.phone = phone;
+            recordChanged = true;
+            changed = true;
+        } else if (seller.includes('Lê Thị Hoa') && (phone === '0901234567' || !phone)) {
+            phone = '0987654321';
+            nextValues.phone = phone;
+            recordChanged = true;
+            changed = true;
+        }
+
+        const linkedReceiving = (state.records.receiving || []).find(rec =>
+            rec.sourceId === r.id ||
+            rec.lotCode === r.lotCode ||
+            (r.lotCode && rec.lotCode && (rec.lotCode === r.lotCode.replace(/^TM-/, 'LH-') || rec.lotCode.replace(/^LH-/, 'TM-') === r.lotCode))
+        );
+
+        if (!nextValues.puc && linkedReceiving?.values?.puc) {
+            nextValues.puc = linkedReceiving.values.puc;
+            recordChanged = true;
+            changed = true;
+        }
+
+        let origin = String(nextValues.origin || '').trim();
+        if (!origin) {
+            const candidateOrigin = linkedReceiving?.values?.origin || nextValues.address || linkedReceiving?.values?.address;
+            if (candidateOrigin) {
+                origin = String(candidateOrigin).replace(/\s*\(minh họa\)/gi, '').replace(/\s*\(minh hoa\)/gi, '').trim();
+                nextValues.origin = origin;
+                recordChanged = true;
+                changed = true;
+            }
+        } else if (origin.includes('(minh họa)') || origin.includes('(minh hoa)')) {
+            origin = origin.replace(/\s*\(minh họa\)/gi, '').replace(/\s*\(minh hoa\)/gi, '').trim();
+            nextValues.origin = origin;
+            recordChanged = true;
+            changed = true;
+        }
+        if (!nextValues.address && nextValues.origin) {
+            nextValues.address = nextValues.origin;
+            recordChanged = true;
+            changed = true;
+        }
+
         if (lotCode.includes('demo') || !/^TM-\d{4}-\d{4}(?:-\d{2})?$/.test(lotCode)) {
             const newCode = formatPurchaseLotCode(r.values?.date || lotCode, existingPurchaseCodes);
             lotCode = newCode;
+            recordChanged = true;
             changed = true;
             existingPurchaseCodes.push(newCode);
+            nextValues.purchaseCode = newCode;
+        } else {
+            existingPurchaseCodes.push(lotCode);
+        }
+
+        if (recordChanged) {
             return {
                 ...r,
-                lotCode: newCode,
-                values: {
-                    ...r.values,
-                    purchaseCode: newCode,
-                },
+                lotCode,
+                values: nextValues,
             };
         }
-        existingPurchaseCodes.push(lotCode);
         return r;
     });
 
@@ -323,7 +572,7 @@ export function normalizeGmpState(state: GmpState): { state: GmpState; changed: 
 
                 const inW = Number(nextValues.inputWeight || 0);
                 let outW = Number(nextValues.outputWeight || 0);
-                if (inW > 0 && (inW - outW > 10 || inW - outW < 0)) {
+                if (inW > 0 && (!Number.isFinite(outW) || outW <= 0 || outW > inW)) {
                     const diff = (idx % 2 === 0 || lotCode.endsWith('0509') || lotCode.endsWith('0209') || lotCode.endsWith('2007'))
                         ? 0
                         : (lotCode.endsWith('2908') ? 5 : lotCode.endsWith('0309') ? 3 : 2);
@@ -396,6 +645,21 @@ export function normalizeGmpState(state: GmpState): { state: GmpState; changed: 
                         changed = true;
                     }
                 }
+
+                if ((lotCode === 'LH-2026-0809' || lotCode.endsWith('0809') || r.id === 'demo-7-4') && nextValues.mealybug === 'Có') {
+                    nextValues.mealybug = 'Không';
+                    if (!Number(nextValues.quantity_boxes) && (nextValues.inputBoxes || packRec?.values?.quantity_boxes)) {
+                        nextValues.quantity_boxes = Number(nextValues.inputBoxes || packRec?.values?.quantity_boxes || 58);
+                    }
+                    if (!Number(nextValues.weight_kg) && (nextValues.inputWeight || packRec?.values?.weight_kg)) {
+                        nextValues.weight_kg = Number(nextValues.inputWeight || packRec?.values?.weight_kg || 1044);
+                    }
+                    if (nextValues.correction) {
+                        nextValues.correction = '';
+                    }
+                    recordChanged = true;
+                    changed = true;
+                }
             }
 
             if (s === 'sales') {
@@ -405,14 +669,46 @@ export function normalizeGmpState(state: GmpState): { state: GmpState; changed: 
                     recordChanged = true;
                     changed = true;
                 }
+                const kimQuyStandard = KIM_QUY_SALES_RECORDS[lotCode];
+                if (kimQuyStandard) {
+                    for (const [k, val] of Object.entries(kimQuyStandard)) {
+                        if (k === 'notes') {
+                            if (nextValues.notes && (String(nextValues.notes).includes('minh họa') || String(nextValues.notes).includes('chưa xác nhận'))) {
+                                nextValues.notes = '';
+                                recordChanged = true;
+                                changed = true;
+                            }
+                        } else if (val !== undefined && nextValues[k] !== val) {
+                            const cur = String(nextValues[k] ?? '').trim();
+                            if (!cur || cur.includes('(minh họa)') || cur.includes('minh họa') || cur.startsWith('XE-') || cur.startsWith('CONTAINER-') || cur.startsWith('SEAL-') || cur.includes('Trị An') || (k === 'country' && cur === 'Việt Nam') || cur.includes('bán nội địa') || (k === 'customer' && !cur.startsWith('Công ty')) || (k === 'truck' && !cur.startsWith('51D-')) || (k === 'exporter' && cur !== val)) {
+                                nextValues[k] = val;
+                                recordChanged = true;
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+                const w = Number(nextValues.weight_kg || 0);
+                const p = Number(nextValues.price || 85000);
+                const expectedTotal = w * p;
+                if (nextValues.total === undefined || nextValues.total === null || nextValues.total === '' || (expectedTotal > 0 && Number(nextValues.total) === 0)) {
+                    nextValues.total = expectedTotal;
+                    recordChanged = true;
+                    changed = true;
+                }
             }
 
             if (s === 'aftersales') {
                 const saleRec = updatedRecords.sales.find(p => p.id === r.sourceId || p.lotCode === lotCode);
                 const saleDate = String(saleRec?.values?.date || '');
 
-                if (!nextValues.container && saleRec?.values?.container) {
+                if (saleRec?.values?.container && nextValues.container !== saleRec.values.container) {
                     nextValues.container = saleRec.values.container;
+                    recordChanged = true;
+                    changed = true;
+                }
+                if (saleRec?.values?.variety && nextValues.variety !== saleRec.values.variety) {
+                    nextValues.variety = saleRec.values.variety;
                     recordChanged = true;
                     changed = true;
                 }
@@ -448,8 +744,18 @@ export function normalizeGmpState(state: GmpState): { state: GmpState; changed: 
                     recordChanged = true;
                     changed = true;
                 }
-                if (!nextValues.date || (nextValues.clearanceDate && String(nextValues.date) < String(nextValues.clearanceDate))) {
-                    nextValues.date = String(nextValues.departureDate ? addDaysStr(String(nextValues.departureDate), 4) : nextValues.date);
+                const depDate = String(saleDate || nextValues.departureDate || '');
+                const expectedAftersalesDate = depDate ? addDaysStr(depDate, 3) : '';
+                const oldFourDaysDate = depDate ? addDaysStr(depDate, 4) : '';
+                if (expectedAftersalesDate && (!nextValues.date || nextValues.date === oldFourDaysDate || (saleDate && nextValues.date !== expectedAftersalesDate) || (nextValues.clearanceDate && String(nextValues.date) < String(nextValues.clearanceDate)))) {
+                    if (nextValues.date !== expectedAftersalesDate) {
+                        nextValues.date = expectedAftersalesDate;
+                        recordChanged = true;
+                        changed = true;
+                    }
+                }
+                if (nextValues.clearanceDate && nextValues.date && String(nextValues.clearanceDate) > String(nextValues.date)) {
+                    nextValues.clearanceDate = String(nextValues.date);
                     recordChanged = true;
                     changed = true;
                 }
@@ -502,7 +808,14 @@ export function normalizeGmpState(state: GmpState): { state: GmpState; changed: 
             return r;
         });
     }
- 
+
+    const insp0809 = (updatedRecords.inspection || []).filter(r => r.lotCode === 'LH-2026-0809' || r.lotCode?.endsWith('0809'));
+    if (insp0809.length > 1) {
+        const kept = insp0809.find(r => r.id.includes('retest')) || insp0809[insp0809.length - 1];
+        updatedRecords.inspection = updatedRecords.inspection.filter(r => (r.lotCode !== 'LH-2026-0809' && !r.lotCode?.endsWith('0809')) || r.id === kept.id);
+        changed = true;
+    }
+
     for (const s of STAGES) {
         const currentList = updatedRecords[s] || [];
         const sorted = [...currentList].sort(compareGmpRecordsNewestFirst);
@@ -512,12 +825,150 @@ export function normalizeGmpState(state: GmpState): { state: GmpState; changed: 
         updatedRecords[s] = sorted;
     }
 
+    const validLots = new Set<string>();
+    Object.values(updatedRecords).forEach(recs => {
+        recs.forEach(r => {
+            if (r.lotCode) validLots.add(r.lotCode);
+        });
+    });
+
+    let nextExpenses = state.expenses;
+    if (!Array.isArray(state.expenses)) {
+        nextExpenses = createDemoExpenses();
+        changed = true;
+    } else {
+        const cleaned = state.expenses.map((exp, idx) => {
+            let lotCode = exp.lotCode || '';
+            let content = exp.content || '';
+            let code = exp.code || '';
+            let method = exp.method || '';
+            let expChanged = false;
+
+            if (!code) {
+                const y = (exp.date || '2026').slice(0, 4);
+                code = `CP-${y}-${String(idx + 1).padStart(3, '0')}`;
+                expChanged = true;
+            }
+            if (!method) {
+                method = ['exp-demo-2', 'exp-demo-7', 'exp-demo-9'].includes(exp.id) ? 'Tiền mặt' : 'Chuyển khoản';
+                expChanged = true;
+            }
+
+            if (lotCode === 'XK-2026-001') {
+                lotCode = validLots.has('LH-2026-0809') ? 'LH-2026-0809' : (validLots.has('LH-2026-0609') ? 'LH-2026-0609' : (updatedRecords.sales[0]?.lotCode || ''));
+                expChanged = true;
+            } else if (lotCode === 'LH-2026-0109' && !validLots.has('LH-2026-0109')) {
+                lotCode = validLots.has('LH-2026-0209') ? 'LH-2026-0209' : (validLots.has('LH-2026-0309') ? 'LH-2026-0309' : '');
+                expChanged = true;
+            } else if (lotCode && !validLots.has(lotCode)) {
+                lotCode = '';
+                expChanged = true;
+            }
+
+            if (content.includes('LH-2026-0109') && !validLots.has('LH-2026-0109')) {
+                content = content.replace('LH-2026-0109', lotCode || 'LH-2026-0209');
+                expChanged = true;
+            }
+            if (content.includes('XK-2026-001')) {
+                content = content.replace('XK-2026-001', lotCode || 'LH-2026-0809');
+                expChanged = true;
+            }
+
+            if (expChanged) {
+                changed = true;
+                return { ...exp, code, method, lotCode, content };
+            }
+            return exp;
+        });
+
+        let currentExpList = cleaned.filter(exp => {
+            if (exp.id === 'exp-demo-2' || (exp.date === '2026-09-04' && exp.category === 'Sơ chế')) {
+                changed = true;
+                return false;
+            }
+            return true;
+        });
+        const hasJulyUtil = currentExpList.some(e => e.date?.startsWith('2026-07') && (e.content.toLowerCase().includes('điện') || e.content.toLowerCase().includes('nước')));
+        if (!hasJulyUtil) {
+            currentExpList.push({
+                id: 'exp-demo-july-utilities',
+                code: 'CP-2026-001',
+                date: '2026-07-25',
+                category: 'Vận hành cơ sở',
+                content: 'Điện nước tháng 07',
+                lotCode: '',
+                method: 'Chuyển khoản',
+                amount: 5800000,
+            });
+            changed = true;
+        }
+
+        const hasAugUtil = currentExpList.some(e => e.date?.startsWith('2026-08') && (e.content.toLowerCase().includes('điện') || e.content.toLowerCase().includes('nước')));
+        if (!hasAugUtil) {
+            currentExpList.push({
+                id: 'exp-demo-aug-utilities',
+                code: 'CP-2026-002',
+                date: '2026-08-25',
+                category: 'Vận hành cơ sở',
+                content: 'Điện nước tháng 08',
+                lotCode: '',
+                method: 'Chuyển khoản',
+                amount: 6000000,
+            });
+            changed = true;
+        }
+
+        const hasSepUtil = currentExpList.some(e => e.date?.startsWith('2026-09') && (e.content.toLowerCase().includes('điện') || e.content.toLowerCase().includes('nước')));
+        if (!hasSepUtil) {
+            currentExpList.push({
+                id: 'exp-demo-8',
+                code: 'CP-2026-010',
+                date: '2026-09-15',
+                category: 'Vận hành cơ sở',
+                content: 'Điện nước tháng 09',
+                lotCode: '',
+                method: 'Chuyển khoản',
+                amount: 6200000,
+            });
+            changed = true;
+        }
+
+        if (state.demo) {
+            const separated = splitDemoUtilityExpenses(currentExpList);
+            if (separated.length !== currentExpList.length) changed = true;
+            currentExpList = separated;
+        }
+        if (changed) {
+            nextExpenses = currentExpList.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+        }
+    }
+
+    let nextPayments = state.payments || [];
+    const hasInPayment = nextPayments.some(p => p.direction === 'IN');
+    if (!hasInPayment && updatedRecords.sales && updatedRecords.sales.length > 0) {
+        const salesRecord = updatedRecords.sales[0];
+        nextPayments = [
+            ...nextPayments,
+            {
+                id: 'demo-payment-sales-1',
+                recordId: salesRecord.id,
+                direction: 'IN',
+                date: '2026-09-08',
+                amount: 65000000,
+                method: 'Chuyển khoản'
+            }
+        ];
+        changed = true;
+    }
+
     if (!changed) return { state, changed: false };
 
     return {
         state: {
             ...state,
             records: updatedRecords,
+            payments: nextPayments,
+            expenses: nextExpenses,
         },
         changed: true,
     };
@@ -543,6 +994,10 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
         if (typeof raw !== 'string' && typeof raw !== 'number') throw new Error('Giá trị không hợp lệ.');
         if (field.required && !field.inherited && String(raw).trim() === '') throw new Error(`Vui lòng nhập ${field.label}.`);
         v[field.key] = field.type === 'number' ? Number(raw) : String(raw).trim();
+    }
+    if (stage === 'purchases') {
+        if (!v.origin && v.address) v.origin = v.address;
+        if (!v.address && v.origin) v.address = v.origin;
     }
     Object.assign(v, inherit(state, stage, source));
     const shouldRegeneratePurchaseCode = stage === 'purchases' && (
@@ -571,6 +1026,11 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
     if (stage !== 'purchases') v.lotCode = code;
     if (stage === 'purchases') v.total = Number(v.weight) * Number(v.price);
     if (stage === 'purchases') v.purchaseCode = code;
+    if (stage === 'sales') {
+        const w = Number(v.weight_kg || 0);
+        const p = Number(v.price || 85000);
+        v.total = Number(v.total ?? (w * p));
+    }
     for (const field of REGISTERS[stage].fields) {
         const value = v[field.key];
         if (field.required && (value === '' || value === undefined)) throw new Error(`Vui lòng nhập ${field.label}.`);
@@ -611,15 +1071,184 @@ export function addPayment(state: GmpState, p: Payment): GmpState {
     const r = state.records[stage].find(r => r.id === p.recordId);
     if (r?.draft) throw new Error('Vui lòng hoàn tất chứng từ trước khi thanh toán.');
     if (!r || !['IN', 'OUT'].includes(p.direction)) throw new Error('Chứng từ thanh toán không hợp lệ.');
-    const total = stage === 'sales' ? Number(r.values.price) * Number(r.values.weight_kg) : Number(r.values.total);
+    const total = Math.round(Number(r.values.total ?? (stage === 'sales' ? Number(r.values.price) * Number(r.values.weight_kg) : Number(r.values.total))));
     const paid = state.payments.filter(x => x.recordId === r.id).reduce((s, x) => s + x.amount, 0);
     if (!Number.isFinite(p.amount) || p.amount <= 0 || p.amount > total - paid) throw new Error('Số tiền phải lớn hơn 0 và không vượt công nợ còn lại.');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(p.date) || !Number.isFinite(Date.parse(p.date)) || p.date < String(r.values.date)) throw new Error('Ngày thanh toán không hợp lệ.');
     const nextPayments = [...state.payments, p].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
     return { ...state, payments: nextPayments };
 }
+
+// Only the known sample entries are eligible; never estimate real invoices.
+export function splitDemoUtilityExpenses(expenses: Expense[]): Expense[] {
+    const sampleIds = new Set(['exp-demo-july-utilities', 'exp-demo-aug-utilities', 'exp-demo-8']);
+    return expenses.flatMap(expense => {
+        if (!sampleIds.has(expense.id) || !/^Điện nước tháng \d{2}$/.test(expense.content)) return [expense];
+        const electricity = Math.round(expense.amount * 0.8);
+        const notes = [expense.notes, 'Dữ liệu minh họa: phân bổ khoản điện–nước mẫu theo tỷ lệ điện 80%, nước 20%; không phải số tiền hóa đơn thực tế.'].filter(Boolean).join('\n');
+        return [
+            { ...expense, content: expense.content.replace('Điện nước', 'Tiền điện'), category: 'Vận hành cơ sở', amount: electricity, notes },
+            { ...expense, id: `${expense.id}-water`, code: expense.code ? `${expense.code}-N` : undefined, content: expense.content.replace('Điện nước', 'Tiền nước'), category: 'Vận hành cơ sở', amount: expense.amount - electricity, notes },
+        ];
+    });
+}
+
+export function createDemoExpenses(): Expense[] {
+    return splitDemoUtilityExpenses([
+        ...['07', '08'].map(month => ({
+            id: `exp-demo-labor-2026-${month}`,
+            code: `CP-2026-NC${month}`,
+            date: `2026-${month}-25`,
+            category: 'Nhân công',
+            content: `Chi phí nhân công tháng ${month}`,
+            lotCode: '',
+            method: 'Tiền mặt',
+            amount: 4800000,
+            notes: 'Dữ liệu minh họa: số tiền mẫu theo chi phí nhân công tháng 09, không phải bảng lương thực tế.',
+        })),
+        {
+            id: 'exp-demo-july-utilities',
+            code: 'CP-2026-001',
+            date: '2026-07-25',
+            category: 'Vận hành cơ sở',
+            content: 'Điện nước tháng 07',
+            lotCode: '',
+            method: 'Chuyển khoản',
+            amount: 5800000,
+        },
+        {
+            id: 'exp-demo-aug-utilities',
+            code: 'CP-2026-002',
+            date: '2026-08-25',
+            category: 'Vận hành cơ sở',
+            content: 'Điện nước tháng 08',
+            lotCode: '',
+            method: 'Chuyển khoản',
+            amount: 6000000,
+        },
+        {
+            id: 'exp-demo-1',
+            code: 'CP-2026-003',
+            date: '2026-09-02',
+            category: 'Bao bì & đóng gói',
+            content: 'Mua 1.000 thùng carton',
+            lotCode: '',
+            method: 'Chuyển khoản',
+            amount: 15000000,
+        },
+        {
+            id: 'exp-demo-3',
+            code: 'CP-2026-005',
+            date: '2026-09-06',
+            category: 'Kiểm nghiệm & kiểm dịch',
+            content: 'Phí kiểm nghiệm lô LH-2026-0309',
+            lotCode: 'LH-2026-0309',
+            method: 'Chuyển khoản',
+            amount: 3500000,
+        },
+        {
+            id: 'exp-demo-5',
+            code: 'CP-2026-007',
+            date: '2026-09-10',
+            category: 'Vận chuyển & logistics',
+            content: 'Xe từ cơ sở Hữu Nghị - Lô LH-2026-0609',
+            lotCode: 'LH-2026-0609',
+            method: 'Chuyển khoản',
+            amount: 12000000,
+        },
+        {
+            id: 'exp-demo-6',
+            code: 'CP-2026-008',
+            date: '2026-09-12',
+            category: 'Xuất khẩu',
+            content: 'Phí làm thủ tục lô LH-2026-0809',
+            lotCode: 'LH-2026-0809',
+            method: 'Chuyển khoản',
+            amount: 2500000,
+        },
+        {
+            id: 'exp-demo-7',
+            code: 'CP-2026-009',
+            date: '2026-09-14',
+            category: 'Nhân công',
+            content: 'Chi phí nhân công tháng 09',
+            lotCode: '',
+            method: 'Tiền mặt',
+            amount: 4800000,
+        },
+        {
+            id: 'exp-demo-8',
+            code: 'CP-2026-010',
+            date: '2026-09-15',
+            category: 'Vận hành cơ sở',
+            content: 'Điện nước tháng 09',
+            lotCode: '',
+            method: 'Chuyển khoản',
+            amount: 6200000,
+        },
+        {
+            id: 'exp-demo-9',
+            code: 'CP-2026-011',
+            date: '2026-09-16',
+            category: 'Khác',
+            content: 'Sửa cân điện tử',
+            lotCode: '',
+            method: 'Tiền mặt',
+            amount: 850000,
+        },
+    ]);
+}
+
+export function addExpense(state: GmpState, e: Expense): GmpState {
+    if (e.category === 'Nhân công') e = { ...e, lotCode: '' };
+    if (!e.date || !/^\d{4}-\d{2}-\d{2}$/.test(e.date)) throw new Error('Ngày chi phí không hợp lệ.');
+    if (!EXPENSE_CATEGORIES.some(category => category.name === e.category)) throw new Error('Vui lòng chọn nhóm chi phí hợp lệ.');
+    if (!e.content?.trim()) throw new Error('Vui lòng nhập nội dung chi.');
+    if (/điện\s*(?:[&,/\-]|và)?\s*nước/iu.test(e.content)) throw new Error('Vui lòng ghi nhận tiền điện và tiền nước thành hai khoản chi riêng.');
+    if (!Number.isFinite(e.amount) || e.amount <= 0) throw new Error('Số tiền chi phí phải lớn hơn 0.');
+
+    if (e.lotCode?.trim()) {
+        const validLots = new Set<string>();
+        Object.values(state.records).forEach(recs => recs.forEach(r => { if (r.lotCode) validLots.add(r.lotCode); }));
+        if (!validLots.has(e.lotCode.trim())) {
+            throw new Error(`Mã số lô hàng "${e.lotCode}" không tồn tại trong hệ thống.`);
+        }
+    }
+
+    const currentExpenses = state.expenses || [];
+    let code = e.code;
+    if (!code) {
+        const y = e.date.slice(0, 4);
+        const count = currentExpenses.filter(x => x.date?.startsWith(y)).length + 1;
+        code = `CP-${y}-${String(count).padStart(3, '0')}`;
+    }
+    const itemWithCode: Expense = { ...e, code, method: e.method || 'Chuyển khoản' };
+
+    const exists = currentExpenses.some(x => x.id === e.id);
+    const updated = exists
+        ? currentExpenses.map(x => x.id === e.id ? itemWithCode : x)
+        : [itemWithCode, ...currentExpenses];
+
+    return {
+        ...state,
+        expenses: updated.sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))),
+    };
+}
+
+export function deleteExpense(state: GmpState, id: string): GmpState {
+    return {
+        ...state,
+        expenses: (state.expenses || []).filter(x => x.id !== id),
+    };
+}
+
 export function createDemoState(): GmpState {
-    let state: GmpState = { records: { purchases: [], receiving: [], preprocessing: [], packaging: [], inspection: [], sales: [], aftersales: [] }, payments: [], demo: true };
+    let state: GmpState = {
+        records: { purchases: [], receiving: [], preprocessing: [], packaging: [], inspection: [], sales: [], aftersales: [] },
+        payments: [],
+        expenses: createDemoExpenses(),
+        demo: true
+    };
     // Seven lots show every hand-off, including one failed inspection and its successful retest.
     for (let i = 0; i < 8; i++) {
         const date = `2026-09-${String(i + 1).padStart(2, '0')}`;
@@ -628,14 +1257,14 @@ export function createDemoState(): GmpState {
         for (let s = 0; s <= depth; s++) {
             const stage = STAGES[s];
             const values: Values = {
-                date: stage === 'aftersales' ? addDaysStr(date, 4) : date,
+                date: stage === 'aftersales' ? addDaysStr(date, 3) : date,
                 seller: ['Trần Văn Minh', 'Nguyễn Văn Nam', 'Lê Thị Hoa'][i % 3],
                 weight: 1140,
                 price: s === 0 ? 52000 : 85000,
-                phone: '0901234567',
+                phone: ['0912345678', '0983456789', '0987654321'][i % 3],
                 address: 'Đồng Nai',
-                puc: '75-PUC-SR-00001-CHN',
-                origin: 'Vườn Minh Phát, xã Phú Lộc, Đồng Nai',
+                puc: 'VN - DNOR - 0269',
+                origin: 'Kim Quy One Member Limited Liability Company - Nam Cat Tien Commune, Dong Nai Province, Vietnam',
                 variety: i % 2 ? 'Monthong' : 'Ri6',
                 grade1: 800,
                 grade2: 240,

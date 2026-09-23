@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { addPayment, createDemoState, GmpState, normalizeGmpState, saveRecord, STAGES } from '@/lib/processing-gmp';
+import { addExpense, addPayment, createDemoState, deleteExpense, GmpState, normalizeGmpState, saveRecord, STAGES } from '@/lib/processing-gmp';
 
 export const dynamic = 'force-dynamic';
 async function owner() {
@@ -18,7 +18,17 @@ export async function GET() {
   const row=await prisma.processingGmpWorkspace.findUnique({where:{ownerId}});
   // Demo rows are only inserted into a previously unused account workspace.
   const result=row || await prisma.processingGmpWorkspace.upsert({where:{ownerId},update:{},create:{ownerId,data:createDemoState() as unknown as Prisma.InputJsonValue}});
-  const facility=await prisma.partnerFacility.findUnique({where:{ownerId},select:{name:true}});
+  const [facility, regions] = await Promise.all([
+   prisma.partnerFacility.findUnique({where:{ownerId},select:{name:true,code:true}}),
+   prisma.growingRegion.findMany({
+    where:{isActive:true,status:'ACTIVE'},
+    orderBy:{code:'asc'},
+    select:{code:true,name:true,address:true},
+   }),
+  ]);
+  const accountRegions = facility?.code === 'VN-DNPH-131'
+   ? regions.filter(region => /^VN\s*-\s*(?:DNOR|BPOR)\s*-/.test(region.code))
+   : regions;
   const rawState = result.data as unknown as GmpState;
   const { state: cleanState, changed } = normalizeGmpState(rawState);
   if (changed) {
@@ -31,7 +41,7 @@ export async function GET() {
     console.error('Failed to persist normalized GMP state', e);
    }
   }
-  return NextResponse.json({state:cleanState,revision:result.revision,company:facility?.name||'Cơ sở chế biến & đóng gói'});
+  return NextResponse.json({state:cleanState,revision:result.revision,company:facility?.name||'Cơ sở chế biến & đóng gói',regions:accountRegions});
  } catch(error) { console.error('GMP read failed',error); return NextResponse.json({error:'Không thể tải sổ. Vui lòng kiểm tra kết nối cơ sở dữ liệu.'},{status:500}); }
 }
 export async function POST(request:Request) {
@@ -48,6 +58,8 @@ export async function POST(request:Request) {
   let next:GmpState;
   try {
    if(body.action==='payment' && body.payment) next=addPayment(state,{...body.payment,id:randomUUID()});
+   else if(body.action==='expense' && body.expense) next=addExpense(state,{...body.expense,id:body.expense.id||randomUUID()});
+   else if(body.action==='deleteExpense' && body.id) next=deleteExpense(state,body.id);
    else if(body.action==='record' && STAGES.includes(body.stage) && body.record?.values) next=saveRecord(state,body.stage,body.record,randomUUID());
    else return NextResponse.json({error:'Thao tác không hợp lệ.'},{status:400});
   } catch(error) { return NextResponse.json({error:error instanceof Error?error.message:'Dữ liệu không hợp lệ.'},{status:400}); }

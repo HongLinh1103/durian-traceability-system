@@ -442,27 +442,27 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
                     </div>
 
                     {/* DESKTOP TABLE VIEW (hidden md:block) */}
-                    <div className="hidden md:block overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                    <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs">
-                                <thead className="border-b border-slate-200 bg-slate-50 font-bold text-slate-700">
+                            <table className="w-full border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                                <thead className="bg-slate-100/90 text-xs text-slate-700">
                                     <tr>
-                                        <th className="p-4">Hình ảnh & Tên sản phẩm</th>
-                                        <th className="p-4">Mã & Giống</th>
-                                        <th className="p-4">Giá bán niêm yết</th>
-                                        <th className="p-4">Số lượng khả dụng</th>
-                                        <th className="p-4">Đặc điểm (Tuổi / Chiều cao)</th>
-                                        <th className="p-4">Trạng thái</th>
-                                        <th className="p-4 text-right">Thao tác</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Hình ảnh & Tên sản phẩm</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Mã & Giống</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Giá bán niêm yết</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Số lượng khả dụng</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Đặc điểm (Tuổi / Chiều cao)</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 text-center font-semibold align-middle">Trạng thái</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 text-center font-semibold align-middle">Thao tác</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody>
                                     {nurseryItems.map((item) => (
                                         <tr key={item.id} className="hover:bg-slate-50/70 transition">
                                             {/* Image & Title */}
-                                            <td className="p-4">
+                                            <td className="border border-slate-200 px-3.5 py-2.5">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-slate-100 border">
+                                                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-slate-100 border border-slate-200">
                                                         <Image
                                                             src={item.imageUrls[0] || item.nurseryAvatar}
                                                             alt={item.title}
@@ -475,7 +475,7 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
                                                         <span className="font-bold text-slate-900 line-clamp-1 block text-sm">
                                                             {item.title}
                                                         </span>
-                                                        <span className="text-[11px] text-slate-400">
+                                                        <span className="text-[11px] text-slate-500">
                                                             Quy cách: {item.specifications.packagingSpec} ({item.specifications.potSize})
                                                         </span>
                                                     </div>
@@ -483,7 +483,7 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
                                             </td>
 
                                             {/* Code & Variety */}
-                                            <td className="p-4">
+                                            <td className="border border-slate-200 px-3.5 py-2.5">
                                                 <span className="font-mono font-bold text-slate-700 block">
                                                     {item.code}
                                                 </span>
@@ -493,25 +493,25 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
                                             </td>
 
                                             {/* Price */}
-                                            <td className="p-4 font-black text-emerald-700 text-sm">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 font-black text-emerald-700 text-sm">
                                                 {item.priceFormatted}
                                             </td>
 
                                             {/* Quantity */}
-                                            <td className="p-4">
+                                            <td className="border border-slate-200 px-3.5 py-2.5">
                                                 <span className="font-bold text-slate-900">
                                                     {item.availableQuantity} cây
                                                 </span>
                                             </td>
 
                                             {/* Specs */}
-                                            <td className="p-4 text-slate-600">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-slate-600">
                                                 <div>{item.specifications.treeAge}</div>
                                                 <div className="font-semibold text-slate-800">{item.specifications.treeHeight}</div>
                                             </td>
 
                                             {/* Status Toggle */}
-                                            <td className="p-4">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-center">
                                                 <button
                                                     type="button"
                                                     onClick={() => handleToggleStatus(item)}
@@ -537,8 +537,8 @@ export function NurseryDashboardClient({ initialItems, currentAccountPhone }: Nu
                                             </td>
 
                                             {/* Actions */}
-                                            <td className="p-4 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-center">
+                                                <div className="flex items-center justify-center gap-1.5">
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"

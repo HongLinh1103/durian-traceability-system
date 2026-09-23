@@ -36,7 +36,7 @@ export const ACCOUNT_PERMISSIONS_BY_ROLE: Record<string, AccountPermission[]> = 
         { key: "COLLECTOR_DASHBOARD", label: "Tổng quan vựa thu mua", path: "/dashboard/partner" },
         { key: "COLLECTOR_ORDERS", label: "Đơn thu mua", path: "/dashboard/partner/orders" },
         { key: "COLLECTOR_LOTS", label: "Lô hàng", path: "/dashboard/partner/lots" },
-        { key: "COLLECTOR_TRACEABILITY", label: "Tạo mã QR truy xuất", path: "/dashboard/partner/traceability" },
+        { key: "COLLECTOR_TRACEABILITY", label: "Xuất bán lô hàng", path: "/dashboard/partner/traceability" },
         { key: "COLLECTOR_FINANCE", label: "Tài chính", path: "/dashboard/partner/finance" },
         { key: "CHINA_PORT", label: "China Port", path: "/china-port" }, ...shared,
     ],

@@ -221,46 +221,46 @@ export function SeedlingDetailClient({ item, relatedItems }: SeedlingDetailClien
                                 </span>
                             </div>
 
-                            <div className="overflow-hidden rounded-2xl border border-slate-200">
-                                <table className="w-full text-left text-xs sm:text-sm">
-                                    <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                            <div className="overflow-hidden rounded-2xl border border-slate-300">
+                                <table className="w-full border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                                    <thead className="bg-slate-100/90 text-slate-700 font-semibold">
                                         <tr>
-                                            <th className="py-2.5 px-4 w-1/3">Thông tin</th>
-                                            <th className="py-2.5 px-4 w-2/3">Chi tiết tại trại giống</th>
+                                            <th className="border border-slate-300 py-2.5 px-4 w-1/3">Thông tin</th>
+                                            <th className="border border-slate-300 py-2.5 px-4 w-2/3">Chi tiết tại trại giống</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100 bg-white">
-                                        <tr className="hover:bg-slate-50/80">
-                                            <td className="py-2.5 px-4 font-semibold text-slate-600">Giống</td>
-                                            <td className="py-2.5 px-4 font-bold text-slate-900">{item.specifications.variety}</td>
+                                    <tbody className="bg-white">
+                                        <tr className="hover:bg-slate-50/70 transition">
+                                            <td className="border border-slate-200 py-2.5 px-4 font-semibold text-slate-600">Giống</td>
+                                            <td className="border border-slate-200 py-2.5 px-4 font-bold text-slate-900">{item.specifications.variety}</td>
                                         </tr>
-                                        <tr className="hover:bg-slate-50/80">
-                                            <td className="py-2.5 px-4 font-semibold text-slate-600">Phương pháp nhân giống</td>
-                                            <td className="py-2.5 px-4 text-slate-800">{item.specifications.propagationMethod}</td>
+                                        <tr className="hover:bg-slate-50/70 transition">
+                                            <td className="border border-slate-200 py-2.5 px-4 font-semibold text-slate-600">Phương pháp nhân giống</td>
+                                            <td className="border border-slate-200 py-2.5 px-4 text-slate-800">{item.specifications.propagationMethod}</td>
                                         </tr>
-                                        <tr className="hover:bg-slate-50/80">
-                                            <td className="py-2.5 px-4 font-semibold text-slate-600">Tuổi cây</td>
-                                            <td className="py-2.5 px-4 font-bold text-slate-900">{item.specifications.treeAge}</td>
+                                        <tr className="hover:bg-slate-50/70 transition">
+                                            <td className="border border-slate-200 py-2.5 px-4 font-semibold text-slate-600">Tuổi cây</td>
+                                            <td className="border border-slate-200 py-2.5 px-4 font-bold text-slate-900">{item.specifications.treeAge}</td>
                                         </tr>
-                                        <tr className="hover:bg-slate-50/80">
-                                            <td className="py-2.5 px-4 font-semibold text-slate-600">Chiều cao</td>
-                                            <td className="py-2.5 px-4 font-bold text-emerald-700">{item.specifications.treeHeight}</td>
+                                        <tr className="hover:bg-slate-50/70 transition">
+                                            <td className="border border-slate-200 py-2.5 px-4 font-semibold text-slate-600">Chiều cao</td>
+                                            <td className="border border-slate-200 py-2.5 px-4 font-bold text-emerald-700">{item.specifications.treeHeight}</td>
                                         </tr>
-                                        <tr className="hover:bg-slate-50/80">
-                                            <td className="py-2.5 px-4 font-semibold text-slate-600">Gốc ghép</td>
-                                            <td className="py-2.5 px-4 text-slate-800">{item.specifications.rootstock}</td>
+                                        <tr className="hover:bg-slate-50/70 transition">
+                                            <td className="border border-slate-200 py-2.5 px-4 font-semibold text-slate-600">Gốc ghép</td>
+                                            <td className="border border-slate-200 py-2.5 px-4 text-slate-800">{item.specifications.rootstock}</td>
                                         </tr>
-                                        <tr className="hover:bg-slate-50/80">
-                                            <td className="py-2.5 px-4 font-semibold text-slate-600">Tình trạng cây</td>
-                                            <td className="py-2.5 px-4 text-slate-800">{item.specifications.plantHealth}</td>
+                                        <tr className="hover:bg-slate-50/70 transition">
+                                            <td className="border border-slate-200 py-2.5 px-4 font-semibold text-slate-600">Tình trạng cây</td>
+                                            <td className="border border-slate-200 py-2.5 px-4 text-slate-800">{item.specifications.plantHealth}</td>
                                         </tr>
-                                        <tr className="hover:bg-slate-50/80">
-                                            <td className="py-2.5 px-4 font-semibold text-slate-600">Quy cách</td>
-                                            <td className="py-2.5 px-4 text-slate-800">{item.specifications.packagingSpec}</td>
+                                        <tr className="hover:bg-slate-50/70 transition">
+                                            <td className="border border-slate-200 py-2.5 px-4 font-semibold text-slate-600">Quy cách</td>
+                                            <td className="border border-slate-200 py-2.5 px-4 text-slate-800">{item.specifications.packagingSpec}</td>
                                         </tr>
-                                        <tr className="hover:bg-slate-50/80">
-                                            <td className="py-2.5 px-4 font-semibold text-slate-600">Kích thước bầu</td>
-                                            <td className="py-2.5 px-4 font-mono font-semibold text-slate-800">{item.specifications.potSize}</td>
+                                        <tr className="hover:bg-slate-50/70 transition">
+                                            <td className="border border-slate-200 py-2.5 px-4 font-semibold text-slate-600">Kích thước bầu</td>
+                                            <td className="border border-slate-200 py-2.5 px-4 font-mono font-semibold text-slate-800">{item.specifications.potSize}</td>
                                         </tr>
                                     </tbody>
                                 </table>

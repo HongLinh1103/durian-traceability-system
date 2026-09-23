@@ -16,7 +16,7 @@ Menu gồm Tổng quan, China Port, Hồ sơ thu mua, Nhập hàng, Tiếp nhậ
 
 ## Xuất tài liệu
 
-Các nút Xuất Word tạo DOCX với bảng A4 ngang, tiêu đề gộp nhiều tầng, cột theo biểu mẫu, lặp tiêu đề trên trang tiếp theo. Bộ lọc tháng/ngày, niên vụ và tìm kiếm xác định các dòng được xuất. BM-GMP-02 và BM-GMP-03 có tiêu đề ba tầng. Giá mua/bán không đưa vào sổ GMP. Báo cáo thu mua có mã hồ sơ và giá trị mua; báo cáo tài chính xuất CSV UTF-8.
+Các nút Xuất file tạo DOCX với bảng A4 ngang, tiêu đề gộp nhiều tầng, cột theo biểu mẫu, lặp tiêu đề trên trang tiếp theo. Bộ lọc tháng/ngày, niên vụ và tìm kiếm xác định các dòng được xuất. BM-GMP-02 và BM-GMP-03 có tiêu đề ba tầng. Giá mua/bán không đưa vào sổ GMP. Báo cáo thu mua có mã hồ sơ và giá trị mua; báo cáo tài chính xuất CSV UTF-8.
 
 Tên đơn vị lấy từ hồ sơ cơ sở, có thể điều chỉnh trên trang trước khi xuất. Người tiếp nhận hiện được ghi bằng tên, chưa tích hợp chữ ký điện tử.
 

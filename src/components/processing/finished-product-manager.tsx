@@ -226,7 +226,7 @@ export function FinishedProductManager({
             );
 
             setWarehouseInLot(null);
-            setSuccessMessage(`Đã nhập kho thành công lô ${warehouseInLot.lotCode}! Lô đã sẵn sàng Tạo QR xuất bán.`);
+            setSuccessMessage(`Đã nhập kho thành công lô ${warehouseInLot.lotCode}! Lô đã sẵn sàng Xuất bán.`);
             setTimeout(() => setSuccessMessage(""), 5000);
         } catch {
             setError("Lỗi kết nối máy chủ khi nhập kho thành phẩm.");
@@ -245,7 +245,7 @@ export function FinishedProductManager({
                     </span>
                     <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-3xl">Lô thành phẩm</h1>
                     <p className="mt-1 text-sm text-slate-500">
-                        Quản lý thành phẩm sau chế biến, kiểm định chất lượng QC, nhập kho lạnh và tạo QR xuất bán.
+                        Quản lý thành phẩm sau chế biến, kiểm định chất lượng QC, nhập kho lạnh và xuất bán.
                     </p>
                 </div>
             </div>
@@ -408,7 +408,7 @@ export function FinishedProductManager({
                                                                     productName: lot.productName,
                                                                     quantity: cm.quantity,
                                                                     unit: cm.unit,
-                                                                    issuerName: "Cơ sở Chế biến Sầu riêng Trị An",
+                                                                    issuerName: "Công ty TNHH MTV Kim Quy",
                                                                     destinationName: cm.destinationName,
                                                                     status: cm.traceabilityCode!.status,
                                                                 })
@@ -418,7 +418,7 @@ export function FinishedProductManager({
                                                             <QrCode className="h-3.5 w-3.5 text-emerald-600" /> Xem mã QR
                                                         </button>
                                                     ) : (
-                                                        <span className="text-amber-700 text-xs">Chưa cấp QR</span>
+                                                        <span className="text-amber-700 text-xs">Chưa có mã truy xuất</span>
                                                     )}
                                                 </div>
                                             ))}
@@ -468,10 +468,10 @@ export function FinishedProductManager({
                                     {/* GIAI ĐOẠN 3: SẴN SÀNG PHÂN PHỐI */}
                                     {isReady && (
                                         <Link
-                                            href={`/dashboard/processing/traceability?source=${lot.id}`}
+                                            href={`/dashboard/processing/shipments?source=${lot.id}`}
                                             className="flex-1 inline-flex items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-sm transition"
                                         >
-                                            <QrCode className="mr-1.5 h-4 w-4" /> Xuất bán & Tạo QR <ArrowRight className="ml-1.5 h-4 w-4" />
+                                            <QrCode className="mr-1.5 h-4 w-4" /> Xuất bán <ArrowRight className="ml-1.5 h-4 w-4" />
                                         </Link>
                                     )}
                                 </div>
@@ -1045,10 +1045,10 @@ function FinishedLotDetailModal({
                     </Button>
                     {lot.remainingWeight > 0 && (
                         <Link
-                            href={`/dashboard/processing/traceability?source=${lot.id}`}
+                            href={`/dashboard/processing/shipments?source=${lot.id}`}
                             className="inline-flex items-center rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2 text-xs transition"
                         >
-                            <QrCode className="mr-1.5 h-4 w-4" /> Tạo QR xuất bán
+                            <QrCode className="mr-1.5 h-4 w-4" /> Xuất bán
                         </Link>
                     )}
                 </div>

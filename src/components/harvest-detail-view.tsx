@@ -342,52 +342,54 @@ export function HarvestDetailView({ harvest: initialData }: { harvest: HarvestDa
                             <span>Các giống sầu riêng thu hoạch ({harvest.varietyItems.length})</span>
                         </h3>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs sm:text-sm">
-                                <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
-                                    <tr>
-                                        <th className="py-2.5 px-3 font-bold">Giống sầu riêng</th>
-                                        <th className="py-2.5 px-3 font-bold text-right">Khối lượng</th>
-                                        <th className="py-2.5 px-3 font-bold text-right">Giá dự kiến</th>
-                                        <th className="py-2.5 px-3 font-bold text-right">Thành tiền</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {harvest.varietyItems.map(item => {
-                                        const weight = Number(item.expectedWeight) || 0;
-                                        const price = Number(item.expectedPricePerKg ?? harvest.expectedPricePerKg) || 0;
-                                        const total = weight * price;
-                                        return (
-                                            <tr key={item.id} className="hover:bg-slate-50/60">
-                                                <td className="py-2.5 px-3 font-bold text-slate-800">
-                                                    {item.durianVariety}
-                                                </td>
-                                                <td className="py-2.5 px-3 text-right font-semibold text-slate-700">
-                                                    {weight.toLocaleString("vi-VN")} {harvest.weightUnit}
-                                                </td>
-                                                <td className="py-2.5 px-3 text-right font-medium text-slate-600">
-                                                    {price > 0 ? `${price.toLocaleString("vi-VN")} đ/kg` : "—"}
-                                                </td>
-                                                <td className="py-2.5 px-3 text-right font-bold text-emerald-700">
-                                                    {total > 0 ? `${total.toLocaleString("vi-VN")} đ` : "—"}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                                <tfoot className="border-t-2 border-slate-200 bg-slate-50/50 font-bold">
-                                    <tr>
-                                        <td className="py-2.5 px-3 text-slate-800">Tổng cộng</td>
-                                        <td className="py-2.5 px-3 text-right text-brand-700">
-                                            {Number(harvest.expectedWeight).toLocaleString("vi-VN")} {harvest.weightUnit}
-                                        </td>
-                                        <td className="py-2.5 px-3 text-right text-slate-400">—</td>
-                                        <td className="py-2.5 px-3 text-right text-emerald-700">
-                                            {totalEstimatedValue > 0 ? `${totalEstimatedValue.toLocaleString("vi-VN")} đ` : "—"}
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                        <div className="overflow-hidden rounded-xl border border-slate-300 bg-white">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                                    <thead className="bg-slate-100/90 text-slate-700">
+                                        <tr>
+                                            <th className="border border-slate-300 py-2.5 px-3 font-semibold align-middle">Giống sầu riêng</th>
+                                            <th className="border border-slate-300 py-2.5 px-3 font-semibold text-right align-middle">Khối lượng</th>
+                                            <th className="border border-slate-300 py-2.5 px-3 font-semibold text-right align-middle">Giá dự kiến</th>
+                                            <th className="border border-slate-300 py-2.5 px-3 font-semibold text-right align-middle">Thành tiền</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {harvest.varietyItems.map(item => {
+                                            const weight = Number(item.expectedWeight) || 0;
+                                            const price = Number(item.expectedPricePerKg ?? harvest.expectedPricePerKg) || 0;
+                                            const total = weight * price;
+                                            return (
+                                                <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                                                    <td className="border border-slate-200 py-2.5 px-3 font-bold text-slate-800">
+                                                        {item.durianVariety}
+                                                    </td>
+                                                    <td className="border border-slate-200 py-2.5 px-3 text-right font-semibold text-slate-700">
+                                                        {weight.toLocaleString("vi-VN")} {harvest.weightUnit}
+                                                    </td>
+                                                    <td className="border border-slate-200 py-2.5 px-3 text-right font-medium text-slate-600">
+                                                        {price > 0 ? `${price.toLocaleString("vi-VN")} đ/kg` : "—"}
+                                                    </td>
+                                                    <td className="border border-slate-200 py-2.5 px-3 text-right font-bold text-emerald-700">
+                                                        {total > 0 ? `${total.toLocaleString("vi-VN")} đ` : "—"}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                    <tfoot className="border-t border-slate-300 bg-slate-50/80 font-bold">
+                                        <tr>
+                                            <td className="border border-slate-200 py-2.5 px-3 text-slate-800">Tổng cộng</td>
+                                            <td className="border border-slate-200 py-2.5 px-3 text-right text-brand-700">
+                                                {Number(harvest.expectedWeight).toLocaleString("vi-VN")} {harvest.weightUnit}
+                                            </td>
+                                            <td className="border border-slate-200 py-2.5 px-3 text-right text-slate-400">—</td>
+                                            <td className="border border-slate-200 py-2.5 px-3 text-right text-emerald-700">
+                                                {totalEstimatedValue > 0 ? `${totalEstimatedValue.toLocaleString("vi-VN")} đ` : "—"}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         </div>
                     </div>
 

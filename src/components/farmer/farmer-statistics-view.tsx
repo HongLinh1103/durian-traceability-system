@@ -482,7 +482,7 @@ export function FarmerStatisticsView({ initialData, initialActiveTab = "PESTICID
                             </div>
 
                             {/* Pesticide Table (Desktop) / Cards (Mobile) */}
-                            <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                            <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                                 <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
                                     <h2 className="text-base font-bold text-slate-900">
                                         Danh sách thuốc bảo vệ thực vật đã sử dụng
@@ -501,43 +501,43 @@ export function FarmerStatisticsView({ initialData, initialActiveTab = "PESTICID
                                     <>
                                         {/* Desktop Table */}
                                         <div className="hidden sm:block overflow-x-auto">
-                                            <table className="w-full text-left text-sm">
-                                                <thead className="border-b border-slate-200 bg-slate-50/70 text-xs font-bold text-slate-600">
+                                            <table className="w-full border-collapse border-b border-slate-300 text-left text-sm">
+                                                <thead className="bg-slate-100/90 text-xs text-slate-700">
                                                     <tr>
-                                                        <th className="px-5 py-3">Thuốc BVTV</th>
-                                                        <th className="px-4 py-3 text-center">Số lần dùng</th>
-                                                        <th className="px-4 py-3 text-right">Tổng lượng</th>
-                                                        <th className="px-4 py-3 text-center">Đơn vị</th>
-                                                        <th className="px-4 py-3 text-right">Chi phí</th>
-                                                        <th className="px-5 py-3">Giai đoạn dùng nhiều</th>
+                                                        <th className="border-b border-r border-slate-300 px-3.5 py-3 font-semibold align-middle">Thuốc BVTV</th>
+                                                        <th className="border-b border-r border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">Số lần dùng</th>
+                                                        <th className="border-b border-r border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Tổng lượng</th>
+                                                        <th className="border-b border-r border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">Đơn vị</th>
+                                                        <th className="border-b border-r border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Chi phí</th>
+                                                        <th className="border-b border-slate-300 px-3.5 py-3 font-semibold align-middle">Giai đoạn dùng nhiều</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-slate-100">
+                                                <tbody>
                                                     {pesticidesData.items.map((item, idx) => (
                                                         <tr
                                                             key={idx}
                                                             onClick={() => setSelectedSupplyForDetail(item)}
-                                                            className="cursor-pointer hover:bg-amber-50/40 transition"
+                                                            className="cursor-pointer hover:bg-slate-50/70 transition"
                                                         >
-                                                            <td className="px-5 py-3.5">
+                                                            <td className="border-b border-r border-slate-200 px-3.5 py-2.5">
                                                                 <p className="font-bold text-slate-900">{item.name}</p>
                                                                 {item.brand && (
                                                                     <p className="text-xs text-slate-400">Hãng: {item.brand}</p>
                                                                 )}
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-center font-bold text-slate-800">
+                                                            <td className="border-b border-r border-slate-200 px-3.5 py-2.5 text-center font-bold text-slate-800">
                                                                 {item.usagesCount}
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-right font-black text-slate-900">
+                                                            <td className="border-b border-r border-slate-200 px-3.5 py-2.5 text-right font-black text-slate-900">
                                                                 {item.totalQuantity}
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-center text-slate-600">
+                                                            <td className="border-b border-r border-slate-200 px-3.5 py-2.5 text-center text-slate-600">
                                                                 {item.unit}
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-right font-bold text-amber-700">
+                                                            <td className="border-b border-r border-slate-200 px-3.5 py-2.5 text-right font-bold text-amber-700">
                                                                 {formatPrice(item.totalCost)}
                                                             </td>
-                                                            <td className="px-5 py-3.5 text-slate-700">
+                                                            <td className="border-b border-slate-200 px-3.5 py-2.5 text-slate-700">
                                                                 <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
                                                                     {item.mainStage}
                                                                 </span>
@@ -656,7 +656,7 @@ export function FarmerStatisticsView({ initialData, initialActiveTab = "PESTICID
                             )}
 
                             {/* Fertilizer Table (Desktop) / Cards (Mobile) */}
-                            <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                            <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                                 <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
                                     <h2 className="text-base font-bold text-slate-900">
                                         Danh sách phân bón đã sử dụng
@@ -675,43 +675,43 @@ export function FarmerStatisticsView({ initialData, initialActiveTab = "PESTICID
                                     <>
                                         {/* Desktop Table */}
                                         <div className="hidden sm:block overflow-x-auto">
-                                            <table className="w-full text-left text-sm">
-                                                <thead className="border-b border-slate-200 bg-slate-50/70 text-xs font-bold text-slate-600">
+                                            <table className="w-full border-collapse border-b border-slate-300 text-left text-sm">
+                                                <thead className="bg-slate-100/90 text-xs text-slate-700">
                                                     <tr>
-                                                        <th className="px-5 py-3">Phân bón</th>
-                                                        <th className="px-4 py-3 text-center">Số lần bón</th>
-                                                        <th className="px-4 py-3 text-right">Tổng lượng</th>
-                                                        <th className="px-4 py-3 text-center">Đơn vị</th>
-                                                        <th className="px-4 py-3 text-right">Chi phí</th>
-                                                        <th className="px-5 py-3">Giai đoạn chính</th>
+                                                        <th className="border-b border-r border-slate-300 px-3.5 py-3 font-semibold align-middle">Phân bón</th>
+                                                        <th className="border-b border-r border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">Số lần bón</th>
+                                                        <th className="border-b border-r border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Tổng lượng</th>
+                                                        <th className="border-b border-r border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">Đơn vị</th>
+                                                        <th className="border-b border-r border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Chi phí</th>
+                                                        <th className="border-b border-slate-300 px-3.5 py-3 font-semibold align-middle">Giai đoạn chính</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-slate-100">
+                                                <tbody>
                                                     {fertilizersData.items.map((item, idx) => (
                                                         <tr
                                                             key={idx}
                                                             onClick={() => setSelectedSupplyForDetail(item)}
-                                                            className="cursor-pointer hover:bg-emerald-50/40 transition"
+                                                            className="cursor-pointer hover:bg-slate-50/70 transition"
                                                         >
-                                                            <td className="px-5 py-3.5">
+                                                            <td className="border-b border-r border-slate-200 px-3.5 py-2.5">
                                                                 <p className="font-bold text-slate-900">{item.name}</p>
                                                                 {item.brand && (
                                                                     <p className="text-xs text-slate-400">Hãng: {item.brand}</p>
                                                                 )}
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-center font-bold text-slate-800">
+                                                            <td className="border-b border-r border-slate-200 px-3.5 py-2.5 text-center font-bold text-slate-800">
                                                                 {item.usagesCount}
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-right font-black text-slate-900">
+                                                            <td className="border-b border-r border-slate-200 px-3.5 py-2.5 text-right font-black text-slate-900">
                                                                 {item.totalQuantity}
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-center text-slate-600">
+                                                            <td className="border-b border-r border-slate-200 px-3.5 py-2.5 text-center text-slate-600">
                                                                 {item.unit}
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-right font-bold text-emerald-700">
+                                                            <td className="border-b border-r border-slate-200 px-3.5 py-2.5 text-right font-bold text-emerald-700">
                                                                 {formatPrice(item.totalCost)}
                                                             </td>
-                                                            <td className="px-5 py-3.5 text-slate-700">
+                                                            <td className="border-b border-slate-200 px-3.5 py-2.5 text-slate-700">
                                                                 <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
                                                                     {item.mainStage}
                                                                 </span>

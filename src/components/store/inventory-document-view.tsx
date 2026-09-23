@@ -224,8 +224,8 @@ export function InventoryDocumentView({ document }: { document: DocumentData }) 
                 </div>
 
                 {/* Phần 3: Danh sách sản phẩm */}
-                <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xs">
-                    <div className="flex items-center justify-between border-b border-slate-100 p-5">
+                <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
+                    <div className="flex items-center justify-between border-b border-slate-300 bg-slate-50/50 p-5">
                         <div className="flex items-center gap-2">
                             <Package className="h-5 w-5 text-emerald-600" />
                             <h2 className="text-lg font-bold text-slate-900">3. Danh sách hàng hóa trong phiếu</h2>
@@ -235,21 +235,21 @@ export function InventoryDocumentView({ document }: { document: DocumentData }) 
                         </span>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[760px] text-left text-sm">
-                            <thead className="bg-slate-50 text-slate-600 font-bold">
+                        <table className="w-full min-w-[760px] border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                            <thead className="bg-slate-100/90 text-xs text-slate-700">
                                 <tr>
-                                    <th className="w-14 p-4 text-center">STT</th>
-                                    <th className="p-4">Sản phẩm</th>
-                                    <th className="w-24 p-4 text-center">ĐVT</th>
-                                    <th className="w-28 p-4 text-right">Tồn trước</th>
-                                    <th className="w-32 p-4 text-right">Số lượng</th>
-                                    <th className="w-28 p-4 text-right">Tồn sau</th>
-                                    {hasAnyCost && <th className="w-36 p-4 text-right">Đơn giá (đ)</th>}
-                                    {hasAnyCost && <th className="w-40 p-4 text-right">Thành tiền (đ)</th>}
-                                    <th className="p-4">Ghi chú</th>
+                                    <th className="w-14 border border-slate-300 px-3.5 py-3 text-center font-semibold align-middle">STT</th>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Sản phẩm</th>
+                                    <th className="w-24 border border-slate-300 px-3.5 py-3 text-center font-semibold align-middle">ĐVT</th>
+                                    <th className="w-28 border border-slate-300 px-3.5 py-3 text-right font-semibold align-middle">Tồn trước</th>
+                                    <th className="w-32 border border-slate-300 px-3.5 py-3 text-right font-semibold align-middle">Số lượng</th>
+                                    <th className="w-28 border border-slate-300 px-3.5 py-3 text-right font-semibold align-middle">Tồn sau</th>
+                                    {hasAnyCost && <th className="w-36 border border-slate-300 px-3.5 py-3 text-right font-semibold align-middle">Đơn giá (đ)</th>}
+                                    {hasAnyCost && <th className="w-40 border border-slate-300 px-3.5 py-3 text-right font-semibold align-middle">Thành tiền (đ)</th>}
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Ghi chú</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody>
                                 {document.movements.map((movement, index) => {
                                     const delta = movement.stockAfter - movement.stockBefore;
                                     const isPositive = delta >= 0;
@@ -261,16 +261,16 @@ export function InventoryDocumentView({ document }: { document: DocumentData }) 
 
                                     return (
                                         <tr key={movement.id} className="hover:bg-slate-50/70 transition">
-                                            <td className="p-4 text-center font-semibold text-slate-500">{index + 1}</td>
-                                            <td className="p-4">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-center font-semibold text-slate-500">{index + 1}</td>
+                                            <td className="border border-slate-200 px-3.5 py-2.5">
                                                 <div className="font-bold text-slate-900">{movement.product.name}</div>
                                                 {movement.product.brand && (
                                                     <div className="text-xs text-slate-400">{movement.product.brand}</div>
                                                 )}
                                             </td>
-                                            <td className="p-4 text-center font-medium text-slate-600">{movement.product.unit}</td>
-                                            <td className="p-4 text-right tabular-nums text-slate-600">{movement.stockBefore}</td>
-                                            <td className="p-4 text-right">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-center font-medium text-slate-600">{movement.product.unit}</td>
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-right tabular-nums text-slate-600">{movement.stockBefore}</td>
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-right">
                                                 <span
                                                     className={`inline-flex items-center font-bold tabular-nums ${
                                                         isPositive ? "text-emerald-700" : "text-amber-700"
@@ -280,20 +280,20 @@ export function InventoryDocumentView({ document }: { document: DocumentData }) 
                                                     {movement.quantity}
                                                 </span>
                                             </td>
-                                            <td className="p-4 text-right font-black tabular-nums text-slate-900">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-right font-black tabular-nums text-slate-900">
                                                 {movement.stockAfter}
                                             </td>
                                             {hasAnyCost && (
-                                                <td className="p-4 text-right tabular-nums font-semibold text-slate-700">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right tabular-nums font-semibold text-slate-700">
                                                     {movement.unitCost ? Number(movement.unitCost).toLocaleString("vi-VN") : "—"}
                                                 </td>
                                             )}
                                             {hasAnyCost && (
-                                                <td className="p-4 text-right tabular-nums font-bold text-slate-900">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right tabular-nums font-bold text-slate-900">
                                                     {itemCost !== null ? `${itemCost.toLocaleString("vi-VN")} đ` : "—"}
                                                 </td>
                                             )}
-                                            <td className="p-4 text-slate-600">{movement.note || "—"}</td>
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-slate-600">{movement.note || "—"}</td>
                                         </tr>
                                     );
                                 })}

@@ -52,6 +52,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/region-manager/farmers", label: "Hồ sơ nông dân", roles: ["AREA_MANAGER"], badge: true },
     { href: "/dashboard/admin/regions", label: "Vùng trồng", roles: ["ADMIN"] },
     { href: "/dashboard/admin/farming", label: "Nông hộ", roles: ["ADMIN"] },
+    { href: "/dashboard/admin/packing-facilities", label: "Xưởng chế biến đóng gói", roles: ["ADMIN"] },
     { href: "/dashboard/admin/accounts", label: "Tài khoản", roles: ["ADMIN"], badge: true },
     { href: "/dashboard/admin/permissions", label: "Phân quyền", roles: ["ADMIN"] },
     { href: "/dashboard/admin/catalog", label: "Danh mục", roles: ["ADMIN"] },
@@ -63,7 +64,7 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/partner", label: "Tổng quan", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/orders", label: "Đơn thu mua", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/lots", label: "Lô hàng", roles: ["COLLECTOR"] },
-    { href: "/dashboard/partner/traceability", label: "Tạo QR", roles: ["COLLECTOR"] },
+    { href: "/dashboard/partner/traceability", label: "Xuất bán", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/finance", label: "Tài chính", roles: ["COLLECTOR"] },
     { href: "/dashboard/processing", label: "Tổng quan", roles: ["PROCESSING_FACILITY"] },
     { href: "/china-port", label: "China Port", roles: ["PROCESSING_FACILITY"] },
@@ -413,9 +414,6 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                 <span className="max-w-20 truncate 2xl:max-w-32">
                                     {currentUserName ?? session?.user?.fullName ?? session?.user?.phone ?? "Người dùng"}
                                 </span>
-                                <span className="hidden rounded-lg bg-brand-200 px-1.5 py-0.5 text-[10px] font-bold uppercase text-brand-800 2xl:inline">
-                                    {session?.user?.role?.replaceAll("_", " ") ?? ""}
-                                </span>
                             </Link>
                             <Button className="shrink-0 whitespace-nowrap px-2.5 2xl:px-3" variant="outline" size="sm" onClick={() => void signOut({ callbackUrl: "/" })}>
                                 <LogOut className="mr-1.5 h-3.5 w-3.5" />
@@ -490,9 +488,6 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
                                 <div className="min-w-0 flex-1">
                                     <p className="truncate text-sm font-semibold text-brand-800">
                                         {currentUserName ?? session?.user?.fullName ?? session?.user?.phone ?? "Người dùng"}
-                                    </p>
-                                    <p className="text-xs font-medium text-brand-600">
-                                        {session?.user?.role?.replace("_", " ") ?? ""}
                                     </p>
                                 </div>
                             </Link>

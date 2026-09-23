@@ -139,68 +139,70 @@ export function ProcessingGradingView() {
                     </span>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-slate-600">
-                        <thead className="bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
-                            <tr>
-                                <th className="px-5 py-4 whitespace-nowrap">Mã lô TM</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Ngày thu mua</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Bên bán</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Khối lượng (kg)</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Giá mua (đ/kg)</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Thành tiền (đ)</th>
-                                <th className="px-5 py-4 text-center whitespace-nowrap">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {pendingPurchases.length === 0 ? (
+                <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white">
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse border border-slate-300 text-left text-sm text-slate-600">
+                            <thead className="bg-slate-100/90 text-xs text-slate-700">
                                 <tr>
-                                    <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
-                                        Hiện không có lô nào chờ phân loại. Mọi lô thu mua đều đã được phân loại đầy đủ!
-                                    </td>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Mã lô TM</th>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Ngày thu mua</th>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap align-middle">Bên bán</th>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Khối lượng (kg)</th>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Giá mua (đ/kg)</th>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Thành tiền (đ)</th>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center whitespace-nowrap align-middle">Thao tác</th>
                                 </tr>
-                            ) : (
-                                pendingPurchases.map((p) => (
-                                    <tr key={p.id} className="hover:bg-slate-50/60 transition">
-                                        <td className="px-5 py-4 font-mono font-bold text-slate-900 whitespace-nowrap">
-                                            {p.purchaseCode}
-                                        </td>
-                                        <td className="px-5 py-4 font-medium text-slate-700 whitespace-nowrap">{p.purchaseDate}</td>
-                                        <td className="px-5 py-4 min-w-[150px]">
-                                            <div className="font-bold text-slate-900 whitespace-nowrap">{p.sellerName}</div>
-                                            <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5 whitespace-nowrap">
-                                                <Phone className="h-3 w-3 shrink-0" /> {p.sellerPhone}
-                                            </div>
-                                            {p.farmName && (
-                                                <div className="mt-1 text-xs text-slate-600 font-medium whitespace-nowrap">
-                                                    {p.farmName}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="px-5 py-4 font-mono font-bold text-slate-900 whitespace-nowrap">
-                                            {p.weightKg.toLocaleString("vi-VN")}
-                                            <span className="block text-[11px] font-normal text-slate-400 whitespace-nowrap">Giống {p.durianVariety}</span>
-                                        </td>
-                                        <td className="px-5 py-4 font-mono text-slate-700 whitespace-nowrap">
-                                            {p.pricePerKg.toLocaleString("vi-VN")}
-                                        </td>
-                                        <td className="px-5 py-4 font-mono font-black text-emerald-800 whitespace-nowrap">
-                                            {p.totalAmount.toLocaleString("vi-VN")}
-                                        </td>
-                                        <td className="px-5 py-4 text-center whitespace-nowrap">
-                                            <button
-                                                onClick={() => handleOpenGradingModal(p)}
-                                                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition whitespace-nowrap"
-                                            >
-                                                <Scale className="h-3.5 w-3.5 shrink-0" />
-                                                <span className="whitespace-nowrap">Phân loại</span>
-                                            </button>
+                            </thead>
+                            <tbody>
+                                {pendingPurchases.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} className="border border-slate-200 px-5 py-8 text-center text-slate-400">
+                                            Hiện không có lô nào chờ phân loại. Mọi lô thu mua đều đã được phân loại đầy đủ!
                                         </td>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                                ) : (
+                                    pendingPurchases.map((p) => (
+                                        <tr key={p.id} className="hover:bg-slate-50/70 transition">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-slate-900 whitespace-nowrap text-center">
+                                                {p.purchaseCode}
+                                            </td>
+                                            <td className="border border-slate-200 px-3.5 py-2.5 font-medium text-slate-700 whitespace-nowrap text-center">{p.purchaseDate}</td>
+                                            <td className="border border-slate-200 px-3.5 py-2.5 min-w-[150px]">
+                                                <div className="font-bold text-slate-900 whitespace-nowrap">{p.sellerName}</div>
+                                                <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5 whitespace-nowrap">
+                                                    <Phone className="h-3 w-3 shrink-0" /> {p.sellerPhone}
+                                                </div>
+                                                {p.farmName && (
+                                                    <div className="mt-1 text-xs text-slate-600 font-medium whitespace-nowrap">
+                                                        {p.farmName}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-slate-900 whitespace-nowrap text-right">
+                                                {p.weightKg.toLocaleString("vi-VN")}
+                                                <span className="block text-[11px] font-normal text-slate-400 whitespace-nowrap">Giống {p.durianVariety}</span>
+                                            </td>
+                                            <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-slate-700 whitespace-nowrap text-right">
+                                                {p.pricePerKg.toLocaleString("vi-VN")}
+                                            </td>
+                                            <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-black text-emerald-800 whitespace-nowrap text-right">
+                                                {p.totalAmount.toLocaleString("vi-VN")}
+                                            </td>
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-center whitespace-nowrap">
+                                                <button
+                                                    onClick={() => handleOpenGradingModal(p)}
+                                                    className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition whitespace-nowrap"
+                                                >
+                                                    <Scale className="h-3.5 w-3.5 shrink-0" />
+                                                    <span className="whitespace-nowrap">Phân loại</span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -242,111 +244,115 @@ export function ProcessingGradingView() {
 
                 {/* Tab Content: Trái tươi */}
                 {activeTab === "fresh" && (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-slate-600">
-                            <thead className="bg-emerald-50/60 text-xs font-bold uppercase tracking-wider text-emerald-900 border-b border-emerald-100">
-                                <tr>
-                                    <th className="px-5 py-4 whitespace-nowrap">Mã lô PL</th>
-                                    <th className="px-5 py-4 whitespace-nowrap">Mã lô TM gốc</th>
-                                    <th className="px-5 py-4 whitespace-nowrap">Khối lượng (kg)</th>
-                                    <th className="px-5 py-4 whitespace-nowrap">Ngày phân loại</th>
-                                    <th className="px-5 py-4 whitespace-nowrap">Trạng thái</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {freshGradings.length === 0 ? (
+                    <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white">
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse border border-slate-300 text-left text-sm text-slate-600">
+                                <thead className="bg-slate-100/90 text-xs text-slate-700">
                                     <tr>
-                                        <td colSpan={5} className="px-5 py-8 text-center text-slate-400">
-                                            Chưa có lô phân loại trái tươi nào
-                                        </td>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Mã lô PL</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Mã lô TM gốc</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Khối lượng (kg)</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Ngày phân loại</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Trạng thái</th>
                                     </tr>
-                                ) : (
-                                    freshGradings.map((g) => (
-                                        <tr key={g.id} className="hover:bg-slate-50/60 transition">
-                                            <td className="px-5 py-4 font-mono font-bold text-emerald-700 whitespace-nowrap">
-                                                {g.gradingCode}
-                                            </td>
-                                            <td className="px-5 py-4 font-mono text-slate-600 whitespace-nowrap">{g.purchaseCode}</td>
-                                            <td className="px-5 py-4 font-mono font-bold text-slate-900 whitespace-nowrap">
-                                                {g.freshWeight.toLocaleString("vi-VN")}
-                                                <span className="block text-[11px] font-normal text-slate-400 whitespace-nowrap">
-                                                    Giống {g.durianVariety}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4 text-slate-600 whitespace-nowrap">{g.gradingDate}</td>
-                                            <td className="px-5 py-4 whitespace-nowrap">
-                                                {g.freshStatus === "WAITING_PACKAGING" ? (
-                                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-bold text-amber-800 whitespace-nowrap">
-                                                        <Clock className="h-3 w-3 shrink-0" />
-                                                        <span className="whitespace-nowrap">Chờ đóng gói</span>
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-bold text-emerald-800 whitespace-nowrap">
-                                                        <CheckCircle2 className="h-3 w-3 shrink-0" />
-                                                        <span className="whitespace-nowrap">Đã đóng gói</span>
-                                                    </span>
-                                                )}
+                                </thead>
+                                <tbody>
+                                    {freshGradings.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="border border-slate-200 px-5 py-8 text-center text-slate-400">
+                                                Chưa có lô phân loại trái tươi nào
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                    ) : (
+                                        freshGradings.map((g) => (
+                                            <tr key={g.id} className="hover:bg-slate-50/70 transition">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-emerald-700 whitespace-nowrap text-center">
+                                                    {g.gradingCode}
+                                                </td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-slate-600 whitespace-nowrap text-center">{g.purchaseCode}</td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-slate-900 whitespace-nowrap text-right">
+                                                    {g.freshWeight.toLocaleString("vi-VN")}
+                                                    <span className="block text-[11px] font-normal text-slate-400 whitespace-nowrap">
+                                                        Giống {g.durianVariety}
+                                                    </span>
+                                                </td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-slate-600 whitespace-nowrap text-center">{g.gradingDate}</td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 whitespace-nowrap text-center">
+                                                    {g.freshStatus === "WAITING_PACKAGING" ? (
+                                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-bold text-amber-800 whitespace-nowrap">
+                                                            <Clock className="h-3 w-3 shrink-0" />
+                                                            <span className="whitespace-nowrap">Chờ đóng gói</span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-bold text-emerald-800 whitespace-nowrap">
+                                                            <CheckCircle2 className="h-3 w-3 shrink-0" />
+                                                            <span className="whitespace-nowrap">Đã đóng gói</span>
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
 
                 {/* Tab Content: Chế biến khác */}
                 {activeTab === "processed" && (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-slate-600">
-                            <thead className="bg-amber-50/60 text-xs font-bold uppercase tracking-wider text-amber-900 border-b border-amber-100">
-                                <tr>
-                                    <th className="px-5 py-4 whitespace-nowrap">Mã lô PL</th>
-                                    <th className="px-5 py-4 whitespace-nowrap">Mã lô TM gốc</th>
-                                    <th className="px-5 py-4 whitespace-nowrap">Khối lượng (kg)</th>
-                                    <th className="px-5 py-4 whitespace-nowrap">Ngày phân loại</th>
-                                    <th className="px-5 py-4 whitespace-nowrap">Trạng thái</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {processedGradings.length === 0 ? (
+                    <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white">
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse border border-slate-300 text-left text-sm text-slate-600">
+                                <thead className="bg-slate-100/90 text-xs text-slate-700">
                                     <tr>
-                                        <td colSpan={5} className="px-5 py-8 text-center text-slate-400">
-                                            Chưa có lô phân loại chế biến khác nào
-                                        </td>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Mã lô PL</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Mã lô TM gốc</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Khối lượng (kg)</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Ngày phân loại</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Trạng thái</th>
                                     </tr>
-                                ) : (
-                                    processedGradings.map((g) => (
-                                        <tr key={g.id} className="hover:bg-slate-50/60 transition">
-                                            <td className="px-5 py-4 font-mono font-bold text-amber-800 whitespace-nowrap">
-                                                {g.gradingCode}
-                                            </td>
-                                            <td className="px-5 py-4 font-mono text-slate-600 whitespace-nowrap">{g.purchaseCode}</td>
-                                            <td className="px-5 py-4 font-mono font-bold text-slate-900 whitespace-nowrap">
-                                                {g.processedWeight.toLocaleString("vi-VN")}
-                                                <span className="block text-[11px] font-normal text-slate-400 whitespace-nowrap">
-                                                    Giống {g.durianVariety}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4 text-slate-600 whitespace-nowrap">{g.gradingDate}</td>
-                                            <td className="px-5 py-4 whitespace-nowrap">
-                                                {g.processedStatus === "WAITING_PROCESSING" ? (
-                                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-bold text-amber-800 whitespace-nowrap">
-                                                        <Clock className="h-3 w-3 shrink-0" />
-                                                        <span className="whitespace-nowrap">Chờ chế biến</span>
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-bold text-emerald-800 whitespace-nowrap">
-                                                        <CheckCircle2 className="h-3 w-3 shrink-0" />
-                                                        <span className="whitespace-nowrap">Đã chế biến</span>
-                                                    </span>
-                                                )}
+                                </thead>
+                                <tbody>
+                                    {processedGradings.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="border border-slate-200 px-5 py-8 text-center text-slate-400">
+                                                Chưa có lô phân loại chế biến khác nào
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                    ) : (
+                                        processedGradings.map((g) => (
+                                            <tr key={g.id} className="hover:bg-slate-50/70 transition">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-amber-800 whitespace-nowrap text-center">
+                                                    {g.gradingCode}
+                                                </td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-slate-600 whitespace-nowrap text-center">{g.purchaseCode}</td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-slate-900 whitespace-nowrap text-right">
+                                                    {g.processedWeight.toLocaleString("vi-VN")}
+                                                    <span className="block text-[11px] font-normal text-slate-400 whitespace-nowrap">
+                                                        Giống {g.durianVariety}
+                                                    </span>
+                                                </td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-slate-600 whitespace-nowrap text-center">{g.gradingDate}</td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 whitespace-nowrap text-center">
+                                                    {g.processedStatus === "WAITING_PROCESSING" ? (
+                                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-bold text-amber-800 whitespace-nowrap">
+                                                            <Clock className="h-3 w-3 shrink-0" />
+                                                            <span className="whitespace-nowrap">Chờ chế biến</span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-bold text-emerald-800 whitespace-nowrap">
+                                                            <CheckCircle2 className="h-3 w-3 shrink-0" />
+                                                            <span className="whitespace-nowrap">Đã chế biến</span>
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
             </section>

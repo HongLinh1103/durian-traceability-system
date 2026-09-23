@@ -139,7 +139,7 @@ export async function GET(request: Request) {
                     farmerId,
                     farmCode: `VN-FARM-${farmerId.slice(-6).toUpperCase()}`,
                     farmName: `Vườn sầu riêng ${session.user.fullName || "Gia đình"}`,
-                    address: "Trị An, Vĩnh Cửu, Đồng Nai",
+                    address: "Nam Cát Tiên, Đồng Nai",
                     province: "Đồng Nai",
                     district: "Vĩnh Cửu",
                     ward: "Trị An",

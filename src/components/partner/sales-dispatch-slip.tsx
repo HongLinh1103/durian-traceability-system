@@ -71,11 +71,13 @@ export function SalesDispatchSlip({
     onClose,
     onIssueQr,
     issuingQr = false,
+    showQr = false,
 }: {
     data: SalesDispatchData;
     onClose?: () => void;
     onIssueQr?: (id: string) => Promise<void> | void;
     issuingQr?: boolean;
+    showQr?: boolean;
 }) {
     const [mounted, setMounted] = useState<boolean>(false);
     const [qrSrc, setQrSrc] = useState<string>("");
@@ -85,7 +87,7 @@ export function SalesDispatchSlip({
         setMounted(true);
     }, []);
 
-    const token = data.traceabilityCode?.publicToken || data.traceabilityCode?.code;
+    const token = showQr ? data.traceabilityCode?.publicToken || data.traceabilityCode?.code : undefined;
 
     useEffect(() => {
         if (token && typeof window !== "undefined") {
@@ -273,7 +275,7 @@ export function SalesDispatchSlip({
                     ${data.note ? `<tr><td class="label">Ghi chú:</td><td class="val">${data.note}</td></tr>` : ''}
                 </table>
 
-                ${qrHtml}
+                ${showQr ? qrHtml : ""}
 
                 <div class="signatures">
                     <div class="sig-block">
@@ -338,7 +340,7 @@ export function SalesDispatchSlip({
                     <div className="rounded-2xl bg-slate-50 p-4 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
                             <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Đơn vị xuất hàng</span>
-                            <p className="text-sm font-black text-slate-900 mt-0.5">{data.ownerName || (isProcessingFacility ? "Cơ sở Chế biến Sầu riêng Trị An" : "Vựa Sầu riêng Thành Phát")}</p>
+                            <p className="text-sm font-black text-slate-900 mt-0.5">{data.ownerName || (isProcessingFacility ? "Công ty TNHH MTV Kim Quy" : "Vựa Sầu riêng Thành Phát")}</p>
                             <p className="text-[11px] text-slate-500">{isProcessingFacility ? "Đồng Nai · Giấy phép VSATTP & GACC" : "Long Khánh, Đồng Nai"}</p>
                         </div>
                         <div className="sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
@@ -455,7 +457,7 @@ export function SalesDispatchSlip({
                     </div>
 
                     {/* QR Code Section */}
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    {showQr && <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-2xs border border-emerald-200">
                                 <QrCode className="h-6 w-6" />
@@ -503,7 +505,7 @@ export function SalesDispatchSlip({
                                 </Button>
                             ) : null}
                         </div>
-                    </div>
+                    </div>}
                 </div>
 
                 {/* Modal Footer Actions */}

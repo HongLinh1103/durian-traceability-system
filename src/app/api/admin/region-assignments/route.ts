@@ -24,13 +24,14 @@ export async function POST(request: Request) {
     ]);
     if (!manager || !region) return NextResponse.json({ success: false, message: "Trưởng ban hoặc vùng trồng không hợp lệ." }, { status: 400 });
     const current = await prisma.areaManagerRegionAssignment.findFirst({ where: { growingRegionId: region.id, isActive: true, endedAt: null }, select: { areaManagerId: true } });
-    if (!current) return NextResponse.json({ success: false, message: "Vùng chưa có Trưởng ban. Phân công ban đầu chỉ được tạo qua quy trình duyệt hồ sơ." }, { status: 409 });
-    if (current.areaManagerId === manager.id) return NextResponse.json({ success: false, message: "Người được chọn đang là Trưởng ban hiện tại." }, { status: 400 });
+    if (current && current.areaManagerId === manager.id) return NextResponse.json({ success: false, message: "Người được chọn đang là Trưởng ban hiện tại." }, { status: 400 });
     await prisma.$transaction(async tx => {
-        await tx.areaManagerRegionAssignment.updateMany({ where: { growingRegionId: region.id, isActive: true, endedAt: null }, data: { isActive: false, endedAt: new Date() } });
+        if (current) {
+            await tx.areaManagerRegionAssignment.updateMany({ where: { growingRegionId: region.id, isActive: true, endedAt: null }, data: { isActive: false, endedAt: new Date() } });
+        }
         await tx.areaManagerRegionAssignment.create({ data: { ...parsed.data, assignedById: session.user.id } });
     });
-    return NextResponse.json({ success: true, message: "Đã thay đổi Trưởng ban và lưu lịch sử phân công." });
+    return NextResponse.json({ success: true, message: current ? "Đã thay đổi Trưởng ban và lưu lịch sử phân công." : "Đã phân công Trưởng ban cho vùng trồng thành công." });
 }
 
 export async function DELETE(request: Request) {

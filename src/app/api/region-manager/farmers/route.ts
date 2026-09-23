@@ -14,7 +14,7 @@ function officialFarmCode(index: number, regionCode?: string) {
         return `${regionCode}-F${farmSeq}`;
     }
     const timestamp = Date.now().toString(36).toUpperCase();
-    return `75-PUC-SR-F${timestamp}-${index + 1}`;
+    return `FARM-${timestamp}-${index + 1}`;
 }
 
 async function managerContext() {

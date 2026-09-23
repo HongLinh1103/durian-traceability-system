@@ -424,37 +424,6 @@ export function useProcessingWorkflow() {
         [state, persist]
     );
 
-    // 8. ISSUE QR TRACE CODE (Phát hành QR truy xuất)
-    const issueShipmentQr = useCallback(
-        (shipmentId: string) => {
-            const shipment = state.shipments.find((s) => s.id === shipmentId);
-            if (!shipment) throw new Error("Không tìm thấy hồ sơ xuất hàng");
-
-            if (!shipment.pucCode || !shipment.phcCode) {
-                throw new Error("Không thể phát hành QR: Hồ sơ thiếu Mã vùng trồng (PUC) hoặc Mã cơ sở đóng gói (PHC) theo quy định!");
-            }
-
-            const nextShipments = state.shipments.map((s) =>
-                s.id === shipmentId
-                    ? {
-                          ...s,
-                          qrIssued: true,
-                          qrCodeUrl: `/trace?code=${s.shipmentCode}`,
-                          issuedAt: new Date().toISOString(),
-                      }
-                    : s
-            );
-
-            persist({
-                ...state,
-                shipments: nextShipments,
-            });
-
-            return nextShipments.find((s) => s.id === shipmentId);
-        },
-        [state, persist]
-    );
-
     // 9. RECORD RECEIVABLE PAYMENT (Ghi nhận thu tiền bán hàng)
     const recordReceivablePayment = useCallback(
         (data: {
@@ -602,7 +571,6 @@ export function useProcessingWorkflow() {
         packFreshLot,
         processDeepLot,
         createShipment,
-        issueShipmentQr,
         recordReceivablePayment,
         recordPayablePayment,
         addOtherCashFlow,

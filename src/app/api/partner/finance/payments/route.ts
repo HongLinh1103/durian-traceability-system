@@ -41,16 +41,15 @@ export async function POST(request: Request) {
         },
     });
 
-    if (!facility || (session.user.role !== "COLLECTOR" && !facility.name.includes("Trị An"))) {
-        const triAn = await prisma.partnerFacility.findFirst({
+    if (!facility || (session.user.role !== "COLLECTOR" && facility.type !== "PROCESSING_FACILITY")) {
+        const primaryProcessor = await prisma.partnerFacility.findFirst({
             where: {
-                name: { contains: "Trị An" },
-                type: "PROCESSING_FACILITY",
+                OR: [{ code: "VN-DNPH-131" }, { phone: "0909000003" }],
                 deletedAt: null,
             },
         });
-        if (triAn) {
-            facility = triAn;
+        if (primaryProcessor) {
+            facility = primaryProcessor;
         } else if (!facility) {
             facility = await prisma.partnerFacility.findFirst({
                 where: {

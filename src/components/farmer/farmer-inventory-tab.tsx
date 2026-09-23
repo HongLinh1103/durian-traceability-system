@@ -382,7 +382,7 @@ export function FarmerInventoryTab({
                     </div>
 
                     {/* Stock Table */}
-                    <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                    <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                         {loading ? (
                             <div className="flex justify-center py-12">
                                 <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
@@ -397,24 +397,24 @@ export function FarmerInventoryTab({
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="border-b border-slate-200 bg-slate-50/70 text-xs font-bold text-slate-600">
+                                <table className="w-full border-collapse border border-slate-300 text-left text-sm">
+                                    <thead className="bg-slate-100/90 text-xs text-slate-700">
                                         <tr>
-                                            <th className="px-5 py-3">Tên vật tư</th>
-                                            <th className="px-4 py-3">Phân loại</th>
-                                            <th className="px-4 py-3 text-right">Tồn kho</th>
-                                            <th className="px-4 py-3 text-right">Đơn giá nhập</th>
-                                            <th className="px-4 py-3 text-right">Thành tiền tồn</th>
-                                            <th className="px-5 py-3 text-center">Thao tác</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Tên vật tư</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Phân loại</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Tồn kho</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Đơn giá nhập</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Thành tiền tồn</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">Thao tác</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                    <tbody>
                                         {filteredSupplies.map((item) => {
                                             const typeMeta = SUPPLY_TYPE_LABELS[item.type] || SUPPLY_TYPE_LABELS.OTHER;
                                             const totalItemValue = Number(item.unitPrice) * item.quantity;
                                             return (
-                                                <tr key={item.id} className="hover:bg-slate-50/50">
-                                                    <td className="px-5 py-3.5">
+                                                <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5">
                                                         <p className="font-bold text-slate-900">{item.name}</p>
                                                         <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-slate-400">
                                                             {item.brand && <span>Hãng: {item.brand}</span>}
@@ -426,22 +426,22 @@ export function FarmerInventoryTab({
                                                             )}
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-3.5">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5">
                                                         <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${typeMeta.badge}`}>
                                                             {typeMeta.label}
                                                         </span>
                                                     </td>
-                                                    <td className="px-4 py-3.5 text-right font-black text-slate-900">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-right font-black text-slate-900">
                                                         {item.quantity}{" "}
                                                         <span className="text-xs font-normal text-slate-500">{item.unit}</span>
                                                     </td>
-                                                    <td className="px-4 py-3.5 text-right text-slate-700 font-medium">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-right text-slate-700 font-medium">
                                                         {formatPrice(item.unitPrice)}
                                                     </td>
-                                                    <td className="px-4 py-3.5 text-right font-bold text-brand-700">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-right font-bold text-brand-700">
                                                         {formatPrice(totalItemValue)}
                                                     </td>
-                                                    <td className="px-5 py-3.5 text-center">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-center">
                                                         <Button
                                                             type="button"
                                                             size="sm"
@@ -482,7 +482,7 @@ export function FarmerInventoryTab({
             {/* VIEW MODE 2: LỊCH SỬ NHẬP / XUẤT */}
             {/* ========================================================================= */}
             {viewMode === "HISTORY" && (
-                <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                     {transactions.length === 0 ? (
                         <div className="py-16 text-center text-slate-500">
                             <History className="mx-auto mb-3 h-10 w-10 text-slate-300" />
@@ -490,26 +490,26 @@ export function FarmerInventoryTab({
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="border-b border-slate-200 bg-slate-50/70 text-xs font-bold text-slate-600">
+                            <table className="w-full border-collapse border border-slate-300 text-left text-sm">
+                                <thead className="bg-slate-100/90 text-xs text-slate-700">
                                     <tr>
-                                        <th className="px-5 py-3">Thời gian</th>
-                                        <th className="px-4 py-3">Loại GD</th>
-                                        <th className="px-4 py-3">Vật tư</th>
-                                        <th className="px-4 py-3 text-right">Số lượng</th>
-                                        <th className="px-4 py-3 text-right">Thành tiền</th>
-                                        <th className="px-5 py-3">Vườn / Vụ mùa / Mục đích</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">Thời gian</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">Loại GD</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Vật tư</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Số lượng</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Thành tiền</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Vườn / Vụ mùa / Mục đích</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody>
                                     {transactions.map((tx) => {
                                         const isOut = tx.type === "OUT";
                                         return (
-                                            <tr key={tx.id} className="hover:bg-slate-50/50">
-                                                <td className="px-5 py-3 text-xs text-slate-500 font-mono">
+                                            <tr key={tx.id} className="hover:bg-slate-50/70 transition">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-500 font-mono text-center">
                                                     {formatVietnameseDateTime(tx.actionDate)}
                                                 </td>
-                                                <td className="px-4 py-3">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-center">
                                                     <span
                                                         className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
                                                             isOut
@@ -530,16 +530,16 @@ export function FarmerInventoryTab({
                                                         )}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 font-semibold text-slate-900">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 font-semibold text-slate-900">
                                                     {tx.supply.name}
                                                 </td>
-                                                <td className="px-4 py-3 text-right font-bold text-slate-800">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right font-bold text-slate-800">
                                                     {isOut ? `-${tx.quantity}` : `+${tx.quantity}`} {tx.supply.unit}
                                                 </td>
-                                                <td className="px-4 py-3 text-right font-semibold text-slate-700">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right font-semibold text-slate-700">
                                                     {formatPrice(tx.totalAmount)}
                                                 </td>
-                                                <td className="px-5 py-3 text-xs text-slate-600">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-600">
                                                     {tx.farm && <span className="font-semibold text-slate-800">{tx.farm.farmName}</span>}
                                                     {tx.cropSeason && <span> • {tx.cropSeason.name}</span>}
                                                     <p className="text-slate-400 mt-0.5">{tx.purpose || tx.notes || "Không có ghi chú"}</p>

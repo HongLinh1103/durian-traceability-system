@@ -20,7 +20,7 @@ const partners = [
     },
     {
         fullName: "Trần Minh Anh", role: "PROCESSING_FACILITY", phone: "0909000003", email: "processing@triviet.vn", password: "CheBien@123",
-        facility: { type: "PROCESSING_FACILITY", representativeName: "Trần Minh Anh", representativePhone: "0909000003", representativeEmail: "processing@triviet.vn", identityNumber: "079203000003", name: "Cơ sở Chế biến Sầu riêng Trị An", organizationType: "Doanh nghiệp", taxCode: "3603999003", businessCode: "DN-CB-2026", phone: "0909000003", email: "processing@triviet.vn", website: "https://triviet.vn", address: "Trảng Bom, Đồng Nai", province: "Đồng Nai", ward: "Xã Sông Trầu", contactPerson: "Trần Minh Anh", purchasingAreas: ["Đồng Nai", "Bình Phước"], processingTypes: ["Sầu riêng nguyên trái", "Tách múi", "Cấp đông"], expectedCapacity: 20, capacityUnit: "tấn/ngày", description: "Cơ sở tiếp nhận, sơ chế và chế biến sầu riêng." },
+        facility: { type: "PROCESSING_FACILITY", code: "VN-DNPH-131", approvalCode: "VN-DNPH-131", representativeName: "Trần Minh Anh", representativePhone: "0909000003", representativeEmail: "processing@triviet.vn", identityNumber: "079203000003", name: "Công ty TNHH MTV Kim Quy", organizationType: "Công ty TNHH MTV", taxCode: "3603999003", businessCode: "DN-CB-2026", phone: "0909000003", email: "processing@triviet.vn", website: "https://triviet.vn", address: "Ấp 9, xã Nam Cát Tiên, tỉnh Đồng Nai", province: "Đồng Nai", ward: "Nam Cát Tiên", contactPerson: "Trần Minh Anh", purchasingAreas: ["Đồng Nai"], processingTypes: ["Sầu riêng nguyên trái", "Tách múi", "Cấp đông"], expectedCapacity: 20, capacityUnit: "tấn/ngày", description: "Cơ sở đóng gói sầu riêng có mã VN-DNPH-131 trong dữ liệu minh họa GACC." },
     },
 ];
 

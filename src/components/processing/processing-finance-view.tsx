@@ -262,11 +262,10 @@ export function ProcessingFinanceView() {
             <div className="flex flex-wrap gap-2 rounded-2xl bg-slate-100 p-1.5 sm:inline-flex">
                 <button
                     onClick={() => setActiveTab("receivables")}
-                    className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition ${
-                        activeTab === "receivables"
+                    className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition ${activeTab === "receivables"
                             ? "bg-white text-emerald-800 shadow-md shadow-slate-200/50"
                             : "text-slate-600 hover:text-slate-900"
-                    }`}
+                        }`}
                 >
                     <ArrowDownRight className="h-4 w-4 text-emerald-600" />
                     <span>Bán hàng & Thu tiền ({state.receivables.length})</span>
@@ -274,11 +273,10 @@ export function ProcessingFinanceView() {
 
                 <button
                     onClick={() => setActiveTab("payables")}
-                    className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition ${
-                        activeTab === "payables"
+                    className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition ${activeTab === "payables"
                             ? "bg-white text-rose-800 shadow-md shadow-slate-200/50"
                             : "text-slate-600 hover:text-slate-900"
-                    }`}
+                        }`}
                 >
                     <ArrowUpRight className="h-4 w-4 text-rose-600" />
                     <span>Chi phí & Thanh toán ({state.payables.length})</span>
@@ -286,23 +284,21 @@ export function ProcessingFinanceView() {
 
                 <button
                     onClick={() => setActiveTab("cashflow")}
-                    className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition ${
-                        activeTab === "cashflow"
+                    className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition ${activeTab === "cashflow"
                             ? "bg-white text-blue-800 shadow-md shadow-slate-200/50"
                             : "text-slate-600 hover:text-slate-900"
-                    }`}
+                        }`}
                 >
                     <Wallet className="h-4 w-4 text-blue-600" />
-                    <span>Nhật ký dòng tiền ({state.cashFlowLogs.length})</span>
+                    <span>NHẬT KÝ DÒNG TIỀN ({state.cashFlowLogs.length})</span>
                 </button>
 
                 <button
                     onClick={() => setActiveTab("analytics")}
-                    className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition ${
-                        activeTab === "analytics"
+                    className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition ${activeTab === "analytics"
                             ? "bg-white text-purple-800 shadow-md shadow-slate-200/50"
                             : "text-slate-600 hover:text-slate-900"
-                    }`}
+                        }`}
                 >
                     <BarChart3 className="h-4 w-4 text-purple-600" />
                     <span>Biểu đồ thống kê</span>
@@ -350,83 +346,85 @@ export function ProcessingFinanceView() {
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm text-slate-600">
-                                <thead className="bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
-                                    <tr>
-                                        <th className="px-5 py-4">Mã hồ sơ XH</th>
-                                        <th className="px-5 py-4">Ngày xuất</th>
-                                        <th className="px-5 py-4">Khách hàng & Thị trường</th>
-                                        <th className="px-5 py-4">Thành tiền (đ)</th>
-                                        <th className="px-5 py-4">Đã thu (đ)</th>
-                                        <th className="px-5 py-4">Còn lại (đ)</th>
-                                        <th className="px-5 py-4">Trạng thái</th>
-                                        <th className="px-5 py-4 text-center">Thao tác</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {state.receivables.length === 0 ? (
+                        <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse border border-slate-300 text-left text-sm text-slate-600">
+                                    <thead className="bg-slate-100/90 text-xs text-slate-700">
                                         <tr>
-                                            <td colSpan={8} className="px-5 py-10 text-center text-slate-400">
-                                                Chưa có khoản phải thu nào từ xuất hàng
-                                            </td>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Mã hồ sơ XH</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Ngày xuất</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap align-middle">Khách hàng & Thị trường</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Thành tiền (đ)</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Đã thu (đ)</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Còn lại (đ)</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Trạng thái</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center whitespace-nowrap align-middle">Thao tác</th>
                                         </tr>
-                                    ) : (
-                                        state.receivables.map((r) => (
-                                            <tr key={r.id} className="hover:bg-slate-50/60 transition">
-                                                <td className="px-5 py-4 font-mono font-bold text-teal-800">
-                                                    {r.shipmentCode}
-                                                </td>
-                                                <td className="px-5 py-4 text-slate-700">{r.date}</td>
-                                                <td className="px-5 py-4">
-                                                    <span className="font-bold text-slate-900">{r.buyerName}</span>
-                                                    <span className="block text-xs text-slate-500">{r.market}</span>
-                                                </td>
-                                                <td className="px-5 py-4 font-mono font-bold text-slate-900">
-                                                    {r.totalAmount.toLocaleString("vi-VN")} đ
-                                                </td>
-                                                <td className="px-5 py-4 font-mono text-emerald-700 font-semibold">
-                                                    {r.paidAmount.toLocaleString("vi-VN")} đ
-                                                </td>
-                                                <td className="px-5 py-4 font-mono font-bold text-amber-700">
-                                                    {r.remainingAmount.toLocaleString("vi-VN")} đ
-                                                </td>
-                                                <td className="px-5 py-4">
-                                                    {r.status === "PAID" ? (
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2.5 py-1 text-xs font-bold text-emerald-800">
-                                                            <CheckCircle2 className="h-3 w-3" />
-                                                            Đã thanh toán
-                                                        </span>
-                                                    ) : r.status === "PARTIAL" ? (
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-200 px-2.5 py-1 text-xs font-bold text-amber-900">
-                                                            <Clock className="h-3 w-3" />
-                                                            TT 1 phần
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 border border-rose-200 px-2.5 py-1 text-xs font-bold text-rose-800">
-                                                            <AlertCircle className="h-3 w-3" />
-                                                            Chưa thanh toán
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-5 py-4 text-center">
-                                                    {r.remainingAmount > 0 ? (
-                                                        <button
-                                                            onClick={() => handleOpenCollect(r)}
-                                                            className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition"
-                                                        >
-                                                            <DollarSign className="h-3.5 w-3.5" />
-                                                            <span>Ghi nhận thu tiền</span>
-                                                        </button>
-                                                    ) : (
-                                                        <span className="text-xs font-semibold text-emerald-600">Đã hoàn tất</span>
-                                                    )}
+                                    </thead>
+                                    <tbody>
+                                        {state.receivables.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={8} className="border border-slate-200 px-5 py-10 text-center text-slate-400">
+                                                    Chưa có khoản phải thu nào từ xuất hàng
                                                 </td>
                                             </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                                        ) : (
+                                            state.receivables.map((r) => (
+                                                <tr key={r.id} className="hover:bg-slate-50/70 transition">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-teal-800 text-center">
+                                                        {r.shipmentCode}
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-slate-700 text-center">{r.date}</td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5">
+                                                        <span className="font-bold text-slate-900">{r.buyerName}</span>
+                                                        <span className="block text-xs text-slate-500">{r.market}</span>
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-slate-900 text-right">
+                                                        {r.totalAmount.toLocaleString("vi-VN")} đ
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-emerald-700 font-semibold text-right">
+                                                        {r.paidAmount.toLocaleString("vi-VN")} đ
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-amber-700 text-right">
+                                                        {r.remainingAmount.toLocaleString("vi-VN")} đ
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-center">
+                                                        {r.status === "PAID" ? (
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2.5 py-1 text-xs font-bold text-emerald-800">
+                                                                <CheckCircle2 className="h-3 w-3" />
+                                                                Đã thanh toán
+                                                            </span>
+                                                        ) : r.status === "PARTIAL" ? (
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-200 px-2.5 py-1 text-xs font-bold text-amber-900">
+                                                                <Clock className="h-3 w-3" />
+                                                                TT 1 phần
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 border border-rose-200 px-2.5 py-1 text-xs font-bold text-rose-800">
+                                                                <AlertCircle className="h-3 w-3" />
+                                                                Chưa thanh toán
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-center">
+                                                        {r.remainingAmount > 0 ? (
+                                                            <button
+                                                                onClick={() => handleOpenCollect(r)}
+                                                                className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition"
+                                                            >
+                                                                <DollarSign className="h-3.5 w-3.5" />
+                                                                <span>Ghi nhận thu tiền</span>
+                                                            </button>
+                                                        ) : (
+                                                            <span className="text-xs font-semibold text-emerald-600">Đã hoàn tất</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -473,83 +471,85 @@ export function ProcessingFinanceView() {
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm text-slate-600">
-                                <thead className="bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
-                                    <tr>
-                                        <th className="px-5 py-4">Mã lô TM</th>
-                                        <th className="px-5 py-4">Ngày mua</th>
-                                        <th className="px-5 py-4">Bên bán & SĐT</th>
-                                        <th className="px-5 py-4">Thành tiền (đ)</th>
-                                        <th className="px-5 py-4">Đã trả (đ)</th>
-                                        <th className="px-5 py-4">Còn lại (đ)</th>
-                                        <th className="px-5 py-4">Trạng thái</th>
-                                        <th className="px-5 py-4 text-center">Thao tác</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {state.payables.length === 0 ? (
+                        <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse border border-slate-300 text-left text-sm text-slate-600">
+                                    <thead className="bg-slate-100/90 text-xs text-slate-700">
                                         <tr>
-                                            <td colSpan={8} className="px-5 py-10 text-center text-slate-400">
-                                                Chưa có khoản phải trả nào
-                                            </td>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Mã lô TM</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Ngày mua</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap align-middle">Bên bán & SĐT</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Thành tiền (đ)</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Đã trả (đ)</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Còn lại (đ)</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Trạng thái</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center whitespace-nowrap align-middle">Thao tác</th>
                                         </tr>
-                                    ) : (
-                                        state.payables.map((p) => (
-                                            <tr key={p.id} className="hover:bg-slate-50/60 transition">
-                                                <td className="px-5 py-4 font-mono font-bold text-emerald-800">
-                                                    {p.purchaseCode}
-                                                </td>
-                                                <td className="px-5 py-4 text-slate-700">{p.date}</td>
-                                                <td className="px-5 py-4">
-                                                    <span className="font-bold text-slate-900">{p.sellerName}</span>
-                                                    <span className="block text-xs text-slate-500">{p.sellerPhone}</span>
-                                                </td>
-                                                <td className="px-5 py-4 font-mono font-bold text-slate-900">
-                                                    {p.totalAmount.toLocaleString("vi-VN")} đ
-                                                </td>
-                                                <td className="px-5 py-4 font-mono text-emerald-700 font-semibold">
-                                                    {p.paidAmount.toLocaleString("vi-VN")} đ
-                                                </td>
-                                                <td className="px-5 py-4 font-mono font-bold text-rose-700">
-                                                    {p.remainingAmount.toLocaleString("vi-VN")} đ
-                                                </td>
-                                                <td className="px-5 py-4">
-                                                    {p.status === "PAID" ? (
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2.5 py-1 text-xs font-bold text-emerald-800">
-                                                            <CheckCircle2 className="h-3 w-3" />
-                                                            Đã thanh toán
-                                                        </span>
-                                                    ) : p.status === "PARTIAL" ? (
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-200 px-2.5 py-1 text-xs font-bold text-amber-900">
-                                                            <Clock className="h-3 w-3" />
-                                                            TT 1 phần
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 border border-rose-200 px-2.5 py-1 text-xs font-bold text-rose-800">
-                                                            <AlertCircle className="h-3 w-3" />
-                                                            Chưa thanh toán
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-5 py-4 text-center">
-                                                    {p.remainingAmount > 0 ? (
-                                                        <button
-                                                            onClick={() => handleOpenPay(p)}
-                                                            className="inline-flex items-center gap-1 rounded-xl bg-rose-600 hover:bg-rose-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition"
-                                                        >
-                                                            <CreditCard className="h-3.5 w-3.5" />
-                                                            <span>Thanh toán tiền mua</span>
-                                                        </button>
-                                                    ) : (
-                                                        <span className="text-xs font-semibold text-emerald-600">Đã tất toán</span>
-                                                    )}
+                                    </thead>
+                                    <tbody>
+                                        {state.payables.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={8} className="border border-slate-200 px-5 py-10 text-center text-slate-400">
+                                                    Chưa có khoản phải trả nào
                                                 </td>
                                             </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                                        ) : (
+                                            state.payables.map((p) => (
+                                                <tr key={p.id} className="hover:bg-slate-50/70 transition">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-emerald-800 text-center">
+                                                        {p.purchaseCode}
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-slate-700 text-center">{p.date}</td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5">
+                                                        <span className="font-bold text-slate-900">{p.sellerName}</span>
+                                                        <span className="block text-xs text-slate-500">{p.sellerPhone}</span>
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-slate-900 text-right">
+                                                        {p.totalAmount.toLocaleString("vi-VN")} đ
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-emerald-700 font-semibold text-right">
+                                                        {p.paidAmount.toLocaleString("vi-VN")} đ
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-rose-700 text-right">
+                                                        {p.remainingAmount.toLocaleString("vi-VN")} đ
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-center">
+                                                        {p.status === "PAID" ? (
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2.5 py-1 text-xs font-bold text-emerald-800">
+                                                                <CheckCircle2 className="h-3 w-3" />
+                                                                Đã thanh toán
+                                                            </span>
+                                                        ) : p.status === "PARTIAL" ? (
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-200 px-2.5 py-1 text-xs font-bold text-amber-900">
+                                                                <Clock className="h-3 w-3" />
+                                                                TT 1 phần
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 border border-rose-200 px-2.5 py-1 text-xs font-bold text-rose-800">
+                                                                <AlertCircle className="h-3 w-3" />
+                                                                Chưa thanh toán
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-center">
+                                                        {p.remainingAmount > 0 ? (
+                                                            <button
+                                                                onClick={() => handleOpenPay(p)}
+                                                                className="inline-flex items-center gap-1 rounded-xl bg-rose-600 hover:bg-rose-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition"
+                                                            >
+                                                                <CreditCard className="h-3.5 w-3.5" />
+                                                                <span>Thanh toán tiền mua</span>
+                                                            </button>
+                                                        ) : (
+                                                            <span className="text-xs font-semibold text-emerald-600">Đã tất toán</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -618,72 +618,74 @@ export function ProcessingFinanceView() {
                             </button>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm text-slate-600">
-                                <thead className="bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
-                                    <tr>
-                                        <th className="px-5 py-4">Ngày GD</th>
-                                        <th className="px-5 py-4">Loại giao dịch</th>
-                                        <th className="px-5 py-4">Diễn giải nội dung</th>
-                                        <th className="px-5 py-4">Hình thức</th>
-                                        <th className="px-5 py-4">Thu (đ)</th>
-                                        <th className="px-5 py-4">Chi (đ)</th>
-                                        <th className="px-5 py-4">Số dư lũy kế (đ)</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {state.cashFlowLogs.length === 0 ? (
+                        <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse border border-slate-300 text-left text-sm text-slate-600">
+                                    <thead className="bg-slate-100/90 text-xs text-slate-700">
                                         <tr>
-                                            <td colSpan={7} className="px-5 py-10 text-center text-slate-400">
-                                                Chưa có giao dịch dòng tiền nào
-                                            </td>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Ngày GD</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Loại giao dịch</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap align-middle">Diễn giải nội dung</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Hình thức</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Thu (đ)</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Chi (đ)</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Số dư lũy kế (đ)</th>
                                         </tr>
-                                    ) : (
-                                        state.cashFlowLogs.map((log) => (
-                                            <tr key={log.id} className="hover:bg-slate-50/60 transition">
-                                                <td className="px-5 py-3.5 text-slate-700 font-medium">{log.date}</td>
-                                                <td className="px-5 py-3.5">
-                                                    {log.type === "INFLOW" ? (
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
-                                                            <ArrowDownRight className="h-3 w-3" />
-                                                            Thu bán hàng
-                                                        </span>
-                                                    ) : log.category === "PURCHASE" ? (
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 border border-rose-200 px-2 py-0.5 text-[11px] font-bold text-rose-800">
-                                                            <ArrowUpRight className="h-3 w-3" />
-                                                            Chi thu mua
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">
-                                                            Chi khác
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-5 py-3.5">
-                                                    <span className="text-slate-800 font-medium">{log.description}</span>
-                                                    {log.referenceCode && (
-                                                        <span className="block font-mono text-[11px] text-slate-400">
-                                                            Mã tham chiếu: {log.referenceCode}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-5 py-3.5 text-xs text-slate-600 font-medium">
-                                                    {log.paymentMethod === "BANK" ? "Chuyển khoản" : "Tiền mặt"}
-                                                </td>
-                                                <td className="px-5 py-3.5 font-mono font-bold text-emerald-700">
-                                                    {log.type === "INFLOW" ? `+${log.amount.toLocaleString("vi-VN")} đ` : "-"}
-                                                </td>
-                                                <td className="px-5 py-3.5 font-mono font-bold text-rose-700">
-                                                    {log.type === "OUTFLOW" ? `-${log.amount.toLocaleString("vi-VN")} đ` : "-"}
-                                                </td>
-                                                <td className="px-5 py-3.5 font-mono font-black text-slate-900">
-                                                    {log.balanceAfter.toLocaleString("vi-VN")} đ
+                                    </thead>
+                                    <tbody>
+                                        {state.cashFlowLogs.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={7} className="border border-slate-200 px-5 py-10 text-center text-slate-400">
+                                                    Chưa có giao dịch dòng tiền nào
                                                 </td>
                                             </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                                        ) : (
+                                            state.cashFlowLogs.map((log) => (
+                                                <tr key={log.id} className="hover:bg-slate-50/70 transition">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-slate-700 font-medium text-center">{log.date}</td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-center">
+                                                        {log.type === "INFLOW" ? (
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
+                                                                <ArrowDownRight className="h-3 w-3" />
+                                                                Thu bán hàng
+                                                            </span>
+                                                        ) : log.category === "PURCHASE" ? (
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 border border-rose-200 px-2 py-0.5 text-[11px] font-bold text-rose-800">
+                                                                <ArrowUpRight className="h-3 w-3" />
+                                                                Chi thu mua
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">
+                                                                Chi khác
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5">
+                                                        <span className="text-slate-800 font-medium">{log.description}</span>
+                                                        {log.referenceCode && (
+                                                            <span className="block font-mono text-[11px] text-slate-400">
+                                                                Mã tham chiếu: {log.referenceCode}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-600 font-medium text-center">
+                                                        {log.paymentMethod === "BANK" ? "Chuyển khoản" : "Tiền mặt"}
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-emerald-700 text-right">
+                                                        {log.type === "INFLOW" ? `+${log.amount.toLocaleString("vi-VN")} đ` : "-"}
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-rose-700 text-right">
+                                                        {log.type === "OUTFLOW" ? `-${log.amount.toLocaleString("vi-VN")} đ` : "-"}
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-black text-slate-900 text-right">
+                                                        {log.balanceAfter.toLocaleString("vi-VN")} đ
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1056,22 +1058,20 @@ export function ProcessingFinanceView() {
                                     <button
                                         type="button"
                                         onClick={() => setOtherType("OUTFLOW")}
-                                        className={`rounded-xl p-2.5 text-xs font-bold transition ${
-                                            otherType === "OUTFLOW"
+                                        className={`rounded-xl p-2.5 text-xs font-bold transition ${otherType === "OUTFLOW"
                                                 ? "bg-rose-600 text-white"
                                                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                                        }`}
+                                            }`}
                                     >
                                         Chi phí khác
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setOtherType("INFLOW")}
-                                        className={`rounded-xl p-2.5 text-xs font-bold transition ${
-                                            otherType === "INFLOW"
+                                        className={`rounded-xl p-2.5 text-xs font-bold transition ${otherType === "INFLOW"
                                                 ? "bg-emerald-600 text-white"
                                                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                                        }`}
+                                            }`}
                                     >
                                         Khoản thu khác
                                     </button>

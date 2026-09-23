@@ -194,24 +194,24 @@ export function FarmerAccountsManager() {
                 </div>
 
                 <div className="hidden max-w-full overflow-x-auto md:block">
-                    <table className="w-full min-w-[1040px] table-fixed text-left text-sm">
-                        <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr>{[["Mã hồ sơ", "w-[110px]"], ["Họ và tên", "w-[145px]"], ["Số điện thoại", "w-[115px]"], ["Email", "w-[180px]"], ["Số vườn", "w-[75px]"], ["Vùng trồng", "w-[115px]"], ["Ngày đăng ký", "w-[110px]"], ["Trạng thái", "w-[125px]"], ["Thao tác", "sticky right-0 w-[130px] bg-slate-50"]].map(([heading, width]) => <th key={heading} className={`${width} px-3 py-3 text-center align-middle font-semibold`}>{heading}</th>)}</tr></thead>
-                        <tbody className="divide-y">
+                    <table className="w-full min-w-[1040px] table-fixed border-collapse border border-slate-300 text-left text-sm">
+                        <thead className="bg-slate-100/90 text-xs text-slate-700"><tr>{[["Mã hồ sơ", "w-[110px]"], ["Họ và tên", "w-[145px]"], ["Số điện thoại", "w-[115px]"], ["Email", "w-[180px]"], ["Số vườn", "w-[75px]"], ["Vùng trồng", "w-[115px]"], ["Ngày đăng ký", "w-[110px]"], ["Trạng thái", "w-[125px]"], ["Thao tác", "sticky right-0 w-[130px] bg-slate-100/95"]].map(([heading, width]) => <th key={heading} className={`${width} border border-slate-300 px-3 py-3 text-center align-middle font-semibold whitespace-nowrap`}>{heading}</th>)}</tr></thead>
+                        <tbody>
                             {farmers.map((farmer) => {
                                 const state = statuses[farmer.accountStatus] ?? statuses.PENDING;
-                                return <tr key={farmer.id} className="hover:bg-slate-50">
-                                    <td className="px-3 py-3 font-mono text-xs">{farmer.id.slice(-10).toUpperCase()}</td>
-                                    <td className="px-3 py-3 font-semibold">{farmer.fullName || "—"}</td>
-                                    <td className="whitespace-nowrap px-3 py-3">{farmer.phone}</td><td className="break-all px-3 py-3">{farmer.email || "—"}</td>
-                                    <td className="px-3 py-3 text-center font-semibold">{farmer.farms.length}</td>
-                                    <td className="px-3 py-3">{Array.from(new Set(farmer.farms.map((farm) => farm.region?.code).filter(Boolean))).join(", ") || "—"}</td>
-                                    <td className="whitespace-nowrap px-3 py-3 text-center">{formatVietnameseDate(farmer.createdAt)}</td>
-                                    <td className="px-3 py-3 text-center"><Badge className={`${state.className} h-7 whitespace-nowrap rounded-full px-2.5 py-0 text-xs`}>{state.label}</Badge></td>
-                                    <td className="sticky right-0 bg-white px-2 py-3 text-center shadow-[-6px_0_10px_-10px_rgba(15,23,42,0.5)]"><Button size="sm" variant="outline" className="h-8 whitespace-nowrap px-2.5" onClick={() => setSelected(farmer)}><Eye className="mr-1 h-3.5 w-3.5" />Xem hồ sơ</Button></td>
+                                return <tr key={farmer.id} className="hover:bg-slate-50/70 transition">
+                                    <td className="border border-slate-200 px-3 py-2.5 font-mono text-xs text-center">{farmer.id.slice(-10).toUpperCase()}</td>
+                                    <td className="border border-slate-200 px-3 py-2.5 font-semibold text-slate-900">{farmer.fullName || "—"}</td>
+                                    <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 text-center">{farmer.phone}</td><td className="border border-slate-200 break-all px-3 py-2.5">{farmer.email || "—"}</td>
+                                    <td className="border border-slate-200 px-3 py-2.5 text-center font-semibold">{farmer.farms.length}</td>
+                                    <td className="border border-slate-200 px-3 py-2.5 text-center">{Array.from(new Set(farmer.farms.map((farm) => farm.region?.code).filter(Boolean))).join(", ") || "—"}</td>
+                                    <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 text-center">{formatVietnameseDate(farmer.createdAt)}</td>
+                                    <td className="border border-slate-200 px-3 py-2.5 text-center"><Badge className={`${state.className} h-7 whitespace-nowrap rounded-full px-2.5 py-0 text-xs`}>{state.label}</Badge></td>
+                                    <td className="border border-slate-200 sticky right-0 bg-white px-2 py-2.5 text-center shadow-[-6px_0_10px_-10px_rgba(15,23,42,0.5)]"><Button size="sm" variant="outline" className="h-8 whitespace-nowrap px-2.5" onClick={() => setSelected(farmer)}><Eye className="mr-1 h-3.5 w-3.5" />Xem hồ sơ</Button></td>
                                 </tr>;
                             })}
-                            {!loading && farmers.length === 0 && <tr><td colSpan={9} className="py-16 text-center text-slate-500">Không có tài khoản nông dân phù hợp.</td></tr>}
-                            {loading && <tr><td colSpan={9} className="py-16 text-center text-slate-500">Đang tải dữ liệu...</td></tr>}
+                            {!loading && farmers.length === 0 && <tr><td colSpan={9} className="border border-slate-200 py-16 text-center text-slate-500">Không có tài khoản nông dân phù hợp.</td></tr>}
+                            {loading && <tr><td colSpan={9} className="border border-slate-200 py-16 text-center text-slate-500">Đang tải dữ liệu...</td></tr>}
                         </tbody>
                     </table>
                 </div>

@@ -750,30 +750,32 @@ export function FarmerStatisticsOverview({ initialData }: FarmerStatisticsOvervi
                             Giao dịch bán gần đây
                         </h3>
                         {data.revenue.recentTransactions.length > 0 ? (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs">
-                                    <thead>
-                                        <tr className="border-b border-slate-200/80 text-[11px] font-bold text-slate-400 uppercase">
-                                            <th className="pb-2">Ngày</th>
-                                            <th className="pb-2">Đơn vị mua</th>
-                                            <th className="pb-2 text-right">Khối lượng</th>
-                                            <th className="pb-2 text-right">Doanh thu</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {data.revenue.recentTransactions.map((tx) => (
-                                            <tr key={tx.id} className="hover:bg-white/80 transition-colors">
-                                                <td className="py-2.5 font-bold text-slate-700">{tx.date}</td>
-                                                <td className="py-2.5">
-                                                    <span className="font-semibold text-slate-900">{tx.buyerName}</span>
-                                                    <span className="block text-[10px] text-slate-400">{tx.variety} • {tx.code}</span>
-                                                </td>
-                                                <td className="py-2.5 text-right font-medium text-slate-700">{formatKg(tx.weightKg)}</td>
-                                                <td className="py-2.5 text-right font-bold text-blue-700">{formatShortMillion(tx.totalAmount)}</td>
+                            <div className="overflow-hidden rounded-xl border border-slate-300 bg-white">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse border border-slate-300 text-left text-xs">
+                                        <thead className="bg-slate-100/90 text-slate-700">
+                                            <tr>
+                                                <th className="border border-slate-300 px-3 py-2 font-semibold align-middle">Ngày</th>
+                                                <th className="border border-slate-300 px-3 py-2 font-semibold align-middle">Đơn vị mua</th>
+                                                <th className="border border-slate-300 px-3 py-2 font-semibold text-right align-middle">Khối lượng</th>
+                                                <th className="border border-slate-300 px-3 py-2 font-semibold text-right align-middle">Doanh thu</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {data.revenue.recentTransactions.map((tx) => (
+                                                <tr key={tx.id} className="hover:bg-slate-50/70 transition">
+                                                    <td className="border border-slate-200 px-3 py-2 font-bold text-slate-700">{tx.date}</td>
+                                                    <td className="border border-slate-200 px-3 py-2">
+                                                        <span className="font-semibold text-slate-900">{tx.buyerName}</span>
+                                                        <span className="block text-[10px] text-slate-500">{tx.variety} • {tx.code}</span>
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3 py-2 text-right font-medium text-slate-700">{formatKg(tx.weightKg)}</td>
+                                                    <td className="border border-slate-200 px-3 py-2 text-right font-bold text-emerald-700">{formatShortMillion(tx.totalAmount)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         ) : (
                             <div className="flex h-40 items-center justify-center text-xs text-slate-400">Chưa có giao dịch bán nào hoàn tất</div>

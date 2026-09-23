@@ -139,21 +139,21 @@ export async function GET(
                         name: "Vườn Sầu Riêng Bác Ba",
                         code: "V-TRANG-BOM-01",
                         address: "Ấp 3, Xã Bình Lộc, Long Khánh, Đồng Nai",
-                        regionCode: "75-PUC-SR-00001-CHN",
+                        regionCode: "VN-DNOR-0269",
                     },
                     farmer: {
                         name: "Nguyễn Văn Nam",
                     },
                     facility: {
-                        name: "Cơ sở Chế biến & Đóng gói Sầu riêng Trị An",
-                        code: "75-PHC-SR-00001-CHN",
+                        name: "Công ty TNHH MTV Kim Quy",
+                        code: "VN-DNPH-131",
                     },
                     timeline: [
                         {
                             step: 1,
                             title: "Vùng trồng được cấp mã số (PUC)",
                             time: "2026-02-15T08:00:00.000Z",
-                            description: "Vườn Bác Ba đạt mã số vùng trồng chuẩn 75-PUC-SR-00001-CHN, giám sát VietGAP & GACC.",
+                            description: "Vườn thuộc vùng trồng VN-DNOR-0269, được giám sát VietGAP và GACC.",
                         },
                         {
                             step: 2,

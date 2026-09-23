@@ -14,6 +14,7 @@ import {
 const regionSchema = z.object({
     code: z.string().trim().optional(),
     name: z.string().trim().min(2, "Tên vùng tối thiểu 2 ký tự"),
+    address: z.string().trim().optional(),
     province: z.string().trim().min(2, "Vui lòng chọn hoặc nhập tỉnh/thành"),
     district: z.string().trim().optional(),
     ward: z.string().trim().optional(),
@@ -23,6 +24,7 @@ const regionSchema = z.object({
     approvalCode: z.string().trim().optional(),
     exportMarkets: z.array(z.string().trim()).default([]),
     managingOrganization: z.string().trim().optional(),
+    managerId: z.string().trim().optional(),
 });
 
 const updateSchema = z.object({
@@ -44,7 +46,7 @@ export async function GET() {
         include: {
             farms: {
                 where: { isActive: true, farmer: { accountStatus: "APPROVED", isApproved: true, deletedAt: null } },
-                select: { farmerId: true },
+                select: { farmerId: true, areaSize: true, areaUnit: true },
             },
             managerAssignments: {
                 orderBy: { assignedAt: "desc" },
@@ -71,7 +73,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-    if (!(await check())) return NextResponse.json({ success: false, message: "Không có quyền." }, { status: 403 });
+    const session = await check();
+    if (!session) return NextResponse.json({ success: false, message: "Không có quyền." }, { status: 403 });
 
     const parsed = regionSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
@@ -82,7 +85,9 @@ export async function POST(request: Request) {
     }
 
     const { province, cropType, exportMarkets } = parsed.data;
-    let finalCode = parsed.data.code ? normalizeUnitCode(parsed.data.code) : "";
+    // Giữ nguyên cách trình bày mã do người dùng/nguồn dữ liệu cung cấp.
+    // normalizeUnitCode chỉ được dùng bên trong hàm kiểm tra tính hợp lệ.
+    let finalCode = parsed.data.code?.trim() || "";
 
     // Xác định mã thị trường xuất khẩu nếu có
     const primaryExportIso = exportMarkets.length > 0 ? getCountryIsoCode(exportMarkets[0]) : null;
@@ -103,18 +108,32 @@ export async function POST(request: Request) {
         );
     }
 
+    const { managerId, ...regionData } = parsed.data;
     const data = await prisma.growingRegion.create({
         data: {
-            ...parsed.data,
+            ...regionData,
             code: finalCode,
-            district: parsed.data.district || null,
-            ward: parsed.data.ward || null,
-            approvalCode: parsed.data.approvalCode || (primaryExportIso ? finalCode : null),
-            managingOrganization: parsed.data.managingOrganization || null,
+            address: regionData.address || null,
+            district: regionData.district || null,
+            ward: regionData.ward || null,
+            approvalCode: regionData.approvalCode || (primaryExportIso ? finalCode : null),
+            managingOrganization: regionData.managingOrganization || null,
             status: "DRAFT",
             isActive: false,
         },
     });
+
+    if (managerId && session.user?.id) {
+        await prisma.areaManagerRegionAssignment.create({
+            data: {
+                areaManagerId: managerId,
+                growingRegionId: data.id,
+                assignedById: session.user.id,
+                isActive: true,
+                note: "Phân công khi cấp mã vùng trồng mới",
+            },
+        });
+    }
 
     return NextResponse.json(
         {

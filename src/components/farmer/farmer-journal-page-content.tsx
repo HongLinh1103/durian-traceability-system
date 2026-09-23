@@ -57,7 +57,7 @@ export default async function FarmerJournalPage({
                 areaSize: 2.5,
                 totalTrees: 250,
                 durianVariety: "Ri6 & Monthong",
-                address: "Xã Trị An, Huyện Vĩnh Cửu, Tỉnh Đồng Nai",
+                address: "Xã Nam Cát Tiên, tỉnh Đồng Nai",
                 farmerId: session.user.id,
                 cropSeasons: {
                     create: {

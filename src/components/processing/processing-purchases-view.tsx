@@ -25,7 +25,7 @@ import { useToast } from "@/components/ui/toast";
 import { ModalPortal } from "@/components/ui/modal-portal";
 
 const COMMON_PUC_CODES = [
-    { code: "75-PUC-SR-00001-CHN", name: "Vườn Bác Ba - Trảng Bom, Đồng Nai" },
+    { code: "VN-DNOR-0269", name: "Vùng trồng Công ty TNHH MTV Kim Quy - Nam Cát Tiên, Đồng Nai" },
     { code: "67-PUC-SR-00002-CHN", name: "Vườn Hoàng Long - Đắk R'lấp, Đắk Nông" },
     { code: "82-PUC-SR-00001-CHN", name: "Vườn Chú Năm - Cai Lậy, Tiền Giang" },
     { code: "77-PUC-SR-00003-CHN", name: "Nông trại Hải Đăng - Tân Hưng, BR-VT" },
@@ -56,7 +56,7 @@ export function ProcessingPurchasesView() {
     const [weightKg, setWeightKg] = useState<number | "">("");
     const [pricePerKg, setPricePerKg] = useState<number | "">("");
     const [farmName, setFarmName] = useState("");
-    const [pucCode, setPucCode] = useState("75-PUC-SR-00001-CHN");
+    const [pucCode, setPucCode] = useState("VN-DNOR-0269");
     const [customPuc, setCustomPuc] = useState("");
     const [notes, setNotes] = useState("");
     const [formError, setFormError] = useState("");
@@ -95,7 +95,7 @@ export function ProcessingPurchasesView() {
         setWeightKg("");
         setPricePerKg("");
         setFarmName("");
-        setPucCode("75-PUC-SR-00001-CHN");
+        setPucCode("VN-DNOR-0269");
         setCustomPuc("");
         setNotes("");
         setFormError("");
@@ -296,57 +296,62 @@ export function ProcessingPurchasesView() {
             </div>
 
             {/* Table */}
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-slate-600">
-                        <thead className="bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                    <table className="w-full border-collapse border border-slate-300 text-left text-sm text-slate-600">
+                        <thead className="bg-slate-100/90 text-xs text-slate-700">
                             <tr>
-                                <th className="px-5 py-4 whitespace-nowrap">Mã lô TM</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Ngày thu mua</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Bên bán</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Khối lượng (kg)</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Giá mua (đ/kg)</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Thành tiền (đ)</th>
-                                <th className="px-5 py-4 whitespace-nowrap">Trạng thái</th>
-                                <th className="px-5 py-4 text-center whitespace-nowrap">Thao tác</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Mã lô TM</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Ngày thu mua</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap align-middle">Người bán</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Liên hệ</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Mã số vùng trồng</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Khối lượng (kg)</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Giá mua (đ/kg)</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-right align-middle">Thành tiền (đ)</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Trạng thái</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center whitespace-nowrap align-middle">Thao tác</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody>
                             {filteredPurchases.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="px-5 py-12 text-center text-slate-400">
+                                    <td colSpan={10} className="border border-slate-200 px-5 py-12 text-center text-slate-400">
                                         Không tìm thấy hồ sơ thu mua nào phù hợp
                                     </td>
                                 </tr>
                             ) : (
                                 filteredPurchases.map((p) => (
-                                    <tr key={p.id} className="hover:bg-slate-50/60 transition">
-                                        <td className="px-5 py-4 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                    <tr key={p.id} className="hover:bg-slate-50/70 transition">
+                                        <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-slate-900 whitespace-nowrap text-center">
                                             {p.purchaseCode}
                                         </td>
-                                        <td className="px-5 py-4 font-medium text-slate-700 whitespace-nowrap">{p.purchaseDate}</td>
-                                        <td className="px-5 py-4 min-w-[150px]">
-                                            <div className="font-bold text-slate-900 whitespace-nowrap">{p.sellerName}</div>
-                                            <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5 whitespace-nowrap">
-                                                <Phone className="h-3 w-3 shrink-0" /> {p.sellerPhone}
-                                            </div>
+                                        <td className="border border-slate-200 px-3.5 py-2.5 font-medium text-slate-700 whitespace-nowrap text-center">{p.purchaseDate}</td>
+                                        <td className="border border-slate-200 px-3.5 py-2.5 min-w-[130px] whitespace-nowrap">
+                                            <div className="font-bold text-slate-900">{p.sellerName}</div>
                                             {p.farmName && (
-                                                <div className="mt-1 text-xs text-slate-600 font-medium whitespace-nowrap">
+                                                <div className="mt-0.5 text-xs text-slate-500 font-medium">
                                                     {p.farmName}
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="px-5 py-4 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                        <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-mono text-slate-600 whitespace-nowrap text-center">
+                                            {p.sellerPhone || "—"}
+                                        </td>
+                                        <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-xs font-medium text-slate-700 whitespace-nowrap text-center">
+                                            {p.pucCode || "—"}
+                                        </td>
+                                        <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-slate-900 whitespace-nowrap text-right">
                                             {p.weightKg.toLocaleString("vi-VN")}
                                             <span className="block text-[11px] font-normal text-slate-400 whitespace-nowrap">Giống {p.durianVariety}</span>
                                         </td>
-                                        <td className="px-5 py-4 font-mono text-slate-700 whitespace-nowrap">
+                                        <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-slate-700 whitespace-nowrap text-right">
                                             {p.pricePerKg.toLocaleString("vi-VN")}
                                         </td>
-                                        <td className="px-5 py-4 font-mono font-black text-emerald-800 whitespace-nowrap">
+                                        <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-black text-emerald-800 whitespace-nowrap text-right">
                                             {p.totalAmount.toLocaleString("vi-VN")}
                                         </td>
-                                        <td className="px-5 py-4 whitespace-nowrap">
+                                        <td className="border border-slate-200 px-3.5 py-2.5 whitespace-nowrap text-center">
                                             {p.gradingStatus === "PENDING" ? (
                                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-bold text-amber-800 whitespace-nowrap">
                                                     <Clock className="h-3 w-3 shrink-0" />
@@ -359,7 +364,7 @@ export function ProcessingPurchasesView() {
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-5 py-4 text-center whitespace-nowrap">
+                                        <td className="border border-slate-200 px-3.5 py-2.5 text-center whitespace-nowrap">
                                             <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                                                 <button
                                                     onClick={() => setEditingPurchase({ ...p })}
@@ -576,7 +581,7 @@ export function ProcessingPurchasesView() {
                                                 type="text"
                                                 value={customPuc}
                                                 onChange={(e) => setCustomPuc(e.target.value)}
-                                                placeholder="VD: 75-PUC-SR-00005-CHN"
+                                                placeholder="VD: VN-DNOR-0269"
                                                 className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono text-slate-800 focus:border-emerald-500 focus:outline-none"
                                             />
                                         )}

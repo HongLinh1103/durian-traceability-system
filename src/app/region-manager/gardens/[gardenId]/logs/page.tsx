@@ -51,36 +51,36 @@ export default async function GardenLogsPage({ params }: { params: { gardenId: s
             </CardHeader>
         </Card>
 
-        <Card className="overflow-hidden rounded-[28px] border-slate-200 shadow-sm">
+        <Card className="overflow-hidden rounded-2xl border border-slate-300 shadow-sm bg-white">
             <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
                 <History className="h-5 w-5 text-emerald-600" />
                 <h2 className="text-xl font-bold text-slate-900">Nhật ký canh tác đã ghi</h2>
             </div>
             <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] table-fixed text-left text-sm">
-                    <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                <table className="w-full min-w-[900px] table-fixed border-collapse border border-slate-300 text-left text-sm">
+                    <thead className="bg-slate-100/90 text-xs text-slate-700">
                         <tr>
-                            <th className="w-36 whitespace-nowrap px-4 py-3 font-semibold">Ngày</th>
-                            <th className="w-24 whitespace-nowrap px-3 py-3 font-semibold">Giai đoạn</th>
-                            <th className="w-24 whitespace-nowrap px-3 py-3 font-semibold">Hoạt động</th>
-                            <th className="w-32 px-3 py-3 font-semibold">Vật tư</th>
-                            <th className="w-28 px-3 py-3 font-semibold">Liều lượng</th>
-                            <th className="w-14 px-2 py-3 font-semibold">PHI</th>
-                            <th className="w-56 px-4 py-3 font-semibold">Ghi chú</th>
+                            <th className="w-36 border border-slate-300 whitespace-nowrap px-3.5 py-3 font-semibold text-center align-middle">Ngày</th>
+                            <th className="w-28 border border-slate-300 whitespace-nowrap px-3.5 py-3 font-semibold text-center align-middle">Giai đoạn</th>
+                            <th className="w-28 border border-slate-300 whitespace-nowrap px-3.5 py-3 font-semibold text-center align-middle">Hoạt động</th>
+                            <th className="w-36 border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">Vật tư</th>
+                            <th className="w-28 border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">Liều lượng</th>
+                            <th className="w-16 border border-slate-300 px-2 py-3 font-semibold text-center align-middle">PHI</th>
+                            <th className="w-56 border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">Ghi chú</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody>
                         {garden.farmingLogs.length === 0 ? (
-                            <tr><td colSpan={7} className="py-12 text-center text-slate-500">Vườn này chưa có nhật ký canh tác.</td></tr>
+                            <tr><td colSpan={7} className="border border-slate-200 py-12 text-center text-slate-500">Vườn này chưa có nhật ký canh tác.</td></tr>
                         ) : garden.farmingLogs.map((log) => (
-                            <tr key={log.id} className="hover:bg-slate-50/70">
-                                <td className="whitespace-nowrap px-4 py-3">{log.actionDate.toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" })}</td>
-                                <td className="px-4 py-3">{stageLabels[log.stage] ?? log.stage}</td>
-                                <td className="px-4 py-3">{activityLabels[log.activityType] ?? log.activityType}</td>
-                                <td className="break-words px-3 py-3 text-xs leading-5">{log.chemicalName || "—"}</td>
-                                <td className="break-words px-3 py-3 text-xs leading-5">{log.dosage || "—"}</td>
-                                <td className="px-4 py-3">{log.phiDays ?? "—"}</td>
-                                <td className="w-56 max-w-56 whitespace-pre-wrap break-words px-4 py-3">{log.notes || "—"}</td>
+                            <tr key={log.id} className="hover:bg-slate-50/70 transition">
+                                <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 text-center text-xs">{log.actionDate.toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" })}</td>
+                                <td className="border border-slate-200 px-3.5 py-2.5 font-medium">{stageLabels[log.stage] ?? log.stage}</td>
+                                <td className="border border-slate-200 px-3.5 py-2.5 font-medium">{activityLabels[log.activityType] ?? log.activityType}</td>
+                                <td className="border border-slate-200 break-words px-3.5 py-2.5 text-xs leading-5">{log.chemicalName || "—"}</td>
+                                <td className="border border-slate-200 break-words px-3.5 py-2.5 text-xs leading-5 text-center">{log.dosage || "—"}</td>
+                                <td className="border border-slate-200 px-3.5 py-2.5 text-center">{log.phiDays ?? "—"}</td>
+                                <td className="border border-slate-200 w-56 max-w-56 whitespace-pre-wrap break-words px-3.5 py-2.5 text-slate-600">{log.notes || "—"}</td>
                             </tr>
                         ))}
                     </tbody>

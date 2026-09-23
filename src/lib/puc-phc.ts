@@ -13,7 +13,7 @@
  * - Bảng mã quốc gia ISO 3166-1 alpha-3.
  */
 
-import { prisma } from "@/lib/prisma";
+import { prisma } from "./prisma";
 
 // =============================================================================
 // 1. BẢNG MÃ TỈNH / THÀNH PHỐ THEO QUYẾT ĐỊNH 19/2025/QĐ-TTg
@@ -377,9 +377,17 @@ export function getCountryNameByIso(isoCode: string): string | null {
 // =============================================================================
 // 4. REGEX & CẤU TRÚC ĐỊNH DANH CHUẨN
 // =============================================================================
-// Định dạng: [Mã tỉnh - PUC/PHC - Cây trồng - YYYYY] hoặc có thêm [- ISO]
-// Ví dụ hợp lệ: 75-PUC-SR-00001, 75-PUC-SR-00001-CHN, 75-PHC-SR-00001, 75-PHC-SR-00001-CHN
+// Hỗ trợ cả mã nội bộ cũ và mã đăng ký trong danh sách GACC.
 export const PUC_PHC_REGEX = /^(\d{2})-(PUC|PHC)-([A-Z0-9]{2,5})-(\d{5})(?:-([A-Z]{3}))?$/i;
+export const GACC_UNIT_CODE_REGEX = /^VN-([A-Z]{2})(OR|PH)-(\d{3,5})$/i;
+
+const GACC_PROVINCE_NAMES: Record<string, string> = {
+    DN: "Đồng Nai",
+    AG: "An Giang",
+    CT: "Cần Thơ",
+    DL: "Đắk Lắk",
+    BP: "Bình Phước",
+};
 
 export type CodeUnitType = "PUC" | "PHC";
 
@@ -417,7 +425,8 @@ export function normalizeUnitCode(code: string): string {
 export function isValidPUCCode(code: string): boolean {
     const clean = normalizeUnitCode(code);
     const match = clean.match(PUC_PHC_REGEX);
-    return Boolean(match && match[2].toUpperCase() === "PUC");
+    const gaccMatch = clean.match(GACC_UNIT_CODE_REGEX);
+    return Boolean((match && match[2].toUpperCase() === "PUC") || (gaccMatch && gaccMatch[2].toUpperCase() === "OR"));
 }
 
 /**
@@ -426,7 +435,8 @@ export function isValidPUCCode(code: string): boolean {
 export function isValidPHCCode(code: string): boolean {
     const clean = normalizeUnitCode(code);
     const match = clean.match(PUC_PHC_REGEX);
-    return Boolean(match && match[2].toUpperCase() === "PHC");
+    const gaccMatch = clean.match(GACC_UNIT_CODE_REGEX);
+    return Boolean((match && match[2].toUpperCase() === "PHC") || (gaccMatch && gaccMatch[2].toUpperCase() === "PH"));
 }
 
 /**
@@ -434,7 +444,7 @@ export function isValidPHCCode(code: string): boolean {
  */
 export function isValidUnitCode(code: string): boolean {
     const clean = normalizeUnitCode(code);
-    return PUC_PHC_REGEX.test(clean);
+    return PUC_PHC_REGEX.test(clean) || GACC_UNIT_CODE_REGEX.test(clean);
 }
 
 /**
@@ -444,14 +454,35 @@ export function parseUnitCode(code: string): ParsedCodeResult | null {
     if (!code) return null;
     const normalized = normalizeUnitCode(code);
     const match = normalized.match(PUC_PHC_REGEX);
-    if (!match) return null;
+    const gaccMatch = normalized.match(GACC_UNIT_CODE_REGEX);
+    if (!match && !gaccMatch) return null;
 
-    const provinceCode = match[1];
-    const type = match[2].toUpperCase() as CodeUnitType;
-    const cropCode = match[3].toUpperCase();
-    const sequenceStr = match[4];
+    if (gaccMatch) {
+        const provinceCode = gaccMatch[1].toUpperCase();
+        const type = gaccMatch[2].toUpperCase() === "OR" ? "PUC" : "PHC";
+        const sequenceStr = gaccMatch[3];
+        return {
+            raw: code,
+            normalized,
+            provinceCode,
+            provinceName: GACC_PROVINCE_NAMES[provinceCode] || null,
+            type,
+            cropCode: "SR",
+            cropName: getCropNameByCode("SR"),
+            sequence: parseInt(sequenceStr, 10),
+            sequenceStr,
+            exportMarketIso: "CHN",
+            exportMarketName: getCountryNameByIso("CHN"),
+            isExportApproved: true,
+        };
+    }
+
+    const provinceCode = match![1];
+    const type = match![2].toUpperCase() as CodeUnitType;
+    const cropCode = match![3].toUpperCase();
+    const sequenceStr = match![4];
     const sequence = parseInt(sequenceStr, 10);
-    const exportMarketIso = match[5] ? match[5].toUpperCase() : null;
+    const exportMarketIso = match![5] ? match![5].toUpperCase() : null;
 
     return {
         raw: code,

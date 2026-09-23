@@ -378,31 +378,31 @@ function InventoryManagerContent() {
                             {!visibleProducts.length && <p className="py-10 text-center text-sm text-slate-500">Không tìm thấy sản phẩm phù hợp.</p>}
                         </div>
                         <div className="hidden overflow-x-auto sm:block">
-                            <table className="w-full min-w-[700px] text-left text-sm">
-                                <thead className="bg-slate-50 text-slate-500">
+                            <table className="w-full min-w-[700px] border-collapse border border-slate-300 text-left text-sm">
+                                <thead className="bg-slate-100/90 text-xs text-slate-700">
                                     <tr>
-                                        <th className="w-20 p-4 text-center">STT</th>
-                                        <th className="p-4">Sản phẩm</th>
-                                        <th className="p-4">Loại</th>
-                                        <th className="p-4">Đơn vị</th>
-                                        <th className="p-4 text-right">Tồn hiện tại</th>
+                                        <th className="w-20 border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">STT</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Sản phẩm</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Loại</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Đơn vị</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Tồn hiện tại</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y">
+                                <tbody>
                                     {visibleProducts.map((product, index) => (
-                                        <tr key={product.id} className="hover:bg-slate-50">
-                                            <td className="p-4 text-center">{index + 1}</td>
-                                            <td className="p-4 font-bold">{product.name}</td>
-                                            <td className="p-4">
+                                        <tr key={product.id} className="hover:bg-slate-50/70 transition">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-center font-semibold text-slate-500">{index + 1}</td>
+                                            <td className="border border-slate-200 px-3.5 py-2.5 font-bold text-slate-900">{product.name}</td>
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-slate-700">
                                                 {product.type === "FERTILIZER"
                                                     ? "Phân bón"
                                                     : product.type === "PESTICIDE"
                                                         ? "Thuốc BVTV"
                                                         : "Dụng cụ / Khác"}
                                             </td>
-                                            <td className="p-4">{product.unit}</td>
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-slate-700">{product.unit}</td>
                                             <td
-                                                className={`p-4 text-right text-lg font-black ${product.stock === 0
+                                                className={`border border-slate-200 px-3.5 py-2.5 text-right text-lg font-black ${product.stock === 0
                                                     ? "text-red-600"
                                                     : product.stock <= 5
                                                         ? "text-amber-600"
@@ -415,7 +415,7 @@ function InventoryManagerContent() {
                                     ))}
                                     {!visibleProducts.length && (
                                         <tr>
-                                            <td colSpan={5} className="p-12 text-center text-slate-500">
+                                            <td colSpan={5} className="border border-slate-200 p-12 text-center text-slate-500">
                                                 Không tìm thấy sản phẩm phù hợp.
                                             </td>
                                         </tr>
@@ -679,137 +679,139 @@ function InventoryManagerContent() {
                         </div>
 
                         {/* DESKTOP VIEW (Từ màn hình MD trở lên): Bảng chuyên nghiệp, nhanh gọn */}
-                        <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                                    <tr>
-                                        <th className="w-14 p-3 text-center">STT</th>
-                                        <th className="p-3">Sản phẩm</th>
-                                        <th className="w-24 p-3 text-center">ĐVT</th>
-                                        <th className="w-24 p-3 text-right">Tồn hiện tại</th>
-                                        <th className="w-32 p-3">Số lượng</th>
-                                        {showCostColumn && <th className="w-36 p-3">Đơn giá nhập (đ)</th>}
-                                        {showCostColumn && <th className="w-36 p-3 text-right">Thành tiền (đ)</th>}
-                                        <th className="p-3">Ghi chú</th>
-                                        <th className="w-12 p-3 text-center" />
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {items.map((item, index) => {
-                                        const product = products.find((candidate) => candidate.id === item.productId);
-                                        const quantityNum = Number(item.quantity) || 0;
-                                        const unitCostNum = Number(item.unitCost) || 0;
-                                        const lineTotal = quantityNum * unitCostNum;
+                        <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse border border-slate-300 text-left text-sm">
+                                    <thead className="bg-slate-100/90 text-xs text-slate-700">
+                                        <tr>
+                                            <th className="w-14 border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">STT</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Sản phẩm</th>
+                                            <th className="w-24 border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">ĐVT</th>
+                                            <th className="w-24 border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Tồn hiện tại</th>
+                                            <th className="w-32 border border-slate-300 px-3.5 py-3 font-semibold align-middle">Số lượng</th>
+                                            {showCostColumn && <th className="w-36 border border-slate-300 px-3.5 py-3 font-semibold align-middle">Đơn giá nhập (đ)</th>}
+                                            {showCostColumn && <th className="w-36 border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Thành tiền (đ)</th>}
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Ghi chú</th>
+                                            <th className="w-12 border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle" />
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {items.map((item, index) => {
+                                            const product = products.find((candidate) => candidate.id === item.productId);
+                                            const quantityNum = Number(item.quantity) || 0;
+                                            const unitCostNum = Number(item.unitCost) || 0;
+                                            const lineTotal = quantityNum * unitCostNum;
 
-                                        return (
-                                            <tr key={index} className="hover:bg-slate-50/50">
-                                                <td className="p-3 text-center font-semibold text-slate-500">{index + 1}</td>
-                                                <td className="p-3">
-                                                    <select
-                                                        required
-                                                        value={item.productId}
-                                                        onChange={(event) =>
-                                                            setItems((current) =>
-                                                                current.map((row, rowIndex) =>
-                                                                    rowIndex === index ? { ...row, productId: event.target.value } : row,
-                                                                ),
-                                                            )
-                                                        }
-                                                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-medium text-slate-900 text-sm focus:border-emerald-500 focus:outline-hidden"
-                                                    >
-                                                        <option value="">-- Chọn sản phẩm --</option>
-                                                        {products.map((option) => (
-                                                            <option
-                                                                key={option.id}
-                                                                value={option.id}
-                                                                disabled={items.some(
-                                                                    (row, rowIndex) => rowIndex !== index && row.productId === option.id,
-                                                                )}
-                                                            >
-                                                                {option.name} (Tồn: {option.stock} {option.unit})
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </td>
-                                                <td className="p-3 text-center font-semibold text-slate-600">
-                                                    {product?.unit || "—"}
-                                                </td>
-                                                <td className="p-3 text-right font-medium text-slate-600 tabular-nums">
-                                                    {product ? product.stock : "—"}
-                                                </td>
-                                                <td className="p-3">
-                                                    <Input
-                                                        type="number"
-                                                        min="1"
-                                                        required
-                                                        value={item.quantity}
-                                                        onChange={(event) =>
-                                                            setItems((current) =>
-                                                                current.map((row, rowIndex) =>
-                                                                    rowIndex === index ? { ...row, quantity: event.target.value } : row,
-                                                                ),
-                                                            )
-                                                        }
-                                                        className="h-10 rounded-xl bg-white"
-                                                        placeholder="SL"
-                                                    />
-                                                </td>
-                                                {showCostColumn && (
-                                                    <td className="p-3">
-                                                        <Input
-                                                            type="number"
-                                                            min="0"
-                                                            value={item.unitCost || ""}
+                                            return (
+                                                <tr key={index} className="hover:bg-slate-50/70 transition">
+                                                    <td className="border border-slate-200 px-3 py-2 text-center font-semibold text-slate-500">{index + 1}</td>
+                                                    <td className="border border-slate-200 px-3 py-2">
+                                                        <select
+                                                            required
+                                                            value={item.productId}
                                                             onChange={(event) =>
                                                                 setItems((current) =>
                                                                     current.map((row, rowIndex) =>
-                                                                        rowIndex === index ? { ...row, unitCost: event.target.value } : row,
+                                                                        rowIndex === index ? { ...row, productId: event.target.value } : row,
+                                                                    ),
+                                                                )
+                                                            }
+                                                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-medium text-slate-900 text-sm focus:border-emerald-500 focus:outline-hidden"
+                                                        >
+                                                            <option value="">-- Chọn sản phẩm --</option>
+                                                            {products.map((option) => (
+                                                                <option
+                                                                    key={option.id}
+                                                                    value={option.id}
+                                                                    disabled={items.some(
+                                                                        (row, rowIndex) => rowIndex !== index && row.productId === option.id,
+                                                                    )}
+                                                                >
+                                                                    {option.name} (Tồn: {option.stock} {option.unit})
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3 py-2 text-center font-semibold text-slate-600">
+                                                        {product?.unit || "—"}
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3 py-2 text-right font-medium text-slate-600 tabular-nums">
+                                                        {product ? product.stock : "—"}
+                                                    </td>
+                                                    <td className="border border-slate-200 px-3 py-2">
+                                                        <Input
+                                                            type="number"
+                                                            min="1"
+                                                            required
+                                                            value={item.quantity}
+                                                            onChange={(event) =>
+                                                                setItems((current) =>
+                                                                    current.map((row, rowIndex) =>
+                                                                        rowIndex === index ? { ...row, quantity: event.target.value } : row,
                                                                     ),
                                                                 )
                                                             }
                                                             className="h-10 rounded-xl bg-white"
-                                                            placeholder="Giá nhập"
+                                                            placeholder="SL"
                                                         />
                                                     </td>
-                                                )}
-                                                {showCostColumn && (
-                                                    <td className="p-3 text-right font-bold tabular-nums text-slate-900">
-                                                        {lineTotal > 0 ? `${lineTotal.toLocaleString("vi-VN")} đ` : "—"}
+                                                    {showCostColumn && (
+                                                        <td className="border border-slate-200 px-3 py-2">
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                value={item.unitCost || ""}
+                                                                onChange={(event) =>
+                                                                    setItems((current) =>
+                                                                        current.map((row, rowIndex) =>
+                                                                            rowIndex === index ? { ...row, unitCost: event.target.value } : row,
+                                                                        ),
+                                                                    )
+                                                                }
+                                                                className="h-10 rounded-xl bg-white"
+                                                                placeholder="Giá nhập"
+                                                            />
+                                                        </td>
+                                                    )}
+                                                    {showCostColumn && (
+                                                        <td className="border border-slate-200 px-3 py-2 text-right font-bold tabular-nums text-slate-900">
+                                                            {lineTotal > 0 ? `${lineTotal.toLocaleString("vi-VN")} đ` : "—"}
+                                                        </td>
+                                                    )}
+                                                    <td className="border border-slate-200 px-3 py-2">
+                                                        <Input
+                                                            maxLength={500}
+                                                            value={item.note}
+                                                            onChange={(event) =>
+                                                                setItems((current) =>
+                                                                    current.map((row, rowIndex) =>
+                                                                        rowIndex === index ? { ...row, note: event.target.value } : row,
+                                                                    ),
+                                                                )
+                                                            }
+                                                            className="h-10 rounded-xl bg-white"
+                                                            placeholder="Ghi chú"
+                                                        />
                                                     </td>
-                                                )}
-                                                <td className="p-3">
-                                                    <Input
-                                                        maxLength={500}
-                                                        value={item.note}
-                                                        onChange={(event) =>
-                                                            setItems((current) =>
-                                                                current.map((row, rowIndex) =>
-                                                                    rowIndex === index ? { ...row, note: event.target.value } : row,
-                                                                ),
-                                                            )
-                                                        }
-                                                        className="h-10 rounded-xl bg-white"
-                                                        placeholder="Ghi chú"
-                                                    />
-                                                </td>
-                                                <td className="p-3 text-center">
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        disabled={items.length === 1}
-                                                        onClick={() => setItems((current) => current.filter((_, rowIndex) => rowIndex !== index))}
-                                                        className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg"
-                                                        aria-label="Xóa dòng"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                                                    <td className="border border-slate-200 px-3 py-2 text-center">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            disabled={items.length === 1}
+                                                            onClick={() => setItems((current) => current.filter((_, rowIndex) => rowIndex !== index))}
+                                                            className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg cursor-pointer"
+                                                            aria-label="Xóa dòng"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
@@ -920,32 +922,32 @@ function InventoryManagerContent() {
                         {!visibleDocuments.length && <p className="py-10 text-center text-sm text-slate-500">Chưa có giao dịch kho nào phù hợp với bộ lọc.</p>}
                     </div>
                     <div className="hidden overflow-x-auto sm:block">
-                        <table className="w-full min-w-[760px] text-left text-xs sm:text-[13px]">
-                            <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                        <table className="w-full min-w-[760px] border-collapse border border-slate-300 text-left text-xs sm:text-[13px]">
+                            <thead className="bg-slate-100/90 text-slate-700 font-semibold uppercase tracking-wider text-[11px]">
                                 <tr>
-                                    <th className="px-3.5 py-3">Thời gian</th>
-                                    <th className="px-3.5 py-3">Sản phẩm</th>
-                                    <th className="px-3.5 py-3">Nghiệp vụ</th>
-                                    <th className="px-3.5 py-3 text-right">Số lượng</th>
-                                    <th className="px-3.5 py-3 text-right">Tồn trước → sau</th>
-                                    <th className="px-3.5 py-3">Chứng từ</th>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Thời gian</th>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Sản phẩm</th>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Nghiệp vụ</th>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle whitespace-nowrap">Số lượng</th>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle whitespace-nowrap">Tồn trước → sau</th>
+                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Chứng từ</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody>
                                 {visibleDocuments.flatMap((document) =>
                                     document.movements.map((movement) => {
                                         const delta = movement.stockAfter - movement.stockBefore;
                                         const incoming = delta >= 0;
                                         return (
                                             <tr key={movement.id} className="hover:bg-slate-50/70 transition">
-                                                <td className="whitespace-nowrap px-3.5 py-2.5 text-slate-600">
+                                                <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 text-slate-600 text-center">
                                                     {formatVietnameseDateTime(document.createdAt)}
                                                 </td>
-                                                <td className="px-3.5 py-2.5">
+                                                <td className="border border-slate-200 px-3.5 py-2.5">
                                                     <div className="font-semibold text-slate-900">{movement.product.name}</div>
                                                     <div className="text-[11px] text-slate-400">ĐVT: {movement.product.unit}</div>
                                                 </td>
-                                                <td className="whitespace-nowrap px-3.5 py-2.5">
+                                                <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5">
                                                     <span
                                                         className={`inline-flex whitespace-nowrap items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${incoming
                                                             ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80"
@@ -960,15 +962,15 @@ function InventoryManagerContent() {
                                                         {businessLabels[document.businessType] || document.businessType}
                                                     </span>
                                                 </td>
-                                                <td className="whitespace-nowrap px-3.5 py-2.5 text-right font-bold tabular-nums">
+                                                <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 text-right font-bold tabular-nums">
                                                     <span className={incoming ? "text-emerald-700" : "text-amber-700"}>
                                                         {incoming ? "+" : "−"}{movement.quantity}
                                                     </span>
                                                 </td>
-                                                <td className="whitespace-nowrap px-3.5 py-2.5 text-right text-slate-600 tabular-nums">
+                                                <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 text-right text-slate-600 tabular-nums">
                                                     {movement.stockBefore} → <b className="text-slate-900">{movement.stockAfter}</b>
                                                 </td>
-                                                <td className="whitespace-nowrap px-3.5 py-2.5 font-medium">
+                                                <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 font-medium text-center">
                                                     <Link
                                                         href={`/dashboard/store/inventory/${encodeURIComponent(document.id)}`}
                                                         className="font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
@@ -982,7 +984,7 @@ function InventoryManagerContent() {
                                 )}
                                 {!visibleDocuments.length && (
                                     <tr>
-                                        <td colSpan={6} className="p-10 text-center text-slate-500 text-sm">
+                                        <td colSpan={6} className="border border-slate-200 p-10 text-center text-slate-500 text-sm">
                                             Chưa có giao dịch kho nào phù hợp với bộ lọc.
                                         </td>
                                     </tr>

@@ -61,6 +61,8 @@ export type FarmInfo = {
     farmName: string;
     farmCode: string;
     regionCode?: string | null;
+    regionName?: string | null;
+    regionAddress?: string | null;
     areaSize: number;
     totalTrees: number;
     durianVariety: string;
@@ -216,7 +218,7 @@ export function UserProfile({ profile, farms = [], stores = [], partnerFacility,
 
     // Editing facility state
     const [editingFacility, setEditingFacility] = useState(false);
-    const [facName, setFacName] = useState(partnerFacility?.name || "Cơ sở Chế biến Sầu riêng Trị An");
+    const [facName, setFacName] = useState(partnerFacility?.name || "Công ty TNHH MTV Kim Quy");
     const [facPhone, setFacPhone] = useState(partnerFacility?.phone || profile.phone);
     const [facEmail, setFacEmail] = useState(partnerFacility?.email || profile.email);
     const [facOrgType, setFacOrgType] = useState(partnerFacility?.organizationType || "Doanh nghiệp");
@@ -238,8 +240,10 @@ export function UserProfile({ profile, farms = [], stores = [], partnerFacility,
     const primaryFarm: FarmInfo = farms[0] || {
         id: "default-farm",
         farmName: "Vườn sầu riêng Minh Phát",
-        farmCode: "75-PUC-SR-00001-CHN-F01",
-        regionCode: "75-PUC-SR-00001-CHN",
+        farmCode: "VN-DNOR-0269-F01",
+        regionCode: "VN - DNOR - 0269",
+        regionName: "Kim Quy One Member Limited Liability Company",
+        regionAddress: "Nam Cat Tien Commune, Dong Nai Province, Vietnam",
         areaSize: 8.5,
         totalTrees: 420,
         durianVariety: "Ri6",
@@ -247,7 +251,7 @@ export function UserProfile({ profile, farms = [], stores = [], partnerFacility,
         province: "Đồng Nai",
         district: "Tân Phú",
         ward: "Phú Lộc",
-        growingRegion: "75-PUC-SR-00001-CHN - Vùng trồng sầu riêng Tân Phú",
+        growingRegion: "VN - DNOR - 0269 - Kim Quy One Member Limited Liability Company",
         isActive: true,
     };
 
@@ -286,7 +290,7 @@ export function UserProfile({ profile, farms = [], stores = [], partnerFacility,
         setEditEmail(profile.email || partnerFacility?.email || "");
         setEditBirthDate(profile.birthDate || "");
         setEditGender(profile.gender || "");
-        setFacName(partnerFacility?.name || "Cơ sở Chế biến Sầu riêng Trị An");
+        setFacName(partnerFacility?.name || "Công ty TNHH MTV Kim Quy");
         setFacPhone(partnerFacility?.phone || profile.phone);
         setFacEmail(partnerFacility?.email || profile.email);
         setFacOrgType(partnerFacility?.organizationType || "Doanh nghiệp");
@@ -568,7 +572,7 @@ export function UserProfile({ profile, farms = [], stores = [], partnerFacility,
             : lockedInputClass;
 
         return (
-            <div className="mx-auto max-w-5xl space-y-6 pb-12">
+            <div className="mx-auto w-full max-w-[1650px] space-y-6 px-3 pb-12 sm:px-6">
                 <input
                     ref={fileInput}
                     type="file"
@@ -810,11 +814,23 @@ export function UserProfile({ profile, farms = [], stores = [], partnerFacility,
                                         </span>
                                     </div>
                                     <Input
-                                        value={primaryFarm.regionCode || (primaryFarm.farmCode ? primaryFarm.farmCode.replace(/-F\d+$/, "") : "75-PUC-SR-00001-CHN")}
+                                        value={primaryFarm.regionCode || (primaryFarm.farmCode ? primaryFarm.farmCode.replace(/-F\d+$/, "") : "VN - DNOR - 0269")}
                                         disabled
                                         className="h-11 rounded-xl bg-emerald-50/80 border-emerald-200 text-emerald-800 font-mono font-black text-sm sm:text-base tracking-wide cursor-default select-text"
                                     />
                                 </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                                    TÊN VÙNG TRỒNG
+                                </Label>
+                                <Input
+                                    value={primaryFarm.regionName || primaryFarm.growingRegion || "—"}
+                                    disabled
+                                    className={lockedInputClass}
+                                />
+                                {primaryFarm.regionAddress && <p className="text-xs text-slate-500">{primaryFarm.regionAddress}</p>}
                             </div>
 
                             {/* Row 2: Quy mô & Số lượng cây */}
@@ -1116,10 +1132,10 @@ export function UserProfile({ profile, farms = [], stores = [], partnerFacility,
             ? "h-11 rounded-xl bg-white border-emerald-500 ring-2 ring-emerald-100 text-slate-900 font-semibold text-sm sm:text-base shadow-xs focus:outline-hidden"
             : lockedInputClass;
 
-        const displayFacilityCode = partnerFacility?.code || (isProcessing ? "75-PHC-SR-00001-CHN" : "75-PHC-SR-00001-CHN");
+        const displayFacilityCode = partnerFacility?.code || "VN-DNPH-131";
 
         return (
-            <div className="mx-auto max-w-5xl space-y-6 pb-12">
+            <div className="mx-auto w-full max-w-[1650px] space-y-6 px-3 pb-12 sm:px-6">
                 <input
                     ref={fileInput}
                     type="file"
@@ -1675,7 +1691,7 @@ export function UserProfile({ profile, farms = [], stores = [], partnerFacility,
         : lockedInputClass;
 
     return (
-        <div className="mx-auto max-w-5xl space-y-6 pb-12">
+        <div className="mx-auto w-full max-w-[1650px] space-y-6 px-3 pb-12 sm:px-6">
             {/* Header Hero Cover */}
             <section className="relative overflow-hidden rounded-[32px] border border-slate-200/80 bg-white shadow-soft">
                 <div className="relative h-[180px] w-full bg-gradient-to-r from-brand-700 via-emerald-600 to-lime-500 sm:h-[190px]">

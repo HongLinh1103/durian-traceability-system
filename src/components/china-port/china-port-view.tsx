@@ -15,17 +15,23 @@ import {
     ShieldCheck,
     ChevronLeft,
     ChevronRight,
-    Check
+    Check,
+    Settings,
+    Bell,
+    Mail,
+    MessageSquare,
+    Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { formatVietnameseDate } from "@/lib/date-format";
 
 // Types
 export type ChinaPortCountry = {
-    countryIso: string;
-    countryCode: string;
-    countryNameEn: string;
-    countryNameCn: string;
+    countryIso?: string | null;
+    countryCode?: string | null;
+    countryNameEn?: string | null;
+    countryNameCn?: string | null;
 };
 
 export type ChinaPortCorpType = {
@@ -84,6 +90,12 @@ const DEFAULT_COLUMNS = [
 ];
 
 const clean = (value: any) => String(value ?? "").replace(/\n+$/g, "").trim();
+const searchable = (value: unknown) => clean(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
+const countryLabel = (country: ChinaPortCountry) => {
+    const iso = clean(country.countryIso) || "---";
+    const names = [clean(country.countryNameEn), clean(country.countryNameCn)].filter(Boolean).join(" · ");
+    return `[${iso}] ${names || "Chưa có tên"}`;
+};
 const fmtDate = (value: any) => {
     const s = clean(value).slice(0, 10);
     if (!s) return "—";
@@ -92,7 +104,18 @@ const fmtDate = (value: any) => {
 };
 const statusLabel = (value: any) => (value === "1" ? "Còn hiệu lực" : value === "2" ? "Tạm dừng" : clean(value) || "—");
 
-export function ChinaPortView() {
+type NotificationEvent = "NEW_RECORD" | "STATUS_CHANGED" | "DATA_CHANGED";
+type NotificationSettings = {
+    countryCode: string;
+    events: NotificationEvent[];
+    emailEnabled: boolean;
+    smsEnabled: boolean;
+    emails: string[];
+    phones: string[];
+};
+
+export function ChinaPortView({ canConfigureNotifications = false, adminEmail = "", adminPhone = "" }: { canConfigureNotifications?: boolean; adminEmail?: string; adminPhone?: string }) {
+    const { toast } = useToast();
     // Search Form States
     const [countryCode, setCountryCode] = useState<string>("704"); // Default Vietnam
     const [countryToggleLabel, setCountryToggleLabel] = useState<string>("[VNM] Viet Nam · 越南");
@@ -125,6 +148,100 @@ export function ChinaPortView() {
     // Detail Modal State
     const [selectedDetailRow, setSelectedDetailRow] = useState<ChinaPortRow | null>(null);
     const [exportingExcel, setExportingExcel] = useState<boolean>(false);
+    const [notificationOpen, setNotificationOpen] = useState(false);
+    const [notificationConfigured, setNotificationConfigured] = useState(false);
+    const [notificationError, setNotificationError] = useState("");
+    const [loadingSettings, setLoadingSettings] = useState(true);
+    const [savingSettings, setSavingSettings] = useState(false);
+    const [emailServiceReady, setEmailServiceReady] = useState<boolean | null>(null);
+    const [testEvent, setTestEvent] = useState<NotificationEvent>("NEW_RECORD");
+    const [sendingTestEmail, setSendingTestEmail] = useState(false);
+    const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string } | null>(null);
+    const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+        countryCode: "704",
+        events: ["NEW_RECORD", "STATUS_CHANGED", "DATA_CHANGED"],
+        emailEnabled: true,
+        smsEnabled: false,
+        emails: [adminEmail].filter(Boolean),
+        phones: [adminPhone].filter(Boolean),
+    });
+
+    useEffect(() => {
+        if (!canConfigureNotifications) return;
+        let active = true;
+        fetch("/api/china-port/notification-settings").then(async response => {
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message);
+            if (!active) return;
+            setEmailServiceReady(result.emailService.configured);
+            if (result.data) {
+                setNotificationSettings(result.data);
+                setNotificationConfigured(result.data.emailEnabled);
+            } else {
+                const saved = window.localStorage.getItem("china-port-admin-notifications");
+                if (saved) {
+                    try { setNotificationSettings({ ...JSON.parse(saved), countryCode: "704", smsEnabled: false }); } catch {}
+                }
+            }
+        }).catch(error => { if (active) setNotificationError(error.message || "Không thể tải cấu hình."); })
+          .finally(() => { if (active) setLoadingSettings(false); });
+        return () => { active = false; };
+    }, [canConfigureNotifications]);
+
+    function openNotificationSettings() {
+        setTestEmailResult(null);
+        setNotificationOpen(true);
+    }
+
+    async function sendTestEmail() {
+        if (sendingTestEmail) return;
+        const emails = [...new Set(notificationSettings.emails.map((value) => value.trim()).filter(Boolean))];
+        if (!emails.length || emails.length > 10 || emails.some((value) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))) {
+            setTestEmailResult({ success: false, message: "Nhập từ 1 đến 10 email hợp lệ ở mục Email trước khi gửi thử." });
+            return;
+        }
+        setSendingTestEmail(true);
+        setTestEmailResult(null);
+        try {
+            const response = await fetch("/api/china-port/test-email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ emails, event: testEvent }),
+            });
+            const result = await response.json();
+            setTestEmailResult({ success: response.ok && result.success === true, message: result.message || "Không thể gửi email thử." });
+        } catch {
+            setTestEmailResult({ success: false, message: "Không thể kết nối để gửi email thử. Kiểm tra kết nối và thử lại." });
+        } finally {
+            setSendingTestEmail(false);
+        }
+    }
+
+    async function saveNotificationSettings() {
+        if (savingSettings || loadingSettings) return;
+        setNotificationError("");
+        if (!notificationSettings.events.length) return setNotificationError("Chọn ít nhất một loại thông báo.");
+        const emails = notificationSettings.emails.map((value) => value.trim()).filter(Boolean);
+        const phones = notificationSettings.phones.map((value) => value.trim()).filter(Boolean);
+        if (notificationSettings.emailEnabled && (!emails.length || emails.some((value) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)))) return setNotificationError("Email không đúng định dạng.");
+        if (notificationSettings.smsEnabled && (!phones.length || phones.some((value) => !/^\+?[0-9\s.-]{8,20}$/.test(value)))) return setNotificationError("Số điện thoại không đúng định dạng.");
+        const saved = { ...notificationSettings, emails, phones };
+        setSavingSettings(true);
+        try {
+            const response = await fetch("/api/china-port/notification-settings", {
+                method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(saved),
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message);
+            setNotificationSettings(result.data);
+            setNotificationConfigured(result.data.emailEnabled);
+            setEmailServiceReady(result.emailService.configured);
+            window.localStorage.removeItem("china-port-admin-notifications");
+            toast({ title: "Đã lưu cấu hình vào hệ thống", description: result.data.emailEnabled ? "Email nhận đã được lưu. Thông báo được gửi khi đồng bộ phát hiện thay đổi phù hợp và dịch vụ gửi email đã sẵn sàng." : "Đã tắt nhận thông báo email.", variant: "success" });
+        } catch (error) {
+            setNotificationError(error instanceof Error ? error.message : "Không thể lưu cấu hình.");
+        } finally { setSavingSettings(false); }
+    }
 
     // Load initial reference data
     useEffect(() => {
@@ -137,11 +254,11 @@ export function ChinaPortView() {
                 if (isMounted && countryJson.data) {
                     setCountries(countryJson.data);
                     const vnm = countryJson.data.find(
-                        (c: ChinaPortCountry) => clean(c.countryIso).toUpperCase() === "VNM" || c.countryCode === "704"
+                        (c: ChinaPortCountry) => clean(c.countryIso).toUpperCase() === "VNM" || clean(c.countryCode) === "704"
                     );
                     if (vnm) {
-                        setCountryCode(vnm.countryCode);
-                        setCountryToggleLabel(`[${vnm.countryIso}] ${vnm.countryNameEn} · ${vnm.countryNameCn}`);
+                        setCountryCode(clean(vnm.countryCode));
+                        setCountryToggleLabel(countryLabel(vnm));
                     }
                 }
 
@@ -249,13 +366,13 @@ export function ChinaPortView() {
     // Filtered countries for country selection panel
     const filteredCountries = useMemo(() => {
         if (!countrySearchFilter.trim()) return countries;
-        const q = countrySearchFilter.trim().toLowerCase();
+        const q = searchable(countrySearchFilter);
         return countries.filter(
             (c) =>
-                c.countryIso.toLowerCase().includes(q) ||
-                c.countryNameEn.toLowerCase().includes(q) ||
-                c.countryNameCn.toLowerCase().includes(q) ||
-                c.countryCode.includes(q)
+                searchable(c.countryIso).includes(q) ||
+                searchable(c.countryNameEn).includes(q) ||
+                searchable(c.countryNameCn).includes(q) ||
+                searchable(c.countryCode).includes(q)
         );
     }, [countries, countrySearchFilter]);
 
@@ -373,15 +490,29 @@ export function ChinaPortView() {
                         </span>
                         <h2 className="text-lg font-black text-slate-900">Điều kiện tìm trên China Port</h2>
                     </div>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={handleReset}
-                        className="text-xs font-bold text-slate-600 hover:text-rose-600 rounded-xl gap-1.5"
-                    >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        Đặt lại
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {canConfigureNotifications && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={openNotificationSettings}
+                                className="relative rounded-xl border-emerald-200 text-xs font-bold text-emerald-800 hover:bg-emerald-50 gap-1.5"
+                            >
+                                {notificationConfigured ? <Bell className="h-3.5 w-3.5" /> : <Settings className="h-3.5 w-3.5" />}
+                                {notificationConfigured ? "Thông báo đang bật" : "Cài đặt thông báo"}
+                                {notificationConfigured && <span className="h-2 w-2 rounded-full bg-emerald-500" />}
+                            </Button>
+                        )}
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={handleReset}
+                            className="text-xs font-bold text-slate-600 hover:text-rose-600 rounded-xl gap-1.5"
+                        >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            Đặt lại
+                        </Button>
+                    </div>
                 </div>
 
                 <form
@@ -393,21 +524,21 @@ export function ChinaPortView() {
                 >
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         {/* Quốc gia / Vùng */}
-                        <div className="relative space-y-1">
+                        <div className="relative min-w-0 space-y-1">
                             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide">
                                 Quốc gia / Vùng
                             </label>
                             <button
                                 type="button"
                                 onClick={() => setCountryPanelOpen(!countryPanelOpen)}
-                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs font-bold text-slate-800 hover:border-emerald-500 focus:outline-none flex items-center justify-between truncate h-10"
+                                className="flex h-10 w-full min-w-0 items-center justify-between overflow-hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs font-bold text-slate-800 hover:border-emerald-500 focus:outline-none"
                             >
                                 <span className="truncate">{countryToggleLabel}</span>
                                 <Globe className="h-4 w-4 shrink-0 text-slate-400" />
                             </button>
 
                             {countryPanelOpen && (
-                                <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl space-y-2">
+                                <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-64 min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl space-y-2">
                                     <input
                                         type="search"
                                         value={countrySearchFilter}
@@ -416,7 +547,7 @@ export function ChinaPortView() {
                                         className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-emerald-500"
                                         autoFocus
                                     />
-                                    <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                    <div className="max-h-48 min-w-0 overflow-x-hidden overflow-y-auto divide-y divide-slate-100">
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -428,23 +559,24 @@ export function ChinaPortView() {
                                         >
                                             Tất cả quốc gia
                                         </button>
-                                        {filteredCountries.map((c) => (
+                                        {filteredCountries.map((c, index) => (
                                             <button
-                                                key={c.countryCode}
+                                                key={`${clean(c.countryCode) || "country"}-${index}`}
                                                 type="button"
                                                 onClick={() => {
-                                                    setCountryCode(c.countryCode);
-                                                    setCountryToggleLabel(`[${c.countryIso}] ${c.countryNameEn} · ${c.countryNameCn}`);
+                                                    setCountryCode(clean(c.countryCode));
+                                                    setCountryToggleLabel(countryLabel(c));
                                                     setCountryPanelOpen(false);
                                                 }}
-                                                className={`w-full px-3 py-2 text-left text-xs transition hover:bg-emerald-50 flex items-center justify-between ${
-                                                    countryCode === c.countryCode ? "bg-emerald-50 font-black text-emerald-900" : "text-slate-800 font-medium"
+                                                className={`flex w-full min-w-0 items-center justify-between gap-2 overflow-hidden px-3 py-2 text-left text-xs transition hover:bg-emerald-50 ${
+                                                    countryCode === clean(c.countryCode) ? "bg-emerald-50 font-black text-emerald-900" : "text-slate-800 font-medium"
                                                 }`}
                                             >
-                                                <span>[{c.countryIso}] {c.countryNameEn} · {c.countryNameCn}</span>
-                                                {countryCode === c.countryCode && <Check className="h-3.5 w-3.5 text-emerald-600" />}
+                                                <span className="block min-w-0 flex-1 truncate">{countryLabel(c)}</span>
+                                                {countryCode === clean(c.countryCode) && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
                                             </button>
                                         ))}
+                                        {!filteredCountries.length && <p className="px-3 py-4 text-center text-xs text-slate-500">Không tìm thấy quốc gia phù hợp.</p>}
                                     </div>
                                 </div>
                             )}
@@ -458,7 +590,7 @@ export function ChinaPortView() {
                             <input
                                 value={overseasOfficialRegNo}
                                 onChange={(e) => setOverseasOfficialRegNo(e.target.value)}
-                                placeholder="Ví dụ: 75-PUC-SR-00001, 75-PHC-SR-00001-CHN"
+                                placeholder="Ví dụ: VN-DNOR-0269, VN-DNPH-131"
                                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:border-emerald-500 focus:outline-none h-10"
                             />
                         </div>
@@ -743,119 +875,121 @@ export function ChinaPortView() {
                 </div>
 
                 {/* Table Data */}
-                <div className="rounded-2xl border border-slate-200 overflow-hidden overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                        <thead className="bg-slate-100/80 text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b">
-                            <tr>
-                                {columns
-                                    .filter((c) => c.visible)
-                                    .map((col) => {
-                                        const isDateField = col.key === "validFrom" || col.key === "validTo";
-                                        return (
-                                            <th
-                                                key={col.key}
-                                                className={`px-4 py-3 whitespace-nowrap ${
-                                                    isDateField ? "w-32 min-w-[130px] max-w-[130px] text-center" : ""
-                                                }`}
-                                            >
-                                                {col.label}
-                                            </th>
-                                        );
-                                    })}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {filteredRows.map((row, index) => (
-                                <tr
-                                    key={row.chinaRegNo || row.overseasOfficialRegNo || index}
-                                    className="hover:bg-emerald-50/40 transition group"
-                                >
+                <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse border border-slate-300 text-left text-xs">
+                            <thead className="bg-slate-100/90 text-slate-700 font-semibold uppercase tracking-wider text-[11px]">
+                                <tr>
                                     {columns
                                         .filter((c) => c.visible)
                                         .map((col) => {
-                                            if (col.key === "view") {
-                                                return (
-                                                    <td key={col.key} className="px-4 py-3 whitespace-nowrap">
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            onClick={() => setSelectedDetailRow(row)}
-                                                            className="bg-emerald-100 hover:bg-emerald-700 hover:text-white text-emerald-900 rounded-lg text-[11px] font-bold h-7 px-2.5 gap-1 transition"
-                                                        >
-                                                            <Eye className="h-3 w-3" />
-                                                            Xem
-                                                        </Button>
-                                                    </td>
-                                                );
-                                            }
-
-                                            if (col.key === "status") {
-                                                const isActive = row.regState === "1";
-                                                return (
-                                                    <td key={col.key} className="px-4 py-3 whitespace-nowrap">
-                                                        <span
-                                                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                                                                isActive
-                                                                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                                                    : "bg-rose-100 text-rose-800 border border-rose-200"
-                                                            }`}
-                                                        >
-                                                            {isActive ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-                                                            {statusLabel(row.regState)}
-                                                        </span>
-                                                    </td>
-                                                );
-                                            }
-
-                                            // Đảm bảo 2 cột "HIỆU LỰC TỪ" và "HIỆU LỰC ĐẾN" nằm trên 1 hàng và có độ rộng bằng nhau
-                                            if (col.key === "validFrom" || col.key === "validTo") {
-                                                return (
-                                                    <td
-                                                        key={col.key}
-                                                        className="px-4 py-3 text-slate-700 font-mono text-[11px] text-center whitespace-nowrap w-32 min-w-[130px] max-w-[130px]"
-                                                    >
-                                                        {fmtDate(row[col.key])}
-                                                    </td>
-                                                );
-                                            }
-
-                                            if (col.key === "overseasOfficialRegNo" || col.key === "chinaRegNo") {
-                                                return (
-                                                    <td key={col.key} className="px-4 py-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                                                        {clean(row[col.key]) || "—"}
-                                                    </td>
-                                                );
-                                            }
-
-                                            if (col.key === "corpNameEn") {
-                                                return (
-                                                    <td key={col.key} className="px-4 py-3 font-bold text-slate-900 max-w-xs truncate" title={clean(row.corpNameEn)}>
-                                                        {clean(row.corpNameEn) || "—"}
-                                                    </td>
-                                                );
-                                            }
-
+                                            const isDateField = col.key === "validFrom" || col.key === "validTo";
                                             return (
-                                                <td key={col.key} className="px-4 py-3 text-slate-700 whitespace-pre-line">
-                                                    {getCellContent(row, col.key)}
-                                                </td>
+                                                <th
+                                                    key={col.key}
+                                                    className={`border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap ${
+                                                        isDateField ? "w-32 min-w-[130px] max-w-[130px] text-center" : ""
+                                                    }`}
+                                                >
+                                                    {col.label}
+                                                </th>
                                             );
                                         })}
                                 </tr>
-                            ))}
-
-                            {!filteredRows.length && (
-                                <tr>
-                                    <td
-                                        colSpan={columns.filter((c) => c.visible).length}
-                                        className="py-12 text-center text-slate-400 text-sm font-medium"
+                            </thead>
+                            <tbody>
+                                {filteredRows.map((row, index) => (
+                                    <tr
+                                        key={row.chinaRegNo || row.overseasOfficialRegNo || index}
+                                        className="hover:bg-slate-50/70 transition group"
                                     >
-                                        {loading ? "Đang kết nối và tải dữ liệu China Port..." : "Không có dòng dữ liệu nào khớp với điều kiện tìm kiếm."}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                        {columns
+                                            .filter((c) => c.visible)
+                                            .map((col) => {
+                                                if (col.key === "view") {
+                                                    return (
+                                                        <td key={col.key} className="border border-slate-200 px-3.5 py-2.5 whitespace-nowrap text-center">
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                onClick={() => setSelectedDetailRow(row)}
+                                                                className="bg-emerald-100 hover:bg-emerald-700 hover:text-white text-emerald-900 rounded-lg text-[11px] font-bold h-7 px-2.5 gap-1 transition"
+                                                            >
+                                                                <Eye className="h-3 w-3" />
+                                                                Xem
+                                                            </Button>
+                                                        </td>
+                                                    );
+                                                }
+
+                                                if (col.key === "status") {
+                                                    const isActive = row.regState === "1";
+                                                    return (
+                                                        <td key={col.key} className="border border-slate-200 px-3.5 py-2.5 whitespace-nowrap text-center">
+                                                            <span
+                                                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                                                                    isActive
+                                                                        ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                                                        : "bg-rose-100 text-rose-800 border border-rose-200"
+                                                                }`}
+                                                            >
+                                                                {isActive ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                                                                {statusLabel(row.regState)}
+                                                            </span>
+                                                        </td>
+                                                    );
+                                                }
+
+                                                // Đảm bảo 2 cột "HIỆU LỰC TỪ" và "HIỆU LỰC ĐẾN" nằm trên 1 hàng và có độ rộng bằng nhau
+                                                if (col.key === "validFrom" || col.key === "validTo") {
+                                                    return (
+                                                        <td
+                                                            key={col.key}
+                                                            className="border border-slate-200 px-3.5 py-2.5 text-slate-700 font-mono text-[11px] text-center whitespace-nowrap w-32 min-w-[130px] max-w-[130px]"
+                                                        >
+                                                            {fmtDate(row[col.key])}
+                                                        </td>
+                                                    );
+                                                }
+
+                                                if (col.key === "overseasOfficialRegNo" || col.key === "chinaRegNo") {
+                                                    return (
+                                                        <td key={col.key} className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                                            {clean(row[col.key]) || "—"}
+                                                        </td>
+                                                    );
+                                                }
+
+                                                if (col.key === "corpNameEn") {
+                                                    return (
+                                                        <td key={col.key} className="border border-slate-200 px-3.5 py-2.5 font-bold text-slate-900 max-w-xs truncate" title={clean(row.corpNameEn)}>
+                                                            {clean(row.corpNameEn) || "—"}
+                                                        </td>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <td key={col.key} className="border border-slate-200 px-3.5 py-2.5 text-slate-700 whitespace-pre-line">
+                                                        {getCellContent(row, col.key)}
+                                                    </td>
+                                                );
+                                            })}
+                                    </tr>
+                                ))}
+
+                                {!filteredRows.length && (
+                                    <tr>
+                                        <td
+                                            colSpan={columns.filter((c) => c.visible).length}
+                                            className="border border-slate-200 py-12 text-center text-slate-500 text-sm font-medium"
+                                        >
+                                            {loading ? "Đang kết nối và tải dữ liệu China Port..." : "Không có dòng dữ liệu nào khớp với điều kiện tìm kiếm."}
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 {/* Pagination */}
@@ -889,6 +1023,84 @@ export function ChinaPortView() {
                     </Button>
                 </div>
             </section>
+
+            {canConfigureNotifications && notificationOpen && (
+                <div
+                    className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
+                    onMouseDown={(event) => event.target === event.currentTarget && setNotificationOpen(false)}
+                >
+                    <section role="dialog" aria-modal="true" aria-label="Cấu hình thông báo China Port" className="flex max-h-[90vh] w-full max-w-[760px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+                        <header className="flex shrink-0 items-start justify-between border-b px-6 py-5">
+                            <div>
+                                <h2 className="flex items-center gap-2 text-xl font-black text-slate-900"><Settings className="h-5 w-5 text-emerald-700" />Cấu hình thông báo China Port</h2>
+                                <p className="mt-1 text-sm text-slate-500">Nhận thông báo khi dữ liệu của quốc gia/vùng theo dõi có thay đổi.</p>
+                            </div>
+                            <button type="button" onClick={() => setNotificationOpen(false)} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Đóng"><X className="h-5 w-5" /></button>
+                        </header>
+
+                        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+                            <section className="pb-5">
+                                <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">Quốc gia / Vùng theo dõi</h3>
+                                <label className="mt-3 block text-sm font-bold text-slate-700">Quốc gia / Vùng *
+                                    <select disabled value={notificationSettings.countryCode} onChange={(event) => setNotificationSettings((value) => ({ ...value, countryCode: event.target.value }))} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-emerald-500 focus:outline-none">
+                                        <option value="704">[VNM] Viet Nam · 越南</option>
+                                    </select>
+                                </label>
+                            </section>
+
+                            <section className="border-t py-5">
+                                <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">Thông báo khi</h3>
+                                <p className="mt-1 text-sm text-slate-500">Chọn những thay đổi bạn muốn nhận thông báo.</p>
+                                <div className="mt-3 space-y-3">
+                                    {([
+                                        ["NEW_RECORD", "Có dữ liệu đăng ký mới", "Xuất hiện bản ghi mới của quốc gia/vùng đang theo dõi."],
+                                        ["STATUS_CHANGED", "Trạng thái đăng ký thay đổi", "Bao quát Còn hiệu lực, Tạm dừng và Hết hiệu lực."],
+                                        ["DATA_CHANGED", "Thông tin đăng ký thay đổi", "Doanh nghiệp, mã, ngày hiệu lực hoặc dữ liệu quan trọng được cập nhật."],
+                                    ] as [NotificationEvent, string, string][]).map(([event, label, description]) => (
+                                        <label key={event} className="flex cursor-pointer items-start gap-3 rounded-xl p-2 hover:bg-slate-50">
+                                            <input type="checkbox" checked={notificationSettings.events.includes(event)} onChange={(e) => setNotificationSettings((value) => ({ ...value, events: e.target.checked ? [...value.events, event] : value.events.filter((item) => item !== event) }))} className="mt-1 h-4 w-4 accent-emerald-600" />
+                                            <span><span className="block text-sm font-bold text-slate-800">{label}</span><span className="block text-xs text-slate-500">{description}</span></span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </section>
+
+                            <section className="border-t pt-5">
+                                <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">Kênh nhận thông báo</h3>
+                                <p className="mt-1 text-sm text-slate-500">Bật Email để nhận thông báo; bỏ chọn để tắt.</p>
+                                <label className="mt-4 flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" checked={notificationSettings.emailEnabled} onChange={(e) => setNotificationSettings((value) => ({ ...value, emailEnabled: e.target.checked }))} className="h-4 w-4 accent-emerald-600" /><Mail className="h-4 w-4 text-emerald-700" /> Email</label>
+                                {notificationSettings.emailEnabled && <div className="mt-3 space-y-2">{notificationSettings.emails.map((email, index) => <div key={index} className="flex gap-2"><input aria-label={`Email ${index + 1}`} value={email} onChange={(e) => setNotificationSettings((value) => ({ ...value, emails: value.emails.map((item, i) => i === index ? e.target.value : item) }))} placeholder="admin@triviet.vn" className="h-10 flex-1 rounded-xl border border-slate-200 px-3 text-sm focus:border-emerald-500 focus:outline-none" /><button type="button" onClick={() => setNotificationSettings((value) => ({ ...value, emails: value.emails.filter((_, i) => i !== index) }))} className="rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button></div>)}<button type="button" onClick={() => setNotificationSettings((value) => ({ ...value, emails: [...value.emails, ""] }))} className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700"><Plus className="h-3.5 w-3.5" />Thêm email</button></div>}
+
+                                <label className="mt-5 flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" disabled checked={notificationSettings.smsEnabled} onChange={(e) => setNotificationSettings((value) => ({ ...value, smsEnabled: e.target.checked }))} className="h-4 w-4 accent-emerald-600" /><MessageSquare className="h-4 w-4 text-emerald-700" /> SMS (chưa hỗ trợ gửi)</label>
+                                {notificationSettings.smsEnabled && <div className="mt-3 space-y-2">{notificationSettings.phones.map((phone, index) => <div key={index} className="flex gap-2"><input aria-label={`Số điện thoại ${index + 1}`} value={phone} onChange={(e) => setNotificationSettings((value) => ({ ...value, phones: value.phones.map((item, i) => i === index ? e.target.value : item) }))} placeholder="+84 912 345 678" className="h-10 flex-1 rounded-xl border border-slate-200 px-3 text-sm focus:border-emerald-500 focus:outline-none" /><button type="button" onClick={() => setNotificationSettings((value) => ({ ...value, phones: value.phones.filter((_, i) => i !== index) }))} className="rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button></div>)}<button type="button" onClick={() => setNotificationSettings((value) => ({ ...value, phones: [...value.phones, ""] }))} className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700"><Plus className="h-3.5 w-3.5" />Thêm số điện thoại</button></div>}
+                                {notificationSettings.emailEnabled && (
+                                    <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+                                        <h4 className="font-bold text-slate-900">Gửi email thử</h4>
+                                        {emailServiceReady === false && <p role="status" className="mt-2 text-sm text-amber-800">Địa chỉ nhận có thể được lưu, nhưng dịch vụ gửi email của hệ thống chưa được cấu hình SMTP.</p>}
+                                        <p className="mt-1 text-sm text-slate-600">Gửi đến các email đã nhập ở trên bằng dữ liệu mẫu Việt Nam, không cần lưu cấu hình. Tiêu đề có [TEST]; dữ liệu China Port không bị thay đổi.</p>
+                                        <label htmlFor="china-port-test-event" className="mt-3 block text-sm font-semibold text-slate-700">Tình huống kiểm thử</label>
+                                        <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                                            <select id="china-port-test-event" value={testEvent} disabled={sendingTestEmail} onChange={(e) => setTestEvent(e.target.value as NotificationEvent)} className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm">
+                                                <option value="NEW_RECORD">Có dữ liệu đăng ký mới</option>
+                                                <option value="STATUS_CHANGED">Trạng thái đăng ký thay đổi</option>
+                                                <option value="DATA_CHANGED">Thông tin đăng ký thay đổi</option>
+                                            </select>
+                                            <Button type="button" disabled={sendingTestEmail} onClick={sendTestEmail} className="rounded-xl bg-emerald-700 text-white hover:bg-emerald-800"><Mail className="h-4 w-4" />{sendingTestEmail ? "Đang gửi…" : "Gửi email thử"}</Button>
+                                        </div>
+                                        {testEmailResult && <p role={testEmailResult.success ? "status" : "alert"} className={`mt-3 rounded-lg p-3 text-sm ${testEmailResult.success ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}`}>{testEmailResult.message}</p>}
+                                    </div>
+                                )}
+                                {notificationError && <p role="alert" className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">⚠ {notificationError}</p>}
+                            </section>
+                        </div>
+
+                        <footer className="flex shrink-0 justify-end gap-3 border-t bg-slate-50 px-6 py-4">
+                            <Button type="button" variant="outline" onClick={() => setNotificationOpen(false)} className="rounded-xl">Hủy</Button>
+                            <Button type="button" disabled={loadingSettings || savingSettings} onClick={saveNotificationSettings} className="rounded-xl bg-emerald-700 text-white hover:bg-emerald-800"><Check className="h-4 w-4" />{savingSettings ? "Đang lưu…" : loadingSettings ? "Đang tải…" : "Lưu cấu hình"}</Button>
+                        </footer>
+                    </section>
+                </div>
+            )}
 
             {/* DETAIL MODAL (CHI TIẾT HỒ SƠ) */}
             {selectedDetailRow && (

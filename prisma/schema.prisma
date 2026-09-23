@@ -674,6 +674,25 @@ model UserPermissionConfig {
   @@map("user_permission_configs")
 }
 
+// Directory entries imported from GACC; do not require fabricated user accounts.
+model PackingFacilityCatalog {
+  id             String   @id @default(cuid())
+  normalizedCode String   @unique
+  code           String
+  name           String
+  province       String
+  address        String
+  fruitType      String
+  sourceFile     String
+  sourceSha256   String
+  sourceRow      Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([province, name])
+  @@map("packing_facility_catalog")
+}
+
 model PartnerFacility {
   id                  String               @id @default(cuid())
   ownerId             String               @unique
@@ -1334,6 +1353,7 @@ model GrowingRegion {
   province             String
   district             String?
   ward                 String?
+  address              String?
   cropVarieties        String[]            @default([])
   status               GrowingRegionStatus @default(ACTIVE)
   latitude             Float?
@@ -2390,6 +2410,19 @@ model ChinaPortRecord {
   @@index([overseasOfficialRegNo])
   @@index([chinaRegNo])
   @@map("china_port_records")
+}
+
+model ChinaPortNotificationSetting {
+  userId       String   @id
+  countryCode  String   @default("704")
+  events       String[]
+  emailEnabled Boolean  @default(true)
+  smsEnabled   Boolean  @default(false)
+  emails       String[]
+  phones       String[]
+  updatedAt    DateTime @updatedAt
+
+  @@map("china_port_notification_settings")
 }
 
 model ChinaPortSyncLog {

@@ -202,19 +202,19 @@ export const INITIAL_CUSTOM_ROLES: CustomRoleDef[] = [
 
 export const MOCK_ASSIGNED_USERS: Record<string, RoleAssignedUser[]> = {
     PROCESSING_STAFF: [
-        { id: "mock-proc-1", fullName: "Nguyễn Văn A", phone: "0901 111 222", email: "nguyenvana@processing.vn", organization: "Cơ sở Chế biến Trị An", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
+        { id: "mock-proc-1", fullName: "Nguyễn Văn A", phone: "0901 111 222", email: "nguyenvana@processing.vn", organization: "Công ty TNHH MTV Kim Quy", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
         { id: "mock-proc-2", fullName: "Trần Văn B", phone: "0902 222 333", email: "tranvanb@processing.vn", organization: "Cơ sở Chế biến Minh Phát", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
         { id: "mock-proc-3", fullName: "Lê Thị Cẩm Tú", phone: "0903 333 444", email: "camtu@durian-daklak.vn", organization: "Xưởng Chế Biến Sầu Riêng Đắk Lắk", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
         { id: "mock-proc-4", fullName: "Hoàng Trọng Nhân", phone: "0904 444 555", email: "nhanht@phongdien-foods.vn", organization: "Nhà máy Nông sản Phong Điền", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
     ],
     INTAKE_STAFF: [
-        { id: "mock-intake-1", fullName: "Đặng Hữu Tài", phone: "0905 555 666", email: "taidh@trian.vn", organization: "Cơ sở Chế biến Trị An", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
+        { id: "mock-intake-1", fullName: "Đặng Hữu Tài", phone: "0905 555 666", email: "taidh@trian.vn", organization: "Công ty TNHH MTV Kim Quy", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
         { id: "mock-intake-2", fullName: "Phạm Thị Hoa", phone: "0906 666 777", email: "hoapt@minhphat.vn", organization: "Cơ sở Chế biến Minh Phát", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
         { id: "mock-intake-3", fullName: "Ngô Minh Trí", phone: "0907 777 888", email: "trinm@durian-daklak.vn", organization: "Xưởng Chế Biến Sầu Riêng Đắk Lắk", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
     ],
     DISPATCH_STAFF: [
         { id: "mock-dispatch-1", fullName: "Vũ Đức Long", phone: "0908 888 999", email: "longvd@durian-daklak.vn", organization: "Xưởng Chế Biến Sầu Riêng Đắk Lắk", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
-        { id: "mock-dispatch-2", fullName: "Bùi Quốc Huy", phone: "0909 999 000", email: "huybq@trian.vn", organization: "Cơ sở Chế biến Trị An", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
+        { id: "mock-dispatch-2", fullName: "Bùi Quốc Huy", phone: "0909 999 000", email: "huybq@trian.vn", organization: "Công ty TNHH MTV Kim Quy", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
     ],
     ADMIN: [
         { id: "mock-admin-1", fullName: "Admin Trí Việt", phone: "0900 000 001", email: "admin@triviet.vn", organization: "Tổng bộ Quản trị Trí Việt", accountStatus: "APPROVED", role: "ADMIN" },
@@ -227,7 +227,7 @@ export const MOCK_ASSIGNED_USERS: Record<string, RoleAssignedUser[]> = {
         { id: "mock-farmer-4", fullName: "Phạm Quốc Dũng", phone: "0914 567 890", email: "dung.pq@nongdan.vn", organization: "HTX Sầu Riêng Cư M'gar", accountStatus: "APPROVED", role: "FARMER" },
     ],
     PROCESSING_FACILITY: [
-        { id: "mock-fac-1", fullName: "Cơ sở Chế biến Trị An", phone: "0283 888 991", email: "trian@chebien.vn", organization: "Cơ sở Chế biến Trị An", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
+        { id: "mock-fac-1", fullName: "Công ty TNHH MTV Kim Quy", phone: "0283 888 991", email: "trian@chebien.vn", organization: "Công ty TNHH MTV Kim Quy", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
         { id: "mock-fac-2", fullName: "Cơ sở Chế biến Minh Phát", phone: "0283 888 992", email: "minhphat@chebien.vn", organization: "Cơ sở Chế biến Minh Phát", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
         { id: "mock-fac-3", fullName: "Xưởng Chế Biến Sầu Riêng Đắk Lắk", phone: "0262 388 993", email: "daklak@chebien.vn", organization: "Xưởng Chế Biến Sầu Riêng Đắk Lắk", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
         { id: "mock-fac-4", fullName: "Nhà máy Nông sản Phong Điền", phone: "0292 388 994", email: "phongdien@chebien.vn", organization: "Nhà máy Nông sản Phong Điền", accountStatus: "APPROVED", role: "PROCESSING_FACILITY" },
@@ -1224,7 +1224,6 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, { moduleEnabled: Record<st
             // Truy xuất & China Port
             "QR_TRACE_VIEW",
             "QR_TRACE_PREVIEW",
-            "QR_TRACE_ISSUE",
             "QR_TRACE_PRINT",
             "TRACE_CHAIN_VIEW",
             "CHINA_PORT_SEARCH",

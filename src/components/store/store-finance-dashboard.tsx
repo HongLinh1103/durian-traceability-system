@@ -756,55 +756,55 @@ export function StoreFinanceDashboard() {
                     </div>
 
                     {/* Orders Table */}
-                    <Card className="rounded-3xl border-slate-200 overflow-hidden shadow-xs">
+                    <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs sm:text-sm">
-                                <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                            <table className="w-full border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                                <thead className="bg-slate-100/90 text-xs text-slate-700">
                                     <tr>
-                                        <th className="py-3 px-4 font-bold">Mã đơn & Ngày</th>
-                                        <th className="py-3 px-4 font-bold">Khách hàng</th>
-                                        <th className="py-3 px-4 font-bold text-right">Doanh thu</th>
-                                        <th className="py-3 px-4 font-bold text-right">Giá vốn</th>
-                                        <th className="py-3 px-4 font-bold text-right">Lợi nhuận</th>
-                                        <th className="py-3 px-4 font-bold text-center">Trạng thái</th>
-                                        <th className="py-3 px-4 font-bold text-center">Thanh toán</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Mã đơn & Ngày</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Khách hàng</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Doanh thu</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Giá vốn</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle">Lợi nhuận</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">Trạng thái</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle">Thanh toán</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody>
                                     {filteredOrders.map((order) => {
                                         const statusInfo = orderStatusLabels[order.status] || { label: order.status, badgeBg: "bg-slate-100 text-slate-700" };
                                         const isPaid = order.paymentStatus === "PAID";
                                         const isCancelledOrRejected = ["CANCELLED", "REJECTED"].includes(order.status);
                                         return (
-                                            <tr key={order.id} className="hover:bg-slate-50/60">
-                                                <td className="py-3 px-4">
+                                            <tr key={order.id} className="hover:bg-slate-50/70 transition">
+                                                <td className="border border-slate-200 px-3.5 py-2.5">
                                                     <p className="font-bold text-brand-800">{order.orderCode}</p>
                                                     <p className="text-[11px] text-slate-400">
                                                         {formatVietnameseDateTime(new Date(order.createdAt))}
                                                     </p>
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="border border-slate-200 px-3.5 py-2.5">
                                                     <p className="font-bold text-slate-900">{order.farmerName}</p>
                                                     <p className="text-[11px] text-slate-500">{order.farmerPhone}</p>
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-bold text-slate-900">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right font-bold text-slate-900">
                                                     {order.revenue.toLocaleString("vi-VN")} đ
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-medium text-slate-500">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right font-medium text-slate-500">
                                                     {order.cogs.toLocaleString("vi-VN")} đ
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-bold text-emerald-700">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right font-bold text-emerald-700">
                                                     +{order.profit.toLocaleString("vi-VN")} đ
                                                     <span className="block text-[10px] text-slate-400 font-normal">
                                                         ({order.marginPercent}%)
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-4 text-center">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-center">
                                                     <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${statusInfo.badgeBg}`}>
                                                         {statusInfo.label}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-4 text-center">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-center">
                                                     {isCancelledOrRejected ? (
                                                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
                                                             <X className="h-3.5 w-3.5" />
@@ -836,7 +836,7 @@ export function StoreFinanceDashboard() {
                                     })}
                                     {filteredOrders.length === 0 && (
                                         <tr>
-                                            <td colSpan={7} className="py-8 text-center text-slate-400">
+                                            <td colSpan={7} className="border border-slate-200 py-8 text-center text-slate-400">
                                                 Không tìm thấy đơn hàng nào trong khoảng thời gian đã chọn.
                                             </td>
                                         </tr>
@@ -844,7 +844,7 @@ export function StoreFinanceDashboard() {
                                 </tbody>
                             </table>
                         </div>
-                    </Card>
+                    </div>
                 </div>
             )}
 
@@ -867,45 +867,45 @@ export function StoreFinanceDashboard() {
                         </Button>
                     </div>
 
-                    <Card className="rounded-3xl border-slate-200 overflow-hidden shadow-xs">
+                    <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs sm:text-sm">
-                                <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                            <table className="w-full border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                                <thead className="bg-slate-100/90 text-xs text-slate-700">
                                     <tr>
-                                        <th className="py-3 px-4 font-bold">Ngày</th>
-                                        <th className="py-3 px-4 font-bold">Loại chi phí</th>
-                                        <th className="py-3 px-4 font-bold">Nội dung</th>
-                                        <th className="py-3 px-4 font-bold">Người nhận / Đơn vị</th>
-                                        <th className="py-3 px-4 font-bold text-right">Số tiền</th>
-                                        <th className="py-3 px-4 font-bold text-center">Thao tác</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Ngày</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Loại chi phí</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Nội dung</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Người nhận / Đơn vị</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle whitespace-nowrap">Số tiền</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody>
                                     {(data?.expenses || []).map((exp) => {
                                         const catInfo = expenseCategoryLabels[exp.category] || { label: exp.category, icon: Receipt };
                                         const Icon = catInfo.icon;
                                         return (
-                                            <tr key={exp.id} className="hover:bg-slate-50/60">
-                                                <td className="py-3 px-4 font-medium text-slate-700">
+                                            <tr key={exp.id} className="hover:bg-slate-50/70 transition">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-center font-medium text-slate-700 whitespace-nowrap">
                                                     {formatVietnameseDate(new Date(exp.expenseDate))}
                                                 </td>
-                                                <td className="py-3 px-4">
-                                                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 whitespace-nowrap">
+                                                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 border border-amber-200">
                                                         <Icon className="h-3.5 w-3.5" />
                                                         {catInfo.label}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="border border-slate-200 px-3.5 py-2.5">
                                                     <p className="font-bold text-slate-900">{exp.title}</p>
                                                     {exp.note && <p className="text-[11px] text-slate-400 italic">{exp.note}</p>}
                                                 </td>
-                                                <td className="py-3 px-4 text-slate-600">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-slate-600 whitespace-nowrap">
                                                     {exp.recipient || "—"}
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-black text-red-600">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right font-black text-red-600 whitespace-nowrap">
                                                     -{exp.amount.toLocaleString("vi-VN")} đ
                                                 </td>
-                                                <td className="py-3 px-4 text-center">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-center whitespace-nowrap">
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
@@ -920,7 +920,7 @@ export function StoreFinanceDashboard() {
                                     })}
                                     {(!data?.expenses || data.expenses.length === 0) && (
                                         <tr>
-                                            <td colSpan={6} className="py-8 text-center text-slate-400">
+                                            <td colSpan={6} className="border border-slate-200 py-8 text-center text-slate-400">
                                                 Chưa có khoản chi phí vận hành nào được ghi nhận trong kỳ.
                                             </td>
                                         </tr>
@@ -928,7 +928,7 @@ export function StoreFinanceDashboard() {
                                 </tbody>
                             </table>
                         </div>
-                    </Card>
+                    </div>
                 </div>
             )}
 
@@ -950,48 +950,48 @@ export function StoreFinanceDashboard() {
                         </p>
                     </div>
 
-                    <Card className="rounded-3xl border-slate-200 overflow-hidden shadow-xs">
+                    <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs sm:text-sm">
-                                <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                            <table className="w-full border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                                <thead className="bg-slate-100/90 text-xs text-slate-700">
                                     <tr>
-                                        <th className="py-3 px-4 font-bold">Sản phẩm</th>
-                                        <th className="py-3 px-4 font-bold text-center">Đã bán</th>
-                                        <th className="py-3 px-4 font-bold text-right">Doanh thu</th>
-                                        <th className="py-3 px-4 font-bold text-right">Giá vốn</th>
-                                        <th className="py-3 px-4 font-bold text-right">Lợi nhuận</th>
-                                        <th className="py-3 px-4 font-bold text-right">Tồn kho</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Sản phẩm</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Đã bán</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle whitespace-nowrap">Doanh thu</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle whitespace-nowrap">Giá vốn</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle whitespace-nowrap">Lợi nhuận</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle whitespace-nowrap">Tồn kho</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody>
                                     {filteredProducts.map((prod) => (
-                                        <tr key={prod.id} className="hover:bg-slate-50/60">
-                                            <td className="py-3 px-4">
+                                        <tr key={prod.id} className="hover:bg-slate-50/70 transition">
+                                            <td className="border border-slate-200 px-3.5 py-2.5">
                                                 <p className="font-bold text-slate-900">{prod.name}</p>
                                                 <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
                                                     {prod.type === "FERTILIZER" ? "Phân bón" : prod.type === "PESTICIDE" ? "Thuốc BVTV" : "Dụng cụ / Khác"}
                                                 </span>
                                             </td>
-                                            <td className="py-3 px-4 text-center font-bold text-slate-800">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-center font-bold text-slate-800 whitespace-nowrap">
                                                 {prod.soldQty} {prod.unit}
                                             </td>
-                                            <td className="py-3 px-4 text-right font-bold text-emerald-700">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-right font-bold text-emerald-700 whitespace-nowrap">
                                                 {prod.revenue.toLocaleString("vi-VN")} đ
                                             </td>
-                                            <td className="py-3 px-4 text-right font-medium text-slate-500">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-right font-medium text-slate-500 whitespace-nowrap">
                                                 {prod.cogs.toLocaleString("vi-VN")} đ
                                             </td>
-                                            <td className="py-3 px-4 text-right font-black text-brand-700">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-right font-black text-brand-700 whitespace-nowrap">
                                                 +{prod.profit.toLocaleString("vi-VN")} đ
                                             </td>
-                                            <td className="py-3 px-4 text-right font-semibold text-slate-700">
+                                            <td className="border border-slate-200 px-3.5 py-2.5 text-right font-semibold text-slate-700 whitespace-nowrap">
                                                 {prod.stock} {prod.unit}
                                             </td>
                                         </tr>
                                     ))}
                                     {filteredProducts.length === 0 && (
                                         <tr>
-                                            <td colSpan={6} className="py-8 text-center text-slate-400">
+                                            <td colSpan={6} className="border border-slate-200 py-8 text-center text-slate-400">
                                                 Không có dữ liệu sản phẩm.
                                             </td>
                                         </tr>
@@ -999,7 +999,7 @@ export function StoreFinanceDashboard() {
                                 </tbody>
                             </table>
                         </div>
-                    </Card>
+                    </div>
                 </div>
             )}
 
@@ -1052,41 +1052,41 @@ export function StoreFinanceDashboard() {
                             </span>
                         </div>
 
-                        <Card className="rounded-3xl border-slate-200 overflow-hidden shadow-xs">
+                        <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs sm:text-sm">
-                                    <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                                <table className="w-full border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                                    <thead className="bg-slate-100/90 text-xs text-slate-700">
                                         <tr>
-                                            <th className="py-3 px-4 font-bold">Sản phẩm</th>
-                                            <th className="py-3 px-4 font-bold text-center">Tồn kho</th>
-                                            <th className="py-3 px-4 font-bold text-right">Giá bán</th>
-                                            <th className="py-3 px-4 font-bold text-right">Giá vốn</th>
-                                            <th className="py-3 px-4 font-bold text-right">Giá trị tồn kho</th>
-                                            <th className="py-3 px-4 font-bold text-center">Tình trạng</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Sản phẩm</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Tồn kho</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle whitespace-nowrap">Giá bán</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle whitespace-nowrap">Giá vốn</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle whitespace-nowrap">Giá trị tồn kho</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Tình trạng</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                    <tbody>
                                         {(data?.inventoryItems || []).map((item) => (
-                                            <tr key={item.id} className="hover:bg-slate-50/60">
-                                                <td className="py-3 px-4">
+                                            <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                                                <td className="border border-slate-200 px-3.5 py-2.5">
                                                     <p className="font-bold text-slate-900">{item.name}</p>
                                                     <span className="text-[10px] text-slate-400">
                                                         {item.type === "FERTILIZER" ? "Phân bón" : item.type === "PESTICIDE" ? "Thuốc BVTV" : "Dụng cụ / Khác"}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-4 text-center font-bold text-slate-800">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-center font-bold text-slate-800 whitespace-nowrap">
                                                     {item.stock} {item.unit}
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-medium text-slate-600">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right font-medium text-slate-600 whitespace-nowrap">
                                                     {item.price.toLocaleString("vi-VN")} đ
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-semibold text-slate-700">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right font-semibold text-slate-700 whitespace-nowrap">
                                                     {item.costPrice.toLocaleString("vi-VN")} đ
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-black text-blue-700">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right font-black text-blue-700 whitespace-nowrap">
                                                     {item.inventoryValue.toLocaleString("vi-VN")} đ
                                                 </td>
-                                                <td className="py-3 px-4 text-center">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-center whitespace-nowrap">
                                                     {item.isOutOfStock ? (
                                                         <span className="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-[10px] font-bold text-red-800">
                                                             Hết hàng
@@ -1103,10 +1103,17 @@ export function StoreFinanceDashboard() {
                                                 </td>
                                             </tr>
                                         ))}
+                                        {(!data?.inventoryItems || data.inventoryItems.length === 0) && (
+                                            <tr>
+                                                <td colSpan={6} className="border border-slate-200 py-8 text-center text-slate-400">
+                                                    Chưa có dữ liệu tồn kho.
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
-                        </Card>
+                        </div>
                     </div>
                 </div>
             )}

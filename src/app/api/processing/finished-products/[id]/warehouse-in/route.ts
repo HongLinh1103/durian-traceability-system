@@ -88,7 +88,7 @@ export async function POST(
                     organizationType: "PROCESSING_FACILITY",
                     organizationId: facility.id,
                     title: `Nhập kho thành phẩm ${lot.lotCode}`,
-                    description: `Sản phẩm: ${lot.productName} (${Number(lot.netWeight).toLocaleString("vi-VN")} kg) đã nhập kho ${fullLocation} | Điều kiện: ${value.storageCondition} | Sẵn sàng phân phối / Tạo QR.`,
+                    description: `Sản phẩm: ${lot.productName} (${Number(lot.netWeight).toLocaleString("vi-VN")} kg) đã nhập kho ${fullLocation} | Điều kiện: ${value.storageCondition} | Sẵn sàng phân phối / Xuất bán.`,
                     sourceEntityType: "PROCESSING_BATCH",
                     sourceEntityId: lot.processingBatchId,
                     isPublic: true,

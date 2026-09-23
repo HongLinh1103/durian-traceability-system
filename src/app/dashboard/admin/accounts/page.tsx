@@ -786,7 +786,7 @@ export default function AdminAccountsPage() {
             </section>
 
             {/* BẢNG TÀI KHOẢN */}
-            <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+            <section className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20">
                         <Loader2 className="h-8 w-8 text-brand-600 animate-spin mb-3" />
@@ -800,18 +800,18 @@ export default function AdminAccountsPage() {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                                    <th className="py-3.5 px-4">Người dùng</th>
-                                    <th className="py-3.5 px-3">Tài khoản</th>
-                                    <th className="py-3.5 px-3">Vai trò</th>
-                                    <th className="py-3.5 px-3">Trạng thái</th>
-                                    <th className="py-3.5 px-3">Ngày tạo</th>
-                                    <th className="py-3.5 px-4 text-right">Thao tác</th>
+                        <table className="w-full min-w-[850px] border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                            <thead className="bg-slate-100/90 text-xs text-slate-700">
+                                <tr>
+                                    <th className="border border-slate-300 py-3 px-3.5 font-semibold text-center align-middle whitespace-nowrap">Người dùng</th>
+                                    <th className="border border-slate-300 py-3 px-3.5 font-semibold text-center align-middle whitespace-nowrap">Tài khoản</th>
+                                    <th className="border border-slate-300 py-3 px-3.5 font-semibold text-center align-middle whitespace-nowrap">Vai trò</th>
+                                    <th className="border border-slate-300 py-3 px-3.5 font-semibold text-center align-middle whitespace-nowrap">Trạng thái</th>
+                                    <th className="border border-slate-300 py-3 px-3.5 font-semibold text-center align-middle whitespace-nowrap">Ngày tạo</th>
+                                    <th className="border border-slate-300 py-3 px-3.5 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody>
                                 {users.map((u) => {
                                     const roleBadge = roleLabels[u.role] || {
                                         label: u.role,
@@ -819,9 +819,9 @@ export default function AdminAccountsPage() {
                                     };
 
                                     return (
-                                        <tr key={u.id} className="hover:bg-slate-50/60 transition-colors">
+                                        <tr key={u.id} className="hover:bg-slate-50/70 transition">
                                             {/* Người dùng: Avatar + Họ tên */}
-                                            <td className="py-3 px-4">
+                                            <td className="border border-slate-200 py-2.5 px-3.5">
                                                 <div className="flex items-center gap-2.5">
                                                     <div className="w-8 h-8 rounded-full bg-brand-50 border border-brand-200 text-brand-700 font-bold flex items-center justify-center text-xs shrink-0">
                                                         {(u.fullName || u.phone).charAt(0).toUpperCase()}
@@ -838,25 +838,25 @@ export default function AdminAccountsPage() {
                                             </td>
 
                                             {/* Tài khoản: SĐT / Username */}
-                                            <td className="py-3 px-3 font-mono font-medium text-slate-700">{u.phone}</td>
+                                            <td className="border border-slate-200 py-2.5 px-3.5 font-mono font-medium text-slate-700 text-center">{u.phone}</td>
 
                                             {/* Vai trò (Role) - Không dùng badge, hiển thị text thuần */}
-                                            <td className="py-3 px-3">
+                                            <td className="border border-slate-200 py-2.5 px-3.5 text-center">
                                                 <span className="font-semibold text-slate-800 text-xs">
                                                     {roleBadge.label}
                                                 </span>
                                             </td>
 
                                             {/* Trạng thái */}
-                                            <td className="py-3 px-3 whitespace-nowrap">{renderStatusBadge(u)}</td>
+                                            <td className="border border-slate-200 py-2.5 px-3.5 whitespace-nowrap text-center">{renderStatusBadge(u)}</td>
 
                                             {/* Ngày tạo */}
-                                            <td className="py-3 px-3 whitespace-nowrap text-[11px] text-slate-500">
+                                            <td className="border border-slate-200 py-2.5 px-3.5 whitespace-nowrap text-xs text-slate-500 text-center">
                                                 {formatVietnameseDate(u.createdAt)}
                                             </td>
 
                                             {/* Thao tác (đã xóa thao tác gán vai trò) */}
-                                            <td className="py-3 px-4 text-right whitespace-nowrap">
+                                            <td className="border border-slate-200 py-2.5 px-3.5 text-center whitespace-nowrap">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     {/* Nút Xem hồ sơ & duyệt nếu là PENDING */}
                                                     {(u.accountStatus === "PENDING" ||

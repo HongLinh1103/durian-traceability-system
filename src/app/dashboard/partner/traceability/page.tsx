@@ -98,9 +98,9 @@ export default async function Page(props: { searchParams?: Promise<{ sourceId?: 
         <main className="mx-auto max-w-7xl space-y-5 px-4 py-7 sm:px-6">
             <header>
                 <p className="text-sm font-bold uppercase tracking-wide text-emerald-700">Vựa Thu Mua Nông Sản</p>
-                <h1 className="mt-1 text-3xl font-black text-slate-900">Xuất Bán & Tạo Mã QR</h1>
+                <h1 className="mt-1 text-3xl font-black text-slate-900">Xuất Bán Lô Hàng</h1>
                 <p className="mt-2 text-slate-500">
-                    Lập phiếu xuất bán lô sầu riêng thu mua, ghi nhận doanh thu - công nợ và phát hành mã QR truy xuất nguồn gốc.
+                    Lập phiếu xuất bán lô sầu riêng thu mua, ghi nhận doanh thu và công nợ.
                 </p>
             </header>
             <TraceabilityManager

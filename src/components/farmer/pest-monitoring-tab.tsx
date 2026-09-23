@@ -1278,40 +1278,40 @@ export function PestMonitoringTab({
                                 </Button>
                             </div>
 
-                            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-700">
+                            <div className="overflow-x-auto rounded-2xl border border-slate-300 bg-white shadow-sm">
+                                <table className="w-full border-collapse border border-slate-300 text-left text-sm">
+                                    <thead className="bg-slate-100/90 text-xs text-slate-700">
                                         <tr>
-                                            <th className="px-4 py-3 w-14 text-center">STT</th>
-                                            <th className="px-4 py-3">Mã bẫy</th>
-                                            <th className="px-4 py-3">Loại bẫy</th>
-                                            <th className="px-4 py-3">Chất dẫn dụ / Mồi bẫy</th>
-                                            <th className="px-4 py-3">Vị trí đặt</th>
-                                            <th className="px-4 py-3">Ghi chú</th>
-                                            <th className="px-4 py-3 text-center w-28">Trạng thái</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-14 text-center align-middle font-semibold whitespace-nowrap">STT</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 text-center align-middle font-semibold whitespace-nowrap">Mã bẫy</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 text-center align-middle font-semibold whitespace-nowrap">Loại bẫy</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 text-center align-middle font-semibold whitespace-nowrap">Chất dẫn dụ / Mồi bẫy</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 text-center align-middle font-semibold whitespace-nowrap">Vị trí đặt</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 text-center align-middle font-semibold whitespace-nowrap">Ghi chú</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 text-center align-middle font-semibold whitespace-nowrap w-28">Trạng thái</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                    <tbody>
                                         {bookDetail.traps.map((trap, idx) => {
                                             const locStr = trap.latitude && trap.longitude
                                                 ? `${trap.locationName} (${trap.latitude.toFixed(7)}, ${trap.longitude.toFixed(7)})`
                                                 : trap.locationName || "-";
 
                                             return (
-                                                <tr key={trap.id} className="hover:bg-slate-50/60">
-                                                    <td className="px-4 py-3 text-center text-xs font-bold text-slate-500">{idx + 1}</td>
-                                                    <td className="px-4 py-3 font-mono font-bold text-brand-700 text-xs">
+                                                <tr key={trap.id} className="hover:bg-slate-50/70 transition">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-center text-xs font-bold text-slate-500">{idx + 1}</td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-brand-700 text-xs text-center">
                                                         {trap.trapCode}
                                                     </td>
-                                                    <td className="px-4 py-3 text-xs font-medium text-slate-800">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-800">
                                                         {trap.trapType}
                                                     </td>
-                                                    <td className="px-4 py-3 text-xs text-slate-700">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-700">
                                                         {trap.attractant || bookDetail.attractant || "-"}
                                                     </td>
-                                                    <td className="px-4 py-3 font-mono text-xs text-slate-700">{locStr}</td>
-                                                    <td className="px-4 py-3 text-xs text-slate-500">{trap.notes || "-"}</td>
-                                                    <td className="px-4 py-3 text-center">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-xs text-slate-700">{locStr}</td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-500">{trap.notes || "-"}</td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-center">
                                                         <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${trap.status === "ACTIVE"
                                                             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                                             : "bg-slate-100 text-slate-600"
@@ -1324,8 +1324,8 @@ export function PestMonitoringTab({
                                         })}
                                         {bookDetail.traps.length === 0 && (
                                             <tr>
-                                                <td colSpan={7} className="py-6 text-center text-xs text-slate-400">
-                                                    Chưa có bẫy nào trong sổ. Bấm &quot;Thêm bẫy&quot; để cài đặt bẫy mới.
+                                                <td colSpan={7} className="border border-slate-200 py-10 text-center text-slate-400 text-xs">
+                                                    Chưa có bẫy nào được đăng ký trong sổ này. Bấm &quot;Thêm bẫy&quot; để khai báo.
                                                 </td>
                                             </tr>
                                         )}
@@ -1353,38 +1353,39 @@ export function PestMonitoringTab({
                             </Button>
                         </div>
 
-                        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                        <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
+                            <div className="overflow-x-auto">
                             {hasTraps ? (
                                 // Table theo bẫy (ví dụ Ruồi đục trái: 10 dòng)
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-700">
+                                <table className="w-full border-collapse border border-slate-300 text-left text-sm">
+                                    <thead className="bg-slate-100/90 text-xs text-slate-700">
                                         <tr>
-                                            <th className="px-4 py-3 whitespace-nowrap">Ngày điều tra</th>
-                                            <th className="px-4 py-3 whitespace-nowrap">Bẫy</th>
-                                            <th className="px-4 py-3 whitespace-nowrap">Vị trí</th>
-                                            <th className="px-4 py-3 text-center whitespace-nowrap">
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Ngày điều tra</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Bẫy</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Vị trí</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">
                                                 Kết quả thu được
                                             </th>
-                                            <th className="px-4 py-3 whitespace-nowrap">Người điều tra</th>
-                                            <th className="px-4 py-3">Ghi chú / Tình trạng mồi</th>
-                                            <th className="w-[80px] px-2 py-3 text-center whitespace-nowrap">Thao tác</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Người điều tra</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Ghi chú / Tình trạng mồi</th>
+                                            <th className="border border-slate-300 w-[80px] px-2 py-3 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                    <tbody>
                                         {trapInspectionRows.map((row, index) => (
-                                            <tr key={row.id} className="hover:bg-slate-50/60">
+                                            <tr key={row.id} className="hover:bg-slate-50/70 transition">
                                                 {(index === 0 || formatVietnameseDate(trapInspectionRows[index - 1].inspectionDate) !== formatVietnameseDate(row.inspectionDate)) && <td
                                                     rowSpan={trapInspectionRows.filter(item => formatVietnameseDate(item.inspectionDate) === formatVietnameseDate(row.inspectionDate)).length}
-                                                    className="px-4 py-3 text-xs font-semibold text-slate-900 whitespace-nowrap align-middle">
+                                                    className="border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-900 whitespace-nowrap align-middle text-center">
                                                     {formatVietnameseDate(row.inspectionDate)}
                                                 </td>}
-                                                <td className="px-4 py-3 font-mono font-bold text-brand-700 text-xs whitespace-nowrap">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-brand-700 text-xs whitespace-nowrap text-center">
                                                     {row.trapCode}
                                                 </td>
-                                                <td className="px-4 py-3 font-mono text-xs text-slate-700 whitespace-nowrap">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-xs text-slate-700 whitespace-nowrap">
                                                     {row.location}
                                                 </td>
-                                                <td className="px-4 py-3 text-center font-bold">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-center font-bold">
                                                     <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs ${row.pestsCount === 0
                                                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                                         : "bg-red-50 text-red-700 border border-red-200"
@@ -1392,13 +1393,13 @@ export function PestMonitoringTab({
                                                         {row.pestsCount} cá thể
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 text-xs font-medium text-slate-800 whitespace-nowrap">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-800 whitespace-nowrap">
                                                     {row.inspectorName}
                                                 </td>
-                                                <td className="px-4 py-3 text-xs text-slate-600">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-600">
                                                     {row.notes}
                                                 </td>
-                                                <td className="whitespace-nowrap px-2 py-3 text-center">
+                                                <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 text-center">
                                                     <div className="flex items-center justify-center gap-1.5">
                                                         <button
                                                             type="button"
@@ -1424,7 +1425,7 @@ export function PestMonitoringTab({
                                         ))}
                                         {trapInspectionRows.length === 0 && (
                                             <tr>
-                                                <td colSpan={7} className="py-8 text-center text-xs text-slate-400">
+                                                <td colSpan={7} className="border border-slate-200 py-8 text-center text-xs text-slate-400">
                                                     Chưa có lần điều tra nào. Bấm &quot;Ghi nhận điều tra&quot; để thêm dữ liệu kiểm tra bẫy.
                                                 </td>
                                             </tr>
@@ -1433,35 +1434,35 @@ export function PestMonitoringTab({
                                 </table>
                             ) : (
                                 // Table theo dõi trực tiếp
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-700">
+                                <table className="w-full border-collapse border border-slate-300 text-left text-sm">
+                                    <thead className="bg-slate-100/90 text-xs text-slate-700">
                                         <tr>
-                                            <th className="px-4 py-3 whitespace-nowrap">Ngày điều tra</th>
-                                            <th className="px-4 py-3 whitespace-nowrap">Kết quả điều tra</th>
-                                            <th className="px-4 py-3 whitespace-nowrap">Người điều tra</th>
-                                            <th className="px-4 py-3">Ghi chú / Đánh giá</th>
-                                            <th className="w-[80px] px-2 py-3 text-center whitespace-nowrap">Thao tác</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Ngày điều tra</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Kết quả điều tra</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Người điều tra</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Ghi chú / Đánh giá</th>
+                                            <th className="border border-slate-300 w-[80px] px-2 py-3 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                    <tbody>
                                         {sortedInspections.map((ins) => {
                                             const resultStr = ins.resultText || ins.items?.[0]?.resultText || (ins.totalPestsCount > 0 ? `Có phát hiện (${ins.densityLevel || "Nhẹ"})` : "Không phát hiện");
 
                                             return (
-                                                <tr key={ins.id} className="hover:bg-slate-50/60">
-                                                    <td className="px-4 py-3 text-xs font-semibold text-slate-900 whitespace-nowrap">
+                                                <tr key={ins.id} className="hover:bg-slate-50/70 transition">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-900 whitespace-nowrap text-center">
                                                         {formatVietnameseDate(ins.inspectionDate)}
                                                     </td>
-                                                    <td className="px-4 py-3 text-xs text-slate-800 whitespace-pre-wrap break-words">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-800 whitespace-pre-wrap break-words">
                                                         {resultStr}
                                                     </td>
-                                                    <td className="px-4 py-3 text-xs font-medium text-slate-800 whitespace-nowrap">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-800 whitespace-nowrap">
                                                         {ins.inspectorName}
                                                     </td>
-                                                    <td className="px-4 py-3 text-xs text-slate-600">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-600">
                                                         {ins.notes || ins.items?.[0]?.notes || "-"}
                                                     </td>
-                                                    <td className="whitespace-nowrap px-2 py-3 text-center">
+                                                    <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 text-center">
                                                         <div className="flex items-center justify-center gap-1.5">
                                                             <button
                                                                 type="button"
@@ -1488,7 +1489,7 @@ export function PestMonitoringTab({
                                         })}
                                         {sortedInspections.length === 0 && (
                                             <tr>
-                                                <td colSpan={5} className="py-8 text-center text-xs text-slate-400">
+                                                <td colSpan={5} className="border border-slate-200 py-8 text-center text-xs text-slate-400">
                                                     Chưa có lần điều tra nào. Bấm &quot;Ghi nhận điều tra&quot; để thêm dữ liệu theo dõi.
                                                 </td>
                                             </tr>
@@ -1496,6 +1497,7 @@ export function PestMonitoringTab({
                                     </tbody>
                                 </table>
                             )}
+                            </div>
                         </div>
                     </div>
 
@@ -1517,77 +1519,79 @@ export function PestMonitoringTab({
                             </Button>
                         </div>
 
-                        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-700">
-                                    <tr>
-                                        <th className="px-4 py-3 whitespace-nowrap">Ngày xử lý</th>
-                                        <th className="px-4 py-3 whitespace-nowrap">Biện pháp</th>
-                                        <th className="px-4 py-3 whitespace-nowrap">Thuốc / Chế phẩm</th>
-                                        <th className="px-4 py-3 whitespace-nowrap">Liều lượng</th>
-                                        <th className="px-4 py-3 whitespace-nowrap text-center">Thời gian cách ly (PHI)</th>
-                                        <th className="px-4 py-3 whitespace-nowrap">Khu vực / Diện tích</th>
-                                        <th className="px-4 py-3">Kết quả / Ghi chú</th>
-                                        <th className="w-[80px] px-2 py-3 text-center whitespace-nowrap">Thao tác</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {bookDetail.treatments.map((tr) => (
-                                        <tr key={tr.id} className="hover:bg-slate-50/60">
-                                            <td className="px-4 py-3 text-xs font-semibold text-slate-900 whitespace-nowrap">
-                                                {formatVietnameseDate(tr.treatmentDate)}
-                                            </td>
-                                            <td className="px-4 py-3 text-xs font-bold text-purple-700 whitespace-nowrap">
-                                                {tr.treatmentType}
-                                            </td>
-                                            <td className="px-4 py-3 text-xs font-semibold text-slate-900 whitespace-nowrap">
-                                                {tr.productUsed || "Không dùng hóa chất"}
-                                            </td>
-                                            <td className="px-4 py-3 text-xs text-slate-700 whitespace-nowrap">
-                                                {tr.dosage || "-"}
-                                            </td>
-                                            <td className="px-4 py-3 text-xs text-center font-bold text-amber-700 whitespace-nowrap">
-                                                {tr.phiDays !== undefined && tr.phiDays !== null ? `${tr.phiDays} ngày` : "-"}
-                                            </td>
-                                            <td className="px-4 py-3 text-xs text-slate-700 whitespace-nowrap">
-                                                {tr.areaTreated || "Toàn vườn"}
-                                            </td>
-                                            <td className="px-4 py-3 text-xs text-slate-600">
-                                                {tr.resultNotes || tr.notes || "-"}
-                                            </td>
-                                            <td className="whitespace-nowrap px-2 py-3 text-center">
-                                                <div className="flex items-center justify-center gap-1.5">
-                                                    <button
-                                                        type="button"
-                                                        disabled={!isSeasonActive}
-                                                        onClick={() => handleOpenEditTreatment(tr)}
-                                                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-purple-200 bg-purple-50/60 text-purple-700 hover:bg-purple-100 hover:text-purple-800 disabled:opacity-40 transition cursor-pointer"
-                                                        title={isSeasonActive ? "Sửa" : "Vụ mùa đã đóng"}
-                                                    >
-                                                        <Pencil className="h-3.5 w-3.5" />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        disabled={!isSeasonActive}
-                                                        onClick={() => handleOpenDeleteTreatment(tr)}
-                                                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-rose-200 bg-rose-50/60 text-rose-600 hover:bg-rose-100 hover:text-rose-700 disabled:opacity-40 transition cursor-pointer"
-                                                        title={isSeasonActive ? "Xóa" : "Vụ mùa đã đóng"}
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {bookDetail.treatments.length === 0 && (
+                        <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse border border-slate-300 text-left text-sm">
+                                    <thead className="bg-slate-100/90 text-xs text-slate-700">
                                         <tr>
-                                            <td colSpan={8} className="py-6 text-center text-xs text-slate-400">
-                                                Chưa có can thiệp xử lý nào. Mật độ sinh vật gây hại vẫn đang trong ngưỡng an toàn.
-                                            </td>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Ngày xử lý</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Biện pháp</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Thuốc / Chế phẩm</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Liều lượng</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Thời gian cách ly (PHI)</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Khu vực / Diện tích</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Kết quả / Ghi chú</th>
+                                            <th className="border border-slate-300 w-[80px] px-2 py-3 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {bookDetail.treatments.map((tr) => (
+                                            <tr key={tr.id} className="hover:bg-slate-50/70 transition">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-900 whitespace-nowrap text-center">
+                                                    {formatVietnameseDate(tr.treatmentDate)}
+                                                </td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-bold text-purple-700 whitespace-nowrap">
+                                                    {tr.treatmentType}
+                                                </td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-900 whitespace-nowrap">
+                                                    {tr.productUsed || "Không dùng hóa chất"}
+                                                </td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-700 whitespace-nowrap">
+                                                    {tr.dosage || "-"}
+                                                </td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-center font-bold text-amber-700 whitespace-nowrap">
+                                                    {tr.phiDays !== undefined && tr.phiDays !== null ? `${tr.phiDays} ngày` : "-"}
+                                                </td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-700 whitespace-nowrap">
+                                                    {tr.areaTreated || "Toàn vườn"}
+                                                </td>
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-600">
+                                                    {tr.resultNotes || tr.notes || "-"}
+                                                </td>
+                                                <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 text-center">
+                                                    <div className="flex items-center justify-center gap-1.5">
+                                                        <button
+                                                            type="button"
+                                                            disabled={!isSeasonActive}
+                                                            onClick={() => handleOpenEditTreatment(tr)}
+                                                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-purple-200 bg-purple-50/60 text-purple-700 hover:bg-purple-100 hover:text-purple-800 disabled:opacity-40 transition cursor-pointer"
+                                                            title={isSeasonActive ? "Sửa" : "Vụ mùa đã đóng"}
+                                                        >
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            disabled={!isSeasonActive}
+                                                            onClick={() => handleOpenDeleteTreatment(tr)}
+                                                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-rose-200 bg-rose-50/60 text-rose-600 hover:bg-rose-100 hover:text-rose-700 disabled:opacity-40 transition cursor-pointer"
+                                                            title={isSeasonActive ? "Xóa" : "Vụ mùa đã đóng"}
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {bookDetail.treatments.length === 0 && (
+                                            <tr>
+                                                <td colSpan={8} className="border border-slate-200 py-6 text-center text-xs text-slate-400">
+                                                    Chưa có can thiệp xử lý nào. Mật độ sinh vật gây hại vẫn đang trong ngưỡng an toàn.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2784,85 +2788,86 @@ export function PestMonitoringTab({
                                                     </Button>
                                                 </div>
 
-                                                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-2xs">
-                                                    <table className="w-full text-left text-xs">
-                                                        <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
-                                                            <tr>
-                                                                <th className="px-3 py-2.5 text-center w-12">STT</th>
-                                                                <th className="px-3 py-2.5 w-36">Mã bẫy *</th>
-                                                                <th className="px-3 py-2.5 w-2/5 min-w-[200px]">Vị trí *</th>
-                                                                <th className="px-3 py-2.5 min-w-[180px]">Ghi chú</th>
-                                                                <th className="px-3 py-2.5 text-center w-14">Xóa</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-slate-100">
-                                                            {createBookForm.traps.map((trap, idx) => (
-                                                                <tr key={idx} className="hover:bg-slate-50/50">
-                                                                    <td className="px-3 py-2 text-center font-bold text-slate-500">
-                                                                        {idx + 1}
-                                                                    </td>
-                                                                    <td className="p-1.5 w-36">
-                                                                        <input
-                                                                            type="text"
-                                                                            placeholder="Ví dụ: BAY-01"
-                                                                            value={trap.trapCode}
-                                                                            onChange={(e) =>
-                                                                                handleUpdateTrapRow(idx, "trapCode", e.target.value)
-                                                                            }
-                                                                            className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs font-semibold text-brand-700 placeholder:font-normal placeholder:text-slate-400 focus:border-brand-500 focus:outline-none bg-white font-mono"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="p-1.5">
-                                                                        <input
-                                                                            type="text"
-                                                                            placeholder="Ví dụ: Khu A - hàng 10"
-                                                                            value={trap.locationName}
-                                                                            onChange={(e) =>
-                                                                                handleUpdateTrapRow(idx, "locationName", e.target.value)
-                                                                            }
-                                                                            className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none bg-white"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="p-1.5">
-                                                                        <input
-                                                                            type="text"
-                                                                            placeholder="Ghi chú bẫy..."
-                                                                            value={trap.notes || ""}
-                                                                            onChange={(e) =>
-                                                                                handleUpdateTrapRow(idx, "notes", e.target.value)
-                                                                            }
-                                                                            className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs text-slate-600 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none bg-white"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="p-1.5 text-center">
-                                                                        {createBookForm.traps.length > 1 ? (
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleRemoveTrapFromCreateList(idx)}
-                                                                                className="text-red-500 hover:text-red-700 p-2 rounded-xl hover:bg-red-50 cursor-pointer transition inline-flex items-center justify-center"
-                                                                                title="Xóa hàng bẫy này"
-                                                                            >
-                                                                                <Trash2 className="h-4 w-4" />
-                                                                            </button>
-                                                                        ) : (
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleResetFirstTrapRow()}
-                                                                                className="text-slate-300 hover:text-slate-500 p-2 rounded-xl hover:bg-slate-100 cursor-pointer transition inline-flex items-center justify-center"
-                                                                                title="Xóa trắng hàng này"
-                                                                            >
-                                                                                <Trash2 className="h-4 w-4" />
-                                                                            </button>
-                                                                        )}
-                                                                    </td>
+                                                <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
+                                                    <div className="overflow-x-auto">
+                                                        <table className="w-full border-collapse border border-slate-300 text-left text-xs">
+                                                            <thead className="bg-slate-100/90 font-semibold text-slate-700">
+                                                                <tr>
+                                                                    <th className="border border-slate-300 px-3 py-2.5 text-center w-12">STT</th>
+                                                                    <th className="border border-slate-300 px-3 py-2.5 w-36">Mã bẫy *</th>
+                                                                    <th className="border border-slate-300 px-3 py-2.5 w-2/5 min-w-[200px]">Vị trí *</th>
+                                                                    <th className="border border-slate-300 px-3 py-2.5 min-w-[180px]">Ghi chú</th>
+                                                                    <th className="border border-slate-300 px-3 py-2.5 text-center w-14">Xóa</th>
                                                                 </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
+                                                            </thead>
+                                                            <tbody>
+                                                                {createBookForm.traps.map((trap, idx) => (
+                                                                    <tr key={idx} className="hover:bg-slate-50/70 transition">
+                                                                        <td className="border border-slate-200 px-3 py-2 text-center font-bold text-slate-500">
+                                                                            {idx + 1}
+                                                                        </td>
+                                                                        <td className="border border-slate-200 p-1.5 w-36">
+                                                                            <input
+                                                                                type="text"
+                                                                                placeholder="Ví dụ: BAY-01"
+                                                                                value={trap.trapCode}
+                                                                                onChange={(e) =>
+                                                                                    handleUpdateTrapRow(idx, "trapCode", e.target.value)
+                                                                                }
+                                                                                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs font-semibold text-brand-700 placeholder:font-normal placeholder:text-slate-400 focus:border-brand-500 focus:outline-none bg-white font-mono"
+                                                                            />
+                                                                        </td>
+                                                                        <td className="border border-slate-200 p-1.5">
+                                                                            <input
+                                                                                type="text"
+                                                                                placeholder="Ví dụ: Khu A - hàng 10"
+                                                                                value={trap.locationName}
+                                                                                onChange={(e) =>
+                                                                                    handleUpdateTrapRow(idx, "locationName", e.target.value)
+                                                                                }
+                                                                                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none bg-white"
+                                                                            />
+                                                                        </td>
+                                                                        <td className="border border-slate-200 p-1.5">
+                                                                            <input
+                                                                                type="text"
+                                                                                placeholder="Ghi chú bẫy..."
+                                                                                value={trap.notes || ""}
+                                                                                onChange={(e) =>
+                                                                                    handleUpdateTrapRow(idx, "notes", e.target.value)
+                                                                                }
+                                                                                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs text-slate-600 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none bg-white"
+                                                                            />
+                                                                        </td>
+                                                                        <td className="border border-slate-200 p-1.5 text-center">
+                                                                            {createBookForm.traps.length > 1 ? (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleRemoveTrapFromCreateList(idx)}
+                                                                                    className="text-red-500 hover:text-red-700 p-2 rounded-xl hover:bg-red-50 cursor-pointer transition inline-flex items-center justify-center"
+                                                                                    title="Xóa hàng bẫy này"
+                                                                                >
+                                                                                    <Trash2 className="h-4 w-4" />
+                                                                                </button>
+                                                                            ) : (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleResetFirstTrapRow()}
+                                                                                    className="text-slate-300 hover:text-slate-500 p-2 rounded-xl hover:bg-slate-100 cursor-pointer transition inline-flex items-center justify-center"
+                                                                                    title="Xóa trắng hàng này"
+                                                                                >
+                                                                                    <Trash2 className="h-4 w-4" />
+                                                                                </button>
+                                                                            )}
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
                                                 </div>
                                             </div>
-
-                                    </div>}
+                                        </div>}
                                 </div>
                             </div>
 

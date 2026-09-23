@@ -566,7 +566,7 @@ export function QrStoryAnimationSection() {
                                                                 </span>
                                                             </div>
                                                             <p className="truncate text-[8px] font-bold leading-tight text-slate-900 sm:text-[9px]">
-                                                                Cơ sở Chế biến Trị An
+                                                                Công ty TNHH MTV Kim Quy
                                                             </p>
                                                             <p className="truncate text-[7px] text-slate-500 sm:text-[8px]">
                                                                 Tách múi · Cấp đông
@@ -664,7 +664,7 @@ export function QrStoryAnimationSection() {
                                                                 Vườn Minh Phát
                                                             </p>
                                                             <p className="font-mono text-[7px] text-emerald-700 sm:text-[8px]">
-                                                                75-PUC-SR-00001 · Giống: Ri6
+                                                                VN-DNOR-0269 · Giống: Ri6
                                                             </p>
                                                         </div>
                                                     </div>

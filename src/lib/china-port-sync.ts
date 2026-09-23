@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { sendChinaPortNewRecordsEmail, ChinaPortRecordEmailItem, getAdminEmailRecipients } from "@/lib/email-service";
+import { sendChinaPortEventEmail, ChinaPortRecordEmailItem, getEmailConfigurationStatus } from "@/lib/email-service";
+import type { ChinaPortFieldChange, ChinaPortNotificationPayload } from "@/lib/china-port-notification-templates";
 
 export interface SyncOptions {
     sendEmail?: boolean;
-    forceEmailRecipient?: string;
     prodName?: string;
     pageSize?: number;
     pageNum?: number;
@@ -24,17 +24,31 @@ export interface SyncResult {
 
 const clean = (value: any) => String(value ?? "").replace(/\n+$/g, "").trim();
 
-// Fallback in-memory set in case database is offline during development
-const memoryKnownRecords = new Set<string>();
+const TRACKED_FIELDS: Array<[keyof ChinaPortRecordEmailItem, string]> = [
+    ["corpNameEn", "Tên doanh nghiệp"], ["corpNameMo", "Tên địa phương"],
+    ["overseasOfficialRegNo", "Mã đăng ký nước ngoài"], ["validFrom", "Hiệu lực từ"],
+    ["validTo", "Hiệu lực đến"], ["prodNameEn", "Sản phẩm"], ["corpTypeNameEn", "Loại hình doanh nghiệp"],
+];
 
 /**
  * Thực hiện đồng bộ dữ liệu từ China Port (GACC) cho Quốc gia/Vùng: Việt Nam (Mã: 704 / VNM).
- * Phát hiện bản ghi mới, lưu trữ vào cơ sở dữ liệu và gửi 1 email tổng hợp đến Admin.
+ * So sánh dữ liệu và gửi các sự kiện theo cấu hình đã lưu của admin.
  */
 export async function syncChinaPortVietnamData(options: SyncOptions = {}): Promise<SyncResult> {
+    return prisma.$transaction(async transaction => {
+        const [lock] = await transaction.$queryRaw<Array<{ locked: boolean }>>`SELECT pg_try_advisory_xact_lock(7042109) AS locked`;
+        if (!lock.locked) return {
+            success: true, totalFetched: 0, newCount: 0, updatedCount: 0,
+            emailSent: false, emailRecipients: [], newRecords: [],
+            message: "Một lượt đồng bộ China Port đang chạy.", syncedAt: new Date().toISOString(),
+        };
+        return performSync(options);
+    }, { timeout: 300000, maxWait: 10000 });
+}
+
+async function performSync(options: SyncOptions): Promise<SyncResult> {
     const {
         sendEmail = true,
-        forceEmailRecipient,
         prodName,
         pageSize = 1000,
         pageNum = 1,
@@ -43,6 +57,13 @@ export async function syncChinaPortVietnamData(options: SyncOptions = {}): Promi
     const syncedAt = new Date().toISOString();
 
     try {
+        const approvedAdmins = await prisma.user.findMany({ where: { role: "ADMIN", isApproved: true, deletedAt: null }, select: { id: true } });
+        const settings = await prisma.chinaPortNotificationSetting.findMany({
+            where: { userId: { in: approvedAdmins.map(user => user.id) }, countryCode: "704", emailEnabled: true },
+        });
+        if (sendEmail && settings.length && !getEmailConfigurationStatus().configured) {
+            throw new Error("Chưa cấu hình dịch vụ gửi email SMTP. Chưa cập nhật mốc dữ liệu để có thể gửi lại sau khi cấu hình.");
+        }
         // 1. Gọi API GACC lấy danh sách doanh nghiệp & vùng trồng kiểm dịch của Việt Nam
         const payload: Record<string, any> = {
             countryCode: "704", // Viet Nam
@@ -53,6 +74,9 @@ export async function syncChinaPortVietnamData(options: SyncOptions = {}): Promi
             payload.prodName = prodName;
         }
 
+        const rows: any[] = [];
+        for (let currentPage = pageNum; ; currentPage++) {
+        payload.pageNum = currentPage;
         const response = await fetch("https://int.daquang.workers.dev/api/search", {
             method: "POST",
             headers: {
@@ -61,6 +85,7 @@ export async function syncChinaPortVietnamData(options: SyncOptions = {}): Promi
                 Accept: "application/json",
             },
             body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(30000),
         });
 
         if (!response.ok) {
@@ -69,7 +94,13 @@ export async function syncChinaPortVietnamData(options: SyncOptions = {}): Promi
         }
 
         const json = await response.json();
-        const rows: any[] = json.data?.rows || [];
+        if (!Array.isArray(json.data?.rows)) throw new Error("China Port trả dữ liệu không hợp lệ.");
+        const pageRows: any[] = json.data.rows;
+        rows.push(...pageRows);
+        const total = Number(json.data.total);
+        if (!pageRows.length || (Number.isFinite(total) && total > 0 && currentPage * pageSize >= total) || pageRows.length < pageSize) break;
+        if (currentPage >= 100) throw new Error("Vượt giới hạn số trang China Port; chưa cập nhật dữ liệu.");
+        }
         const totalFetched = rows.length;
 
         if (totalFetched === 0) {
@@ -86,27 +117,31 @@ export async function syncChinaPortVietnamData(options: SyncOptions = {}): Promi
             };
         }
 
-        // 2. Kiểm tra bản ghi đã tồn tại trong DB (hoặc memory cache)
+        // Đọc snapshot đã lưu; dừng khi DB lỗi để tránh nhận nhầm dữ liệu mới.
         let existingCodes = new Set<string>();
+        const existingByCode = new Map<string, ChinaPortRecordEmailItem>();
         let dbAvailable = false;
 
         try {
             const existingInDb = await prisma.chinaPortRecord.findMany({
                 where: { countryCode: "704" },
-                select: { chinaRegNo: true },
             });
-            existingInDb.forEach((r) => existingCodes.add(r.chinaRegNo));
+            existingInDb.forEach((r) => {
+                existingCodes.add(r.chinaRegNo);
+                existingByCode.set(r.chinaRegNo, r as ChinaPortRecordEmailItem);
+            });
             dbAvailable = true;
         } catch (dbErr) {
-            console.warn("[ChinaPortSync] Database offline or unreachable, using in-memory store for sync:", dbErr);
-            existingCodes = memoryKnownRecords;
+            throw new Error("Không thể đọc dữ liệu China Port từ cơ sở dữ liệu; đã dừng đồng bộ để tránh gửi trùng.");
         }
 
         // 3. Phân loại bản ghi mới vs bản ghi đã biết
         const newRecords: ChinaPortRecordEmailItem[] = [];
+        const changedNotifications: ChinaPortNotificationPayload[] = [];
         const recordsToSave: any[] = [];
 
         for (const r of rows) {
+            if (clean(r.countryCode) && clean(r.countryCode) !== "704") continue;
             const chinaRegNo = clean(r.chinaRegNo);
             if (!chinaRegNo) continue;
 
@@ -146,52 +181,47 @@ export async function syncChinaPortVietnamData(options: SyncOptions = {}): Promi
             if (isNew) {
                 newRecords.push(recordItem);
                 existingCodes.add(chinaRegNo);
-                memoryKnownRecords.add(chinaRegNo);
+            } else {
+                const previous = existingByCode.get(chinaRegNo);
+                if (previous && clean(previous.regState) !== clean(recordItem.regState)) {
+                    changedNotifications.push({ event: "STATUS_CHANGED", record: recordItem, previousStatus: clean(previous.regState) });
+                }
+                if (previous) {
+                    const changes: ChinaPortFieldChange[] = TRACKED_FIELDS.flatMap(([key, label]) => {
+                        const before = clean(previous[key]);
+                        const after = clean(recordItem[key]);
+                        return before !== after ? [{ label, before, after }] : [];
+                    });
+                    if (changes.length) changedNotifications.push({ event: "DATA_CHANGED", record: recordItem, changes });
+                }
             }
 
             recordsToSave.push(recordItem);
         }
 
-        // 4. Lưu / Cập nhật vào cơ sở dữ liệu nếu DB khả dụng
-        let updatedCount = 0;
-        if (dbAvailable) {
-            try {
-                // Upsert từng bản ghi (hoặc theo batch)
-                for (const item of recordsToSave) {
-                    await prisma.chinaPortRecord.upsert({
-                        where: { chinaRegNo: item.chinaRegNo },
-                        update: {
-                            ...item,
-                            lastSyncedAt: new Date(),
-                        },
-                        create: {
-                            ...item,
-                            firstSyncedAt: new Date(),
-                            lastSyncedAt: new Date(),
-                        },
-                    });
-                }
-                updatedCount = recordsToSave.length;
-            } catch (err) {
-                console.error("[ChinaPortSync] Lỗi khi lưu bản ghi vào DB:", err);
-            }
-        }
-
-        // 5. Gửi Email thông báo Admin khi có bản ghi mới (Gộp thành 1 email duy nhất)
+        // Gửi theo sự kiện và danh sách người nhận đã lưu trước khi cập nhật snapshot.
         let emailSent = false;
         let emailSimulated = false;
         let emailRecipients: string[] = [];
 
-        if (sendEmail && newRecords.length > 0) {
-            const customRecipients = forceEmailRecipient
-                ? [forceEmailRecipient]
-                : await getAdminEmailRecipients();
-
-            emailRecipients = customRecipients;
-
-            const emailResult = await sendChinaPortNewRecordsEmail(newRecords, customRecipients);
-            emailSent = emailResult.success;
-            emailSimulated = !!emailResult.simulated;
+        if (sendEmail && (newRecords.length > 0 || changedNotifications.length > 0)) {
+            const notifications: ChinaPortNotificationPayload[] = [
+                ...newRecords.map((record) => ({ event: "NEW_RECORD" as const, record })),
+                ...changedNotifications,
+            ];
+            const emailResults = [];
+            const recipientSet = new Set<string>();
+            for (const payload of notifications) {
+                const recipients = [...new Set(settings.filter(setting => setting.events.includes(payload.event)).flatMap(setting => setting.emails))];
+                if (!recipients.length) continue;
+                recipients.forEach(email => recipientSet.add(email));
+                emailResults.push(await sendChinaPortEventEmail(payload, recipients));
+            }
+            emailRecipients = [...recipientSet];
+            emailSent = emailResults.length > 0 && emailResults.every((result) => result.success);
+            emailSimulated = emailResults.some((result) => !!result.simulated);
+            const failed = emailResults.find(result => !result.success || result.simulated);
+            if (failed) throw new Error(failed.error || "Gửi email thất bại. Dữ liệu chưa được đánh dấu đã đồng bộ; hệ thống sẽ thử lại ở lần tiếp theo.");
 
             // Tạo thông báo nội bộ (In-app Notification) cho Admin nếu DB khả dụng
             if (dbAvailable) {
@@ -214,6 +244,31 @@ export async function syncChinaPortVietnamData(options: SyncOptions = {}): Promi
                 } catch (notifErr) {
                     console.warn("[ChinaPortSync] Không thể tạo in-app notification:", notifErr);
                 }
+            }
+        }
+
+        // Chỉ cập nhật snapshot sau khi các email cần gửi đã được SMTP chấp nhận.
+        let updatedCount = 0;
+        if (dbAvailable) {
+            try {
+                // Upsert từng bản ghi (hoặc theo batch)
+                for (const item of recordsToSave) {
+                    await prisma.chinaPortRecord.upsert({
+                        where: { chinaRegNo: item.chinaRegNo },
+                        update: {
+                            ...item,
+                            lastSyncedAt: new Date(),
+                        },
+                        create: {
+                            ...item,
+                            firstSyncedAt: new Date(),
+                            lastSyncedAt: new Date(),
+                        },
+                    });
+                }
+                updatedCount = recordsToSave.length;
+            } catch (err) {
+                throw err;
             }
         }
 

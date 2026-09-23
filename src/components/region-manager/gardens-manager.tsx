@@ -172,13 +172,13 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
                 </CardContent>
             </Card>
 
-            <Card className="overflow-hidden rounded-[28px]">
+            <Card className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                 <div className="hidden max-w-full overflow-x-auto lg:block">
-                    <table className="w-full min-w-[1120px] table-fixed text-left text-sm">
-                        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                            <tr>{[["Mã vườn", "w-[110px]"], ["Tên vườn", "w-[155px]"], ["Chủ vườn", "w-[135px]"], ["Số điện thoại", "w-[115px]"], ["Địa phương", "w-[190px]"], ["Nhật ký gần nhất", "w-[135px]"], ["Trạng thái", "w-[125px]"], ["Thao tác", "sticky right-0 w-[155px] bg-slate-50"]].map(([item, width]) => <th key={item} className={`${width} px-3 py-3 text-center align-middle font-semibold`}>{item}</th>)}</tr>
+                    <table className="w-full min-w-[1120px] table-fixed border-collapse border border-slate-300 text-left text-sm">
+                        <thead className="bg-slate-100/90 text-xs text-slate-700">
+                            <tr>{[["Mã vườn", "w-[110px]"], ["Tên vườn", "w-[155px]"], ["Chủ vườn", "w-[135px]"], ["Số điện thoại", "w-[115px]"], ["Địa phương", "w-[190px]"], ["Nhật ký gần nhất", "w-[135px]"], ["Trạng thái", "w-[125px]"], ["Thao tác", "sticky right-0 w-[155px] bg-slate-100/95"]].map(([item, width]) => <th key={item} className={`${width} border border-slate-300 px-3 py-3 text-center align-middle font-semibold whitespace-nowrap`}>{item}</th>)}</tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody>
                             {paginated.map((garden) => <GardenRow key={garden.id} garden={garden} />)}
                         </tbody>
                     </table>
@@ -227,12 +227,15 @@ function statusFor(garden: Garden) {
 
 function GardenRow({ garden }: { garden: Garden }) {
     const status = statusFor(garden);
-    return <tr className="hover:bg-slate-50/60">
-        <td className="px-3 py-3 font-semibold text-emerald-700">{garden.farmCode}</td><td className="px-3 py-3 font-semibold">{garden.farmName}</td>
-        <td className="px-3 py-3">{garden.ownerName}</td><td className="whitespace-nowrap px-3 py-3">{garden.ownerPhone}</td><td className="px-3 py-3">{garden.locality}</td>
-        <td className="px-3 py-3 text-center">{garden.latestLogDate ? formatVietnameseDate(new Date(garden.latestLogDate)) : "Chưa cập nhật"}</td>
-        <td className="px-3 py-3 text-center"><Badge className={`${status.className} h-7 whitespace-nowrap rounded-full px-2.5 py-0 text-xs`}>{status.label}</Badge></td>
-        <td className="sticky right-0 bg-white px-2 py-3 shadow-[-6px_0_10px_-10px_rgba(15,23,42,0.5)]"><div className="flex flex-col items-stretch gap-1.5 whitespace-nowrap">
+    return <tr className="hover:bg-slate-50/70 transition">
+        <td className="border border-slate-200 px-3 py-2.5 font-semibold text-emerald-700 text-center">{garden.farmCode}</td>
+        <td className="border border-slate-200 px-3 py-2.5 font-semibold text-slate-900">{garden.farmName}</td>
+        <td className="border border-slate-200 px-3 py-2.5">{garden.ownerName}</td>
+        <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 text-center">{garden.ownerPhone}</td>
+        <td className="border border-slate-200 px-3 py-2.5">{garden.locality}</td>
+        <td className="border border-slate-200 px-3 py-2.5 text-center">{garden.latestLogDate ? formatVietnameseDate(new Date(garden.latestLogDate)) : "Chưa cập nhật"}</td>
+        <td className="border border-slate-200 px-3 py-2.5 text-center"><Badge className={`${status.className} h-7 whitespace-nowrap rounded-full px-2.5 py-0 text-xs`}>{status.label}</Badge></td>
+        <td className="border border-slate-200 sticky right-0 bg-white px-2 py-2.5 shadow-[-6px_0_10px_-10px_rgba(15,23,42,0.5)]"><div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
             <Button asChild size="sm" variant="outline" className="h-8 px-2.5"><Link href={`/region-manager/gardens/${garden.id}`}><Search className="mr-1 h-3.5 w-3.5" />Chi tiết</Link></Button>
             <Button asChild size="sm" variant="outline" className="h-8 px-2.5"><Link href={`/region-manager/gardens/${garden.id}/logs`}><History className="mr-1 h-3.5 w-3.5" />Nhật ký</Link></Button>
         </div></td>

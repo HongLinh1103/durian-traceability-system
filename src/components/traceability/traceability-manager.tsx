@@ -284,6 +284,7 @@ export function TraceabilityManager({
     }
 
     async function issue(id: string) {
+        if (role !== "FARMER") return;
         setBusy(id);
         setIssuingQr(true);
         setMessage("");
@@ -507,14 +508,14 @@ export function TraceabilityManager({
                                 </span>
                                 <h2 className="text-xl font-black text-slate-900">
                                     {dispatchMode === "EXPORT"
-                                        ? "Tạo Lô Hàng Xuất Khẩu & Phát Hành QR (GACC)"
-                                        : "Xuất Bán Lô Hàng Trong Nước & Phát Hành QR"}
+                                        ? "Tạo Lô Hàng Xuất Khẩu (GACC)"
+                                        : "Xuất Bán Lô Hàng Trong Nước"}
                                 </h2>
                             </div>
                             <p className="text-xs sm:text-sm text-slate-500 mt-1">
                                 {dispatchMode === "EXPORT"
                                     ? "Lập hồ sơ lô sầu riêng xuất khẩu chính ngạch sang Trung Quốc / Quốc tế, đối soát mã số vùng trồng (PUC) & mã cơ sở đóng gói (PHC)."
-                                    : "Lập phiếu xuất bán sầu riêng cho siêu thị, chợ đầu mối, đại lý nội địa, ghi nhận giá xuất và tạo mã QR truy xuất."}
+                                    : "Lập phiếu xuất bán sầu riêng cho siêu thị, chợ đầu mối, đại lý nội địa, ghi nhận giá xuất và công nợ."}
                             </p>
                         </div>
 
@@ -959,7 +960,7 @@ export function TraceabilityManager({
                             className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-2xl px-6 py-2.5 shadow-sm text-sm gap-2"
                         >
                             <FileText className="h-4 w-4" />
-                            {busy === "create" ? "Đang xử lý..." : "Xác nhận xuất lô & Chuyển sang Tạo QR"}
+                            {busy === "create" ? "Đang xử lý..." : (role === "FARMER" ? "Xác nhận xuất lô & Chuyển sang Tạo QR" : "Xác nhận xuất lô")}
                         </Button>
                     </div>
                 </form>
@@ -973,7 +974,7 @@ export function TraceabilityManager({
                             Danh Sách Lô Hàng Đã Xuất Bán / Xuất Khẩu
                         </h3>
                         <p className="text-xs text-slate-500">
-                            Theo dõi mã lô, doanh thu, công nợ và trạng thái mã QR truy xuất
+                            Theo dõi mã lô, doanh thu và công nợ
                         </p>
                     </div>
                     <div className="text-xs text-slate-500 font-semibold">
@@ -1009,7 +1010,7 @@ export function TraceabilityManager({
                                     </div>
 
                                     {/* QR Status badge */}
-                                    {qr ? (
+                                    {role === "FARMER" && (qr ? (
                                         <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-black text-emerald-800 flex items-center gap-1 border border-emerald-200">
                                             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                                             Đã có QR
@@ -1019,7 +1020,7 @@ export function TraceabilityManager({
                                             <Clock className="h-3.5 w-3.5 text-amber-600" />
                                             Chờ tạo QR
                                         </span>
-                                    )}
+                                    ))}
                                 </div>
 
                                 <div>
@@ -1093,7 +1094,7 @@ export function TraceabilityManager({
                                         )}
                                     </div>
 
-                                    {qr ? (
+                                    {role === "FARMER" && (qr ? (
                                         <button
                                             type="button"
                                             onClick={() =>
@@ -1128,7 +1129,7 @@ export function TraceabilityManager({
                                             <QrCode className="h-3 w-3" />
                                             {busy === lot.id ? "Đang tạo..." : "Tạo QR"}
                                         </Button>
-                                    )}
+                                    ))}
                                 </div>
                             </article>
                         );
@@ -1147,7 +1148,8 @@ export function TraceabilityManager({
                 <SalesDispatchSlip
                     data={selectedSlipData}
                     onClose={() => setSelectedSlipData(null)}
-                    onIssueQr={issue}
+                    showQr={role === "FARMER"}
+                    onIssueQr={role === "FARMER" ? issue : undefined}
                     issuingQr={issuingQr}
                 />
             )}

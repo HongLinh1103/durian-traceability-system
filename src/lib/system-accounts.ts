@@ -128,9 +128,9 @@ export const SYSTEM_ACCOUNTS: SystemAccount[] = [
         fullName: "Trần Minh Anh",
         role: "PROCESSING_FACILITY",
         isApproved: true,
-        facilityName: "Cơ sở Chế biến Sầu riêng Trị An",
+        facilityName: "Công ty TNHH MTV Kim Quy",
         facilityType: "PROCESSING_FACILITY",
-        address: "Tuyến ĐT 767, Xã Sông Trầu, Huyện Trảng Bom, Tỉnh Đồng Nai",
+        address: "Ấp 9, xã Nam Cát Tiên, tỉnh Đồng Nai",
         province: "Đồng Nai",
     },
     {

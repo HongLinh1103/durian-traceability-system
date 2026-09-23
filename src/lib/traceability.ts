@@ -376,17 +376,18 @@ export async function validateTraceability(commercialLotId: string): Promise<Tra
     const uniqueMissing = [...new Set(missing)];
     const requiredBase = 5;
     const traceCompleteness = Math.max(0, Math.round((requiredBase / (requiredBase + uniqueMissing.length)) * 100));
-    return { traceCompleteness, canIssueQr: uniqueMissing.length === 0, missingRequirements: uniqueMissing, warnings };
+    return { traceCompleteness, canIssueQr: lot.ownerType === "FARMER" && uniqueMissing.length === 0, missingRequirements: uniqueMissing, warnings };
 }
 
 export async function issueTraceabilityCode(input: { commercialLotId: string; actorId: string; actorRole: UserRole }) {
+    if (input.actorRole !== "FARMER") throw new Error("Vai trò không được phát hành QR");
     const lot = await prisma.commercialLot.findUnique({
         where: { id: input.commercialLotId },
         include: { owner: true, farmerOwner: { select: { id: true, fullName: true } }, traceabilityCode: true },
     });
     if (!lot) throw new Error("Không tìm thấy lô thương mại");
     if (lot.traceabilityCode) throw new Error("Lô thương mại đã có mã truy xuất");
-    if (!["FARMER", "COLLECTOR", "PROCESSING_FACILITY"].includes(input.actorRole)) throw new Error("Vai trò không được phát hành QR");
+    if (lot.ownerType !== "FARMER") throw new Error("Chỉ hỗ trợ phát hành QR cho lô của nhà vườn");
 
     const ownsLot =
         lot.ownerType === "FARMER"
@@ -582,7 +583,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
     const seasonStartedAt = earliestDate(sources.map((s) => s.cropSeason?.startedAt)) || new Date("2026-02-01");
     const seasonNames = [...new Set(sources.map((s) => s.cropSeason?.name).filter(Boolean))].join(", ") || "Niên vụ 2025-2026";
     const farmNames = [...new Set(sources.map((s) => s.farm?.farmName).filter(Boolean))].join(", ") || "Vườn sầu riêng liên kết";
-    const regionCodes = [...new Set(sources.map((s) => s.farm?.region?.code || s.farm?.farmCode).filter(Boolean))].filter(Boolean).join(", ") || "75-PUC-SR-00001";
+    const regionCodes = [...new Set(sources.map((s) => s.farm?.region?.code || s.farm?.farmCode).filter(Boolean))].filter(Boolean).join(", ") || "VN-DNOR-0269";
     const farmLocations = [...new Set(sources.map((s) => [s.farm?.district, s.farm?.province].filter(Boolean).join(", ") || s.farm?.address).filter(Boolean))].filter(Boolean).join("; ") || "Long Khánh, Đồng Nai";
     const varieties = [...new Set(sources.map((s) => s.farm?.durianVariety).filter(Boolean))].filter(Boolean).join(", ") || "Ri6";
 
@@ -684,8 +685,8 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
     } else if (fpl && rawReceipt?.sourceType === "HARVEST_LOT") {
         // Trường hợp Farmer giao thẳng Cơ sở chế biến
         const procFacility = fpl.facility || trace.commercialLot.owner;
-        const procName = procFacility?.name || "Cơ sở Chế biến Sầu riêng Trị An";
-        const procAddress = [procFacility?.district, procFacility?.province].filter(Boolean).join(", ") || procFacility?.address || "Trảng Bom, Đồng Nai";
+        const procName = procFacility?.name || "Công ty TNHH MTV Kim Quy";
+        const procAddress = procFacility?.address || [procFacility?.ward, procFacility?.province].filter(Boolean).join(", ") || "Ấp 9, xã Nam Cát Tiên, tỉnh Đồng Nai";
         const rawLot = fpl.processingBatch?.inputs?.[0]?.rawMaterialLot;
         const rawLotCode = rawLot?.lotCode || rawReceipt?.receiptCode || "RM-20260825-001";
         const rawWeight = Number(rawLot?.acceptedWeight || rawReceipt?.receivedWeight || totalHarvestWeight);
@@ -727,8 +728,8 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
 
     if (hasProcessing) {
         const facility = fpl?.facility || trace.commercialLot.owner;
-        const facilityName = facility?.name || "Cơ sở Chế biến Sầu riêng Trị An";
-        const facilityAddress = [facility?.district, facility?.province].filter(Boolean).join(", ") || facility?.address || "Trảng Bom, Đồng Nai";
+        const facilityName = facility?.name || "Công ty TNHH MTV Kim Quy";
+        const facilityAddress = facility?.address || [facility?.ward, facility?.province].filter(Boolean).join(", ") || "Ấp 9, xã Nam Cát Tiên, tỉnh Đồng Nai";
         const batchCode = fpl?.processingBatch?.batchCode || "PB-20260830-001";
         const finishedLotCode = fpl?.lotCode || trace.commercialLot.lotCode;
         const finishedProductName = fpl?.productName || trace.commercialLot.productName;
@@ -835,7 +836,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
 
     if (isExport) {
         const country = shipment?.exportInfo?.destinationCountry || dest?.country || "Chưa cập nhật";
-        const exporterName = trace.commercialLot.owner?.name || trace.commercialLot.farmerOwner?.fullName || "Cơ sở Chế biến Sầu riêng Trị An";
+        const exporterName = trace.commercialLot.owner?.name || trace.commercialLot.farmerOwner?.fullName || "Công ty TNHH MTV Kim Quy";
         const port = shipment?.exportInfo?.portOfLoading || null;
         const portOfDest = shipment?.exportInfo?.portOfDestination || null;
         const container = shipment?.exportInfo?.containerNumber || shipment?.containerNumber;
@@ -875,7 +876,7 @@ export async function getPublicTrace(publicToken: string, encodedPayload?: strin
     } else {
         const buyerOrDestName = shipmentMeta.partnerBranch || trace.commercialLot.buyerName || dest?.name || "Chợ đầu mối Nông sản Thủ Đức";
         const destAddress = shipmentMeta.deliveryAddress || trace.commercialLot.buyerAddress || dest?.address || "TP. Hồ Chí Minh";
-        const exporterName = trace.commercialLot.owner?.name || trace.commercialLot.farmerOwner?.fullName || "Cơ sở Chế biến Sầu riêng Trị An";
+        const exporterName = trace.commercialLot.owner?.name || trace.commercialLot.farmerOwner?.fullName || "Công ty TNHH MTV Kim Quy";
         const channel = shipmentMeta.channel || null;
         const partnerSystem = shipmentMeta.partnerSystem || null;
         const contactPerson = shipmentMeta.contactPerson || null;

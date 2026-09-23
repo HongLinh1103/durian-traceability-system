@@ -590,7 +590,7 @@ export function CultivationLogsTab({
             </div>
 
             {/* Danh sách nhật ký canh tác */}
-            <Card className="overflow-hidden rounded-[28px] border-slate-200 shadow-sm bg-white">
+            <Card className="overflow-hidden rounded-2xl border border-slate-300 shadow-sm bg-white">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 space-y-3">
                         <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
@@ -757,21 +757,21 @@ export function CultivationLogsTab({
 
                         {/* Desktop Table View */}
                         <div className="hidden md:block overflow-x-auto no-scrollbar">
-                            <table className="w-full table-fixed text-left text-xs sm:text-sm">
-                                <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600 border-b border-slate-200">
+                            <table className="w-full table-fixed border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                                <thead className="bg-slate-100/90 text-xs text-slate-700">
                                     <tr>
-                                        <th className="w-[92px] px-2 py-3">Ngày thực hiện</th>
-                                        <th className="w-[150px] pl-2.5 pr-1 py-3 whitespace-nowrap">Giai đoạn</th>
-                                        <th className="w-[130px] pl-1 pr-2.5 py-3 whitespace-nowrap">Hoạt động</th>
-                                        <th className="w-[115px] px-2 py-3">SV gây hại</th>
-                                        <th className="w-[140px] px-2.5 py-3">Vật tư sử dụng</th>
-                                        <th className="w-[140px] px-2.5 py-3">Liều lượng</th>
-                                        <th className="w-[54px] px-1 py-3 text-center">PHI</th>
-                                        <th className="w-[115px] px-2 py-3">Ghi chú & Ảnh</th>
-                                        <th className="w-[70px] px-1 py-3 text-center">Thao tác</th>
+                                        <th className="w-[100px] border border-slate-300 px-2.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Ngày thực hiện</th>
+                                        <th className="w-[150px] border border-slate-300 px-2.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Giai đoạn</th>
+                                        <th className="w-[130px] border border-slate-300 px-2.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Hoạt động</th>
+                                        <th className="w-[115px] border border-slate-300 px-2.5 py-3 font-semibold text-center align-middle whitespace-nowrap">SV gây hại</th>
+                                        <th className="w-[140px] border border-slate-300 px-2.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Vật tư sử dụng</th>
+                                        <th className="w-[140px] border border-slate-300 px-2.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Liều lượng</th>
+                                        <th className="w-[60px] border border-slate-300 px-1 py-3 font-semibold text-center align-middle whitespace-nowrap">PHI</th>
+                                        <th className="w-[130px] border border-slate-300 px-2.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Ghi chú & Ảnh</th>
+                                        <th className="w-[80px] border border-slate-300 px-1 py-3 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 text-xs">
+                                <tbody className="text-xs">
                                     {filteredLogs.map((log) => {
                                         const activityText =
                                             log.activityType === "OTHER"
@@ -781,9 +781,9 @@ export function CultivationLogsTab({
                                         return (
                                             <tr
                                                 key={log.id}
-                                                className="align-top hover:bg-slate-50/80 transition"
+                                                className="align-top hover:bg-slate-50/70 transition"
                                             >
-                                                <td className="px-2 py-3">
+                                                <td className="border border-slate-200 px-2.5 py-2.5 text-center">
                                                     <span className="font-semibold text-slate-900 block leading-tight whitespace-nowrap text-xs">
                                                         {formatLogDateOnly(log.actionDate)}
                                                     </span>
@@ -791,22 +791,22 @@ export function CultivationLogsTab({
                                                         {formatLogTimeOnly(log.actionDate)}
                                                     </span>
                                                 </td>
-                                                <td className="whitespace-nowrap pl-2.5 pr-1 py-3 font-semibold text-slate-800 text-xs leading-snug">
+                                                <td className="border border-slate-200 px-2.5 py-2.5 font-medium text-slate-800 text-xs leading-snug">
                                                     {stageLabels[log.stage] ?? log.stage}
                                                 </td>
-                                                <td className="whitespace-nowrap pl-1 pr-2.5 py-3 font-bold text-slate-900 text-xs leading-snug">
+                                                <td className="border border-slate-200 px-2.5 py-2.5 font-bold text-slate-900 text-xs leading-snug">
                                                     {activityText}
                                                 </td>
-                                                <td className="break-words px-2 py-3 font-medium text-slate-800 leading-snug">
+                                                <td className="border border-slate-200 break-words px-2.5 py-2.5 font-medium text-slate-800 leading-snug">
                                                     {renderPestsDetectedCell(log.pestsDetected, onNavigateToPestBook)}
                                                 </td>
-                                                <td className="break-words px-2.5 py-3 font-semibold text-slate-900 leading-snug">
+                                                <td className="border border-slate-200 break-words px-2.5 py-2.5 font-semibold text-slate-900 leading-snug">
                                                     {log.chemicalName || "—"}
                                                 </td>
-                                                <td className="break-words px-2.5 py-3 font-medium text-slate-700 leading-snug">
+                                                <td className="border border-slate-200 break-words px-2.5 py-2.5 font-medium text-slate-700 leading-snug">
                                                     {log.dosage || "—"}
                                                 </td>
-                                                <td className="px-1 py-3 text-center">
+                                                <td className="border border-slate-200 px-1 py-2.5 text-center">
                                                     {log.phiDays != null && log.phiDays > 0 ? (
                                                         <span className="inline-block rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 whitespace-nowrap">
                                                             {log.phiDays} ngày
@@ -815,7 +815,7 @@ export function CultivationLogsTab({
                                                         <span className="text-slate-300">—</span>
                                                     )}
                                                 </td>
-                                                <td className="break-words px-2 py-3 text-slate-600">
+                                                <td className="border border-slate-200 break-words px-2.5 py-2.5 text-slate-600">
                                                     <div className="space-y-1">
                                                         {log.notes ? (
                                                             <p className="line-clamp-2 text-[11px] leading-snug text-slate-600" title={log.notes}>
@@ -845,7 +845,7 @@ export function CultivationLogsTab({
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="whitespace-nowrap px-1 py-3 text-center">
+                                                <td className="border border-slate-200 whitespace-nowrap px-1 py-2.5 text-center">
                                                     <div className="flex items-center justify-center gap-1">
                                                         <button
                                                             type="button"

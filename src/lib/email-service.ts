@@ -1,5 +1,10 @@
 import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
+import {
+    chinaPortNotificationSubject,
+    generateChinaPortNotificationHtml,
+    type ChinaPortNotificationPayload,
+} from "@/lib/china-port-notification-templates";
 
 export interface ChinaPortRecordEmailItem {
     countryCode?: string;
@@ -74,6 +79,11 @@ export async function getAdminEmailRecipients(): Promise<string[]> {
 /**
  * Khởi tạo SMTP Transporter từ biến môi trường
  */
+export function getEmailConfigurationStatus() {
+    const missing = ["SMTP_HOST", "SMTP_USER", "SMTP_PASS"].filter(key => !process.env[key]);
+    return { configured: missing.length === 0, missing };
+}
+
 function createTransporter() {
     const host = process.env.SMTP_HOST;
     const port = Number(process.env.SMTP_PORT || 587);
@@ -90,6 +100,9 @@ function createTransporter() {
         port,
         secure,
         auth: { user, pass },
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 30000,
     });
 }
 
@@ -289,5 +302,35 @@ export async function sendChinaPortNewRecordsEmail(
             recipients,
             error: error.message || "Lỗi gửi email",
         };
+    }
+}
+
+export async function sendChinaPortEventEmail(
+    payload: ChinaPortNotificationPayload,
+    customRecipients?: string[],
+    options: { test?: boolean } = {},
+): Promise<EmailSendResult> {
+    const recipients = customRecipients !== undefined ? customRecipients : await getAdminEmailRecipients();
+    if (!recipients.length) return { success: false, recipients: [], error: "Không tìm thấy email người nhận." };
+    const subject = `${options.test ? "[TEST] " : ""}${chinaPortNotificationSubject(payload)}`;
+    const baseUrl = process.env.NEXTAUTH_URL || "https://trivietdurian.com";
+    const html = generateChinaPortNotificationHtml(payload, baseUrl);
+    const text = `${subject}\n\nVui lòng truy cập TriViet để xem chi tiết: ${baseUrl}/china-port`;
+    const transporter = createTransporter();
+    if (!transporter) {
+        return { success: false, recipients, error: "Chưa cấu hình SMTP trên server. Cần SMTP_HOST, SMTP_USER và SMTP_PASS để gửi email thật." };
+    }
+    try {
+        const info = await transporter.sendMail({
+            from: process.env.SMTP_FROM || process.env.SMTP_USER,
+            to: recipients,
+            subject,
+            text,
+            html,
+        });
+        if (info.rejected?.length) return { success: false, recipients, error: "Máy chủ email từ chối một hoặc nhiều địa chỉ nhận. Hãy kiểm tra email và cấu hình SMTP; một số địa chỉ khác có thể đã được chấp nhận." };
+        return { success: true, recipients, messageId: info.messageId };
+    } catch (error) {
+        return { success: false, recipients, error: error instanceof Error ? error.message : "Lỗi gửi email" };
     }
 }

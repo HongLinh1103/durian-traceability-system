@@ -2,25 +2,25 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { 
-    WalletCards, 
-    CircleDollarSign, 
-    TrendingUp, 
-    Receipt, 
-    CreditCard, 
-    Clock, 
-    CheckCircle2, 
-    AlertCircle, 
-    Plus, 
-    Printer, 
-    QrCode, 
-    Search, 
-    Filter, 
-    Building2, 
-    DollarSign, 
-    Layers, 
-    Coins, 
-    ArrowUpRight, 
+import {
+    WalletCards,
+    CircleDollarSign,
+    TrendingUp,
+    Receipt,
+    CreditCard,
+    Clock,
+    CheckCircle2,
+    AlertCircle,
+    Plus,
+    Printer,
+    QrCode,
+    Search,
+    Filter,
+    Building2,
+    DollarSign,
+    Layers,
+    Coins,
+    ArrowUpRight,
     ArrowDownRight,
     FileText,
     Download,
@@ -201,11 +201,10 @@ export function PartnerFinanceManager({
     const [activeTab, setActiveTab] = useState<"ANALYTICS" | "SALES" | "EXPENSES" | "HISTORY">(
         defaultTab || (role === "PROCESSING_FACILITY" ? "SALES" : "ANALYTICS")
     );
-    
+
     // Slips & QR modals
     const [selectedSaleForSlip, setSelectedSaleForSlip] = useState<SalesDispatchData | null>(null);
     const [selectedQrData, setSelectedQrData] = useState<QrModalData | null>(null);
-    const [issuingQr, setIssuingQr] = useState(false);
 
     // Filter states
     const [salesFilterStatus, setSalesFilterStatus] = useState<string>("ALL");
@@ -293,42 +292,6 @@ export function PartnerFinanceManager({
             }
         } catch (err) {
             console.error("Failed to refresh finance data:", err);
-        }
-    }
-
-    async function handleIssueQr(lotId: string) {
-        setIssuingQr(true);
-        try {
-            const res = await fetch("/api/traceability/codes", {
-                method: "POST",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ commercialLotId: lotId }),
-            });
-            const result = await res.json();
-            if (result.success) {
-                await refreshFinanceData();
-                if (selectedSaleForSlip && selectedSaleForSlip.id === lotId) {
-                    setSelectedSaleForSlip((prev) =>
-                        prev
-                            ? {
-                                  ...prev,
-                                  traceabilityCode: {
-                                      id: result.data.id,
-                                      code: result.data.code,
-                                      publicToken: result.data.publicToken,
-                                      status: result.data.status,
-                                  },
-                              }
-                            : null
-                    );
-                }
-            } else {
-                alert(result.error || "Không thể tạo mã QR");
-            }
-        } catch (err) {
-            alert("Lỗi khi tạo mã QR");
-        } finally {
-            setIssuingQr(false);
         }
     }
 
@@ -628,9 +591,8 @@ export function PartnerFinanceManager({
                         <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-amber-50 text-amber-600">
                             <WalletCards className="h-4 w-4 sm:h-6 sm:w-6" />
                         </div>
-                        <span className={`rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold ${
-                            kpis.totalReceivable > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
-                        }`}>
+                        <span className={`rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold ${kpis.totalReceivable > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                            }`}>
                             {kpis.totalReceivable > 0 ? "Còn nợ" : "Đã thu hết"}
                         </span>
                     </div>
@@ -647,7 +609,7 @@ export function PartnerFinanceManager({
                 </div>
 
                 {/* 3. Tổng chi phí */}
-                <div 
+                <div
                     onClick={() => setActiveTab("EXPENSES")}
                     className="rounded-2xl sm:rounded-3xl border border-rose-100 bg-white p-3.5 sm:p-5 shadow-xs transition hover:shadow-md cursor-pointer hover:border-rose-300 group"
                     title="Nhấp để xem chi tiết Chi phí & Thanh toán"
@@ -678,27 +640,23 @@ export function PartnerFinanceManager({
                 </div>
 
                 {/* 4. Lợi nhuận (Gộp) */}
-                <div className={`rounded-2xl sm:rounded-3xl border p-3.5 sm:p-5 shadow-xs transition hover:shadow-md ${
-                    kpis.estimatedProfit >= 0 ? "border-emerald-200 bg-emerald-50/40" : "border-rose-200 bg-rose-50/40"
-                }`}>
+                <div className={`rounded-2xl sm:rounded-3xl border p-3.5 sm:p-5 shadow-xs transition hover:shadow-md ${kpis.estimatedProfit >= 0 ? "border-emerald-200 bg-emerald-50/40" : "border-rose-200 bg-rose-50/40"
+                    }`}>
                     <div className="flex items-center justify-between">
-                        <div className={`flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl ${
-                            kpis.estimatedProfit >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                        }`}>
+                        <div className={`flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl ${kpis.estimatedProfit >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                            }`}>
                             <CircleDollarSign className="h-4 w-4 sm:h-6 sm:w-6" />
                         </div>
-                        <span className={`rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold ${
-                            kpis.estimatedProfit >= 0 ? "bg-emerald-200/70 text-emerald-900" : "bg-rose-200/70 text-rose-900"
-                        }`}>
+                        <span className={`rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold ${kpis.estimatedProfit >= 0 ? "bg-emerald-200/70 text-emerald-900" : "bg-rose-200/70 text-rose-900"
+                            }`}>
                             {kpis.estimatedProfit >= 0 ? "Lãi ước tính" : "Tạm lỗ"}
                         </span>
                     </div>
                     <p className="mt-3 sm:mt-4 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-600">
                         4. Lợi nhuận (Gộp)
                     </p>
-                    <p className={`mt-1 text-base sm:text-2xl font-black truncate ${
-                        kpis.estimatedProfit >= 0 ? "text-emerald-700" : "text-rose-700"
-                    }`}>
+                    <p className={`mt-1 text-base sm:text-2xl font-black truncate ${kpis.estimatedProfit >= 0 ? "text-emerald-700" : "text-rose-700"
+                        }`}>
                         {kpis.estimatedProfit.toLocaleString("vi-VN")} đ
                     </p>
                     <div className="mt-2 text-[10px] sm:text-xs text-slate-600 pt-2 border-t border-emerald-200/50 truncate">
@@ -714,11 +672,10 @@ export function PartnerFinanceManager({
                     <button
                         type="button"
                         onClick={() => setActiveTab("ANALYTICS")}
-                        className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition shrink-0 whitespace-nowrap ${
-                            activeTab === "ANALYTICS"
+                        className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition shrink-0 whitespace-nowrap ${activeTab === "ANALYTICS"
                                 ? "bg-emerald-700 text-white shadow-xs"
                                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                        }`}
+                            }`}
                     >
                         <BarChart3 className="h-4 w-4" />
                         Biểu đồ thống kê
@@ -728,17 +685,15 @@ export function PartnerFinanceManager({
                     <button
                         type="button"
                         onClick={() => setActiveTab("SALES")}
-                        className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition shrink-0 whitespace-nowrap ${
-                            activeTab === "SALES"
+                        className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition shrink-0 whitespace-nowrap ${activeTab === "SALES"
                                 ? "bg-emerald-700 text-white shadow-xs"
                                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                        }`}
+                            }`}
                     >
                         <FileText className="h-4 w-4" />
                         Bán hàng & Thu tiền
-                        <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${
-                            activeTab === "SALES" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
-                        }`}>
+                        <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${activeTab === "SALES" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
+                            }`}>
                             {data.sales.length}
                         </span>
                     </button>
@@ -747,17 +702,15 @@ export function PartnerFinanceManager({
                     <button
                         type="button"
                         onClick={() => setActiveTab("EXPENSES")}
-                        className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition shrink-0 whitespace-nowrap ${
-                            activeTab === "EXPENSES"
+                        className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition shrink-0 whitespace-nowrap ${activeTab === "EXPENSES"
                                 ? "bg-emerald-700 text-white shadow-xs"
                                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                        }`}
+                            }`}
                     >
                         <Receipt className="h-4 w-4" />
                         Chi phí & Thanh toán
-                        <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${
-                            activeTab === "EXPENSES" ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-800"
-                        }`}>
+                        <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${activeTab === "EXPENSES" ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-800"
+                            }`}>
                             {data.harvestPurchases.length + data.expenses.length}
                         </span>
                     </button>
@@ -766,14 +719,13 @@ export function PartnerFinanceManager({
                     <button
                         type="button"
                         onClick={() => setActiveTab("HISTORY")}
-                        className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition shrink-0 whitespace-nowrap ${
-                            activeTab === "HISTORY"
+                        className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition shrink-0 whitespace-nowrap ${activeTab === "HISTORY"
                                 ? "bg-emerald-700 text-white shadow-xs"
                                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                        }`}
+                            }`}
                     >
                         <Clock className="h-4 w-4" />
-                        Nhật ký dòng tiền
+                        NHẬT KÝ DÒNG TIỀN
                     </button>
                 </div>
             </div>
@@ -811,11 +763,10 @@ export function PartnerFinanceManager({
                                     key={tab.key}
                                     type="button"
                                     onClick={() => setSalesFilterStatus(tab.key)}
-                                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition shrink-0 ${
-                                        salesFilterStatus === tab.key
+                                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition shrink-0 ${salesFilterStatus === tab.key
                                             ? "bg-slate-900 text-white"
                                             : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                                    }`}
+                                        }`}
                                 >
                                     {tab.label}
                                 </button>
@@ -824,22 +775,22 @@ export function PartnerFinanceManager({
                     </div>
 
                     {/* BẢNG THEO DÕI XUẤT BÁN & DOANH THU */}
-                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xs">
+                    <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs sm:text-sm">
-                                <thead>
-                                    <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-600">
-                                        <th className="px-4 py-3.5 whitespace-nowrap">Mã lô xuất</th>
-                                        <th className="px-4 py-3.5 whitespace-nowrap min-w-[200px]">Tên hàng hóa</th>
-                                        <th className="px-4 py-3.5 text-right whitespace-nowrap">Khối lượng</th>
-                                        <th className="px-4 py-3.5 text-right whitespace-nowrap">Đơn giá bán</th>
-                                        <th className="px-4 py-3.5 text-right whitespace-nowrap">Tổng thu</th>
-                                        <th className="px-4 py-3.5 text-center whitespace-nowrap">Trạng thái thanh toán</th>
-                                        <th className="px-4 py-3.5 whitespace-nowrap min-w-[240px]">Điểm đến</th>
-                                        <th className="px-4 py-3.5 text-right whitespace-nowrap">Thao tác</th>
+                            <table className="w-full border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                                <thead className="bg-slate-100/90 text-xs text-slate-700">
+                                    <tr>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Mã lô xuất</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap min-w-[200px]">Tên hàng hóa</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle whitespace-nowrap">Khối lượng</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle whitespace-nowrap">Đơn giá bán</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-right align-middle whitespace-nowrap">Tổng thu</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Trạng thái thanh toán</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap min-w-[240px]">Điểm đến</th>
+                                        <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody>
                                     {filteredSales.map((sale) => {
                                         const isEXP = sale.lotCode.startsWith("EXP-");
                                         const packagingText = sale.boxCount
@@ -849,11 +800,11 @@ export function PartnerFinanceManager({
                                         const destinationText = sale.destinationAddress || sale.destinationName || sale.buyerAddress || sale.buyerName || "—";
 
                                         return (
-                                            <tr key={sale.id} className="hover:bg-slate-50/80 transition-colors">
-                                                <td className="px-4 py-3.5 whitespace-nowrap font-mono font-bold text-emerald-800">
+                                            <tr key={sale.id} className="hover:bg-slate-50/70 transition">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 whitespace-nowrap font-mono font-bold text-emerald-800 text-center">
                                                     {sale.lotCode}
                                                 </td>
-                                                <td className="px-4 py-3.5 font-bold text-slate-800">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 font-bold text-slate-800">
                                                     <div>{sale.productName}</div>
                                                     {sale.buyerName && (
                                                         <div className="text-[11px] font-normal text-slate-400">
@@ -861,7 +812,7 @@ export function PartnerFinanceManager({
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right whitespace-nowrap">
                                                     <div className="font-bold text-slate-900">
                                                         {sale.quantity.toLocaleString("vi-VN")} {sale.unit || "kg"}
                                                     </div>
@@ -871,30 +822,29 @@ export function PartnerFinanceManager({
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3.5 text-right whitespace-nowrap font-semibold text-slate-700">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right whitespace-nowrap font-semibold text-slate-700">
                                                     {sale.unitPrice > 0 ? `${sale.unitPrice.toLocaleString("vi-VN")} đ/kg` : "—"}
                                                 </td>
-                                                <td className="px-4 py-3.5 text-right whitespace-nowrap font-black text-emerald-700">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-right whitespace-nowrap font-black text-emerald-700">
                                                     {sale.totalAmount > 0 ? `${sale.totalAmount.toLocaleString("vi-VN")} đ` : "—"}
                                                 </td>
-                                                <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                                                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                                                        sale.paymentStatus === "PAID"
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-center whitespace-nowrap">
+                                                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${sale.paymentStatus === "PAID"
                                                             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                                             : sale.paymentStatus === "PARTIAL"
-                                                            ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                                            : "bg-rose-50 text-rose-700 border border-rose-200"
-                                                    }`}>
+                                                                ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                                                : "bg-rose-50 text-rose-700 border border-rose-200"
+                                                        }`}>
                                                         {sale.paymentStatus === "PAID" && "Đã thanh toán (100%)"}
                                                         {sale.paymentStatus === "PARTIAL" && `Đã thu ${sale.paidAmount.toLocaleString("vi-VN")} đ`}
                                                         {(!sale.paymentStatus || sale.paymentStatus === "UNPAID") && "Chưa thanh toán"}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3.5 text-xs text-slate-700 max-w-xs font-medium">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-700 max-w-xs font-medium">
                                                     {destinationText}
                                                 </td>
-                                                <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                                                    <div className="inline-flex items-center gap-1.5">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-center whitespace-nowrap">
+                                                    <div className="inline-flex items-center justify-center gap-1.5">
                                                         <Button
                                                             type="button"
                                                             variant="outline"
@@ -940,19 +890,18 @@ export function PartnerFinanceManager({
                                                                 size="sm"
                                                                 onClick={() => {
                                                                     setSelectedSaleForCollect(sale);
-                                                                    const remaining = sale.debtAmount > 0 
-                                                                        ? sale.debtAmount 
+                                                                    const remaining = sale.debtAmount > 0
+                                                                        ? sale.debtAmount
                                                                         : (sale.totalAmount > 0 ? Math.max(0, sale.totalAmount - (sale.paidAmount || 0)) : 0);
                                                                     setCollectAmount((remaining > 0 ? remaining : sale.totalAmount).toLocaleString("vi-VN"));
                                                                     setCollectPayer(sale.buyerName || "");
                                                                     setCollectRef("");
                                                                     setCollectNote("");
                                                                 }}
-                                                                className={`text-white font-bold rounded-xl text-xs h-8 shadow-xs inline-flex items-center gap-1 shrink-0 ${
-                                                                    sale.paymentStatus === "UNPAID" || !sale.paymentStatus
+                                                                className={`text-white font-bold rounded-xl text-xs h-8 shadow-xs inline-flex items-center gap-1 shrink-0 ${sale.paymentStatus === "UNPAID" || !sale.paymentStatus
                                                                         ? "bg-emerald-600 hover:bg-emerald-700"
                                                                         : "bg-amber-600 hover:bg-amber-700"
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 <CreditCard className="h-3.5 w-3.5" />
                                                                 {sale.paymentStatus === "UNPAID" || !sale.paymentStatus ? "Thanh toán" : "Thu nợ"}
@@ -966,7 +915,7 @@ export function PartnerFinanceManager({
 
                                     {filteredSales.length === 0 && (
                                         <tr>
-                                            <td colSpan={8} className="py-12 text-center text-xs text-slate-400">
+                                            <td colSpan={8} className="border border-slate-200 py-12 text-center text-xs text-slate-400">
                                                 Chưa có dữ liệu lô bán hàng nào phù hợp với bộ lọc.
                                             </td>
                                         </tr>
@@ -1006,16 +955,14 @@ export function PartnerFinanceManager({
                                         key={tab.key}
                                         type="button"
                                         onClick={() => setExpenseFilterStatus(tab.key)}
-                                        className={`rounded-xl px-3 py-1.5 text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
-                                            expenseFilterStatus === tab.key
+                                        className={`rounded-xl px-3 py-1.5 text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${expenseFilterStatus === tab.key
                                                 ? "bg-slate-900 text-white"
                                                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                                        }`}
+                                            }`}
                                     >
                                         <span>{tab.label}</span>
-                                        <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
-                                            expenseFilterStatus === tab.key ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
-                                        }`}>
+                                        <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${expenseFilterStatus === tab.key ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                                            }`}>
                                             {tab.count}
                                         </span>
                                     </button>
@@ -1050,18 +997,16 @@ export function PartnerFinanceManager({
                                     key={cat.key}
                                     type="button"
                                     onClick={() => setExpenseCategoryFilter(cat.key)}
-                                    className={`rounded-xl px-2.5 py-1 text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
-                                        expenseCategoryFilter === cat.key
+                                    className={`rounded-xl px-2.5 py-1 text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${expenseCategoryFilter === cat.key
                                             ? "bg-emerald-700 text-white shadow-xs"
                                             : cat.highlight
-                                            ? "bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100"
-                                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                                    }`}
+                                                ? "bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100"
+                                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                        }`}
                                 >
                                     <span>{cat.label}</span>
-                                    <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
-                                        expenseCategoryFilter === cat.key ? "bg-white/20 text-white" : (cat.highlight ? "bg-emerald-200 text-emerald-900" : "bg-slate-200 text-slate-700")
-                                    }`}>
+                                    <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${expenseCategoryFilter === cat.key ? "bg-white/20 text-white" : (cat.highlight ? "bg-emerald-200 text-emerald-900" : "bg-slate-200 text-slate-700")
+                                        }`}>
                                         {cat.count}
                                     </span>
                                 </button>
@@ -1117,13 +1062,12 @@ export function PartnerFinanceManager({
                                                     <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-100/70 px-2.5 py-0.5 rounded-lg border border-emerald-200">
                                                         {rec.code}
                                                     </span>
-                                                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                                                        status === "PAID"
+                                                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${status === "PAID"
                                                             ? "bg-emerald-100 text-emerald-800"
                                                             : status === "PARTIAL"
-                                                            ? "bg-amber-100 text-amber-800"
-                                                            : "bg-rose-100 text-rose-800"
-                                                    }`}>
+                                                                ? "bg-amber-100 text-amber-800"
+                                                                : "bg-rose-100 text-rose-800"
+                                                        }`}>
                                                         {status === "PAID" && "Đã thanh toán"}
                                                         {status === "PARTIAL" && "Thanh toán một phần"}
                                                         {status === "UNPAID" && "Chưa thanh toán"}
@@ -1277,20 +1221,18 @@ export function PartnerFinanceManager({
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <span className={`rounded-lg px-2.5 py-0.5 text-[10px] font-bold ${
-                                                    exp.category === "OTHER"
+                                                <span className={`rounded-lg px-2.5 py-0.5 text-[10px] font-bold ${exp.category === "OTHER"
                                                         ? "bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold"
                                                         : "bg-slate-100 text-slate-700"
-                                                }`}>
+                                                    }`}>
                                                     {EXPENSE_CATEGORY_NAMES[exp.category] || exp.category}
                                                 </span>
-                                                <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                                                    exp.status === "PAID"
+                                                <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${exp.status === "PAID"
                                                         ? "bg-emerald-100 text-emerald-800"
                                                         : exp.status === "PARTIAL"
-                                                        ? "bg-amber-100 text-amber-800"
-                                                        : "bg-rose-100 text-rose-800"
-                                                }`}>
+                                                            ? "bg-amber-100 text-amber-800"
+                                                            : "bg-rose-100 text-rose-800"
+                                                    }`}>
                                                     {exp.status === "PAID" && "Đã thanh toán"}
                                                     {exp.status === "PARTIAL" && "Thanh toán một phần"}
                                                     {exp.status === "UNPAID" && "Chưa thanh toán"}
@@ -1472,27 +1414,24 @@ export function PartnerFinanceManager({
                                 <button
                                     type="button"
                                     onClick={() => setHistoryFilterType("ALL")}
-                                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-                                        historyFilterType === "ALL" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                                    }`}
+                                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${historyFilterType === "ALL" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                        }`}
                                 >
                                     Tất cả
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setHistoryFilterType("RECEIPT")}
-                                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-                                        historyFilterType === "RECEIPT" ? "bg-emerald-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                                    }`}
+                                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${historyFilterType === "RECEIPT" ? "bg-emerald-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                        }`}
                                 >
                                     Tiền vào (Thu)
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setHistoryFilterType("PAYMENT")}
-                                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-                                        historyFilterType === "PAYMENT" ? "bg-rose-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                                    }`}
+                                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${historyFilterType === "PAYMENT" ? "bg-rose-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                        }`}
                                 >
                                     Tiền ra (Chi)
                                 </button>
@@ -1506,16 +1445,14 @@ export function PartnerFinanceManager({
                                 return (
                                     <div key={pm.id} className="py-3.5 flex items-center justify-between gap-3 text-xs hover:bg-slate-50/70 rounded-xl px-2 transition">
                                         <div className="flex items-center gap-3">
-                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl font-bold ${
-                                                isReceipt ? "bg-emerald-100/70 text-emerald-800" : "bg-rose-100/70 text-rose-800"
-                                            }`}>
+                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl font-bold ${isReceipt ? "bg-emerald-100/70 text-emerald-800" : "bg-rose-100/70 text-rose-800"
+                                                }`}>
                                                 {isReceipt ? <ArrowDownRight className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`rounded-md px-2 py-0.5 text-[10px] font-black uppercase ${
-                                                        isReceipt ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
-                                                    }`}>
+                                                    <span className={`rounded-md px-2 py-0.5 text-[10px] font-black uppercase ${isReceipt ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                                                        }`}>
                                                         {isReceipt ? "THU" : "CHI"}
                                                     </span>
                                                     <p className="font-bold text-slate-900 text-sm">
@@ -1752,8 +1689,8 @@ export function PartnerFinanceManager({
                                 <div className="flex justify-between font-bold text-rose-600">
                                     <span>Còn phải thu:</span>
                                     <span className="text-sm font-black">
-                                        {(selectedSaleForCollect.debtAmount > 0 
-                                            ? selectedSaleForCollect.debtAmount 
+                                        {(selectedSaleForCollect.debtAmount > 0
+                                            ? selectedSaleForCollect.debtAmount
                                             : Math.max(0, selectedSaleForCollect.totalAmount - (selectedSaleForCollect.paidAmount || 0))
                                         ).toLocaleString("vi-VN")} đ
                                     </span>
@@ -1849,8 +1786,8 @@ export function PartnerFinanceManager({
                                     disabled={submittingCollect}
                                     className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl"
                                 >
-                                    {submittingCollect 
-                                        ? "Đang xử lý..." 
+                                    {submittingCollect
+                                        ? "Đang xử lý..."
                                         : (selectedSaleForCollect.paymentStatus === "UNPAID" || !selectedSaleForCollect.paymentStatus
                                             ? "Xác nhận thanh toán"
                                             : "Xác nhận thu tiền")}
@@ -2105,8 +2042,6 @@ export function PartnerFinanceManager({
                 <SalesDispatchSlip
                     data={selectedSaleForSlip}
                     onClose={() => setSelectedSaleForSlip(null)}
-                    onIssueQr={handleIssueQr}
-                    issuingQr={issuingQr}
                 />
             )}
 

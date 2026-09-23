@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { randomBytes } from "crypto";
+
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -156,7 +156,6 @@ export async function POST(request: Request) {
     };
     const noteContent = JSON.stringify(structuredMeta);
 
-    const publicToken = `TRC-${randomBytes(4).toString("hex").toUpperCase()}`;
 
     const result = await prisma.$transaction(async (tx) => {
         // 1. Create CommercialLot with buyer info & financial fields
@@ -263,20 +262,6 @@ export async function POST(request: Request) {
             },
         });
 
-        // 6. Create TraceabilityCode directly
-        const traceCode = await tx.traceabilityCode.create({
-            data: {
-                code: publicToken,
-                publicToken,
-                commercialLotId: commercialLot.id,
-                status: "ACTIVE",
-                issuedAt: exportDate,
-                issuedById: session.user.id,
-                issuedByRole: "PROCESSING_FACILITY",
-                activatedAt: exportDate,
-            },
-        });
-
         // 7. Trace event
         await tx.traceEvent.create({
             data: {
@@ -290,12 +275,11 @@ export async function POST(request: Request) {
                 organizationType: "PROCESSING_FACILITY",
                 organizationId: facility.id,
                 title: isExport
-                    ? "Tạo lô xuất hàng xuất khẩu & Phát hành QR"
-                    : "Tạo lô xuất bán nội địa & Phát hành QR",
+                    ? "Tạo lô xuất hàng xuất khẩu"
+                    : "Tạo lô xuất bán nội địa",
                 description: `${v.productName} · Khối lượng: ${v.weight} kg (${v.boxCount || 0} thùng)${isExport ? ` · Container: ${v.containerNumber || "N/A"}` : ""}`,
                 metadata: {
                     shipmentCode: v.shipmentCode,
-                    publicToken,
                     productName: v.productName,
                     dispatchedWeight: v.weight,
                     containerNumber: v.containerNumber,
@@ -316,12 +300,12 @@ export async function POST(request: Request) {
             },
         });
 
-        return { shipment, commercialLot, traceCode };
+        return { shipment, commercialLot };
     });
 
     return NextResponse.json({
         success: true,
-        message: "Đã tạo lô xuất hàng và phát hành tem QR thành công.",
+        message: "Đã tạo lô xuất hàng thành công.",
         data: result,
     }, { status: 201 });
 }

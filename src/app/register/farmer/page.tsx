@@ -298,7 +298,7 @@ export default function RegisterPage() {
                                                             <Input placeholder="Số nhà, ấp, tổ, đường..." {...form.register(`farms.${index}.detailedAddress`)} />
                                                         </Field>
                                                         <Field label="Mã số vùng trồng (PUC) *" error={error?.growingRegionCode?.message}>
-                                                            <Input placeholder="Ví dụ: 75-PUC-SR-00001 hoặc 75-PUC-SR-00001-CHN" {...form.register(`farms.${index}.growingRegionCode`)} />
+                                                            <Input placeholder="Ví dụ: VN-DNOR-0269" {...form.register(`farms.${index}.growingRegionCode`)} />
                                                         </Field>
 
                                                         {/* Giống sầu riêng */}

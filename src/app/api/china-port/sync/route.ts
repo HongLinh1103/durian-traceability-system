@@ -1,18 +1,24 @@
 import { NextResponse } from "next/server";
 import { syncChinaPortVietnamData } from "@/lib/china-port-sync";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/china-port/sync - Kích hoạt đồng bộ dữ liệu Việt Nam & phát hiện bản ghi mới
 export async function POST(request: Request) {
+    const session = await getServerSession(authOptions);
+    if (session?.user?.role !== "ADMIN") return NextResponse.json({ message: "Không có quyền." }, { status: 403 });
     try {
         const body = await request.json().catch(() => ({}));
-        const { sendEmail = true, forceEmailRecipient, prodName, pageSize = 1000 } = body;
+        const parsed = z.object({ sendEmail: z.boolean().default(true), prodName: z.string().max(100).optional(), pageSize: z.number().int().min(1).max(1000).default(1000) }).safeParse(body);
+        if (!parsed.success) return NextResponse.json({ message: "Tham số đồng bộ không hợp lệ." }, { status: 400 });
+        const { sendEmail, prodName, pageSize } = parsed.data;
 
         const result = await syncChinaPortVietnamData({
             sendEmail,
-            forceEmailRecipient,
             prodName,
             pageSize,
         });
@@ -37,6 +43,8 @@ export async function POST(request: Request) {
 
 // GET /api/china-port/sync - Lấy trạng thái và lịch sử đồng bộ gần nhất
 export async function GET() {
+    const session = await getServerSession(authOptions);
+    if (session?.user?.role !== "ADMIN") return NextResponse.json({ message: "Không có quyền." }, { status: 403 });
     try {
         let lastLogs: any[] = [];
         let totalStored = 0;

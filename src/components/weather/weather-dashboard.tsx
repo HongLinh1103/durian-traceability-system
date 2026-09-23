@@ -301,7 +301,73 @@ export function WeatherDashboard({ role }: { role: "FARMER" | "AREA_MANAGER" }) 
                                         {selectedAffected.length > 0 && <Button type="button" size="sm" variant="ghost" onClick={() => { setSelectedAffected([]); setConfirmSend(false); }}>Bỏ chọn</Button>}
                                     </div>
                                 </div>
-                                <div className="overflow-hidden rounded-3xl border bg-white"><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-slate-50 text-slate-600"><tr><th className="p-4">Chọn</th><th className="p-4">Vườn</th><th className="p-4">Giai đoạn canh tác</th><th className="p-4">Nhiệt độ</th><th className="p-4">Khả năng mưa</th><th className="p-4">Gió</th><th className="p-4">Trạng thái</th><th className="p-4">Nhật ký</th></tr></thead><tbody>{regionalFarms.map((farm) => <tr key={farm.id} className="border-t"><td className="p-4"><input type="checkbox" checked={selectedAffected.includes(farm.id)} onChange={() => toggleAffectedFarm(farm.id)} aria-label={`Chọn ${farm.farmName}`} /></td><td className="p-4"><b>{farm.farmName}</b><div className="text-xs text-slate-500">{farm.farmCode}</div></td><td className="p-4"><span className="font-semibold text-emerald-700">{farm.currentStage ? stageLabels[farm.currentStage] ?? farm.currentStage : "Chưa cập nhật"}</span>{farm.stageUpdatedAt && <div className="mt-1 text-xs text-slate-500">Nhật ký {formatVietnameseDate(farm.stageUpdatedAt)}</div>}</td><td className="p-4">{farm.weather.current.temperature}°C</td><td className="p-4">{farm.weather.current.precipitationProbability}%</td><td className="p-4">{farm.weather.current.windSpeed} km/h</td><td className="p-4"><StatusBadge status={farm.status} /></td><td className="p-4"><Button asChild size="sm" variant="outline"><Link href={`/region-manager/gardens/${farm.id}/logs`}><History className="mr-1.5 h-4 w-4" />Xem nhật ký</Link></Button></td></tr>)}</tbody></table></div></div>
+                                <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full min-w-[900px] border-collapse border border-slate-300 text-left text-sm">
+                                            <thead className="bg-slate-100/90 text-xs text-slate-700">
+                                                <tr>
+                                                    <th className="border border-slate-300 px-3.5 py-3 text-center font-semibold align-middle w-12">Chọn</th>
+                                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Vườn</th>
+                                                    <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Giai đoạn canh tác</th>
+                                                    <th className="border border-slate-300 px-3.5 py-3 text-center font-semibold align-middle">Nhiệt độ</th>
+                                                    <th className="border border-slate-300 px-3.5 py-3 text-center font-semibold align-middle">Khả năng mưa</th>
+                                                    <th className="border border-slate-300 px-3.5 py-3 text-center font-semibold align-middle">Gió</th>
+                                                    <th className="border border-slate-300 px-3.5 py-3 text-center font-semibold align-middle">Trạng thái</th>
+                                                    <th className="border border-slate-300 px-3.5 py-3 text-center font-semibold align-middle">Nhật ký</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {regionalFarms.map((farm) => (
+                                                    <tr key={farm.id} className="hover:bg-slate-50/70 transition">
+                                                        <td className="border border-slate-200 px-3.5 py-2.5 text-center">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedAffected.includes(farm.id)}
+                                                                onChange={() => toggleAffectedFarm(farm.id)}
+                                                                aria-label={`Chọn ${farm.farmName}`}
+                                                                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                                            />
+                                                        </td>
+                                                        <td className="border border-slate-200 px-3.5 py-2.5">
+                                                            <b className="text-slate-900">{farm.farmName}</b>
+                                                            <div className="text-xs text-slate-500">{farm.farmCode}</div>
+                                                        </td>
+                                                        <td className="border border-slate-200 px-3.5 py-2.5">
+                                                            <span className="font-semibold text-emerald-700">
+                                                                {farm.currentStage ? stageLabels[farm.currentStage] ?? farm.currentStage : "Chưa cập nhật"}
+                                                            </span>
+                                                            {farm.stageUpdatedAt && (
+                                                                <div className="mt-1 text-xs text-slate-500">
+                                                                    Nhật ký {formatVietnameseDate(farm.stageUpdatedAt)}
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                        <td className="border border-slate-200 px-3.5 py-2.5 text-center font-medium text-slate-700">
+                                                            {farm.weather.current.temperature}°C
+                                                        </td>
+                                                        <td className="border border-slate-200 px-3.5 py-2.5 text-center text-slate-700">
+                                                            {farm.weather.current.precipitationProbability}%
+                                                        </td>
+                                                        <td className="border border-slate-200 px-3.5 py-2.5 text-center text-slate-700">
+                                                            {farm.weather.current.windSpeed} km/h
+                                                        </td>
+                                                        <td className="border border-slate-200 px-3.5 py-2.5 text-center">
+                                                            <StatusBadge status={farm.status} />
+                                                        </td>
+                                                        <td className="border border-slate-200 px-3.5 py-2.5 text-center">
+                                                            <Button asChild size="sm" variant="outline" className="h-8">
+                                                                <Link href={`/region-manager/gardens/${farm.id}/logs`}>
+                                                                    <History className="mr-1.5 h-3.5 w-3.5" />
+                                                                    Xem nhật ký
+                                                                </Link>
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                                 <NotificationComposer selectedCount={selectedAffected.length} text={notificationText} confirmed={confirmSend} sending={sending} onText={updateNotificationText} onConfirm={setConfirmSend} onSend={() => void sendNotification()} />
                             </section>
                         )}

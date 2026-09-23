@@ -82,7 +82,7 @@ export default async function Page() {
                     className="inline-flex items-center gap-2 rounded-2xl bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-800 transition self-start sm:self-auto"
                 >
                     <FileText className="h-4 w-4" />
-                    Xuất Bán & Tạo QR
+                    Xuất Bán
                 </Link>
             </header>
 

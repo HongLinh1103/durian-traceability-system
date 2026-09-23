@@ -78,6 +78,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
+            { label: "Xưởng chế biến đóng gói", description: "Danh sách cơ sở chế biến đóng gói", href: "/dashboard/admin/packing-facilities", icon: Factory },
             { label: "Quét QR", description: "Quét mã QR truy xuất nguồn gốc", href: "/trace", icon: QrCode },
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Tài liệu", description: "Quản lý và tra cứu tài liệu kỹ thuật", href: "/documents", icon: BookOpenCheck },
@@ -121,7 +122,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
         actions: [
             { label: "Xuất bán", description: "Tạo lô xuất khẩu và thông tin container", href: "/dashboard/processing/shipments", icon: Package },
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
-            { label: "Tạo QR", description: "Tạo mã QR truy xuất nguồn gốc cho lô hàng", href: "/dashboard/partner/traceability", icon: QrCode },
+            { label: "Xuất bán", description: "Lập phiếu xuất bán và quản lý công nợ", href: "/dashboard/partner/traceability", icon: QrCode },
             { label: "Tài chính", description: "Báo cáo doanh thu và chi phí thu mua", href: "/dashboard/partner/finance", icon: CircleDollarSign },
         ],
     },

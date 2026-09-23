@@ -11,6 +11,7 @@ const reviewSchema = z.object({ codeId: z.string().min(1), action: z.enum(["SUSP
 export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) return NextResponse.json({ success: false, error: "Chưa đăng nhập" }, { status: 401 });
+    if (session.user.role !== "FARMER") return NextResponse.json({ success: false, error: "Vai trò không được phát hành QR" }, { status: 403 });
     const parsed = issueSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ success: false, error: "Thiếu lô thương mại" }, { status: 400 });
     try {

@@ -15,5 +15,5 @@ public/uploads/documents/*
 .env*
 .agents/
 skills-lock.json
-scratch/gmp-test/
-scratch/gmp-exports/
+scratch/
+

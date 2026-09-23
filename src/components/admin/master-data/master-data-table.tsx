@@ -89,17 +89,17 @@ export function MasterDataTable<T>({
     }
 
     return (
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+        <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
             {/* Table - Desktop */}
             <div className="hidden overflow-x-auto sm:block">
-                <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-slate-50">
+                <table className="min-w-full border-collapse border border-slate-300 text-left text-sm">
+                    <thead className="bg-slate-100/90 text-xs text-slate-700">
                         <tr>
                             {columns.map((col) => (
                                 <th
                                     key={col.key}
                                     className={cn(
-                                        "px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500",
+                                        "border border-slate-300 px-3.5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-700 align-middle",
                                         col.className,
                                     )}
                                 >
@@ -108,11 +108,11 @@ export function MasterDataTable<T>({
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody>
                         {data.map((item, index) => (
-                            <tr key={keyExtractor(item)} className="hover:bg-slate-50/50">
+                            <tr key={keyExtractor(item)} className="hover:bg-slate-50/70 transition">
                                 {columns.map((col) => (
-                                    <td key={col.key} className={cn("whitespace-nowrap px-4 py-3 text-sm text-slate-700", col.className)}>
+                                    <td key={col.key} className={cn("border border-slate-200 whitespace-nowrap px-3.5 py-2.5 text-sm text-slate-700", col.className)}>
                                         {col.render(item, index)}
                                     </td>
                                 ))}
