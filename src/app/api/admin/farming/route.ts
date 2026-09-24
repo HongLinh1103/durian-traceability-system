@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createHash } from "node:crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,10 @@ export async function GET(request: Request) {
 
         const rows = farms.map((farm) => {
             const latestLogDate = farm.farmingLogs?.[0]?.actionDate ?? null;
+            // Explicitly labelled mock display data; never replace login phone numbers.
+            const demoKey = createHash('sha256').update(farm.farmer?.id || farm.id).digest('hex').slice(0, 8).toUpperCase();
+            const phone = farm.farmer?.phone?.startsWith("DEMO-REGION-") ? "" : farm.farmer?.phone?.trim() || "";
+            const identity = (farm.farmer?.id ? identityMap.get(farm.farmer.id) : null)?.trim();
             return {
                 id: farm.id,
                 farmCode: farm.farmCode || "PUC-CHUA-CAP",
@@ -67,8 +72,8 @@ export async function GET(request: Request) {
                 ownerName: farm.farmer?.fullName ?? farm.farmer?.phone ?? "Chưa rõ",
                 ownerId: farm.farmer?.id ?? "",
                 ownerAddress: farm.farmer?.address || [farm.farmer?.ward, farm.farmer?.district, farm.farmer?.province].filter(Boolean).join(", "),
-                ownerPhone: farm.farmer?.phone?.startsWith("DEMO-REGION-") ? "" : farm.farmer?.phone || "",
-                identityNumber: (farm.farmer?.id ? identityMap.get(farm.farmer.id) : null) ?? null,
+                ownerPhone: phone || `DEMO-SDT-${demoKey}`,
+                identityNumber: identity || `DEMO-CCCD-${demoKey}`,
                 regionName: farm.region?.name || farm.growingRegion || "",
                 regionAddress: farm.region?.address || (farm.region ? [farm.region.ward, farm.region.district, farm.region.province].filter(Boolean).join(", ") : farm.address) || "",
                 latitude: farm.latitude != null ? Number(farm.latitude.toFixed(6)) : (farm.centerLatitude != null ? Number(farm.centerLatitude.toFixed(6)) : null),

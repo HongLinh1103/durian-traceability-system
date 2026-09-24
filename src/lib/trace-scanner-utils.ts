@@ -11,12 +11,12 @@ export function parseTraceCode(input: string): string {
         try {
             const urlObj = trimmed.startsWith("http") ? new URL(trimmed) : new URL(trimmed, "http://localhost");
             const pathname = urlObj.pathname;
-            const match = pathname.match(/\/trace\/([^/?#]+)/i);
+            const match = pathname.match(/\/trace\/(?:packing\/)?([^/?#]+)/i);
             if (match && match[1]) {
                 return decodeURIComponent(match[1]).trim();
             }
         } catch {
-            const match = trimmed.match(/\/trace\/([^/?#\s]+)/i);
+            const match = trimmed.match(/\/trace\/(?:packing\/)?([^/?#\s]+)/i);
             if (match && match[1]) {
                 return match[1].trim();
             }

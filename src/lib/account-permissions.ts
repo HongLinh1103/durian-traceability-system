@@ -50,7 +50,8 @@ export const ACCOUNT_PERMISSIONS_BY_ROLE: Record<string, AccountPermission[]> = 
         { key: "PROCESSING_INSPECTION", label: "Kiểm tra trước xuất bán", path: "/dashboard/processing/inspection" },
         { key: "PROCESSING_SHIPMENTS", label: "Xuất bán", path: "/dashboard/processing/shipments" },
         { key: "PROCESSING_AFTERSALES", label: "Sau xuất bán", path: "/dashboard/processing/aftersales" },
-        { key: "PROCESSING_FINANCE", label: "Tài chính", path: "/dashboard/processing/finance" }, ...shared,
+        { key: "PROCESSING_FINANCE", label: "Tài chính", path: "/dashboard/processing/finance" },
+        { key: "PROCESSING_QR", label: "Mã QR", path: "/dashboard/processing/qr" }, ...shared,
     ],
     STORE_OWNER: [
         { key: "STORE_DASHBOARD", label: "Tổng quan cửa hàng", path: "/dashboard/store" },

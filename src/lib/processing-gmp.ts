@@ -1012,7 +1012,10 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
         !/^LH-\d{4}-\d{4}(?:-\d{2})?$/.test(old.lotCode) ||
         (old.values?.date && String(old.values.date) !== String(v.date))
     );
-    const code = (stage === 'purchases' && !shouldRegeneratePurchaseCode && old?.lotCode)
+    const explicitCode = (input.values?.lotCode && typeof input.values.lotCode === 'string' && input.values.lotCode.startsWith('LH-')) ? String(input.values.lotCode) : '';
+    const code = explicitCode
+        ? explicitCode
+        : (stage === 'purchases' && !shouldRegeneratePurchaseCode && old?.lotCode)
         ? old.lotCode
         : (stage === 'receiving' && !shouldRegenerateReceivingCode && old?.lotCode)
             ? old.lotCode
@@ -1300,6 +1303,27 @@ export function createDemoState(): GmpState {
                 notes: 'Đã thông quan xuất khẩu đạt yêu cầu'
             };
             REGISTERS[stage].fields.forEach(f => { if (f.type === 'check') values[f.key] = 'Đ'; if (f.type === 'finding') values[f.key] = 'Không'; });
+            if (i === 0) {
+                values.lotCode = 'LH-260926-01';
+                values.date = stage === 'aftersales' ? '2026-09-29' : '2026-09-26';
+                values.seller = 'Nguyễn Văn Nam';
+                values.weight = 6200;
+                values.price = s === 0 ? 52000 : 85000;
+                values.puc = 'VN-TGOR-9001';
+                values.origin = 'Vùng trồng sầu riêng Nguyễn Văn Nam';
+                values.address = 'Cai Lậy, Tiền Giang';
+                values.gardenInfo = 'Cai Lậy, Tiền Giang';
+                values.variety = 'Sầu riêng Ri6';
+                values.quantity_boxes = 320;
+                values.weight_kg = 5240;
+                values.customer = 'Công ty Phân phối Hoa quả Quảng Tây';
+                values.customerInfo = 'Số 88 đường Đại Sa, Nam Ninh, Quảng Tây, Trung Quốc';
+                values.container = 'TEMU1234567';
+                values.truck = '51C-123.45';
+                values.seal = 'SL987654';
+                values.departurePort = 'Hữu Nghị — Lạng Sơn';
+                values.destinationPort = 'Hữu Nghị Quan — Quảng Tây';
+            }
             if (i === 7 && stage === 'inspection') Object.assign(values, { mealybug: 'Có', quantity_boxes: 0, weight_kg: 0, correction: 'Cách ly lô, vệ sinh lại và kiểm tra lại trước khi xuất.' });
             const id = `demo-${i}-${s}`;
             state = saveRecord(state, stage, { sourceId: previous, season: '2025-2026', values }, id);

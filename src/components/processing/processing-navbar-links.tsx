@@ -67,5 +67,6 @@ export function ProcessingNavbarLinks() {
             </div>}
         </div>)}
         <Link href="/dashboard/processing/finance" aria-current={active('/dashboard/processing/finance') ? 'page' : undefined} className={cn(linkClass, colors(active('/dashboard/processing/finance')))}>Tài chính</Link>
+        <Link href="/dashboard/processing/qr" aria-current={active('/dashboard/processing/qr') ? 'page' : undefined} className={cn(linkClass, colors(active('/dashboard/processing/qr')))}>Mã QR</Link>
     </div>;
 }

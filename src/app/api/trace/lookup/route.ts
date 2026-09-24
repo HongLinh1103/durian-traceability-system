@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseTraceCode } from "@/lib/trace-scanner-utils";
+import { publicProcessingTrace } from "@/lib/processing-qr";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,12 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: false, message: "Vui lòng cung cấp mã truy xuất." }, { status: 400 });
         }
 
+        const packing = await publicProcessingTrace(cleanCode);
+        if (packing) return NextResponse.json({ success: true, exists: true, data: {
+            publicToken: packing.token, code: packing.snapshot.sale.lot, lotCode: packing.snapshot.sale.lot,
+            productName: packing.snapshot.sale.variety, issuerName: packing.snapshot.seller.name, status: 'ACTIVE',
+            redirectUrl: '/trace/packing/' + packing.token,
+        } });
         const trace = await prisma.traceabilityCode.findFirst({
             where: {
                 OR: [

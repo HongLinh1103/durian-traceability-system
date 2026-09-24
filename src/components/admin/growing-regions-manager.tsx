@@ -1,13 +1,13 @@
 "use client";
 
-import { Fragment, FormEvent, useMemo, useState } from "react";
-import { Globe, History, Plus, Search, Sparkles } from "lucide-react";
+import { Fragment, useMemo, useState } from "react";
+import { Globe, History, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
-import { ISO_3166_COUNTRIES, PROVINCE_ADMIN_CODES, parseUnitCode } from "@/lib/puc-phc";
+import { parseUnitCode } from "@/lib/puc-phc";
 import ExportWordButton from "./export-word-button";
 
 type Manager = { id: string; fullName: string | null; phone: string };
@@ -51,7 +51,6 @@ export function GrowingRegionsManager({ regions, managers }: { regions: Region[]
     const [changeRegion, setChangeRegion] = useState<Region | null>(null);
     const [nextManagerId, setNextManagerId] = useState("");
     const [reason, setReason] = useState("");
-    const [showCreateForm, setShowCreateForm] = useState(false);
 
     const filtered = useMemo(() => {
         return regions.filter((region) => {
@@ -84,7 +83,6 @@ export function GrowingRegionsManager({ regions, managers }: { regions: Region[]
             setChangeRegion(null);
             setNextManagerId("");
             setReason("");
-            setShowCreateForm(false);
             router.refresh();
         } catch (error) {
             toast({
@@ -97,38 +95,9 @@ export function GrowingRegionsManager({ regions, managers }: { regions: Region[]
         }
     }
 
-    async function create(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        const form = new FormData(event.currentTarget);
-        const exportMarket = String(form.get("exportMarket") || "").trim();
-        const managerId = String(form.get("managerId") || "").trim();
-
-        await call("/api/admin/growing-regions", "POST", {
-            code: form.get("code") || undefined,
-            name: form.get("name"),
-            address: form.get("address") || undefined,
-            province: form.get("province"),
-            district: form.get("district") || undefined,
-            ward: form.get("ward") || undefined,
-            areaSize: form.get("areaSize") || undefined,
-            cropType: form.get("cropType") || "Sầu riêng",
-            cropVarieties: String(form.get("varieties") || "")
-                .split(",")
-                .map((value) => value.trim())
-                .filter(Boolean),
-            exportMarkets: exportMarket ? [exportMarket] : [],
-            managerId: managerId || undefined,
-        });
-    }
-
     return (
         <div className="space-y-5">
-            <ExportWordButton title="DANH SÁCH NÔNG HỘ" filename="danh-sach-vung-trong" headers={['STT', 'Tỉnh/ Thành phố', 'Tên vùng trồng', 'Mã vùng trồng', 'Địa chỉ', 'Diện tích (ha)', 'Người phụ trách', 'Số nông hộ', 'Loại cây trồng', 'Thị trường xuất khẩu']} rows={filtered.map((region, index) => {
-                const manager = region.managerAssignments.find(item => item.isActive && !item.endedAt)?.areaManager;
-                const area = region.areaSize ?? (region.farms.length ? region.farms.reduce((sum, farm) => sum + farm.areaSize / (farm.areaUnit === 'SQUARE_METER' ? 10000 : 1), 0) : null);
-                const parsed = parseUnitCode(region.code);
-                return [index + 1, region.province || 'Chưa cập nhật', region.name, region.code, region.address || [region.ward, region.district, region.province].filter(Boolean).join(', '), area == null ? 'Chưa cập nhật' : area.toLocaleString('vi-VN', { maximumFractionDigits: 4 }), manager?.fullName || manager?.phone || 'Chưa phân công', new Set(region.farms.map(farm => farm.farmerId)).size, region.cropType || 'Chưa cập nhật', region.exportMarkets.length ? region.exportMarkets.join(', ') : parsed?.isExportApproved ? parsed.exportMarketIso + ' · ' + parsed.exportMarketName : 'Chưa cập nhật'];
-            })} />
+
             {/* Thanh công cụ tìm kiếm và nút tạo */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div className="grid flex-1 gap-3 sm:grid-cols-[1fr_200px]">
@@ -154,166 +123,13 @@ export function GrowingRegionsManager({ regions, managers }: { regions: Region[]
                         ))}
                     </select>
                 </div>
-                <Button
-                    onClick={() => setShowCreateForm(!showCreateForm)}
-                    className="gap-1.5 shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-                >
-                    <Plus className="h-4 w-4" />
-                    {showCreateForm ? "Đóng form" : "Cấp mã vùng trồng mới"}
-                </Button>
+            <ExportWordButton title="DANH SÁCH VÙNG TRỒNG" filename="DANH SÁCH VÙNG TRỒNG" headers={['STT', 'Tỉnh/ Thành phố', 'Tên vùng trồng', 'Mã vùng trồng', 'Địa chỉ', 'Diện tích (ha)', 'Người phụ trách', 'Số nông hộ', 'Loại cây trồng', 'Thị trường xuất khẩu']} rows={filtered.map((region, index) => {
+                const manager = region.managerAssignments.find(item => item.isActive && !item.endedAt)?.areaManager;
+                const area = region.areaSize ?? (region.farms.length ? region.farms.reduce((sum, farm) => sum + farm.areaSize / (farm.areaUnit === 'SQUARE_METER' ? 10000 : 1), 0) : null);
+                const parsed = parseUnitCode(region.code);
+                return [index + 1, region.province || 'Chưa cập nhật', region.name, region.code, region.address || [region.ward, region.district, region.province].filter(Boolean).join(', '), area == null ? 'Chưa cập nhật' : area.toLocaleString('vi-VN', { maximumFractionDigits: 4 }), manager?.fullName || manager?.phone || 'Chưa phân công', new Set(region.farms.map(farm => farm.farmerId)).size, region.cropType || 'Chưa cập nhật', region.exportMarkets.length ? region.exportMarkets.join(', ') : parsed?.isExportApproved ? parsed.exportMarketIso + ' · ' + parsed.exportMarketName : 'Chưa cập nhật'];
+            })} />
             </div>
-
-            {/* Form tạo vùng trồng mới theo chuẩn QĐ 19/2025/QĐ-TTg */}
-            {showCreateForm && (
-                <form
-                    onSubmit={create}
-                    className="rounded-3xl border border-emerald-200 bg-emerald-50/30 p-5 sm:p-6 shadow-sm space-y-4"
-                >
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-600 text-xs font-black text-white">
-                                PUC
-                            </span>
-                            <h2 className="text-base font-black text-slate-900">
-                                Đăng ký & Cấp mã số Vùng trồng (PUC)
-                            </h2>
-                        </div>
-                        <p className="mt-1 text-xs text-slate-600">
-                            Cấu trúc chuẩn: <code className="font-mono font-bold text-emerald-800">[Mã tỉnh - PUC - Cây trồng - YYYYY]</code> (theo Quyết định 19/2025/QĐ-TTg). Để trống mã để hệ thống tự động cấp số thứ tự kế tiếp.
-                        </p>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        <div className="space-y-1">
-                            <Label className="text-xs font-bold text-slate-700">Mã vùng trồng (PUC)</Label>
-                            <Input
-                                name="code"
-                                placeholder="Để trống = Tự sinh tự động"
-                                className="bg-white font-mono text-xs"
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <Label className="text-xs font-bold text-slate-700">Tên vùng trồng *</Label>
-                            <Input name="name" required placeholder="Ví dụ: Vùng trồng sầu riêng Công ty TNHH MTV Kim Quy" className="bg-white" />
-                        </div>
-
-                        <div className="space-y-1 sm:col-span-2 lg:col-span-4">
-                            <Label className="text-xs font-bold text-slate-700">Địa chỉ vùng trồng</Label>
-                            <Input name="address" placeholder="Nhập nguyên văn địa chỉ theo hồ sơ" className="bg-white" />
-                        </div>
-
-                        <div className="space-y-1">
-                            <Label className="text-xs font-bold text-slate-700">Tỉnh / Thành phố *</Label>
-                            <select
-                                name="province"
-                                required
-                                defaultValue="Đồng Nai"
-                                className="h-10 w-full rounded-xl border bg-white px-3 text-sm font-medium"
-                            >
-                                {Object.entries(PROVINCE_ADMIN_CODES).map(([prov, code]) => (
-                                    <option key={code} value={prov}>
-                                        {code} - {prov}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="space-y-1">
-                            <Label className="text-xs font-bold text-slate-700">Loại cây trồng</Label>
-                            <select
-                                name="cropType"
-                                defaultValue="Sầu riêng"
-                                className="h-10 w-full rounded-xl border bg-white px-3 text-sm font-medium"
-                            >
-                                <option value="Sầu riêng">SR - Sầu riêng</option>
-                                <option value="Chuối">CH - Chuối</option>
-                                <option value="Thanh long">TL - Thanh long</option>
-                                <option value="Xoài">XO - Xoài</option>
-                                <option value="Mít">MI - Mít</option>
-                                <option value="Bưởi">BU - Bưởi</option>
-                            </select>
-                        </div>
-
-                        <div className="space-y-1">
-                            <Label className="text-xs font-bold text-slate-700">Huyện / Thị xã</Label>
-                            <Input name="district" placeholder="Ví dụ: Vĩnh Cửu" className="bg-white" />
-                        </div>
-
-                        <div className="space-y-1">
-                            <Label className="text-xs font-bold text-slate-700">Xã / Phường</Label>
-                            <Input name="ward" placeholder="Ví dụ: Trị An" className="bg-white" />
-                        </div>
-
-                        <div className="space-y-1">
-                            <Label className="text-xs font-bold text-slate-700">Diện tích (ha)</Label>
-                            <Input
-                                name="areaSize"
-                                type="number"
-                                min="0.01"
-                                step="0.01"
-                                placeholder="Ví dụ: 120"
-                                className="bg-white"
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <Label className="text-xs font-bold text-slate-700">Thị trường xuất khẩu (ISO 3166)</Label>
-                            <select
-                                name="exportMarket"
-                                defaultValue=""
-                                className="h-10 w-full rounded-xl border bg-white px-3 text-sm font-medium"
-                            >
-                                <option value="">Nội địa / Chưa cấp xuất khẩu</option>
-                                {Object.entries(ISO_3166_COUNTRIES).map(([iso, country]) => (
-                                    <option key={iso} value={iso}>
-                                        {iso} - {country}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="space-y-1">
-                            <Label className="text-xs font-bold text-slate-700">Người phụ trách (Trưởng ban)</Label>
-                            <select
-                                name="managerId"
-                                defaultValue=""
-                                className="h-10 w-full rounded-xl border bg-white px-3 text-sm font-medium"
-                            >
-                                <option value="">Chưa phân công</option>
-                                {managers.map((m) => (
-                                    <option key={m.id} value={m.id}>
-                                        {m.fullName || m.phone} ({m.phone})
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-                            <Label className="text-xs font-bold text-slate-700">Giống cây trồng chủ lực</Label>
-                            <Input
-                                name="varieties"
-                                placeholder="Ri6, Monthong, Dona (ngăn cách bởi dấu phẩy)"
-                                className="bg-white"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-2">
-                        <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)}>
-                            Hủy
-                        </Button>
-                        <Button
-                            type="submit"
-                            disabled={busy}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-                        >
-                            <Sparkles className="mr-1.5 h-4 w-4" />
-                            Xác nhận & Cấp mã PUC
-                        </Button>
-                    </div>
-                </form>
-            )}
 
             {/* Danh sách vùng trồng */}
             <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
@@ -333,15 +149,15 @@ export function GrowingRegionsManager({ regions, managers }: { regions: Region[]
                                 return <Fragment key={region.id}>
                                     <tr tabIndex={0} aria-label={`Xem ${farmerCount} nông hộ thuộc vùng ${region.name}`} onClick={() => router.push(`/dashboard/admin/farming?regionId=${encodeURIComponent(region.id)}`)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); router.push(`/dashboard/admin/farming?regionId=${encodeURIComponent(region.id)}`); } }} className="cursor-pointer align-top hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 transition [&>td]:border [&>td]:border-slate-200 [&>td]:px-3.5 [&>td]:py-2.5">
                                         <td className="text-center text-slate-500">{pageStart + index + 1}</td>
-                                        <td className="min-w-[160px]">{region.province || 'Chưa cập nhật'}</td>
+                                        <td className="min-w-[160px] text-center">{region.province || 'Chưa cập nhật'}</td>
                                         <td className="min-w-[180px] text-black">{region.name}</td>
                                         <td className="whitespace-nowrap font-mono font-bold text-emerald-700">{region.code}</td>
                                         <td className="min-w-[230px] text-slate-600">{region.address || [region.ward, region.district, region.province].filter(Boolean).join(', ') || 'Chưa cập nhật'}</td>
-                                        <td className="text-right tabular-nums" title={region.areaSize == null && area != null ? 'Tổng diện tích các vườn đang liên kết' : undefined}>{area != null ? area.toLocaleString('vi-VN', { maximumFractionDigits: 4 }) : 'Chưa cập nhật'}</td>
+                                        <td className="text-center tabular-nums" title={region.areaSize == null && area != null ? 'Tổng diện tích các vườn đang liên kết' : undefined}>{area != null ? area.toLocaleString('vi-VN', { maximumFractionDigits: 4 }) : 'Chưa cập nhật'}</td>
                                         <td className="min-w-[180px]"><p className="font-medium">{current?.areaManager.fullName || current?.areaManager.phone || 'Chưa phân công'}</p>{current && <p className="mt-1 text-xs text-slate-500">{current.areaManager.phone}</p>}</td>
                                         <td className="text-center tabular-nums">{farmerCount}</td>
-                                        <td className="min-w-[140px]">{region.cropType || 'Chưa cập nhật'}</td>
-                                        <td className="min-w-[160px]">{region.exportMarkets.length ? region.exportMarkets.join(', ') : parsed?.isExportApproved ? parsed.exportMarketIso + ' · ' + parsed.exportMarketName : 'Chưa cập nhật'}</td>
+                                        <td className="min-w-[140px] text-center">{region.cropType || 'Chưa cập nhật'}</td>
+                                        <td className="min-w-[160px] text-center">{region.exportMarkets.length ? region.exportMarkets.join(', ') : parsed?.isExportApproved ? parsed.exportMarketIso + ' · ' + parsed.exportMarketName : 'Chưa cập nhật'}</td>
                                     </tr>
                                     {detailsId === region.id && <tr><td colSpan={10} className="border border-slate-200 bg-slate-50 px-4 py-3">
                             <div className="mb-3 flex flex-wrap items-center gap-3"><StatusBadge status={region.status} /><span className="text-xs text-slate-600">Giống: {region.cropVarieties.join(', ') || 'Chưa cập nhật'} · {region.farms.length} vườn</span></div>

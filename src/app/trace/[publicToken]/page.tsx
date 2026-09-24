@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { publicProcessingTrace } from "@/lib/processing-qr";
 import { getPublicTrace } from "@/lib/traceability";
 import { PublicTraceView } from "@/components/trace/public-trace-view";
 
@@ -9,6 +10,7 @@ export default async function TracePage(props: {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }> | { [key: string]: string | string[] | undefined };
 }) {
     const params = await Promise.resolve(props.params);
+    if (await publicProcessingTrace(params.publicToken)) redirect('/trace/packing/' + params.publicToken);
     const search = props.searchParams ? await Promise.resolve(props.searchParams) : {};
     const rawP = Array.isArray(search.p) ? search.p[0] : search.p;
     const rawPreview = Array.isArray(search.preview) ? search.preview[0] : search.preview;

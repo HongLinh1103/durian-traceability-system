@@ -163,7 +163,7 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
   const stage = screen !== 'overview' && screen !== 'finance' ? screen : null;
   const config = stage ? REGISTERS[stage] : null;
   const rows = stage && state ? state.records[stage].filter(r => matches(r, filter)).sort(compareGmpRecordsNewestFirst) : [];
-  const title = config?.title || (screen === 'overview' ? 'Tổng quan cơ sở chế biến' : 'Tài chính');
+  const title = config?.title || (screen === 'overview' ? 'Tổng quan cơ sở chế biến' : 'TÀI CHÍNH');
   const availableMonths = useMemo(() => {
     const months = new Set<string>();
     if (state) {
@@ -293,7 +293,7 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
     {state && <>
 
       {screen === 'overview' && <Overview state={state} filter={filter} />}
-      {screen === 'finance' && <Finance state={state} filter={filter} busy={busy} mutate={mutate} exporting={financeExporting} setExporting={setFinanceExporting} />}
+      {screen === 'finance' && <Finance company={company} month={month} state={state} filter={filter} busy={busy} mutate={mutate} exporting={financeExporting} setExporting={setFinanceExporting} />}
       {stage && config && <>
         <section className="overflow-hidden rounded-2xl border bg-white">
           <div className="overflow-x-auto">
@@ -889,7 +889,7 @@ function RecordForm({ state, regions, stage, record, busy, error, onClose, onSav
     {stage === 'receiving' && source && <p className="rounded-xl bg-slate-50 p-3 text-sm">Đối soát: {fmt(Number(values.grade1 || 0) + Number(values.grade2 || 0) + Number(values.grade3 || 0) + Number(values.rejected || 0))} / {fmt(source.values.weight)} kg (tiếp nhận + từ chối / thu mua)</p>}
   </div><div className="flex justify-end gap-3 border-t bg-slate-50 p-4"><button type="button" className={button} onClick={onClose} disabled={busy}>Hủy</button><button className={primary} disabled={busy || (stage !== 'purchases' && !sourceId)}>{busy ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}Lưu bản ghi</button></div></form></div>;
 }
-function Finance({ state, filter, busy, mutate, exporting, setExporting }: { state: GmpState; filter: Filter; busy: boolean; mutate: (p: object) => Promise<{ ok: boolean; error?: string }>; exporting: boolean; setExporting: (value: boolean) => void }) {
+function Finance({ company, month, state, filter, busy, mutate, exporting, setExporting }: { company: string; month: string; state: GmpState; filter: Filter; busy: boolean; mutate: (p: object) => Promise<{ ok: boolean; error?: string }>; exporting: boolean; setExporting: (value: boolean) => void }) {
   const tabs = ['XUẤT BÁN', 'THU MUA', 'CHI PHÍ', 'NHẬT KÝ DÒNG TIỀN', 'BIỂU ĐỒ THỐNG KÊ'];
   const [tab, setTab] = useState(0);
   const [pay, setPay] = useState<{ record: GmpRecord; direction: 'IN' | 'OUT' } | null>(null);
@@ -945,7 +945,6 @@ function Finance({ state, filter, busy, mutate, exporting, setExporting }: { sta
     content: string;
     subContent?: string;
     refCode: string;
-    subRef?: string;
     method: string;
     amount: number;
   }
@@ -953,8 +952,8 @@ function Finance({ state, filter, busy, mutate, exporting, setExporting }: { sta
   const cashFlowItems: CashFlowItem[] = useMemo(() => {
     const paymentItems: CashFlowItem[] = payments.map(p => {
       const isSales = p.direction === 'IN';
-      const linkedRecord = [...state.records.purchases, ...state.records.sales].find(r => r.id === p.recordId);
-      const lotCode = linkedRecord?.lotCode || '';
+      const linkedRecord = (isSales ? state.records.sales : state.records.purchases).find(r => r.id === p.recordId);
+      const lotCode = isSales ? linkedRecord?.lotCode || '' : String(linkedRecord?.values.purchaseCode || linkedRecord?.lotCode || '');
       const partner = isSales ? String(linkedRecord?.values?.customer || '') : String(linkedRecord?.values?.seller || '');
       return {
         id: p.id,
@@ -962,14 +961,13 @@ function Finance({ state, filter, busy, mutate, exporting, setExporting }: { sta
         direction: p.direction,
         content: isSales ? 'Thu tiền bán hàng' : 'Thanh toán thu mua',
         subContent: partner || undefined,
-        refCode: lotCode || '—',
+        refCode: lotCode,
         method: p.method || (isSales ? 'Chuyển khoản' : 'Tiền mặt'),
         amount: p.amount,
       };
     });
 
-    const expenseItems: CashFlowItem[] = expenses.map((e, idx) => {
-      const code = e.code || `CP-${(e.date || '2026').slice(0, 4)}-${String(idx + 1).padStart(3, '0')}`;
+    const expenseItems: CashFlowItem[] = expenses.map(e => {
       const catTitle = e.category ? (e.category.startsWith('Chi phí') ? e.category : `Chi phí ${e.category}`) : 'Chi phí hoạt động';
       return {
         id: e.id,
@@ -977,8 +975,7 @@ function Finance({ state, filter, busy, mutate, exporting, setExporting }: { sta
         direction: 'OUT',
         content: catTitle,
         subContent: e.content,
-        refCode: code,
-        subRef: e.lotCode || undefined,
+        refCode: e.lotCode || '',
         method: e.method || 'Chuyển khoản',
         amount: e.amount,
       };
@@ -1017,33 +1014,25 @@ function Finance({ state, filter, busy, mutate, exporting, setExporting }: { sta
         total(r), paid(r), Math.max(0, total(r) - paid(r)),
         total(r) <= paid(r) ? (isSales ? 'Đã thu đủ' : 'Đã thanh toán') : paid(r) > 0 ? 'Thanh toán một phần' : 'Chưa thanh toán',
       ]);
-      const period = [
-        filter.from ? 'Từ ngày ' + formatDateVN(filter.from) : 'Từ đầu',
-        filter.to ? 'Đến ngày ' + formatDateVN(filter.to) : 'Đến hiện tại',
-        filter.season ? 'Vụ: ' + filter.season : '',
-        filter.query ? 'Từ khóa: ' + filter.query : '',
-        'Theo bộ lọc chung của trang; gồm tất cả nhóm chi phí.',
-      ].filter(Boolean).join(' · ');
       const bytes = await buildFinanceWorkbook([
         { name: tabs[0], headers: documentHeaders, rows: documentRows(sales, true), moneyColumns: [4, 5, 6] },
         { name: tabs[1], headers: documentHeaders, rows: documentRows(purchases, false), moneyColumns: [4, 5, 6] },
         {
-          name: tabs[2], headers: ['Ngày', 'Mã chi phí', 'Nhóm chi phí', 'Nội dung', 'Liên kết lô', 'Phương thức', 'Số tiền (đ)'],
+          name: tabs[2], headers: ['Ngày', 'Mã chi phí', 'Nhóm chi phí', 'Nội dung', 'Lô hàng liên quan', 'Phương thức', 'Số tiền (đ)'],
           rows: expenses.map((e, index) => [financeExcelDate(e.date), e.code || 'CP-' + (e.date || '2026').slice(0, 4) + '-' + String(index + 1).padStart(3, '0'), e.category, e.content, e.lotCode || '', e.method || 'Chuyển khoản', e.amount]), moneyColumns: [7]
         },
         {
-          name: tabs[3], headers: ['Ngày', 'Loại', 'Nội dung', 'Đối tác / Chi tiết', 'Mã tham chiếu', 'Lô liên kết', 'Phương thức', 'Thu (đ)', 'Chi (đ)'],
-          rows: cashFlowItems.map(item => [financeExcelDate(item.date), item.direction === 'IN' ? 'Thu' : 'Chi', item.content, item.subContent || '', item.refCode, item.subRef || '', item.method, item.direction === 'IN' ? item.amount : 0, item.direction === 'OUT' ? item.amount : 0]), moneyColumns: [8, 9]
+          name: tabs[3], headers: ['Ngày', 'Loại giao dịch', 'Nhóm/Nghiệp vụ', 'Đối tượng / Diễn giải', 'Lô hàng liên quan', 'Phương thức', 'Thu (đ)', 'Chi (đ)'],
+          rows: cashFlowItems.map(item => [financeExcelDate(item.date), item.direction === 'IN' ? 'Thu' : 'Chi', item.content, item.subContent || '', item.refCode, item.method, item.direction === 'IN' ? item.amount : 0, item.direction === 'OUT' ? item.amount : 0]), moneyColumns: [7, 8]
         },
-        { name: tabs[4], headers: ['Chỉ tiêu', 'Giá trị (đ)'], rows: [['Xuất bán', sumSales], ['Thu mua', sumPurchases], ['Chi phí hoạt động', sumExpenses], ['Phải thu', receivable], ['Phải trả', payable]], moneyColumns: [2] },
-      ], period);
-      downloadFile(bytes as BlobPart, 'bao-cao-tai-chinh-' + today() + '.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      ], company);
+      downloadFile(bytes as BlobPart, 'BÁO CÁO TÀI CHÍNH' + (month ? '-' + month : '') + '.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     } catch (error) {
       setExportError(error instanceof Error ? error.message : 'Không thể xuất báo cáo Excel. Vui lòng thử lại.');
     } finally { setExporting(false); }
   }
 
-  return <><form id="processing-finance-export" onSubmit={event => { event.preventDefault(); void exportReport(); }} />{exportError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{exportError}</p>}<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"><Metric label="Giá trị xuất bán (đ)" value={fmt(sumSales)} /><Metric label="Giá trị thu mua (đ)" value={fmt(sumPurchases)} /><Metric label="Tổng chi phí khác (đ)" value={fmt(sumExpenses)} /><Metric label="Phải thu còn lại (đ)" value={fmt(receivable)} /><Metric label="Phải trả còn lại (đ)" value={fmt(payable)} warning /></div><section className="overflow-hidden rounded-2xl border bg-white"><div className="flex flex-wrap items-center justify-between gap-3 border-b p-3"><div className="flex flex-wrap gap-1">{tabs.map((name, i) => <button key={name} onClick={() => setTab(i)} className={`rounded-xl px-3 py-2 text-sm font-semibold ${tab === i ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'}`}>{name}</button>)}</div></div>
+  return <><form id="processing-finance-export" onSubmit={event => { event.preventDefault(); void exportReport(); }} />{exportError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{exportError}</p>}<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"><Metric label="Giá trị xuất bán (đ)" value={fmt(sumSales)} /><Metric label="Giá trị thu mua (đ)" value={fmt(sumPurchases)} /><Metric label="Tổng chi phí khác (đ)" value={fmt(sumExpenses)} /><Metric label="Phải thu còn lại (đ)" value={fmt(receivable)} /><Metric label="Phải trả còn lại (đ)" value={fmt(payable)} warning /></div><section className="overflow-hidden rounded-2xl border bg-white"><div className="flex flex-wrap items-center justify-between gap-3 border-b p-3"><div className="flex flex-wrap gap-1">{tabs.map((name, i) => <button type="button" key={name} onClick={() => setTab(i)} className={`rounded-xl px-3 py-2 text-sm font-semibold ${tab === i ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'}`}>{name}</button>)}</div></div>
     {tab < 2 && <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm border-collapse border border-slate-300"><thead className="bg-slate-100/90 text-xs text-slate-700"><tr>{['Ngày', 'Mã số lô hàng', 'Đối tác', 'Giá trị (đ)', 'Đã thanh toán', 'Còn lại', 'Trạng thái', 'Thao tác'].map(h => <th className="border border-slate-300 px-4 py-3 font-semibold text-center" key={h}>{h}</th>)}</tr></thead><tbody>{(tab === 0 ? sales : purchases).map(r => {
       const isPaidFull = total(r) <= paid(r);
       const isPartiallyPaid = paid(r) > 0 && !isPaidFull;
@@ -1133,7 +1122,7 @@ function Finance({ state, filter, busy, mutate, exporting, setExporting }: { sta
           <table className="w-full min-w-[850px] text-left text-sm border-collapse border border-slate-300">
             <thead className="bg-slate-100/90 text-xs text-slate-700">
               <tr>
-                {['Ngày', 'Nhóm chi phí', 'Nội dung', 'Liên kết lô', 'Số tiền (đ)', 'Thao tác'].map(h => (
+                {['Ngày', 'Nhóm chi phí', 'Nội dung', 'Lô hàng liên quan', 'Số tiền (đ)', 'Thao tác'].map(h => (
                   <th className="border border-slate-300 px-4 py-3 font-semibold text-center" key={h}>
                     {h}
                   </th>
@@ -1246,7 +1235,7 @@ function Finance({ state, filter, busy, mutate, exporting, setExporting }: { sta
           <table className="w-full min-w-[850px] text-left text-sm border-collapse border border-slate-300">
             <thead className="bg-slate-100/90 text-xs text-slate-700">
               <tr>
-                {['Ngày', 'Nội dung', 'Mã tham chiếu', 'Phương thức', 'Số tiền'].map(h => (
+                {['Ngày', 'Loại giao dịch', 'Nhóm/ Nghiệp vụ', 'Nội dung', 'Lô hàng liên quan', 'Phương thức', 'Số tiền'].map(h => (
                   <th className="border border-slate-300 px-4 py-3 font-semibold text-center" key={h}>
                     {h}
                   </th>
@@ -1262,16 +1251,12 @@ function Finance({ state, filter, busy, mutate, exporting, setExporting }: { sta
                       {formatDateVN(item.date)}
                     </td>
                     <td className="border border-slate-200 px-4 py-3 font-medium text-slate-900">
-                      <div>{item.content}</div>
-                      {item.subContent && (
-                        <div className="text-xs text-slate-500 font-normal">{item.subContent}</div>
-                      )}
+                      {isPositive ? 'Thu' : 'Chi'}
                     </td>
+                    <td className="border border-slate-200 px-4 py-3 font-medium text-slate-900">{item.content}</td>
+                    <td className="border border-slate-200 px-4 py-3 text-slate-700">{item.subContent || ''}</td>
                     <td className="border border-slate-200 px-4 py-3 text-center whitespace-nowrap font-mono">
                       <span className="font-semibold text-slate-800">{item.refCode}</span>
-                      {item.subRef && (
-                        <span className="block text-xs text-emerald-700 font-medium">({item.subRef})</span>
-                      )}
                     </td>
                     <td className="border border-slate-200 px-4 py-3 text-center whitespace-nowrap text-slate-700">
                       {item.method}

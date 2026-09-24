@@ -16,7 +16,6 @@ export default function FarmerHouseholds({ regionId }: { regionId?: string }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [page, setPage] = useState(1);
-    const [reload, setReload] = useState(0);
     useEffect(() => {
         let active = true;
         setLoading(true); setError(""); setPage(1); setFarms([]); setRegion(null);
@@ -27,7 +26,7 @@ export default function FarmerHouseholds({ regionId }: { regionId?: string }) {
         }).catch(error => { if (active) setError(error.message || "Không thể tải nông hộ."); })
             .finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
-    }, [reload, regionId]);
+    }, [regionId]);
     const households = useMemo(() => {
         const groups = new Map<string, { owner: FarmRow; plots: FarmRow[]; area: number }>();
         for (const farm of farms) {
@@ -49,12 +48,11 @@ export default function FarmerHouseholds({ regionId }: { regionId?: string }) {
         <header className="flex flex-wrap items-center justify-between gap-3">
             <div><p className="text-sm font-semibold uppercase text-brand-600">ADMIN · Nông hộ</p><h1 className="mt-2 text-3xl font-black">DANH SÁCH NÔNG HỘ</h1></div>
             <div className="flex flex-wrap items-center gap-3">
-                <ExportWordButton title="DANH SÁCH NÔNG HỘ" filename="danh-sach-nong-ho" headers={[...headers, "Thông tin vùng trồng: Tên vùng trồng", "Thông tin vùng trồng: Địa chỉ", "Định vị: Kinh độ", "Định vị: Vĩ độ"]} rows={loading || error ? [] : households.map(({ owner, plots, area }, index) => [index + 1, owner.ownerName, owner.ownerAddress || "Chưa cập nhật", owner.ownerPhone || "Chưa cập nhật", owner.identityNumber || "Chưa cập nhật", area.toLocaleString("vi-VN"), plots.map(plot => plot.regionName || "Chưa phân vùng").join('\n'), plots.map(plot => plot.regionAddress || "Chưa cập nhật").join('\n'), plots.map(plot => coordinate(plot.longitude)).join('\n'), plots.map(plot => coordinate(plot.latitude)).join('\n')])} />
-                <button type="button" disabled={loading} onClick={() => setReload(value => value + 1)} className="rounded-xl border bg-white px-4 py-2 text-sm disabled:opacity-50">Tải lại</button>
+
             </div>
         </header>
         <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 items-end gap-4 lg:grid-cols-[1fr_1fr_auto]">
                 <div>
                     <label htmlFor="search-households" className="mb-2 block text-sm font-semibold text-slate-800">Tìm kiếm nông hộ</label>
                     <div className="relative">
@@ -84,6 +82,7 @@ export default function FarmerHouseholds({ regionId }: { regionId?: string }) {
                         {regions.map(item => <option key={item.id} value={item.id}>{item.name} · {item.code}</option>)}
                     </select>
                 </div>
+                <ExportWordButton title="DANH SÁCH NÔNG HỘ" filename="DANH SÁCH NÔNG HỘ" headers={[...headers, "Thông tin vùng trồng: Tên vùng trồng", "Thông tin vùng trồng: Địa chỉ", "Định vị: Kinh độ", "Định vị: Vĩ độ"]} rows={loading || error ? [] : households.map(({ owner, plots, area }, index) => [index + 1, owner.ownerName, owner.ownerAddress || "Chưa cập nhật", owner.ownerPhone || "Chưa cập nhật", owner.identityNumber || "Chưa cập nhật", area.toLocaleString("vi-VN"), plots.map(plot => plot.regionName || "Chưa phân vùng").join('\n'), plots.map(plot => plot.regionAddress || "Chưa cập nhật").join('\n'), plots.map(plot => coordinate(plot.longitude)).join('\n'), plots.map(plot => coordinate(plot.latitude)).join('\n')])} />
             </div>
         </div>
         {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
@@ -104,7 +103,7 @@ export default function FarmerHouseholds({ regionId }: { regionId?: string }) {
                                 <td className="min-w-[220px]">{owner.ownerAddress || "Chưa cập nhật"}</td>
                                 <td className="whitespace-nowrap">{owner.ownerPhone || "Chưa cập nhật"}</td>
                                 <td className="whitespace-nowrap">{owner.identityNumber || "Chưa cập nhật"}</td>
-                                <td className="text-right tabular-nums">{area.toLocaleString("vi-VN", { maximumFractionDigits: 4 })}</td>
+                                <td className="text-center tabular-nums">{area.toLocaleString("vi-VN", { maximumFractionDigits: 4 })}</td>
                                 <td className="min-w-[220px]">{plots.map((plot, i) => <p key={plot.id} className="mb-2">{plots.length > 1 ? (i + 1) + ". " : ""}{plot.regionName || "Chưa phân vùng"}</p>)}</td>
                                 <td className="min-w-[260px]">{plots.map((plot, i) => <p key={plot.id} className="mb-2">{plots.length > 1 ? (i + 1) + ". " : ""}{plot.regionAddress || "Chưa cập nhật"}</p>)}</td>
                                 <td className="whitespace-nowrap tabular-nums">{plots.map((plot, i) => <p key={plot.id} className="mb-2">{plots.length > 1 ? (i + 1) + ". " : ""}{coordinate(plot.longitude)}</p>)}</td>

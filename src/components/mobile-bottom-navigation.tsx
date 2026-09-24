@@ -140,6 +140,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Sau xuất bán", description: "Sổ BM-GMP-06", href: "/dashboard/processing/aftersales", icon: ClipboardList },
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Tài chính", description: "Báo cáo doanh thu, chi phí và hiệu quả chế biến", href: "/dashboard/processing/finance", icon: CircleDollarSign },
+            { label: "Mã QR", description: "Phát hành và tra cứu QR lô xuất bán", href: "/dashboard/processing/qr", icon: QrCode },
             { label: "Cá nhân", description: "Quản lý thông tin tài khoản và đổi mật khẩu", href: "/account", icon: UserRound },
         ],
     },

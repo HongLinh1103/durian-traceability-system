@@ -40,7 +40,7 @@ export default async function PackingFacilitiesPage({ searchParams }: { searchPa
 
     return <main className="mx-auto min-h-screen w-full max-w-[1650px] space-y-6 px-3 py-6 sm:px-6">
         <header><p className="text-sm font-semibold uppercase tracking-wider text-emerald-700">Quản trị hệ thống</p><h1 className="mt-2 text-3xl font-black text-slate-900">DANH SÁCH XƯỞNG CHẾ BIẾN - ĐÓNG GÓI</h1></header>
-        <ExportWordButton title="DANH SÁCH XƯỞNG CHẾ BIẾN - ĐÓNG GÓI" filename="danh-sach-xuong-che-bien-dong-goi" headers={["STT", "Tỉnh/ Thành phố", "Tên doanh nghiệp", "Mã CSĐG", "Địa chỉ", "Loại quả"]} rows={filtered.map((item, index) => [index + 1, item.province === "Dong Nai" ? "Đồng Nai" : item.province || "Chưa cập nhật", item.name, item.code || "Chưa cập nhật", item.address || "Chưa cập nhật", item.fruitType || "Chưa cập nhật"])} />
+        <ExportWordButton title="DANH SÁCH CƠ SỞ CHẾ BIẾN - ĐÓNG GÓI" filename="DANH SÁCH CƠ SỞ CHẾ BIẾN - ĐÓNG GÓI" headers={["STT", "Tỉnh/ Thành phố", "Tên doanh nghiệp", "Mã CSĐG", "Địa chỉ", "Loại quả"]} rows={filtered.map((item, index) => [index + 1, item.province === "Dong Nai" ? "Đồng Nai" : item.province || "Chưa cập nhật", item.name, item.code || "Chưa cập nhật", item.address || "Chưa cập nhật", item.fruitType || "Chưa cập nhật"])} />
         <form className="flex flex-wrap gap-3 rounded-2xl border bg-white p-4" method="get">
             <label className="min-w-0 flex-1"><span className="sr-only">Tìm cơ sở chế biến đóng gói</span><input name="q" defaultValue={query} maxLength={200} placeholder="Tìm tỉnh/thành, doanh nghiệp, mã CSĐG hoặc địa chỉ..." className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm" /></label>
             <button type="submit" className="rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white">Tìm kiếm</button>
@@ -55,11 +55,11 @@ export default async function PackingFacilitiesPage({ searchParams }: { searchPa
                     <tbody>{facilities.map((facility, index) => {
                         return <tr key={facility.id} className="align-top hover:bg-slate-50 [&>td]:border [&>td]:border-slate-200 [&>td]:px-4 [&>td]:py-3">
                             <td className="text-center">{offset + index + 1}</td>
-                            <td className="min-w-[150px]">{facility.province === "Dong Nai" ? "Đồng Nai" : facility.province || "Chưa cập nhật"}</td>
+                            <td className="min-w-[150px] text-center">{facility.province === "Dong Nai" ? "Đồng Nai" : facility.province || "Chưa cập nhật"}</td>
                             <td className="min-w-[250px] text-black">{facility.name}</td>
                             <td className="whitespace-nowrap">{facility.code || "Chưa cập nhật"}</td>
                             <td className="min-w-[280px]">{facility.address || "Chưa cập nhật"}</td>
-                            <td className="min-w-[140px]">{facility.fruitType || "Chưa cập nhật"}</td>
+                            <td className="min-w-[140px] text-center">{facility.fruitType || "Chưa cập nhật"}</td>
                         </tr>;
                     })}{!facilities.length && <tr><td colSpan={6} className="p-12 text-center text-slate-500">{query ? "Không có cơ sở phù hợp với tìm kiếm." : "Chưa có cơ sở chế biến đóng gói trong hệ thống."}</td></tr>}</tbody>
                 </table>

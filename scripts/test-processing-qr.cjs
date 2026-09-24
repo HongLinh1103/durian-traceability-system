@@ -1,0 +1,55 @@
+﻿require('@next/env').loadEnvConfig(process.cwd());
+const assert = require('node:assert/strict');
+const { randomUUID } = require('node:crypto');
+const { encode } = require('next-auth/jwt');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+const base = 'http://localhost:3000';
+const id = 'qr-test-' + randomUUID();
+async function main() {
+  await prisma.user.create({ data: { id, phone: id, password: 'test-no-login', role: 'PROCESSING_FACILITY', isApproved: true, fullName: 'QR test' } });
+  await prisma.partnerFacility.create({ data: { ownerId: id, type: 'PROCESSING_FACILITY', name: 'Test packing facility', representativeName: 'Test', representativePhone: id, identityNumber: id, organizationType: 'Test', phone: id, address: 'Test address', province: 'Test', code: id } });
+  await prisma.growingRegion.create({ data: { id, code: id, name: 'Test growing region', province: 'Test', address: 'Test region address', approvedAt: new Date('2026-01-01') } });
+  await prisma.farm.create({ data: { id, farmCode: id, farmName: 'Test farm', areaSize: 1, totalTrees: 10, durianVariety: 'Ri6', address: 'Test', farmerId: id, growingRegionId: id } });
+  await prisma.harvestRecord.create({ data: { id, code: id, farmId: id, farmerId: id, buyerUserId: id, expectedHarvestDate: new Date('2026-09-01'), expectedWeight: 12000, actualHarvestedAt: new Date('2026-09-01'), actualWeight: 12000, durianVariety: 'Ri6', status: 'COMPLETED' } });
+  await prisma.farmingLog.create({ data: { farmId: id, stage: 'FRUIT_GROWING', actionDate: new Date('2026-08-01'), activityType: 'IRRIGATE' } });
+  const record = (key, sourceId, values) => ({ id: key, sourceId, lotCode: 'LH-TEST', season: '2026', values });
+  const state = { demo: true, payments: [], expenses: [], records: { purchases: [record('purchase', 'purchase', { harvestRecordId: id, puc: id })], receiving: [record('receiving', 'purchase', {})], preprocessing: [], packaging: [], inspection: [], aftersales: [], sales: [record('sale', 'inspection', { date: '2026-09-03', customer: 'Test buyer', customerInfo: 'Public address', weight_kg: 11000, quantity_boxes: 550, variety: 'Ri6' })] } };
+  await prisma.processingGmpWorkspace.create({ data: { ownerId: id, data: state } });
+  const cookie = 'next-auth.session-token=' + await encode({ secret: process.env.NEXTAUTH_SECRET, token: { sub: id, role: 'PROCESSING_FACILITY', isApproved: true }, maxAge: 600 });
+  const request = (path, options = {}) => fetch(base + path, { ...options, headers: { Cookie: cookie, 'Content-Type': 'application/json', ...options.headers } });
+  assert.equal((await fetch(base + '/api/processing/qr')).status, 403);
+  let response = await request('/api/processing/qr'); assert.equal(response.status, 200); const list = await response.json();
+  assert.equal(list.rows.length, 1); assert.equal(list.rows[0].token, null); assert.deepEqual(list.rows[0].missing, []);
+  assert.equal(list.rows[0].snapshot.logs.length, 1);
+  response = await request('/api/processing/qr', { method: 'POST', body: JSON.stringify({ saleId: 'not-owned', revision: 0 }) }); assert.equal(response.status, 400);
+  response = await request('/api/processing/qr', { method: 'POST', body: JSON.stringify({ saleId: 'sale', revision: 99 }) }); assert.equal(response.status, 400);
+  const issue = () => request('/api/processing/qr', { method: 'POST', body: JSON.stringify({ saleId: 'sale', revision: 0 }) });
+  const responses = await Promise.all([issue(), issue()]); for (const r of responses) assert.equal(r.status, 200);
+  const tokens = await Promise.all(responses.map(r => r.json())); assert.equal(tokens[0].token, tokens[1].token); const token = tokens[0].token;
+  const lookup = await (await fetch(base + '/api/trace/lookup?code=' + encodeURIComponent(base + '/trace/packing/' + token))).json(); assert.equal(lookup.data.publicToken, token);
+  const legacy = await fetch(base + '/trace/' + token); assert((await legacy.text()).includes('/trace/packing/' + token));
+  const page = await fetch(base + '/trace/packing/' + token); assert.equal(page.status, 200); const html = await page.text(); assert(html.includes('Test packing facility')); assert(html.includes('Test buyer')); assert(!html.includes('<details')); assert(html.includes('grid-cols-[48px_minmax(0,1fr)]')); assert(html.includes('gap-x-6')); assert(!html.includes('M\u1ed1c th\u1eddi gian:')); 
+  const image = await fetch(base + '/api/processing/qr/' + token + '/image'); assert.equal(image.headers.get('content-type'), 'image/png'); const png = Buffer.from(await image.arrayBuffer()); assert.equal(png.subarray(1, 4).toString(), 'PNG');
+  const decodedPng = require('pngjs').PNG.sync.read(png); const ZX = require('@zxing/library'); const pixels = new Int32Array(decodedPng.width * decodedPng.height); for(let i=0;i<pixels.length;i++) pixels[i]=(decodedPng.data[i*4]<<16)|(decodedPng.data[i*4+1]<<8)|decodedPng.data[i*4+2]; const decoded = new ZX.MultiFormatReader().decode(new ZX.BinaryBitmap(new ZX.HybridBinarizer(new ZX.RGBLuminanceSource(pixels,decodedPng.width,decodedPng.height)))).getText(); assert(decoded.endsWith('/trace/packing/' + token));
+  const printPage = await fetch(base + '/trace/packing/' + token + '/print'); assert.equal(printPage.status, 200); const printHtml = await printPage.text(); assert(printHtml.includes('/dashboard/processing/qr')); assert(printHtml.includes('qr-print-card')); assert(!printHtml.includes('window.open')); 
+  assert.equal((await fetch(base + '/api/processing/qr/' + '0'.repeat(48) + '/image')).status, 404);
+  const missingPage = await (await fetch(base + '/trace/packing/' + '0'.repeat(48))).text(); assert(!missingPage.includes('Test buyer'));
+  state.records.sales[0].values.customer = 'Changed after publication';
+  await prisma.processingGmpWorkspace.update({ where: { ownerId: id }, data: { data: state, revision: { increment: 1 } } });
+  const after = await (await fetch(base + '/trace/packing/' + token)).text(); assert(after.includes('Test buyer')); assert(!after.includes('Changed after publication'));
+  const published = await (await request('/api/processing/qr')).json(); assert.equal(published.rows[0].token, token);
+  console.log('PASS: authentication, ownership, preview, stale revision, concurrent/idempotent issue, public snapshot, timeline layout, removed diary, same-tab print preview, PNG, print route, 404.');
+}
+main().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
+  await prisma.$executeRaw`DELETE FROM "processing_qr_publications" WHERE "ownerId" = ${id}`;
+  await prisma.processingGmpWorkspace.deleteMany({ where: { ownerId: id } });
+  await prisma.farmingLog.deleteMany({ where: { farmId: id } });
+  await prisma.harvestRecord.deleteMany({ where: { id } });
+  await prisma.farm.deleteMany({ where: { id } });
+  await prisma.growingRegion.deleteMany({ where: { id } });
+  await prisma.partnerFacility.deleteMany({ where: { ownerId: id } });
+  await prisma.user.deleteMany({ where: { id } });
+  await prisma.$disconnect();
+});
+
