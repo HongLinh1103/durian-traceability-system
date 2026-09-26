@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { FarmerFinanceTables } from "@/components/farmer/farmer-finance-tables";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
     Activity,
     ArrowRight,
@@ -23,11 +24,11 @@ import {
     Percent,
     PieChart as PieIcon,
     PiggyBank,
+    Receipt,
     RefreshCw,
     Scale,
     ShieldAlert,
     Sprout,
-    TrendingDown,
     TrendingUp,
     Truck,
     Wallet,
@@ -80,66 +81,87 @@ function formatKg(weight: number): string {
 export function FarmerStatisticsOverview({ initialData }: FarmerStatisticsOverviewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const [activeTab, setActiveTab] = useState<"INCOME" | "EXPENSE" | "CHARTS">("INCOME");
+    const [expenseCategoryFilter, setExpenseCategoryFilter] = useState<string>("ALL");
     const [data, setData] = useState<FarmerOverviewStats>(initialData);
     const [isPending, startTransition] = useTransition();
     const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState("");
+    const requestSequence = useRef(0);
     const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
         setIsMounted(true);
     }, []);
 
+    useEffect(() => { setData(initialData); }, [initialData]);
+
     // Filter states
     const [selectedFarmId, setSelectedFarmId] = useState<string>(
         searchParams.get("farmId") || initialData.filters.farmId || "ALL",
     );
-    const [selectedYear, setSelectedYear] = useState<string>(
-        searchParams.get("year") || String(initialData.filters.year || 2026),
+    const [selectedSeasonId, setSelectedSeasonId] = useState<string>(
+        initialData.filters.cropSeasonId || "ALL",
     );
 
     // Fetch updated data on filter change
-    const reloadData = async (farmId: string, year: string) => {
+    const reloadData = async (farmId: string, seasonId: string) => {
+        const sequence = ++requestSequence.current;
         setLoading(true);
+        setLoadError("");
         try {
             const params = new URLSearchParams();
             if (farmId) params.set("farmId", farmId);
-            if (year) params.set("year", year);
+            params.set("cropSeasonId", seasonId);
             params.set("view", "overview");
 
             const res = await fetch(`/api/farmer/statistics?${params.toString()}`, { cache: "no-store" });
             if (res.ok) {
                 const json = await res.json();
-                if (json.success) {
+                if (json.success && sequence === requestSequence.current) {
                     setData(json);
                 }
-            }
+            } else throw new Error("Không thể tải số liệu. Vui lòng thử lại.");
         } catch (err) {
             console.error("Error fetching overview statistics:", err);
+            if (sequence === requestSequence.current) setLoadError("Không thể tải số liệu mới. Vui lòng bấm Làm mới số liệu.");
         } finally {
-            setLoading(false);
+            if (sequence === requestSequence.current) setLoading(false);
         }
     };
 
+    useEffect(() => {
+        const refresh = () => { if (document.visibilityState === "visible") void reloadData(selectedFarmId, selectedSeasonId); };
+        window.addEventListener("focus", refresh);
+        const timer = window.setInterval(refresh, 30000);
+        return () => { window.removeEventListener("focus", refresh); window.clearInterval(timer); };
+        // Refresh the selected scope when returning from the harvest register.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedFarmId, selectedSeasonId]);
+
     const handleFarmChange = (newFarmId: string) => {
         setSelectedFarmId(newFarmId);
+        setSelectedSeasonId("ALL");
         startTransition(() => {
             const params = new URLSearchParams(searchParams.toString());
+            params.delete("year");
+            params.set("cropSeasonId", "ALL");
             if (newFarmId && newFarmId !== "ALL") params.set("farmId", newFarmId);
             else params.delete("farmId");
             router.replace(`/dashboard/farmer/statistics?${params.toString()}`, { scroll: false });
         });
-        void reloadData(newFarmId, selectedYear);
+        void reloadData(newFarmId, "ALL");
     };
 
-    const handleYearChange = (newYear: string) => {
-        setSelectedYear(newYear);
+    const handleSeasonChange = (newSeasonId: string) => {
+        setSelectedSeasonId(newSeasonId);
         startTransition(() => {
             const params = new URLSearchParams(searchParams.toString());
-            if (newYear && newYear !== "ALL") params.set("year", newYear);
-            else params.delete("year");
+            params.delete("year");
+            params.set("cropSeasonId", newSeasonId);
             router.replace(`/dashboard/farmer/statistics?${params.toString()}`, { scroll: false });
         });
-        void reloadData(selectedFarmId, newYear);
+        void reloadData(selectedFarmId, newSeasonId);
     };
 
     // Prepare monthly data for Recharts (units in million VNĐ for clean axes)
@@ -162,15 +184,11 @@ export function FarmerStatisticsOverview({ initialData }: FarmerStatisticsOvervi
     const displayChartData = chartMonthlyData.length > 0 ? chartMonthlyData : [];
 
     return (
-        <div className="mx-auto w-full max-w-6xl space-y-6 px-3 py-6 sm:px-6">
+        <div className="mx-auto w-full max-w-[1800px] space-y-6 px-3 py-5 sm:px-4">
             {/* Top Header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-0.5 text-xs font-bold text-brand-700">
-                        <Coins className="h-3.5 w-3.5" />
-                        Báo cáo sản xuất & Tài chính
-                    </span>
-                    <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-3xl">THỐNG KÊ</h1>
+                    <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-3xl">TÀI CHÍNH</h1>
                     <p className="mt-1 text-xs text-slate-500 sm:text-sm">
                         Theo dõi mức sử dụng vật tư và hiệu quả tài chính trong quá trình sản xuất
                     </p>
@@ -181,7 +199,7 @@ export function FarmerStatisticsOverview({ initialData }: FarmerStatisticsOvervi
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => void reloadData(selectedFarmId, selectedYear)}
+                        onClick={() => void reloadData(selectedFarmId, selectedSeasonId)}
                         disabled={loading || isPending}
                         className="rounded-2xl text-xs font-semibold"
                     >
@@ -191,41 +209,9 @@ export function FarmerStatisticsOverview({ initialData }: FarmerStatisticsOvervi
                 </div>
             </div>
 
-            {/* Navigation Tabs Bar: [Tổng quan] [Thuốc BVTV] [Phân bón] [Tổng chi phí] */}
-            <div className="grid grid-cols-2 gap-2 rounded-3xl bg-slate-100 p-1.5 text-center text-xs font-bold shadow-inner sm:grid-cols-4 sm:text-sm">
-                <Link
-                    href="/dashboard/farmer/statistics"
-                    className="flex items-center justify-center gap-1.5 rounded-2xl bg-white py-3 text-brand-900 shadow-sm transition"
-                >
-                    <BarChart3 className="h-4 w-4 text-brand-600" />
-                    <span>Tổng quan</span>
-                </Link>
-
-                <Link
-                    href={`/dashboard/farmer/statistics/pesticides${selectedFarmId !== "ALL" ? `?farmId=${selectedFarmId}` : ""}`}
-                    className="flex items-center justify-center gap-1.5 rounded-2xl py-3 text-slate-600 transition hover:bg-white/60 hover:text-slate-900"
-                >
-                    <FlaskConical className="h-4 w-4 text-amber-600" />
-                    <span>Thuốc BVTV</span>
-                </Link>
-
-                <Link
-                    href={`/dashboard/farmer/statistics/fertilizers${selectedFarmId !== "ALL" ? `?farmId=${selectedFarmId}` : ""}`}
-                    className="flex items-center justify-center gap-1.5 rounded-2xl py-3 text-slate-600 transition hover:bg-white/60 hover:text-slate-900"
-                >
-                    <Leaf className="h-4 w-4 text-emerald-600" />
-                    <span>Phân bón</span>
-                </Link>
-
-                <Link
-                    href={`/dashboard/farmer/statistics/expenses${selectedFarmId !== "ALL" ? `?farmId=${selectedFarmId}` : ""}`}
-                    className="flex items-center justify-center gap-1.5 rounded-2xl py-3 text-slate-600 transition hover:bg-white/60 hover:text-slate-900"
-                >
-                    <Wallet className="h-4 w-4 text-rose-600" />
-                    <span>Chi phí</span>
-                </Link>
-            </div>
-
+            <nav aria-label="Thống kê" className="grid grid-cols-3 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:gap-2 sm:rounded-3xl sm:p-2">
+                {([["INCOME", "XUẤT BÁN", TrendingUp], ["EXPENSE", "CHI PHÍ", Receipt], ["CHARTS", "BIỂU ĐỒ THỐNG KÊ", BarChart3]] as const).map(([key, label, Icon]) => <button key={key} type="button" aria-pressed={activeTab === key} onClick={() => { if (key === "EXPENSE") setExpenseCategoryFilter("ALL"); setActiveTab(key); }} className={"flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-center text-xs font-bold leading-tight transition sm:min-h-12 sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm " + (activeTab === key ? "bg-brand-600 text-white shadow-soft" : "text-slate-600 hover:bg-brand-50 hover:text-brand-700")}><Icon aria-hidden="true" className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" /><span className="whitespace-nowrap">{label}</span></button>)}
+            </nav>
             {/* Selector Filter Bar: [Vườn: Tất cả] [Thời gian: Năm 2026] */}
             <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -248,23 +234,24 @@ export function FarmerStatisticsOverview({ initialData }: FarmerStatisticsOvervi
 
                     {/* Bộ lọc Thời gian */}
                     <div>
-                        <label className="mb-1 block text-xs font-bold text-slate-500">Thời gian thống kê</label>
+                        <label className="mb-1 block text-xs font-bold text-slate-500">Niên vụ</label>
                         <select
-                            value={selectedYear}
-                            onChange={(e) => handleYearChange(e.target.value)}
+                            value={selectedSeasonId}
+                            onChange={(e) => handleSeasonChange(e.target.value)}
                             className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none"
                         >
-                            {data.availableYears.map((yr) => (
-                                <option key={yr} value={String(yr)}>
-                                    Năm {yr}
+                            <option value="ALL">Tất cả niên vụ</option>
+                            {data.availableSeasons.filter(s => selectedFarmId === "ALL" || s.farmId === selectedFarmId).map((season) => (
+                                <option key={season.id} value={season.id}>
+                                    {season.label}{data.farms.length > 1 && selectedFarmId === "ALL" ? ` · ${season.farmName}` : ""}
                                 </option>
                             ))}
-                            <option value="ALL">Tất cả các năm</option>
                         </select>
                     </div>
                 </div>
             </div>
 
+            {loadError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{loadError}</p>}
             {loading && (
                 <div className="flex items-center justify-center py-4">
                     <Loader2 className="h-6 w-6 animate-spin text-brand-600" />
@@ -272,79 +259,142 @@ export function FarmerStatisticsOverview({ initialData }: FarmerStatisticsOvervi
                 </div>
             )}
 
+            {activeTab !== "CHARTS" && (
+                <FarmerFinanceTables
+                    key={activeTab + selectedFarmId + selectedSeasonId + (activeTab === "EXPENSE" ? expenseCategoryFilter : "")}
+                    ledger={data.ledger}
+                    tab={activeTab}
+                    initialCategory={expenseCategoryFilter}
+                    onCollected={() => reloadData(selectedFarmId, selectedSeasonId)}
+                />
+            )}
+            {activeTab === "CHARTS" && <>
             {/* ========================================================================= */}
             {/* 5 TOP KPI CARDS */}
             {/* ========================================================================= */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 {/* 1. THUỐC BVTV */}
-                <div className="group relative rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-50/50 to-white p-4 shadow-sm transition hover:shadow-md">
+                <button
+                    type="button"
+                    onClick={() => {
+                        setExpenseCategoryFilter("PESTICIDE");
+                        setActiveTab("EXPENSE");
+                    }}
+                    className="group relative text-left w-full cursor-pointer rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-50/50 to-white p-4 shadow-sm transition hover:border-amber-400 hover:shadow-md active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                    title="Chuyển đến tab Chi (lọc Thuốc BVTV)"
+                >
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-amber-700">Thuốc BVTV</span>
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-700 transition group-hover:scale-110">
                             <FlaskConical className="h-4 w-4" />
                         </div>
                     </div>
                     <div className="mt-3">
                         <p className="text-2xl font-black text-slate-900">{formatMillion(data.kpis.pesticideCost)}</p>
-                        <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-amber-800">
+                        <p className="mt-1 flex items-center justify-between text-xs font-semibold text-amber-800">
                             <span>{data.kpis.pesticideUsages} lần sử dụng</span>
+                            <span className="inline-flex items-center text-[11px] font-bold text-amber-700 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition">
+                                Xem chi <ArrowRight className="ml-0.5 h-3 w-3" />
+                            </span>
                         </p>
                     </div>
-                </div>
+                </button>
 
                 {/* 2. PHÂN BÓN */}
-                <div className="group relative rounded-3xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/50 to-white p-4 shadow-sm transition hover:shadow-md">
+                <button
+                    type="button"
+                    onClick={() => {
+                        setExpenseCategoryFilter("FERTILIZER");
+                        setActiveTab("EXPENSE");
+                    }}
+                    className="group relative text-left w-full cursor-pointer rounded-3xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/50 to-white p-4 shadow-sm transition hover:border-emerald-400 hover:shadow-md active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    title="Chuyển đến tab Chi (lọc Phân bón)"
+                >
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Phân bón</span>
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 transition group-hover:scale-110">
                             <Leaf className="h-4 w-4" />
                         </div>
                     </div>
                     <div className="mt-3">
                         <p className="text-2xl font-black text-slate-900">{formatMillion(data.kpis.fertilizerCost)}</p>
-                        <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-emerald-800">
+                        <p className="mt-1 flex items-center justify-between text-xs font-semibold text-emerald-800">
                             <span>{data.kpis.fertilizerUsages} lần sử dụng</span>
+                            <span className="inline-flex items-center text-[11px] font-bold text-emerald-700 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition">
+                                Xem chi <ArrowRight className="ml-0.5 h-3 w-3" />
+                            </span>
                         </p>
                     </div>
-                </div>
+                </button>
 
                 {/* 3. TỔNG CHI PHÍ */}
-                <div className="group relative rounded-3xl border border-rose-200/80 bg-gradient-to-br from-rose-50/50 to-white p-4 shadow-sm transition hover:shadow-md">
+                <button
+                    type="button"
+                    onClick={() => {
+                        setExpenseCategoryFilter("ALL");
+                        setActiveTab("EXPENSE");
+                    }}
+                    className="group relative text-left w-full cursor-pointer rounded-3xl border border-rose-200/80 bg-gradient-to-br from-rose-50/50 to-white p-4 shadow-sm transition hover:border-rose-400 hover:shadow-md active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                    title="Chuyển đến tab Chi"
+                >
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-rose-700">Tổng chi phí</span>
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-100 text-rose-700 transition group-hover:scale-110">
                             <Wallet className="h-4 w-4" />
                         </div>
                     </div>
                     <div className="mt-3">
                         <p className="text-2xl font-black text-slate-900">{formatMillion(data.kpis.totalCost)}</p>
-                        <p className="mt-1 text-xs font-medium text-slate-500">
-                            Vật tư + Nhân công + Vận hành
+                        <p className="mt-1 flex items-center justify-between text-xs font-medium text-slate-500">
+                            <span>Vật tư + Nhân công + Vận hành</span>
+                            <span className="inline-flex items-center text-[11px] font-bold text-rose-700 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition">
+                                Xem chi <ArrowRight className="ml-0.5 h-3 w-3" />
+                            </span>
                         </p>
                     </div>
-                </div>
+                </button>
 
                 {/* 4. DOANH THU */}
-                <div className="group relative rounded-3xl border border-blue-200/80 bg-gradient-to-br from-blue-50/50 to-white p-4 shadow-sm transition hover:shadow-md">
+                <button
+                    type="button"
+                    onClick={() => {
+                        setActiveTab("INCOME");
+                    }}
+                    className="group relative text-left w-full cursor-pointer rounded-3xl border border-blue-200/80 bg-gradient-to-br from-blue-50/50 to-white p-4 shadow-sm transition hover:border-blue-400 hover:shadow-md active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    title="Chuyển đến tab Thu"
+                >
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-blue-700">Doanh thu</span>
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 text-blue-700 transition group-hover:scale-110">
                             <TrendingUp className="h-4 w-4" />
                         </div>
                     </div>
                     <div className="mt-3">
                         <p className="text-2xl font-black text-slate-900">{formatMillion(data.kpis.totalRevenue)}</p>
-                        <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-blue-800">
+                        <p className="mt-1 flex items-center justify-between text-xs font-semibold text-blue-800">
                             <span>{formatKg(data.kpis.totalSoldWeightKg)} đã bán</span>
+                            <span className="inline-flex items-center text-[11px] font-bold text-blue-700 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition">
+                                Xem thu <ArrowRight className="ml-0.5 h-3 w-3" />
+                            </span>
                         </p>
                     </div>
-                </div>
+                </button>
 
                 {/* 5. LỢI NHUẬN ƯỚC TÍNH */}
-                <div className="group relative rounded-3xl border border-brand-300 bg-gradient-to-br from-brand-50 to-emerald-50/30 p-4 shadow-sm transition hover:shadow-md sm:col-span-2 lg:col-span-1">
+                <button
+                    type="button"
+                    onClick={() => {
+                        const section = document.getElementById("financial-efficiency-section");
+                        if (section) {
+                            section.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }
+                    }}
+                    className="group relative text-left w-full cursor-pointer rounded-3xl border border-brand-300 bg-gradient-to-br from-brand-50 to-emerald-50/30 p-4 shadow-sm transition hover:border-brand-500 hover:shadow-md active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-brand-500/20 sm:col-span-2 lg:col-span-1"
+                    title="Kéo xuống mục 5. Hiệu quả tài chính & Lợi nhuận"
+                >
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-brand-800">Lợi nhuận ước tính</span>
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-600 text-white">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-600 text-white transition group-hover:scale-110">
                             <PiggyBank className="h-4 w-4" />
                         </div>
                     </div>
@@ -352,11 +402,14 @@ export function FarmerStatisticsOverview({ initialData }: FarmerStatisticsOvervi
                         <p className={`text-2xl font-black ${data.kpis.estimatedProfit >= 0 ? "text-brand-900" : "text-rose-600"}`}>
                             {formatMillion(data.kpis.estimatedProfit)}
                         </p>
-                        <p className="mt-1 flex items-center gap-1 text-xs font-bold text-brand-700">
+                        <p className="mt-1 flex items-center justify-between text-xs font-bold text-brand-700">
                             <span>{data.kpis.profitMargin}% doanh thu</span>
+                            <span className="inline-flex items-center text-[11px] font-bold text-brand-800 opacity-80 group-hover:opacity-100 group-hover:translate-y-0.5 transition">
+                                Chi tiết ↓
+                            </span>
                         </p>
                     </div>
-                </div>
+                </button>
             </div>
 
             {/* ========================================================================= */}
@@ -787,7 +840,7 @@ export function FarmerStatisticsOverview({ initialData }: FarmerStatisticsOvervi
             {/* ========================================================================= */}
             {/* 5. THỐNG KÊ LỢI NHUẬN & HIỆU QUẢ TÀI CHÍNH */}
             {/* ========================================================================= */}
-            <section className="rounded-3xl border border-brand-200 bg-white p-5 shadow-sm space-y-5">
+            <section id="financial-efficiency-section" className="rounded-3xl border border-brand-200 bg-white p-5 shadow-sm space-y-5 scroll-mt-20">
                 <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
                     <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-600 text-white shadow-soft">
                         <Award className="h-4 w-4" />
@@ -903,6 +956,7 @@ export function FarmerStatisticsOverview({ initialData }: FarmerStatisticsOvervi
                     )}
                 </div>
             </section>
+            </>}
         </div>
     );
 }

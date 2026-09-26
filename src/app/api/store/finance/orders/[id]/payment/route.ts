@@ -25,16 +25,16 @@ export async function PATCH(
         const { paymentStatus = "PAID", paidAmount } = body;
 
         const order = await prisma.order.findFirst({
-            where: { id: params.id, storeId: store.id },
+            where: { id: params.id, storeId: store.id, deletedAt: null },
         });
 
         if (!order) {
             return NextResponse.json({ success: false, message: "Không tìm thấy đơn hàng." }, { status: 404 });
         }
 
-        if (["CANCELLED", "REJECTED"].includes(order.status)) {
+        if (!["CONFIRMED", "PREPARING", "READY_FOR_DELIVERY", "SHIPPING", "DELIVERED", "COMPLETED"].includes(order.status)) {
             return NextResponse.json(
-                { success: false, message: "Đơn hàng đã hủy hoặc bị từ chối, không thể ghi nhận thanh toán." },
+                { success: false, message: "Chỉ được thu tiền đơn đã xác nhận và chưa hủy." },
                 { status: 409 },
             );
         }
@@ -46,14 +46,20 @@ export async function PATCH(
             : Math.max(totalAmount - previousPaidAmount, 0);
         const newPaidAmount = paymentStatus === "PAID" ? totalAmount : (paidAmount ? Number(paidAmount) : 0);
 
-        const updated = await prisma.order.update({
-            where: { id: order.id },
+        if (!["PAID", "PARTIAL", "UNPAID"].includes(paymentStatus) || !Number.isFinite(newPaidAmount) || newPaidAmount < 0 || newPaidAmount > totalAmount) {
+            return NextResponse.json({ success: false, message: "Số tiền hoặc trạng thái thanh toán không hợp lệ." }, { status: 400 });
+        }
+
+        const changed = await prisma.order.updateMany({
+            where: { id: order.id, storeId: store.id, deletedAt: null, status: order.status, updatedAt: order.updatedAt },
             data: {
                 paymentStatus,
                 paidAmount: newPaidAmount,
-                paidAt: paymentStatus === "PAID" ? new Date() : null,
+                paidAt: paymentStatus === "PAID" ? (order.paidAt || new Date()) : null,
             },
         });
+        if (!changed.count) return NextResponse.json({ success: false, message: "Đơn hàng vừa thay đổi. Vui lòng tải lại." }, { status: 409 });
+        const updated = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
 
         return NextResponse.json({
             success: true,

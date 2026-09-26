@@ -22,6 +22,7 @@ const expenseSchema = z.object({
     title: z.string().trim().min(2, "Vui lòng nhập nội dung chi phí.").max(200),
     note: z.string().trim().optional(),
     recipient: z.string().trim().optional(),
+    referenceId: z.string().trim().optional(),
     paymentMethod: z.string().default("CASH"),
     status: z.enum(["PAID", "UNPAID", "PARTIAL"]).default("PAID"),
     paidAmount: z.coerce.number().optional(),
@@ -52,7 +53,15 @@ export async function POST(request: Request) {
             );
         }
 
-        const { category, expenseDate, amount, title, note, recipient, paymentMethod, status, paidAmount } = parsed.data;
+        const { category, expenseDate, amount, title, note, recipient, paymentMethod, status, paidAmount, referenceId } = parsed.data;
+
+        if (referenceId) {
+            const [order, document] = await Promise.all([
+                prisma.order.findFirst({ where: { id: referenceId, storeId: store.id, deletedAt: null } }),
+                prisma.inventoryDocument.findFirst({ where: { id: referenceId, storeId: store.id } }),
+            ]);
+            if (!order && !document) return NextResponse.json({ message: "Đơn hàng/phiếu không thuộc cửa hàng." }, { status: 400 });
+        }
 
         const date = new Date(expenseDate);
         if (isNaN(date.getTime())) {
@@ -68,6 +77,7 @@ export async function POST(request: Request) {
                 title,
                 note: note || null,
                 recipient: recipient || null,
+                referenceId: referenceId || null,
                 paymentMethod: paymentMethod || "CASH",
                 status,
                 paidAmount: status === "PAID" ? amount : (paidAmount || 0),

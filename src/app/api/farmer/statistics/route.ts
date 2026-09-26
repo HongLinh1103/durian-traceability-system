@@ -1,3 +1,4 @@
+import { isSupplyUsage } from "@/lib/farmer-stock-ledger";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -98,7 +99,7 @@ export async function GET(request: Request) {
         if (view === "overview") {
             const overviewData = await getFarmerOverviewStatistics(farmerId, {
                 farmId: searchParams.get("farmId"),
-                year: searchParams.get("year") || 2026,
+                year: searchParams.get("year"),
                 cropSeasonId: searchParams.get("cropSeasonId"),
             });
             return NextResponse.json({ success: true, ...overviewData });
@@ -203,121 +204,6 @@ export async function GET(request: Request) {
             });
         }
 
-        // Tự động gieo dữ liệu thống kê nếu vụ này chưa có bất kỳ giao dịch nào
-        const existingTxCount = await prisma.farmerSupplyTransaction.count({
-            where: { farmerId, cropSeasonId: selectedSeason.id },
-        });
-
-        if (existingTxCount === 0) {
-            const sampleSupplies = await prisma.farmerSupply.findMany({ where: { farmerId } });
-            if (sampleSupplies.length > 0) {
-                const humic = sampleSupplies.find((s) => s.type === "FERTILIZER");
-                const npk = sampleSupplies.find((s) => s.name.includes("NPK") || s.type === "FERTILIZER");
-                const champ = sampleSupplies.find((s) => s.type === "PESTICIDE");
-                const radiant = sampleSupplies.find((s) => s.name.includes("Radiant") || s.type === "PESTICIDE");
-
-                if (humic) {
-                    await prisma.farmerSupplyTransaction.create({
-                        data: {
-                            supplyId: humic.id,
-                            farmerId,
-                            farmId: selectedFarm.id,
-                            cropSeasonId: selectedSeason.id,
-                            type: "OUT",
-                            quantity: 6,
-                            unitPrice: humic.unitPrice,
-                            totalAmount: Number(humic.unitPrice) * 6,
-                            stage: "POST_HARVEST_RECOVERY",
-                            activityType: "BASE_FERTILIZING",
-                            purpose: "Bón lót phục hồi cây sau thu hoạch",
-                            actionDate: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
-                        },
-                    });
-                }
-                if (npk) {
-                    await prisma.farmerSupplyTransaction.create({
-                        data: {
-                            supplyId: npk.id,
-                            farmerId,
-                            farmId: selectedFarm.id,
-                            cropSeasonId: selectedSeason.id,
-                            type: "OUT",
-                            quantity: 4,
-                            unitPrice: npk.unitPrice,
-                            totalAmount: Number(npk.unitPrice) * 4,
-                            stage: "MAKING_SPROUT",
-                            activityType: "FERTILIZE",
-                            purpose: "Bón thúc đọt cơ 1",
-                            actionDate: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
-                        },
-                    });
-                }
-                if (champ) {
-                    await prisma.farmerSupplyTransaction.create({
-                        data: {
-                            supplyId: champ.id,
-                            farmerId,
-                            farmId: selectedFarm.id,
-                            cropSeasonId: selectedSeason.id,
-                            type: "OUT",
-                            quantity: 4,
-                            unitPrice: champ.unitPrice,
-                            totalAmount: Number(champ.unitPrice) * 4,
-                            stage: "MAKING_SPROUT",
-                            activityType: "SPRAY_PESTICIDE",
-                            purpose: "Phun phòng nấm xì mủ lá non",
-                            actionDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-                        },
-                    });
-                }
-                if (radiant) {
-                    await prisma.farmerSupplyTransaction.create({
-                        data: {
-                            supplyId: radiant.id,
-                            farmerId,
-                            farmId: selectedFarm.id,
-                            cropSeasonId: selectedSeason.id,
-                            type: "OUT",
-                            quantity: 8,
-                            unitPrice: radiant.unitPrice,
-                            totalAmount: Number(radiant.unitPrice) * 8,
-                            stage: "FRUIT_SETTING",
-                            activityType: "SPRAY_PESTICIDE",
-                            purpose: "Phun ngừa bọ trĩ tấn công bông và trái non",
-                            actionDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-                        },
-                    });
-                }
-
-                // Thêm chi phí ngoài
-                await prisma.farmerExpense.createMany({
-                    data: [
-                        {
-                            farmerId,
-                            farmId: selectedFarm.id,
-                            cropSeasonId: selectedSeason.id,
-                            category: "LABOR",
-                            title: "Thuê nhân công tỉa cành, tạo tán sau thu hoạch",
-                            amount: 3200000,
-                            expenseDate: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
-                            stage: "POST_HARVEST_RECOVERY",
-                        },
-                        {
-                            farmerId,
-                            farmId: selectedFarm.id,
-                            cropSeasonId: selectedSeason.id,
-                            category: "ELECTRICITY_WATER",
-                            title: "Tiền điện bơm tưới nước tháng trước",
-                            amount: 1450000,
-                            expenseDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-                            stage: "FLOWER_INDUCTION",
-                        },
-                    ],
-                });
-            }
-        }
-
-        // Điều kiện thời gian
         const dateFilter: any = {};
         if (startDate) dateFilter.gte = new Date(startDate);
         if (endDate) {
@@ -336,7 +222,7 @@ export async function GET(request: Request) {
             supplyOutTxWhere.actionDate = dateFilter;
         }
 
-        const supplyTransactions = await prisma.farmerSupplyTransaction.findMany({
+        const rawSupplyTransactions = await prisma.farmerSupplyTransaction.findMany({
             where: supplyOutTxWhere,
             include: {
                 supply: true,
@@ -355,7 +241,7 @@ export async function GET(request: Request) {
             expenseWhere.expenseDate = dateFilter;
         }
 
-        const outsideExpenses = await prisma.farmerExpense.findMany({
+        const rawOutsideExpenses = await prisma.farmerExpense.findMany({
             where: expenseWhere,
             include: {
                 cropSeason: { select: { name: true } },
@@ -367,6 +253,8 @@ export async function GET(request: Request) {
         // =========================================================================
         // XỬ LÝ TAB 1: THUỐC BVTV (PESTICIDE)
         // =========================================================================
+        const supplyTransactions = rawSupplyTransactions.filter(isSupplyUsage);
+        const outsideExpenses = rawOutsideExpenses.filter(e => !["FERTILIZER", "PESTICIDE"].includes(e.category));
         const pesticideTx = supplyTransactions.filter(
             (tx) => tx.supply && tx.supply.type === "PESTICIDE",
         );

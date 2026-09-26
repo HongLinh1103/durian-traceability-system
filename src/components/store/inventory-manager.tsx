@@ -465,10 +465,6 @@ function InventoryManagerContent() {
                                     <option value="SUPPLIER_RETURN">Trả nhà cung cấp</option>
                                     <option value="DISPOSAL_EXPORT">Xuất hủy</option>
                                 </optgroup>
-                                <optgroup label="Phiếu điều chỉnh (DC)">
-                                    <option value="STOCKTAKE_INCREASE">Kiểm kê tăng (+)</option>
-                                    <option value="STOCKTAKE_DECREASE">Kiểm kê giảm (−)</option>
-                                </optgroup>
                             </select>
                         </label>
                     </div>

@@ -546,7 +546,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                                 <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Mã lô TH</th>
                                 <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Niên vụ</th>
                                 <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Ngày thu hoạch</th>
-                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Tổng sản lượng (kg)</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Khối lượng (kg)</th>
                                 <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Người mua</th>
                                 <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle min-w-[180px]">Địa chỉ</th>
                                 <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Giá bán</th>
@@ -576,17 +576,17 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                                         </td>
 
                                         {/* Ngày thu hoạch */}
-                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 text-center text-slate-600 font-medium">
+                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 text-center text-slate-600 font-normal">
                                             {harvestDate}
                                         </td>
 
                                         {/* Tổng sản lượng (kg) */}
-                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 font-mono font-bold text-slate-900 text-right">
+                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 font-mono font-normal text-slate-900 text-right">
                                             {weight.toLocaleString("vi-VN")}
                                         </td>
 
                                         {/* Người mua */}
-                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 font-bold text-slate-900">
+                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 font-normal text-slate-900">
                                             {buyer}
                                         </td>
 
@@ -601,7 +601,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                                         </td>
 
                                         {/* Thành tiền */}
-                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 font-mono font-black text-emerald-800 text-right">
+                                        <td className="border border-slate-200 whitespace-nowrap px-3.5 py-2.5 font-mono font-normal text-emerald-800 text-right">
                                             {formatTotal(weight, price)}
                                         </td>
 

@@ -43,6 +43,8 @@ interface FarmOption {
     id: string;
     farmName: string;
     farmCode: string;
+    regionCode?: string | null;
+    regionName?: string | null;
     address?: string | null;
     cropSeasons: FarmSeasonOption[];
 }
@@ -423,6 +425,8 @@ export function FarmerJournalUnifiedView({
                     isSeasonActive={isSeasonActive}
                     farmName={currentFarm?.farmName}
                     farmAddress={currentFarm?.address || undefined}
+                    regionCode={currentFarm?.regionCode || undefined}
+                    regionName={currentFarm?.regionName || undefined}
                     seasonName={currentSeason?.name}
                     seasonYear={currentSeason?.year}
                     onReopenSeason={() => handleReopenSeason(currentSeason?.id)}

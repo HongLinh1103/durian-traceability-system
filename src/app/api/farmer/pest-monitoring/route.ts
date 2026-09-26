@@ -16,6 +16,9 @@ const createBookSchema = z.object({
     discoverySource: z.string().trim().max(200).optional().nullable(),
     discoveryLogId: z.string().optional().nullable(),
     monitoringMethods: z.array(z.string()).default([]),
+    controlMethod: z.string().trim().max(100).optional().nullable(),
+    chemicalName: z.string().trim().max(200).optional().nullable(),
+    dosage: z.string().trim().max(200).optional().nullable(),
     targetPart: z.string().trim().max(200).optional().nullable(),
     trapType: z.string().trim().max(100).optional().nullable(),
     attractant: z.string().trim().max(200).optional().nullable(),
@@ -92,7 +95,25 @@ export async function GET(request: Request) {
         const books = await prisma.pestMonitoringBook.findMany({
             where: whereClause,
             include: {
-                farm: { select: { id: true, farmName: true, farmCode: true, address: true, ward: true, district: true, province: true } },
+                farm: {
+                    select: {
+                        id: true,
+                        farmName: true,
+                        farmCode: true,
+                        growingRegion: true,
+                        address: true,
+                        ward: true,
+                        district: true,
+                        province: true,
+                        region: {
+                            select: {
+                                id: true,
+                                code: true,
+                                name: true,
+                            },
+                        },
+                    },
+                },
                 cropSeason: { select: { id: true, name: true, year: true, status: true } },
                 discoveryLog: {
                     select: {
@@ -174,13 +195,25 @@ export async function GET(request: Request) {
                 monitoringMethods: b.monitoringMethods && b.monitoringMethods.length > 0
                     ? b.monitoringMethods
                     : (b.traps.length > 0 ? ["Kiểm tra bẫy"] : ["Quan sát trực tiếp"]),
+                controlMethod: b.controlMethod || (b.traps.length > 0 || b.trapType ? "Bẫy" : "Phun thuốc"),
+                chemicalName: b.chemicalName || latestTreatment?.productUsed || null,
+                dosage: b.dosage || latestTreatment?.dosage || null,
                 targetPart: b.targetPart,
                 startDate: b.startDate.toISOString(),
                 checkFrequencyDays: b.checkFrequencyDays,
                 status: b.status,
-                notes: b.notes,
-                farm: b.farm,
+                farm: b.farm
+                    ? {
+                        ...b.farm,
+                        regionCode:
+                            b.farm.region?.code ||
+                            (b.farm.growingRegion ? b.farm.growingRegion.split(" - ")[0].trim() : null) ||
+                            (b.farm.farmCode ? b.farm.farmCode.replace(/-F\d+$/, "") : null) ||
+                            "VN - DNOR - 0269",
+                    }
+                    : null,
                 cropSeason: b.cropSeason,
+                notes: b.notes,
                 trapsCount: b._count.traps,
                 inspectionsCount: b._count.inspections,
                 treatmentsCount: b._count.treatments,
@@ -243,6 +276,9 @@ export async function POST(request: Request) {
             cropSeasonId,
             pestName,
             scientificName,
+            controlMethod,
+            chemicalName,
+            dosage,
             firstDetectedDate,
             discoveryStage,
             discoverySource,
@@ -259,7 +295,8 @@ export async function POST(request: Request) {
             initialTraps,
         } = parsed.data;
 
-        const enableTraps = useTraps ?? Boolean(traps?.length || initialTraps?.length);
+        const effectiveControlMethod = controlMethod || (useTraps ? "Bẫy" : "Phun thuốc");
+        const enableTraps = effectiveControlMethod === "Bẫy" || (useTraps ?? Boolean(traps?.length || initialTraps?.length));
         const effectiveTraps = (enableTraps && traps && traps.length > 0)
             ? traps
             : (enableTraps && initialTraps && initialTraps.length > 0)
@@ -275,9 +312,9 @@ export async function POST(request: Request) {
             : [];
 
         const hasTraps = effectiveTraps.length > 0;
-        const mainTrapType = hasTraps ? effectiveTraps[0].trapType : (enableTraps ? trapType || null : null);
+        const mainTrapType = hasTraps ? effectiveTraps[0].trapType : (enableTraps ? trapType || "Bẫy lồng" : null);
         const mainAttractant = hasTraps ? (effectiveTraps[0].attractant || attractant || null) : (enableTraps ? attractant || null : null);
-        const finalMethods = enableTraps ? ["Kiểm tra bẫy"] : ["Quan sát trực tiếp"];
+        const finalMethods = enableTraps ? ["Bẫy"] : ["Phun thuốc"];
 
         const book = await prisma.pestMonitoringBook.create({
             data: {
@@ -286,6 +323,9 @@ export async function POST(request: Request) {
                 cropSeasonId,
                 pestName,
                 scientificName: scientificName || null,
+                controlMethod: effectiveControlMethod,
+                chemicalName: effectiveControlMethod === "Phun thuốc" ? (chemicalName || null) : null,
+                dosage: effectiveControlMethod === "Phun thuốc" ? (dosage || null) : null,
                 firstDetectedDate: firstDetectedDate ? new Date(firstDetectedDate) : (startDate ? new Date(startDate) : new Date()),
                 discoveryStage: discoveryStage || null,
                 discoverySource: discoverySource || null,

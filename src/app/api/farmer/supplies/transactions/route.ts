@@ -1,3 +1,5 @@
+import { prepareStockMovement } from "@/lib/farmer-stock-write";
+import { isSupplyUsage } from "@/lib/farmer-stock-ledger";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSession } from "next-auth";
@@ -114,6 +116,13 @@ export async function POST(request: Request) {
         const { supplyId, type, quantity, farmId, cropSeasonId, stage, activityType, purpose, actionDate, notes } =
             parsed.data;
 
+        if (farmId && !await prisma.farm.findFirst({ where: { id: farmId, farmerId }, select: { id: true } })) {
+            return NextResponse.json({ success: false, message: "Vườn không thuộc tài khoản của bạn" }, { status: 400 });
+        }
+        if (cropSeasonId && !await prisma.cropSeason.findFirst({ where: { id: cropSeasonId, farm: { farmerId }, ...(farmId ? { farmId } : {}) }, select: { id: true } })) {
+            return NextResponse.json({ success: false, message: "Niên vụ không thuộc vườn của bạn" }, { status: 400 });
+        }
+
         // Tìm vật tư trong kho
         const supply = await prisma.farmerSupply.findFirst({
             where: { id: supplyId, farmerId },
@@ -126,33 +135,11 @@ export async function POST(request: Request) {
             );
         }
 
-        // Nếu là xuất kho (OUT), kiểm tra tồn kho
-        if (type === "OUT" && supply.quantity < quantity) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: `Số lượng tồn kho không đủ (Hiện có: ${supply.quantity} ${supply.unit}, cần xuất: ${quantity} ${supply.unit})`,
-                },
-                { status: 400 },
-            );
-        }
-
-        const totalAmount = Number(supply.unitPrice) * quantity;
         const txDate = actionDate ? new Date(actionDate) : new Date();
 
         const result = await prisma.$transaction(async (tx) => {
-            // Cập nhật tồn kho
-            let newQty = supply.quantity;
-            if (type === "IN") newQty += quantity;
-            else if (type === "OUT") newQty -= quantity;
-            else if (type === "ADJUSTMENT") newQty = quantity;
+            const currentSupply = await prepareStockMovement(tx, { farmerId, supplyId, type, quantity, actionDate: txDate, disposal: !isSupplyUsage({ type, purpose, notes }) });
 
-            await tx.farmerSupply.update({
-                where: { id: supply.id },
-                data: { quantity: Math.max(0, newQty) },
-            });
-
-            // Ghi nhận giao dịch
             const transaction = await tx.farmerSupplyTransaction.create({
                 data: {
                     supplyId: supply.id,
@@ -161,8 +148,8 @@ export async function POST(request: Request) {
                     cropSeasonId: cropSeasonId || null,
                     type,
                     quantity,
-                    unitPrice: supply.unitPrice,
-                    totalAmount,
+                    unitPrice: currentSupply.unitPrice,
+                    totalAmount: Number(currentSupply.unitPrice) * quantity,
                     stage: stage as any || null,
                     activityType: activityType as any || null,
                     purpose: purpose || (type === "OUT" ? "Xuất kho sử dụng" : "Nhập kho vật tư"),

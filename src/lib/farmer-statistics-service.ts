@@ -1,4 +1,9 @@
+import { isSupplyUsage } from "@/lib/farmer-stock-ledger";
+import { supplyPackaging } from "@/lib/supply-packaging";
+import { harvestValue } from "@/lib/farmer-harvest-finance";
+import { getFarmerFinanceLedger, type FarmerFinanceLedger } from "@/lib/farmer-finance-ledger";
 import { prisma } from "@/lib/prisma";
+import { formatSeasonName } from "@/lib/crop-season";
 
 export const STAGE_LABELS: Record<string, string> = {
     POST_HARVEST_RECOVERY: "Phục hồi sau thu hoạch",
@@ -64,9 +69,11 @@ export interface MonthlyFinancialPoint {
 }
 
 export interface FarmerOverviewStats {
+    ledger: FarmerFinanceLedger;
     filters: {
         farmId: string; // "ALL" or specific farmId
         year: number | string; // e.g. 2026 or "ALL"
+        cropSeasonId: string;
     };
     farms: Array<{
         id: string;
@@ -80,6 +87,7 @@ export interface FarmerOverviewStats {
         }>;
     }>;
     availableYears: number[];
+    availableSeasons: Array<{ id: string; label: string; farmId: string; farmName: string }>;
 
     // 5 Top KPI Cards
     kpis: {
@@ -197,17 +205,7 @@ export interface FarmerOverviewStats {
     };
 }
 
-function parseFertilizerKg(quantity: number, unit: string = ""): number {
-    const u = unit.toLowerCase().trim();
-    if (u.includes("50kg") || u.includes("50 kg")) return quantity * 50;
-    if (u.includes("25kg") || u.includes("25 kg")) return quantity * 25;
-    if (u.includes("tấn") || u.includes("tan")) return quantity * 1000;
-    if (u.includes("kg")) return quantity;
-    if (u.includes("lít") || u.includes("lit") || u.includes("1l") || u.includes("chai")) return quantity * 1;
-    if (u.includes("500g") || u.includes("500 g")) return quantity * 0.5;
-    if (u.includes("gói") || u.includes("bao")) return quantity * 25; // default reasonable bag
-    return quantity;
-}
+function parseFertilizerKg(quantity: number, unit = ""): number { return supplyPackaging(unit, null, quantity).weightKg ?? 0; }
 
 function classifyFertilizer(name: string, notes: string = ""): "NPK" | "ORGANIC" | "KALI" | "OTHER" {
     const text = `${name} ${notes}`.toLowerCase();
@@ -265,51 +263,7 @@ export async function getFarmerOverviewStatistics(
         orderBy: { farmName: "asc" },
     });
 
-    if (farms.length === 0) {
-        const newFarm = await prisma.farm.create({
-            data: {
-                farmerId,
-                farmCode: `VN-FARM-${farmerId.slice(-6).toUpperCase()}`,
-                farmName: "Vườn sầu riêng Gia đình",
-                address: "Nam Cát Tiên, Đồng Nai",
-                province: "Đồng Nai",
-                district: "Vĩnh Cửu",
-                ward: "Trị An",
-                areaSize: 2.5,
-                totalTrees: 250,
-                durianVariety: "Ri6, Monthong",
-                isActive: true,
-                cropSeasons: {
-                    create: {
-                        name: "Niên vụ 2025-2026",
-                        year: 2026,
-                        sequence: 1,
-                        status: "ACTIVE",
-                        startedAt: new Date("2025-08-01"),
-                        startingStage: "POST_HARVEST_RECOVERY",
-                    },
-                },
-            },
-            select: {
-                id: true,
-                farmName: true,
-                farmCode: true,
-                cropSeasons: {
-                    select: {
-                        id: true,
-                        name: true,
-                        year: true,
-                        status: true,
-                        startedAt: true,
-                        closedAt: true,
-                    },
-                },
-            },
-        });
-        farms = [newFarm];
-    }
-
-    const farmIdOption = options?.farmId && options.farmId !== "ALL" ? options.farmId : "ALL";
+    const farmIdOption = options?.farmId && farms.some(f => f.id === options.farmId) ? options.farmId : "ALL";
     const farmIds = farmIdOption === "ALL" ? farms.map((f) => f.id) : [farmIdOption];
 
     // Determine available years
@@ -319,8 +273,11 @@ export async function getFarmerOverviewStatistics(
     seasonYears.add(2025);
     const availableYears = Array.from(seasonYears).sort((a, b) => b - a);
 
-    let selectedYear: number | "ALL" = 2026;
-    if (options?.year) {
+    const requestedSeason = options?.cropSeasonId || "ALL";
+    const availableSeasons = farms.filter(f => farmIdOption === "ALL" || f.id === farmIdOption).flatMap(f => f.cropSeasons.map(s => ({ id: s.id, label: formatSeasonName(s), farmId: f.id, farmName: f.farmName })));
+    const selectedSeasonId = requestedSeason === "ALL" || availableSeasons.some(s => s.id === requestedSeason) ? requestedSeason : "__invalid_season__";
+    let selectedYear: number | "ALL" = "ALL";
+    if (options?.year && !options?.cropSeasonId) {
         if (options.year === "ALL") {
             selectedYear = "ALL";
         } else {
@@ -333,37 +290,37 @@ export async function getFarmerOverviewStatistics(
     let dateFilter: { gte?: Date; lte?: Date } | undefined = undefined;
     if (selectedYear !== "ALL") {
         dateFilter = {
-            gte: new Date(`${selectedYear}-01-01T00:00:00.000Z`),
-            lte: new Date(`${selectedYear}-12-31T23:59:59.999Z`),
+            gte: new Date(`${selectedYear}-01-01T00:00:00+07:00`),
+            lte: new Date(`${selectedYear}-12-31T23:59:59.999+07:00`),
         };
     }
 
     // Build Prisma where clauses
     const supplyWhere: any = {
         farmerId,
-        farmId: { in: farmIds },
+        ...(farmIdOption === "ALL" ? {} : { farmId: { in: farmIds } }),
         type: "OUT",
     };
     if (dateFilter) supplyWhere.actionDate = dateFilter;
-    if (options?.cropSeasonId) supplyWhere.cropSeasonId = options.cropSeasonId;
+    if (selectedSeasonId !== "ALL") supplyWhere.cropSeasonId = selectedSeasonId;
 
     const expenseWhere: any = {
         farmerId,
-        farmId: { in: farmIds },
+        ...(farmIdOption === "ALL" ? {} : { farmId: { in: farmIds } }),
     };
     if (dateFilter) expenseWhere.expenseDate = dateFilter;
-    if (options?.cropSeasonId) expenseWhere.cropSeasonId = options.cropSeasonId;
+    if (selectedSeasonId !== "ALL") expenseWhere.cropSeasonId = selectedSeasonId;
 
     const harvestWhere: any = {
         farmerId,
-        farmId: { in: farmIds },
+        ...(farmIdOption === "ALL" ? {} : { farmId: { in: farmIds } }),
         status: { in: ["CONFIRMED", "HARVESTING", "HARVESTED", "DELIVERY_CONFIRMED", "COMPLETED"] },
     };
     if (dateFilter) harvestWhere.expectedHarvestDate = dateFilter;
-    if (options?.cropSeasonId) harvestWhere.cropSeasonId = options.cropSeasonId;
+    if (selectedSeasonId !== "ALL") harvestWhere.cropSeasonId = selectedSeasonId;
 
     // Fetch data concurrently
-    const [supplyTransactions, outsideExpenses, harvestRecords] = await Promise.all([
+    const [rawSupplyTransactions, rawOutsideExpenses, harvestRecords] = await Promise.all([
         prisma.farmerSupplyTransaction.findMany({
             where: supplyWhere,
             include: { supply: true, farm: { select: { farmName: true } } },
@@ -386,15 +343,31 @@ export async function getFarmerOverviewStatistics(
         }),
     ]);
 
-    // Initialize monthly timeline T1..T12
-    const targetYearNum = typeof selectedYear === "number" ? selectedYear : 2026;
-    const monthlyMap = new Map<number, MonthlyFinancialPoint>();
-    for (let m = 1; m <= 12; m++) {
-        const monthKey = `${targetYearNum}-${String(m).padStart(2, "0")}`;
-        monthlyMap.set(m, {
+    const supplyTransactions = rawSupplyTransactions.filter(isSupplyUsage);
+    const outsideExpenses = rawOutsideExpenses.filter(e => !["FERTILIZER", "PESTICIDE"].includes(e.category));
+
+    // A season spans calendar years: never merge months from different years.
+    const monthOf = (date: Date) => {
+        const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }).formatToParts(date);
+        return `${parts.find(p => p.type === "year")!.value}-${parts.find(p => p.type === "month")!.value}`;
+    };
+    const activityMonths = [...supplyTransactions.map(t => monthOf(t.actionDate)), ...outsideExpenses.map(e => monthOf(e.expenseDate)), ...harvestRecords.map(h => monthOf(h.buyerReceivedAt ?? h.completedAt ?? h.actualHarvestedAt ?? h.expectedHarvestDate))].sort();
+    const selectedSeason = farms.flatMap(f => f.cropSeasons).find(s => s.id === selectedSeasonId);
+    const startMonth = selectedSeason ? monthOf(selectedSeason.startedAt) : activityMonths[0] || `${typeof selectedYear === "number" ? selectedYear : new Date().getFullYear()}-01`;
+    const endMonth = selectedSeason?.closedAt ? monthOf(selectedSeason.closedAt) : activityMonths.at(-1) || `${typeof selectedYear === "number" ? selectedYear : new Date().getFullYear()}-12`;
+    const monthKeys = new Set(activityMonths);
+    const cursor = new Date(`${startMonth}-01T00:00:00Z`);
+    while (cursor.toISOString().slice(0, 7) <= endMonth) {
+        monthKeys.add(cursor.toISOString().slice(0, 7));
+        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+    const monthlyMap = new Map<string, MonthlyFinancialPoint>();
+    for (const monthKey of [...monthKeys].sort()) {
+        const m = Number(monthKey.slice(5));
+        monthlyMap.set(monthKey, {
             month: monthKey,
             monthIndex: m,
-            label: `T${m}`,
+            label: `${monthKey.slice(5)}/${monthKey.slice(0, 4)}`,
             revenue: 0,
             cost: 0,
             profit: 0,
@@ -431,7 +404,7 @@ export async function getFarmerOverviewStatistics(
         cur.totalCost += cost;
         pesticideSupplyMap.set(sName, cur);
 
-        const m = new Date(tx.actionDate).getMonth() + 1;
+        const m = monthOf(tx.actionDate);
         const point = monthlyMap.get(m);
         if (point) {
             point.pesticideCost += cost;
@@ -477,7 +450,7 @@ export async function getFarmerOverviewStatistics(
         compositionMap[group].weightKg += kg;
         compositionMap[group].cost += cost;
 
-        const m = new Date(tx.actionDate).getMonth() + 1;
+        const m = monthOf(tx.actionDate);
         const point = monthlyMap.get(m);
         if (point) {
             point.fertilizerCost += cost;
@@ -506,7 +479,7 @@ export async function getFarmerOverviewStatistics(
     for (const tx of equipmentTx) {
         const cost = Number(tx.totalAmount || 0);
         equipmentCost += cost;
-        const m = new Date(tx.actionDate).getMonth() + 1;
+        const m = monthOf(tx.actionDate);
         const point = monthlyMap.get(m);
         if (point) {
             point.otherCost += cost;
@@ -528,7 +501,7 @@ export async function getFarmerOverviewStatistics(
         cur.count += 1;
         categoryExpMap.set(catKey, cur);
 
-        const m = new Date(exp.expenseDate).getMonth() + 1;
+        const m = monthOf(exp.expenseDate);
         const point = monthlyMap.get(m);
         if (point) {
             point.otherCost += cost;
@@ -572,31 +545,7 @@ export async function getFarmerOverviewStatistics(
     const recentTransactions: FarmerOverviewStats["revenue"]["recentTransactions"] = [];
 
     for (const h of harvestRecords) {
-        let weight = Number(h.receivedWeight ?? h.deliveredWeight ?? h.actualWeight ?? h.expectedSaleWeight ?? h.expectedWeight ?? 0);
-        const unitLower = (h.weightUnit || "").toLowerCase();
-        if ((unitLower.includes("tấn") || unitLower.includes("tan")) && weight > 0 && weight < 50) {
-            weight = weight * 1000;
-        }
-
-        const price = Number(h.expectedPricePerKg || 0);
-        let amount = 0;
-
-        if (h.varietyItems && h.varietyItems.length > 0) {
-            const vSum = h.varietyItems.reduce((acc, vi) => {
-                const viWeight = Number(vi.expectedWeight || 0);
-                const viPrice = Number(vi.expectedPricePerKg || h.expectedPricePerKg || 0);
-                return acc + viWeight * viPrice;
-            }, 0);
-            amount = vSum > 0 ? vSum : weight * price;
-        } else {
-            amount = weight * price;
-        }
-
-        // If price was not specified in record, provide market estimate based on Ri6/Monthong
-        if (amount === 0 && weight > 0) {
-            const estimatedRate = 75000;
-            amount = weight * estimatedRate;
-        }
+        const { weight, price, amount } = harvestValue(h);
 
         totalRevenue += amount;
         totalSoldWeightKg += weight;
@@ -631,7 +580,7 @@ export async function getFarmerOverviewStatistics(
             statusLabel: HARVEST_STATUS_LABELS[h.status] || h.status,
         });
 
-        const m = d.getMonth() + 1;
+        const m = monthOf(d);
         const point = monthlyMap.get(m);
         if (point) {
             point.revenue += amount;
@@ -671,9 +620,11 @@ export async function getFarmerOverviewStatistics(
     }));
 
     return {
+        ledger: await getFarmerFinanceLedger(farmerId, farmIdOption, selectedYear, selectedSeasonId),
         filters: {
             farmId: farmIdOption,
             year: selectedYear,
+            cropSeasonId: selectedSeasonId,
         },
         farms: farms.map((f) => ({
             id: f.id,
@@ -687,6 +638,7 @@ export async function getFarmerOverviewStatistics(
             })),
         })),
         availableYears,
+        availableSeasons,
         kpis: {
             pesticideCost,
             pesticideUsages: pesticideTx.length,
@@ -846,7 +798,7 @@ export async function getFarmerStatisticsServerData(
     }
 
     // Query supply transactions and outside expenses for the season
-    const [supplyTransactions, outsideExpenses] = await Promise.all([
+    const [rawSupplyTransactions, rawOutsideExpenses] = await Promise.all([
         prisma.farmerSupplyTransaction.findMany({
             where: {
                 farmerId,
@@ -873,6 +825,8 @@ export async function getFarmerStatisticsServerData(
         }),
     ]);
 
+    const supplyTransactions = rawSupplyTransactions.filter(isSupplyUsage);
+    const outsideExpenses = rawOutsideExpenses.filter(e => !["FERTILIZER", "PESTICIDE"].includes(e.category));
     // 1. Thuốc BVTV
     const pesticideTx = supplyTransactions.filter(
         (tx) => tx.supply && tx.supply.type === "PESTICIDE",

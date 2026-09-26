@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { formatVietnameseDateTime } from "@/lib/date-format";
+import { formatOrderDateTime } from "@/lib/order-status";
 
 type OrderItem = {
     id: string;
@@ -51,13 +52,7 @@ type Order = {
 function formatOrderHistoryText(order: Order, statusObj: { key: string }) {
     const formatTimeDate = (dateStr?: string | null) => {
         if (!dateStr) return "";
-        const d = new Date(dateStr);
-        const hours = String(d.getHours()).padStart(2, "0");
-        const minutes = String(d.getMinutes()).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const year = d.getFullYear();
-        return `${hours}:${minutes} ngày ${day}/${month}/${year}`;
+        return formatOrderDateTime(dateStr).replace(" ", " ngày ");
     };
 
     if (statusObj.key === "COMPLETED") {
@@ -572,7 +567,7 @@ export function StoreOrdersManager() {
 
                                         {order.rejectionReason && (
                                             <p className="mt-3 rounded-2xl bg-red-50 p-3 text-xs text-red-800 font-medium">
-                                                <b>Lý do từ chối:</b> {order.rejectionReason}
+                                                <b>{order.status === "CANCELLED" ? "Lý do hủy:" : "Lý do từ chối:"}</b> {order.rejectionReason}
                                             </p>
                                         )}
                                     </div>

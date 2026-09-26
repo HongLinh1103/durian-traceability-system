@@ -18,7 +18,7 @@ export default function CartPage() {
     async function change(item: Item, quantity: number) { if (quantity < 1 || quantity > item.product.stock) return; setBusyId(item.id); setError(""); const response = await fetch("/api/cart", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: item.id, quantity }) }); const payload = await response.json(); if (!response.ok) setError(payload.message || "Không thể cập nhật số lượng."); else window.dispatchEvent(new Event("cart-updated")); await load(); setBusyId(""); }
     async function remove(id: string) { setBusyId(id); const response = await fetch(`/api/cart?id=${encodeURIComponent(id)}`, { method: "DELETE" }); if (response.ok) window.dispatchEvent(new Event("cart-updated")); await load(); setBusyId(""); }
     return (
-        <main className="mx-auto min-h-[calc(100vh-64px)] max-w-5xl space-y-5 px-4 py-7 sm:px-6">
+        <main className="mx-auto min-h-[calc(100vh-64px)] w-full max-w-[1650px] space-y-5 px-4 py-7 sm:px-6">
             <div className="flex items-center gap-3">
                 <button
                     type="button"
@@ -30,7 +30,7 @@ export default function CartPage() {
                 </button>
             </div>
             <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Giỏ hàng</h1>
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900">GIỎ HÀNG</h1>
                 <p className="mt-1 text-xs sm:text-sm text-slate-500">Kiểm tra sản phẩm và số lượng trước khi đặt hàng.</p>
             </div>
         {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}

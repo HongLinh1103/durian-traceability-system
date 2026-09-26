@@ -1,0 +1,56 @@
+require('@next/env').loadEnvConfig(process.cwd());
+const assert = require('node:assert/strict');
+const { randomUUID } = require('node:crypto');
+const { encode } = require('next-auth/jwt');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+const id = 'log-stock-test-' + randomUUID();
+const base = 'http://localhost:3000';
+async function main() {
+    await prisma.user.create({ data: { id, phone: id, password: 'test-no-login', role: 'FARMER', isApproved: true, fullName: 'Log stock test' } });
+    await prisma.farm.create({ data: { id, farmCode: id, farmName: 'Test farm', farmerId: id, areaSize: 1, totalTrees: 10, durianVariety: 'Ri6', address: 'Test', isActive: true } });
+    await prisma.cropSeason.create({ data: { id, farmId: id, name: '2025-2026', year: 2026, startedAt: new Date('2026-01-01'), status: 'ACTIVE' } });
+    await prisma.farmerSupply.create({ data: { id, farmerId: id, name: 'Test NPK', type: 'FERTILIZER', unit: 'kg', quantity: 10, unitPrice: 100 } });
+    await prisma.farmerSupplyTransaction.create({ data: { supplyId: id, farmerId: id, type: 'IN', quantity: 10, unitPrice: 100, totalAmount: 1000, actionDate: new Date('2026-01-15') } });
+    const cookie = 'next-auth.session-token=' + await encode({ secret: process.env.NEXTAUTH_SECRET, token: { sub: id, role: 'FARMER', isApproved: true }, maxAge: 600 });
+    const request = (url, options = {}) => fetch(base + url, { ...options, headers: { Cookie: cookie, ...options.headers } });
+    const create = async () => {
+        const form = new FormData();
+        for (const [key, value] of Object.entries({ farmId: id, stage: 'Nuôi trái', activityType: 'Bón phân', actionDate: '2026-02-01T08:00:00+07:00', chemicalName: 'Wrong free-text name', dosage: '1 kg/cây', supplyId: id, supplyQuantity: '2', isGACCCompliant: 'true' })) form.append(key, value);
+        const response = await request('/api/farming-logs', { method: 'POST', body: form });
+        const result = await response.json(); assert.equal(response.status, 200, JSON.stringify(result)); return result.id;
+    };
+    const logId = await create();
+    let log = await prisma.farmingLog.findUnique({ where: { id: logId }, include: { materialsUsed: true, supplyTransactions: true } });
+    assert.equal(log.chemicalName, 'Test NPK'); assert.equal(log.materialsUsed.length, 1); assert.equal(log.supplyTransactions.length, 1);
+    assert.equal(log.materialsUsed[0].transactionId, log.supplyTransactions[0].id);
+    assert.equal((await prisma.farmerSupply.findUnique({ where: { id } })).quantity, 8);
+    const transactionId = log.supplyTransactions[0].id;
+    const edit = body => request('/api/farming-logs/' + logId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    let response = await edit({ actionDate: '2026-02-02T08:00:00+07:00', chemicalName: 'Wrong edited name', dosage: '1 kg/cây', materialQuantities: [{ transactionId, quantity: 3 }] });
+    assert.equal(response.status, 200, await response.text());
+    log = await prisma.farmingLog.findUnique({ where: { id: logId }, include: { materialsUsed: true, supplyTransactions: true } });
+    assert.equal(log.chemicalName, 'Test NPK'); assert.equal(log.dosage, '1 kg/cây'); assert.equal(log.materialsUsed[0].quantity, 3); assert.equal(Number(log.materialsUsed[0].totalCost), 300);
+    assert.equal(log.supplyTransactions[0].actionDate.getTime(), log.actionDate.getTime()); assert.equal(log.supplyTransactions[0].quantity, 3); assert.equal((await prisma.farmerSupply.findUnique({ where: { id } })).quantity, 7);
+    assert.notEqual((await edit({ materialQuantities: [{ transactionId, quantity: 11 }] })).status, 200);
+    assert.notEqual((await edit({ actionDate: '2026-01-01' })).status, 200);
+    assert.notEqual((await edit({ materialQuantities: [{ transactionId: 'not-owned', quantity: 1 }] })).status, 200);
+    assert.equal((await prisma.farmerSupply.findUnique({ where: { id } })).quantity, 7);
+    const list = await (await request('/api/farming-logs?farmId=' + id)).json(); assert.equal(list.data.logs[0].materialsUsed[0].quantity, 3);
+    assert.equal((await request('/api/farming-logs/' + logId, { method: 'DELETE' })).status, 200);
+    assert.equal((await prisma.farmerSupply.findUnique({ where: { id } })).quantity, 10);
+    const secondId = await create();
+    assert.equal((await request('/api/farming-logs?id=' + secondId, { method: 'DELETE' })).status, 200);
+    assert.equal((await prisma.farmerSupply.findUnique({ where: { id } })).quantity, 10);
+    console.log('PASS: create links correct supply; edit synchronizes date, quantity, value and stock; dilution retained; overdraw/backdating/foreign links rejected atomically; both delete routes restore stock.');
+}
+main().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
+    await prisma.farmingLogMaterial.deleteMany({ where: { farmingLog: { farmId: id } } });
+    await prisma.farmerSupplyTransaction.deleteMany({ where: { farmerId: id } });
+    await prisma.farmingLog.deleteMany({ where: { farmId: id } });
+    await prisma.farmerSupply.deleteMany({ where: { farmerId: id } });
+    await prisma.cropSeason.deleteMany({ where: { farmId: id } });
+    await prisma.farm.deleteMany({ where: { farmerId: id } });
+    await prisma.user.deleteMany({ where: { id } });
+    await prisma.$disconnect();
+});

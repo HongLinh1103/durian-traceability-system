@@ -169,7 +169,7 @@ export default function OrdersPage() {
     }, [orders]);
 
     return (
-        <main className="mx-auto min-h-[calc(100vh-64px)] max-w-5xl space-y-6 px-4 py-6 sm:px-6">
+        <main className="mx-auto min-h-[calc(100vh-64px)] w-full max-w-[1650px] space-y-6 px-4 py-6 sm:px-6">
             {/* Top Navigation */}
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -196,7 +196,7 @@ export default function OrdersPage() {
 
             {/* Page Header */}
             <div>
-                <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Đơn mua của tôi</h1>
+                <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">ĐƠN MUA HÀNG CỦA TÔI</h1>
                 <p className="mt-1 text-xs text-slate-500 sm:text-sm">
                     Theo dõi tiến độ giao hàng, đơn giá sản phẩm và lịch sử các đơn đặt hàng vật tư.
                 </p>
@@ -480,7 +480,7 @@ export default function OrdersPage() {
                                             </div>
                                         </div>
 
-                                        {/* 3 Status Badges */}
+                                        {/* Trạng thái đơn và các thông tin giao dịch còn áp dụng */}
                                         <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
                                             {/* Trạng thái đơn hàng */}
                                             <span
@@ -493,24 +493,24 @@ export default function OrdersPage() {
                                             </span>
 
                                             {/* Trạng thái thanh toán */}
-                                            <span
+                                            {order.status !== "CANCELLED" && <span
                                                 className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${paymentStatus.badgeBg}`}
                                             >
                                                 <span
                                                     className={`h-1.5 w-1.5 rounded-full ${paymentStatus.badgeDot}`}
                                                 />
                                                 {paymentStatus.label}
-                                            </span>
+                                            </span>}
 
                                             {/* Trạng thái giao hàng */}
-                                            <span
+                                            {order.status !== "CANCELLED" && <span
                                                 className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${shippingStatus.badgeBg}`}
                                             >
                                                 <span
                                                     className={`h-1.5 w-1.5 rounded-full ${shippingStatus.badgeDot}`}
                                                 />
                                                 {shippingStatus.label}
-                                            </span>
+                                            </span>}
                                         </div>
                                     </div>
                                 </div>

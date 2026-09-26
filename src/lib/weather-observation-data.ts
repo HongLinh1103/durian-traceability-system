@@ -28,9 +28,10 @@ export async function observationData(request: Request, farmerId: string, existi
     const selectedConditions = form.getAll("condition").map(String).filter(value => conditions.includes(value));
     const condition = [...new Set(selectedConditions)].join(",");
     const windLevel = String(form.get("windLevel") || "Gió nhẹ");
-    const windDirection = String(form.get("windDirection") || "Đông Nam") || null;
+    const windDirection = form.get("windDirection") ? String(form.get("windDirection")) : null;
     const soilCondition = String(form.get("soilCondition") || "Ẩm");
-    const rainLevel = String(form.get("rainLevel") || "Mưa vừa");
+    const hasRain = selectedConditions.some(c => ["RAIN", "LIGHT_RAIN", "THUNDERSTORM"].includes(c));
+    const rainLevel = hasRain ? (form.get("rainLevel") ? String(form.get("rainLevel")) : "Mưa vừa") : null;
 
     const farm = await prisma.farm.findFirst({ where: { id: farmId, farmerId, isActive: true }, select: { id: true } });
     if (!farm) throw new Error("Vườn không tồn tại hoặc không thuộc tài khoản này.");
@@ -43,7 +44,7 @@ export async function observationData(request: Request, farmerId: string, existi
     const temperatureMin = num(form.get("temperatureMin"));
     const humidity = num(form.get("humidity"));
     const soilHumidity = num(form.get("soilHumidity"));
-    const rainfallMm = num(form.get("rainfallMm"));
+    const rainfallMm = hasRain ? num(form.get("rainfallMm")) : null;
     const windSpeed = num(form.get("windSpeed"));
 
     if ([temperatureMax, temperatureMin, humidity, soilHumidity, rainfallMm, windSpeed].some(Number.isNaN)) {

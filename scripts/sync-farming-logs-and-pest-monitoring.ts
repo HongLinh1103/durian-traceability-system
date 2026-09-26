@@ -810,16 +810,6 @@ async function main() {
 
         const inspections2026 = [
             {
-                date: "2025-10-18T01:30:00Z",
-                target: "Lá non cơi đọt 2",
-                result: "Có phát hiện",
-                count: 1,
-                density: "Trung bình",
-                actionNeeded: true,
-                actionNote: "Cần phun thuốc phòng trừ rầy xanh",
-                note: "Phát hiện Rầy xanh trên lá non. Trùng khớp nhật ký kiểm tra sáng 18/10/2025.",
-            },
-            {
                 date: "2025-10-21T01:00:00Z",
                 target: "Lá non cơi đọt 2",
                 result: "Không phát hiện",

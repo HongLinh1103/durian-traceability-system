@@ -229,10 +229,7 @@ export async function processingQrRows(ownerId: string) {
       dosage: log.dosage || '',
     })) : defaultLogs;
 
-    // Use prompt's sample lot LH-260926-01 for index 0 if lotCode starts with LH or is demo
-    const lotCode = (index === 0 && (!record.lotCode || record.lotCode.startsWith('LH-') || record.lotCode.includes('demo')))
-      ? (record.lotCode === 'LH-260926-01' ? record.lotCode : 'LH-260926-01')
-      : record.lotCode;
+    const lotCode = record.lotCode;
 
     const snapshot: ProcessingTrace = {
       demo: state.demo,

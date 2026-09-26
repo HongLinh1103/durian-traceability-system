@@ -5,9 +5,7 @@ import { createPortal } from "react-dom";
 import {
     Camera,
     Cloud,
-    CloudDrizzle,
     CloudFog,
-    CloudLightning,
     CloudRain,
     CloudSun,
     Edit3,
@@ -16,6 +14,7 @@ import {
     Sun,
     Trash2,
     X,
+    FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,27 +54,22 @@ const weatherConditions = [
     { v: "PARTLY_CLOUDY", l: "Có mây", Icon: CloudSun },
     { v: "CLOUDY", l: "Nhiều mây", Icon: Cloud },
     { v: "OVERCAST", l: "Âm u", Icon: Cloud },
-    { v: "LIGHT_RAIN", l: "Mưa nhẹ", Icon: CloudDrizzle },
-    { v: "RAIN", l: "Mưa", Icon: CloudRain },
-    { v: "THUNDERSTORM", l: "Mưa dông", Icon: CloudLightning },
+    { v: "RAIN", l: "Có mưa", Icon: CloudRain },
     { v: "FOG", l: "Sương mù", Icon: CloudFog },
 ];
 
+const conditionLabels: Record<string, string> = {
+    SUNNY: "Nắng",
+    PARTLY_CLOUDY: "Có mây",
+    CLOUDY: "Nhiều mây",
+    OVERCAST: "Âm u",
+    LIGHT_RAIN: "Mưa nhẹ",
+    RAIN: "Có mưa",
+    THUNDERSTORM: "Mưa dông",
+    FOG: "Sương mù",
+};
+
 const timeOfDayOptions = ["Cả ngày", "Sáng", "Trưa", "Chiều", "Tối"];
-
-const windLevelOptions = ["Gió nhẹ", "Không gió", "Gió vừa", "Gió mạnh", "Gió rất mạnh"];
-
-const windDirectionOptions = [
-    "Đông Nam",
-    "Đông",
-    "Đông Bắc",
-    "Bắc",
-    "Tây Bắc",
-    "Tây",
-    "Tây Nam",
-    "Nam",
-    "Không xác định",
-];
 
 const soilConditionOptions = [
     "Ẩm",
@@ -91,7 +85,7 @@ const rainLevelOptions = [
     "Mưa nhẹ / Phùn",
     "Mưa to",
     "Mưa rất to",
-    "Không mưa",
+    "Mưa dông",
 ];
 
 const phenomenaList = [
@@ -113,24 +107,25 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
     const [farms, setFarms] = useState<Farm[]>([]);
     const [rows, setRows] = useState<Observation[]>([]);
     const [farmId, setFarmId] = useState(defaultFarmId || "");
-    const [range, setRange] = useState<"today" | "week" | "month">("today");
+    const [range, setRange] = useState<"today" | "week" | "month" | "all">("all");
     const [from, setFrom] = useState("");
     const [to, setTo] = useState("");
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<Observation | null>(null);
     const [busy, setBusy] = useState(false);
+    const [exporting, setExporting] = useState(false);
 
     // Form state
     const [selectedConditions, setSelectedConditions] = useState<string[]>(["SUNNY"]);
     const [selectedPhenomena, setSelectedPhenomena] = useState<string[]>([]);
     const [selectedTimeOfDay, setSelectedTimeOfDay] = useState("Cả ngày");
-    const [selectedWindLevel, setSelectedWindLevel] = useState("Gió nhẹ");
-    const [selectedWindDirection, setSelectedWindDirection] = useState("Đông Nam");
     const [selectedSoilCondition, setSelectedSoilCondition] = useState("Ẩm");
     const [selectedRainLevel, setSelectedRainLevel] = useState("Mưa vừa");
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [existingImages, setExistingImages] = useState<string[]>([]);
     const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+
+    const hasRain = selectedConditions.includes("RAIN");
 
     const cameraInputRef = useRef<HTMLInputElement | null>(null);
     const galleryInputRef = useRef<HTMLInputElement | null>(null);
@@ -161,6 +156,7 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
 
     const dates = useMemo(() => {
         if (from || to) return { from, to };
+        if (range === "all") return {};
         const now = new Date();
         if (range === "today") return { from: dateKey(now), to: dateKey(now) };
         const start = new Date(now);
@@ -172,8 +168,10 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
     const load = useCallback(async () => {
         if (!farmId) return;
         try {
-            const q = new URLSearchParams({ farmId, ...dates });
-            const res = await fetch(`/api/weather-observations?${q}`, { cache: "no-store" });
+            const params = new URLSearchParams({ farmId });
+            if (dates.from) params.set("from", dates.from);
+            if (dates.to) params.set("to", dates.to);
+            const res = await fetch(`/api/weather-observations?${params.toString()}`, { cache: "no-store" });
             if (!res.ok) return;
             const p = (await res.json().catch(() => null)) as { success?: boolean; data?: Observation[] } | null;
             if (p?.success && Array.isArray(p.data)) {
@@ -191,20 +189,31 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
     function showForm(row?: Observation) {
         setEditing(row || null);
         if (row) {
-            setSelectedConditions(row.condition.split(",").filter(Boolean));
+            const rawConds = (row.condition || "").split(",").filter(Boolean);
+            const normalizedConds = rawConds.map(c =>
+                c === "LIGHT_RAIN" || c === "THUNDERSTORM" ? "RAIN" : c
+            );
+            setSelectedConditions(normalizedConds.length ? [...new Set(normalizedConds)] : ["SUNNY"]);
             setSelectedPhenomena(row.phenomena || []);
             setSelectedTimeOfDay(row.timeOfDay || "Cả ngày");
-            setSelectedWindLevel(row.windLevel || "Gió nhẹ");
-            setSelectedWindDirection(row.windDirection || "Đông Nam");
             setSelectedSoilCondition(row.soilCondition || "Ẩm");
-            setSelectedRainLevel(row.rainLevel || "Mưa vừa");
+
+            let defaultRain = row.rainLevel || "Mưa vừa";
+            if (defaultRain === "Không mưa" || !rainLevelOptions.includes(defaultRain)) {
+                if (rawConds.includes("THUNDERSTORM")) {
+                    defaultRain = "Mưa dông";
+                } else if (rawConds.includes("LIGHT_RAIN")) {
+                    defaultRain = "Mưa nhẹ / Phùn";
+                } else {
+                    defaultRain = "Mưa vừa";
+                }
+            }
+            setSelectedRainLevel(defaultRain);
             setExistingImages(row.images || []);
         } else {
             setSelectedConditions(["SUNNY"]);
             setSelectedPhenomena([]);
             setSelectedTimeOfDay("Cả ngày");
-            setSelectedWindLevel("Gió nhẹ");
-            setSelectedWindDirection("Đông Nam");
             setSelectedSoilCondition("Ẩm");
             setSelectedRainLevel("Mưa vừa");
             setExistingImages([]);
@@ -309,7 +318,7 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
     }
 
     return (
-        <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
+        <div className="w-full space-y-5">
             {/* Standard Header đồng bộ với các tab */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -318,18 +327,55 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
                         NHẬT KÝ THỜI TIẾT
                     </h2>
                     <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                        Theo dõi nhiệt độ, độ ẩm, lượng mưa và các hiện tượng thời tiết tại vườn trồng
+                        Theo dõi nhiệt độ, lượng mưa, độ ẩm đất và các hiện tượng thời tiết tại vườn trồng
                     </p>
                 </div>
 
-                <Button
-                    type="button"
-                    onClick={() => showForm()}
-                    className="rounded-2xl bg-brand-600 text-sm font-bold text-white shadow-soft hover:bg-brand-700 shrink-0"
-                >
-                    <Plus className="mr-1.5 h-4 w-4" />
-                    Ghi nhận thời tiết
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        disabled={exporting || rows.length === 0}
+                        onClick={async () => {
+                            setExporting(true);
+                            try {
+                                const { exportWeatherJournalDocx } = await import("@/lib/farmer-docx-export");
+                                const currentFarm = farms.find((f) => f.id === farmId) || rows[0]?.farm;
+                                const currentFarmName = currentFarm?.farmName || "Vườn sầu riêng";
+                                const farmCode = currentFarm?.farmCode || "";
+                                const regionCode = farmCode ? farmCode.replace(/-F\d+$/, "") : "VN - DNOR - 0269";
+                                await exportWeatherJournalDocx({
+                                    farmName: currentFarmName,
+                                    regionCode,
+                                    observations: rows,
+                                    conditionLabels,
+                                });
+                            } catch (err) {
+                                console.error("Export Word error:", err);
+                                toast({
+                                    title: "Lỗi xuất file",
+                                    description: "Không thể xuất file Word. Vui lòng thử lại.",
+                                    variant: "destructive",
+                                });
+                            } finally {
+                                setExporting(false);
+                            }
+                        }}
+                        className="rounded-2xl border-slate-200 bg-white text-xs sm:text-sm font-bold text-slate-700 shadow-xs hover:bg-slate-50 cursor-pointer"
+                    >
+                        <FileText className="mr-1.5 h-4 w-4 text-blue-600" />
+                        {exporting ? "Đang xuất..." : "Xuất file"}
+                    </Button>
+
+                    <Button
+                        type="button"
+                        onClick={() => showForm()}
+                        className="rounded-2xl bg-brand-600 text-sm font-bold text-white shadow-soft hover:bg-brand-700 shrink-0 cursor-pointer"
+                    >
+                        <Plus className="mr-1.5 h-4 w-4" />
+                        Ghi nhận thời tiết
+                    </Button>
+                </div>
             </div>
 
             {/* Filter Section */}
@@ -339,9 +385,10 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
                     <div className="inline-flex rounded-xl bg-slate-100 p-0.5">
                         {(
                             [
-                                ["today", "Hôm nay"],
-                                ["week", "Tuần này"],
+                                ["all", "Tất cả"],
                                 ["month", "Tháng này"],
+                                ["week", "Tuần này"],
+                                ["today", "Hôm nay"],
                             ] as const
                         ).map(([v, l]) => (
                             <button
@@ -372,139 +419,207 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
                 </div>
             </section>
 
-            {/* Weather List */}
-            <section className="space-y-4">
-                {rows.map(row => {
-                    const rowConditions = row.condition
-                        .split(",")
-                        .map(val => weatherConditions.find(x => x.v === val))
-                        .filter((val): val is (typeof weatherConditions)[number] => Boolean(val));
-                    const primaryCondition = rowConditions[0] ?? weatherConditions[0];
-                    const ConditionIcon = primaryCondition.Icon;
-
-                    return (
-                        <article
-                            key={row.id}
-                            className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-brand-300"
-                        >
-                            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                <div className="flex items-start gap-4">
-                                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
-                                        <ConditionIcon className="h-7 w-7" />
-                                    </div>
-                                    <div className="min-w-0 space-y-1.5">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <b className="text-lg text-slate-900">
-                                                {rowConditions.map(val => val.l).join(" · ")}
-                                            </b>
-                                            {row.timeOfDay && (
-                                                <span className="rounded-lg bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                                                    {row.timeOfDay}
-                                                </span>
-                                            )}
-                                            <span className="text-sm font-medium text-slate-500">
-                                                {formatVietnameseDate(row.observedAt)}
-                                            </span>
-                                        </div>
-
-                                        <p className="text-sm text-slate-600">
-                                            <b>{row.farm.farmName}</b>
-                                            {row.temperatureMax != null && row.temperatureMin != null
-                                                ? ` · ${row.temperatureMin}°C - ${row.temperatureMax}°C`
-                                                : row.temperature != null
-                                                  ? ` · ${row.temperature}°C`
-                                                  : ""}
-                                            {row.windLevel ? ` · ${row.windLevel}` : ""}
-                                            {row.windDirection ? ` (${row.windDirection})` : ""}
-                                            {row.windSpeed != null ? ` ${row.windSpeed} km/h` : ""}
+            {/* Weather Table */}
+            <section className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[1200px] table-fixed border-collapse text-left text-sm">
+                        <colgroup>
+                            <col className="w-[115px]" />
+                            <col className="w-[95px]" />
+                            <col className="w-[160px]" />
+                            <col className="w-[145px]" />
+                            <col className="w-[110px]" />
+                            <col className="w-[95px]" />
+                            <col className="w-[130px]" />
+                            <col className="w-[95px]" />
+                            <col className="w-[170px]" />
+                            <col className="w-[85px]" />
+                        </colgroup>
+                        <thead className="border-b border-slate-200 bg-slate-100/90 text-xs font-bold uppercase tracking-wider text-slate-700">
+                            <tr>
+                                <th scope="col" rowSpan={2} className="w-[115px] border-r border-slate-200 px-2.5 py-2.5 text-center align-middle whitespace-nowrap">
+                                    Ngày
+                                </th>
+                                <th scope="col" rowSpan={2} className="w-[95px] border-r border-slate-200 px-2.5 py-2.5 text-center align-middle whitespace-nowrap">
+                                    Thời điểm
+                                </th>
+                                <th scope="col" rowSpan={2} className="w-[160px] border-r border-slate-200 px-2.5 py-2.5 text-center align-middle whitespace-nowrap">
+                                    Tình trạng trời
+                                </th>
+                                <th scope="col" rowSpan={2} className="w-[145px] border-r border-slate-200 px-2.5 py-2.5 text-center align-middle whitespace-nowrap">
+                                    <div>Nhiệt độ (°C)</div>
+                                    <div className="text-[10px] font-normal lowercase text-slate-500 tracking-normal">(thấp nhất - cao nhất)</div>
+                                </th>
+                                <th scope="colgroup" colSpan={2} className="w-[205px] border-r border-b border-slate-200 px-2 py-1.5 text-center whitespace-nowrap bg-slate-200/80 text-slate-700">
+                                    Tình trạng mưa
+                                </th>
+                                <th scope="col" rowSpan={2} className="w-[130px] border-r border-slate-200 px-2.5 py-2.5 text-center align-middle whitespace-nowrap">
+                                    Tình trạng đất
+                                </th>
+                                <th scope="col" rowSpan={2} className="w-[95px] border-r border-slate-200 px-2.5 py-2.5 text-center align-middle whitespace-nowrap">
+                                    Độ ẩm đất
+                                </th>
+                                <th scope="col" rowSpan={2} className="w-[170px] border-r border-slate-200 px-2.5 py-2.5 text-center align-middle whitespace-nowrap">
+                                    Hiện tượng kèm theo
+                                </th>
+                                <th scope="col" rowSpan={2} className="w-[85px] px-2 py-2.5 text-center align-middle whitespace-nowrap">
+                                    Thao tác
+                                </th>
+                            </tr>
+                            <tr className="border-b border-slate-200 bg-slate-100/70 text-[11px] text-slate-600">
+                                <th scope="col" className="w-[110px] border-r border-slate-200 px-2 py-1.5 text-center whitespace-nowrap">
+                                    Mức độ mưa
+                                </th>
+                                <th scope="col" className="w-[95px] border-r border-slate-200 px-2 py-1.5 text-center whitespace-nowrap">
+                                    Lượng mưa
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                            {!rows.length ? (
+                                <tr>
+                                    <td colSpan={10} className="p-12 text-center text-slate-500">
+                                        <Sun className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+                                        <b className="text-base text-slate-700">Chưa có nhật ký thời tiết nào</b>
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            Bấm “Ghi nhận thời tiết” để lưu thông tin nhiệt độ, mưa và độ ẩm đất tại vườn.
                                         </p>
+                                    </td>
+                                </tr>
+                            ) : (
+                                rows.map(row => {
+                                    const rowConditions = (row.condition || "")
+                                        .split(",")
+                                        .filter(Boolean)
+                                        .map(val => conditionLabels[val] || weatherConditions.find(x => x.v === val)?.l || val);
+                                    return (
+                                        <tr key={row.id} className="transition-colors hover:bg-slate-50/80" title={row.note ? `Ghi chú: ${row.note}` : undefined}>
+                                            {/* Ngày */}
+                                            <td className="border-r border-slate-200 px-2.5 py-2.5 text-center tabular-nums whitespace-nowrap font-semibold text-slate-900">
+                                                {formatVietnameseDate(row.observedAt)}
+                                            </td>
 
-                                        <div className="flex flex-wrap gap-2 pt-1 text-xs text-slate-600">
-                                            {row.humidity != null && (
-                                                <span className="rounded-lg bg-sky-50 px-2 py-1 text-sky-700">
-                                                    Độ ẩm KK: {row.humidity}%
+                                            {/* Thời điểm */}
+                                            <td className="border-r border-slate-200 px-2.5 py-2.5 text-center whitespace-nowrap">
+                                                <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                                                    {row.timeOfDay || "Cả ngày"}
                                                 </span>
-                                            )}
-                                            {row.soilCondition && (
-                                                <span className="rounded-lg bg-amber-50 px-2 py-1 text-amber-800">
-                                                    Đất: {row.soilCondition}
-                                                    {row.soilHumidity != null ? ` (${row.soilHumidity}%)` : ""}
-                                                </span>
-                                            )}
-                                            {row.rainLevel && (
-                                                <span className="rounded-lg bg-blue-50 px-2 py-1 text-blue-700">
-                                                    Mưa: {row.rainLevel}
-                                                    {row.rainfallMm != null ? ` (${row.rainfallMm} mm)` : ""}
-                                                </span>
-                                            )}
-                                        </div>
+                                            </td>
 
-                                        {row.phenomena && row.phenomena.length > 0 && (
-                                            <div className="flex flex-wrap gap-1.5 pt-1">
-                                                {row.phenomena.map(ph => (
-                                                    <span
-                                                        key={ph}
-                                                        className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600"
-                                                    >
-                                                        {ph}
+                                            {/* Tình trạng trời */}
+                                            <td className="border-r border-slate-200 px-2.5 py-2.5 text-center whitespace-nowrap font-medium text-slate-800">
+                                                <div
+                                                    className="truncate px-1"
+                                                    title={rowConditions.length > 0 ? rowConditions.join(" · ") : row.condition || ""}
+                                                >
+                                                    {rowConditions.length > 0
+                                                        ? rowConditions.join(" · ")
+                                                        : row.condition || "—"}
+                                                </div>
+                                            </td>
+
+                                            {/* Nhiệt độ (°C) */}
+                                            <td className="border-r border-slate-200 px-2.5 py-2.5 text-center font-semibold tabular-nums text-slate-900 whitespace-nowrap">
+                                                {row.temperatureMin != null && row.temperatureMax != null
+                                                    ? `${row.temperatureMin}°C - ${row.temperatureMax}°C`
+                                                    : row.temperature != null
+                                                      ? `${row.temperature}°C`
+                                                      : "—"}
+                                            </td>
+
+                                            {/* Mức độ mưa */}
+                                            <td className="border-r border-slate-200 px-2 py-2.5 text-center text-xs whitespace-nowrap">
+                                                {row.rainLevel && row.rainLevel !== "Không mưa" ? (
+                                                    <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-medium text-blue-700">
+                                                        {row.rainLevel}
                                                     </span>
-                                                ))}
-                                            </div>
-                                        )}
+                                                ) : (
+                                                    <span className="text-slate-400">—</span>
+                                                )}
+                                            </td>
 
-                                        {row.note && (
-                                            <p className="pt-1 text-sm italic text-slate-700">
-                                                “{row.note}”
-                                            </p>
-                                        )}
+                                            {/* Lượng mưa */}
+                                            <td className="border-r border-slate-200 px-2 py-2.5 text-center tabular-nums text-xs whitespace-nowrap">
+                                                {row.rainfallMm != null && row.rainfallMm > 0 ? (
+                                                    <span className="font-semibold text-blue-900">{row.rainfallMm} mm</span>
+                                                ) : (
+                                                    <span className="text-slate-400">—</span>
+                                                )}
+                                            </td>
 
-                                        {row.images && row.images.length > 0 && (
-                                            <div className="flex flex-wrap gap-2 pt-2">
-                                                {row.images.map((img, index) => (
-                                                    <img
-                                                        key={index}
-                                                        src={img}
-                                                        alt={`Ảnh thời tiết ${index + 1}`}
-                                                        className="h-16 w-16 rounded-xl object-cover border border-slate-200"
-                                                    />
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                            {/* Tình trạng đất */}
+                                            <td className="border-r border-slate-200 px-2.5 py-2.5 text-center text-xs whitespace-nowrap font-medium text-slate-800">
+                                                <div className="truncate px-1" title={row.soilCondition || ""}>
+                                                    {row.soilCondition || "—"}
+                                                </div>
+                                            </td>
 
-                                <div className="flex shrink-0 gap-2 self-end sm:self-start">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-9 px-3 text-slate-700 hover:bg-brand-50 hover:text-brand-700"
-                                        onClick={() => showForm(row)}
-                                    >
-                                        <Edit3 className="mr-1.5 h-4 w-4" />
-                                        Sửa
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-9 px-3 text-red-600 hover:bg-red-50 hover:text-red-700"
-                                        onClick={() => void remove(row)}
-                                    >
-                                        <Trash2 className="mr-1.5 h-4 w-4" />
-                                        Xóa
-                                    </Button>
-                                </div>
-                            </div>
-                        </article>
-                    );
-                })}
+                                            {/* Độ ẩm đất */}
+                                            <td className="border-r border-slate-200 px-2.5 py-2.5 text-center text-xs tabular-nums whitespace-nowrap">
+                                                {row.soilHumidity != null ? (
+                                                    <span className="font-semibold text-emerald-700">{row.soilHumidity}%</span>
+                                                ) : (
+                                                    <span className="text-slate-400">—</span>
+                                                )}
+                                            </td>
 
-                {!rows.length && (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center text-slate-500">
-                        <Sun className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-                        <b className="text-base text-slate-700">Chưa có nhật ký thời tiết nào</b>
-                        <p className="mt-1 text-sm text-slate-500">
-                            Bấm “Ghi nhận thời tiết” để lưu thông tin nhiệt độ, gió, mưa và độ ẩm tại vườn.
-                        </p>
+                                            {/* Hiện tượng kèm theo */}
+                                            <td className="border-r border-slate-200 px-2.5 py-2.5 text-center text-xs">
+                                                {row.phenomena && row.phenomena.length > 0 ? (
+                                                    <div className="flex flex-wrap items-center justify-center gap-1">
+                                                        {row.phenomena.map(ph => (
+                                                            <span
+                                                                key={ph}
+                                                                className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 whitespace-nowrap"
+                                                            >
+                                                                {ph}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-400 font-normal">—</span>
+                                                )}
+                                            </td>
+
+                                            {/* Thao tác (xóa, sửa) */}
+                                            <td className="px-2 py-2.5 text-center whitespace-nowrap">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => showForm(row)}
+                                                        title="Chỉnh sửa"
+                                                        className="group relative flex h-7 w-7 items-center justify-center rounded-lg text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 transition focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                        aria-label="Chỉnh sửa"
+                                                    >
+                                                        <Edit3 className="h-4 w-4" />
+                                                        <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 z-20">
+                                                            Sửa
+                                                        </span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => void remove(row)}
+                                                        title="Xóa"
+                                                        className="group relative flex h-7 w-7 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition focus:outline-none focus:ring-1 focus:ring-red-500"
+                                                        aria-label="Xóa"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                        <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 z-20">
+                                                            Xóa
+                                                        </span>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+                {rows.length > 0 && (
+                    <div className="border-t border-slate-200 bg-slate-50/50 p-3 text-xs font-medium text-slate-500">
+                        Tổng cộng {rows.length} lượt ghi nhận thời tiết
                     </div>
                 )}
             </section>
@@ -516,10 +631,11 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
                     <div className="fixed inset-0 z-[150] flex h-full min-h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-3 sm:p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
                         <form
                             onSubmit={save}
-                            className="my-auto w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl bg-white p-5 sm:p-7 shadow-2xl space-y-6"
+                            className="my-auto flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-100"
+                            onClick={(e) => e.stopPropagation()}
                         >
                             {/* Modal Header */}
-                            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+                            <div className="shrink-0 flex items-start justify-between border-b border-slate-100 px-5 sm:px-7 py-4 sm:py-5 bg-white">
                                 <div>
                                     <span className="inline-block rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-800">
                                         NHẬT KÝ THỜI TIẾT
@@ -538,7 +654,8 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
                                 </button>
                             </div>
 
-                            <div className="space-y-5">
+                            {/* Scrollable Form Body */}
+                            <div className="flex-1 overflow-y-auto px-5 sm:px-7 py-5 space-y-5">
                                 {/* Vườn & Ngày */}
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div>
@@ -605,7 +722,7 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
                                     {selectedConditions.map(val => (
                                         <input key={val} type="hidden" name="condition" value={val} />
                                     ))}
-                                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                                         {weatherConditions.map(({ v, l, Icon }) => {
                                             const isSelected = selectedConditions.includes(v);
                                             return (
@@ -670,90 +787,59 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
                                     </div>
                                 </div>
 
-                                {/* Gió */}
-                                <div className="grid gap-3 sm:grid-cols-3">
-                                    <div>
-                                        <Label htmlFor="weather-windLevel">Mức độ gió</Label>
-                                        <div className="mt-1.5">
-                                            <select
-                                                id="weather-windLevel"
-                                                name="windLevel"
-                                                value={selectedWindLevel}
-                                                onChange={e => setSelectedWindLevel(e.target.value)}
-                                                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                                            >
-                                                {windLevelOptions.map(item => (
-                                                    <option key={item} value={item}>
-                                                        {item}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                {/* Nếu có mưa */}
+                                {hasRain && (
+                                    <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-blue-800">
+                                            Nếu có mưa:
+                                        </p>
+                                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                            <div>
+                                                <Label htmlFor="weather-rainLevel">Mức độ mưa</Label>
+                                                <div className="mt-1.5">
+                                                    <select
+                                                        id="weather-rainLevel"
+                                                        name="rainLevel"
+                                                        value={selectedRainLevel}
+                                                        onChange={e => setSelectedRainLevel(e.target.value)}
+                                                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                                    >
+                                                        {rainLevelOptions.map(r => (
+                                                            <option key={r} value={r}>
+                                                                {r}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <div className="flex items-center justify-between">
+                                                    <Label htmlFor="weather-rainfallMm">Lượng mưa</Label>
+                                                    <span className="text-[11px] text-slate-400">Không bắt buộc</span>
+                                                </div>
+                                                <div className="relative mt-1.5">
+                                                    <Input
+                                                        id="weather-rainfallMm"
+                                                        name="rainfallMm"
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.1"
+                                                        placeholder="VD: 25"
+                                                        defaultValue={editing?.rainfallMm ?? ""}
+                                                        className="h-12 pr-12 bg-white"
+                                                    />
+                                                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                                                        mm
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
+                                )}
 
-                                    <div>
-                                        <Label htmlFor="weather-windDirection">Hướng gió</Label>
-                                        <div className="mt-1.5">
-                                            <select
-                                                id="weather-windDirection"
-                                                name="windDirection"
-                                                value={selectedWindDirection}
-                                                onChange={e => setSelectedWindDirection(e.target.value)}
-                                                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                                            >
-                                                {windDirectionOptions.map(dir => (
-                                                    <option key={dir} value={dir}>
-                                                        {dir}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div className="flex items-center justify-between">
-                                            <Label htmlFor="weather-windSpeed">Tốc độ gió</Label>
-                                            <span className="text-[11px] text-slate-400">Không bắt buộc</span>
-                                        </div>
-                                        <div className="relative mt-1.5">
-                                            <Input
-                                                id="weather-windSpeed"
-                                                name="windSpeed"
-                                                type="number"
-                                                min="0"
-                                                step="0.1"
-                                                placeholder="VD: 15"
-                                                defaultValue={editing?.windSpeed ?? ""}
-                                                className="h-12 pr-14"
-                                            />
-                                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                                                km/h
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Độ ẩm & Đất */}
-                                <div className="grid gap-3 sm:grid-cols-3">
-                                    <div>
-                                        <Label htmlFor="weather-humidity">Độ ẩm không khí</Label>
-                                        <div className="relative mt-1.5">
-                                            <Input
-                                                id="weather-humidity"
-                                                name="humidity"
-                                                type="number"
-                                                min="0"
-                                                max="100"
-                                                placeholder="VD: 75"
-                                                defaultValue={editing?.humidity ?? ""}
-                                                className="h-12 pr-8"
-                                            />
-                                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
-                                                %
-                                            </span>
-                                        </div>
-                                    </div>
-
+                                {/* Tình trạng đất & Độ ẩm đất */}
+                                <div className="grid gap-3 sm:grid-cols-2">
                                     <div>
                                         <Label htmlFor="weather-soilCondition">Tình trạng đất</Label>
                                         <div className="mt-1.5">
@@ -792,55 +878,6 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
                                             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
                                                 %
                                             </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Nếu có mưa */}
-                                <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
-                                    <p className="text-xs font-bold uppercase tracking-wider text-blue-800">
-                                        Nếu có mưa:
-                                    </p>
-                                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                        <div>
-                                            <Label htmlFor="weather-rainLevel">Mức độ mưa</Label>
-                                            <div className="mt-1.5">
-                                                <select
-                                                    id="weather-rainLevel"
-                                                    name="rainLevel"
-                                                    value={selectedRainLevel}
-                                                    onChange={e => setSelectedRainLevel(e.target.value)}
-                                                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                                                >
-                                                    {rainLevelOptions.map(r => (
-                                                        <option key={r} value={r}>
-                                                            {r}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <div className="flex items-center justify-between">
-                                                <Label htmlFor="weather-rainfallMm">Lượng mưa</Label>
-                                                <span className="text-[11px] text-slate-400">Không bắt buộc</span>
-                                            </div>
-                                            <div className="relative mt-1.5">
-                                                <Input
-                                                    id="weather-rainfallMm"
-                                                    name="rainfallMm"
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.1"
-                                                    placeholder="VD: 25"
-                                                    defaultValue={editing?.rainfallMm ?? ""}
-                                                    className="h-12 pr-12 bg-white"
-                                                />
-                                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                                                    mm
-                                                </span>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -986,12 +1023,12 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
                                 </div>
                             </div>
 
-                            {/* Actions */}
-                            <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+                            {/* Actions / Modal Footer */}
+                            <div className="shrink-0 flex items-center justify-end gap-3 border-t border-slate-100 px-5 sm:px-7 py-4 bg-slate-50/70">
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    className="h-12 min-w-24 rounded-2xl"
+                                    className="h-11 min-w-24 rounded-2xl"
                                     onClick={() => setOpen(false)}
                                 >
                                     Hủy
@@ -999,7 +1036,7 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
                                 <Button
                                     type="submit"
                                     disabled={busy || !farms.length}
-                                    className="h-12 min-w-36 rounded-2xl bg-brand-600 px-6 font-bold text-white hover:bg-brand-700 shadow-soft"
+                                    className="h-11 min-w-36 rounded-2xl bg-brand-600 px-6 font-bold text-white hover:bg-brand-700 shadow-soft"
                                 >
                                     {busy ? "Đang lưu..." : "Lưu nhật ký"}
                                 </Button>
@@ -1008,6 +1045,6 @@ export function WeatherJournal({ defaultFarmId }: { defaultFarmId?: string } = {
                     </div>,
                     document.body,
                 )}
-        </main>
+        </div>
     );
 }

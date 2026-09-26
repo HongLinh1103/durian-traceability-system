@@ -288,7 +288,7 @@ export function FarmerStatisticsView({ initialData, initialActiveTab = "PESTICID
     };
 
     return (
-        <div className="mx-auto w-full max-w-6xl space-y-6 px-3 py-6 sm:px-6">
+        <div className="mx-auto w-full max-w-[1800px] space-y-6 px-3 py-5 sm:px-4">
             {/* Top Navigation & Title */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>

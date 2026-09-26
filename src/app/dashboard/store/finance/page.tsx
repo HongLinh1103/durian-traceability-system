@@ -4,8 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { StoreFinanceDashboard } from "@/components/store/store-finance-dashboard";
 
 export const metadata = {
-    title: "Tài chính & Báo cáo bán hàng | TriViet Store",
-    description: "Quản lý doanh thu, chi phí, giá vốn, lợi nhuận và công nợ cửa hàng vật tư nông nghiệp.",
+    title: "TÀI CHÍNH | TriViet Store",
+    description: "Theo dõi thu tiền đơn hàng và ghi nhận chi phí cửa hàng vật tư nông nghiệp.",
 };
 
 export default async function StoreFinancePage() {

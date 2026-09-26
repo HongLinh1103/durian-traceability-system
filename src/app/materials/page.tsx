@@ -26,7 +26,7 @@ export default async function MaterialsPage() {
                         Chợ vật tư nông nghiệp
                     </span>
                     <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-3xl">
-                        Danh mục vật tư nông nghiệp
+                        SHOP VẬT TƯ
                     </h1>
                     <p className="mt-1 text-xs text-slate-500 sm:text-sm">
                         Đặt mua phân bón, thuốc BVTV chính hãng từ các cửa hàng uy tín được kiểm định.
@@ -87,4 +87,3 @@ export default async function MaterialsPage() {
         </main>
     );
 }
-

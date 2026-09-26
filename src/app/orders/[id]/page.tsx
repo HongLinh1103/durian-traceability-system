@@ -129,7 +129,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     }
 
     return (
-        <main className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6">
+        <main className="mx-auto w-full max-w-[1650px] space-y-6 px-4 py-6 sm:px-6">
             {/* Top Navigation */}
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <Link
@@ -248,7 +248,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
 
                         {order.rejectionReason && (
                             <div className="flex flex-col sm:flex-row sm:items-start text-red-600">
-                                <span className="w-40 shrink-0 font-semibold">Lý do từ chối:</span>
+                                <span className="w-40 shrink-0 font-semibold">{order.status === "CANCELLED" ? "Lý do hủy:" : "Lý do từ chối:"}</span>
                                 <span className="font-medium">{order.rejectionReason}</span>
                             </div>
                         )}

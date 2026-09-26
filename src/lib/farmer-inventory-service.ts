@@ -8,6 +8,7 @@ export const DEFAULT_SAMPLE_SUPPLIES = [
         unit: "bao 50kg",
         quantity: 15,
         unitPrice: 650000,
+        batchCode: "LOT-DT16168-2025",
         notes: "Dùng bón thúc giai đoạn nuôi trái và làm đọt",
     },
     {
@@ -17,6 +18,7 @@ export const DEFAULT_SAMPLE_SUPPLIES = [
         unit: "bao 25kg",
         quantity: 20,
         unitPrice: 380000,
+        batchCode: "LOT-HUMIC-2025",
         notes: "Bón phục hồi sau thu hoạch và kích rễ",
     },
     {
@@ -26,6 +28,7 @@ export const DEFAULT_SAMPLE_SUPPLIES = [
         unit: "chai 1L",
         quantity: 12,
         unitPrice: 160000,
+        batchCode: "LOT-CANXIBO-2025",
         notes: "Phun giai đoạn ra hoa, chống rụng trái non",
     },
     {
@@ -37,6 +40,7 @@ export const DEFAULT_SAMPLE_SUPPLIES = [
         unitPrice: 145000,
         phiDays: 7,
         activeIngredients: "Copper Hydroxide 77% w/w",
+        batchCode: "LOT-CHAMP77-2025",
         notes: "Phòng trừ nấm Phytophthora gây xì mủ, thối rễ",
     },
     {
@@ -48,6 +52,7 @@ export const DEFAULT_SAMPLE_SUPPLIES = [
         unitPrice: 220000,
         phiDays: 14,
         activeIngredients: "Difenoconazole 150g/l + Propiconazole 150g/l",
+        batchCode: "LOT-TILTSUP-2025",
         notes: "Trừ đốm lá, thán thư giai đoạn đọt non",
     },
     {
@@ -59,6 +64,7 @@ export const DEFAULT_SAMPLE_SUPPLIES = [
         unitPrice: 38000,
         phiDays: 3,
         activeIngredients: "Spinetoram 60g/L",
+        batchCode: "LOT-RADIANT-2025",
         notes: "Đặc trị bọ trĩ, sâu đục trái sầu riêng",
     },
     {
@@ -68,6 +74,7 @@ export const DEFAULT_SAMPLE_SUPPLIES = [
         unit: "cái",
         quantity: 2,
         unitPrice: 1250000,
+        batchCode: "LOT-OSHIMA-2025",
         notes: "Bình phun thuốc và phân bón lá",
     },
 ];
@@ -76,6 +83,13 @@ export async function ensureFarmerInventoryData(farmerId: string) {
     const existingCount = await prisma.farmerSupply.count({ where: { farmerId } });
     if (existingCount === 0) {
         for (const item of DEFAULT_SAMPLE_SUPPLIES) {
+            const batch = item.batchCode
+                ? await prisma.productBatch.findUnique({
+                    where: { batchCode: item.batchCode },
+                    select: { id: true, storeProductId: true, storeProduct: { select: { storeId: true } } },
+                })
+                : null;
+
             const sp = await prisma.farmerSupply.create({
                 data: {
                     farmerId,
@@ -88,6 +102,9 @@ export async function ensureFarmerInventoryData(farmerId: string) {
                     phiDays: (item as any).phiDays ?? null,
                     activeIngredients: (item as any).activeIngredients ?? null,
                     notes: item.notes,
+                    productBatchId: batch?.id ?? null,
+                    productId: batch?.storeProductId ?? null,
+                    storeId: batch?.storeProduct?.storeId ?? null,
                 },
             });
 

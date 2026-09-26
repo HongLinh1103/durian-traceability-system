@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import {
   Calendar,
-  CheckCircle2,
   Download,
   Factory,
   Globe2,
@@ -50,7 +49,7 @@ export default async function TracePackingPage({ params }: { params: { token: st
   const publication = await publicProcessingTrace(params.token);
   if (!publication) notFound();
 
-  const { sale, seller, region, harvest, demo } = publication.snapshot;
+  const { sale, seller, region, harvest } = publication.snapshot;
 
   return (
     <main className="min-h-screen bg-slate-50/70 pb-16 pt-6 sm:pt-10">
@@ -59,14 +58,28 @@ export default async function TracePackingPage({ params }: { params: { token: st
         <div className="rounded-3xl bg-gradient-to-r from-emerald-800 to-teal-900 p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
           <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-white/5 pointer-events-none" />
           
-          <div className="relative z-10 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="relative z-10 flex flex-col items-center gap-4 text-center">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-xs font-semibold backdrop-blur-sm border border-white/20">
                 <ShieldCheck className="h-4 w-4 text-emerald-300" />
                 HỆ THỐNG TRUY XUẤT NGUỒN GỐC TRÍ VIỆT
               </div>
 
-              <div className="flex items-center gap-2">
+
+            </div>
+
+            <div>
+              <p className="text-xs uppercase tracking-widest text-emerald-200 font-semibold">Mã số lô hàng xuất bán</p>
+              <h1 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl text-white font-mono">
+                {sale.lot}
+              </h1>
+            </div>
+
+            <div className="w-fit rounded-2xl bg-white p-3 shadow-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/api/processing/qr/${params.token}/image`} alt={`QR - ${sale.lot}`} width={200} height={200} className="h-[200px] w-[200px]" />
+            </div>
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <Link
                   href={`/trace/packing/${params.token}/print`}
 
@@ -84,28 +97,6 @@ export default async function TracePackingPage({ params }: { params: { token: st
                   Tải QR
                 </a>
               </div>
-            </div>
-
-            <div>
-              <p className="text-xs uppercase tracking-widest text-emerald-200 font-semibold">Mã số lô hàng xuất bán</p>
-              <h1 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl text-white font-mono">
-                {sale.lot}
-              </h1>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 pt-2 text-sm text-emerald-100">
-              <span className="font-semibold text-white">{sale.variety}</span>
-              <span>·</span>
-              <span>Khối lượng: <strong className="text-white">{formatNumber(sale.weight)} kg</strong></span>
-              <span>·</span>
-              <span>Số lượng: <strong className="text-white">{formatNumber(sale.boxes)} thùng</strong></span>
-            </div>
-
-            {demo && (
-              <div className="inline-flex items-center gap-2 rounded-xl bg-amber-500/20 border border-amber-400/40 px-3.5 py-1.5 text-xs text-amber-200">
-                Dữ liệu minh họa hệ thống GMP — phục vụ kiểm tra và quy trình cấp phát QR.
-              </div>
-            )}
           </div>
         </div>
 
@@ -113,14 +104,9 @@ export default async function TracePackingPage({ params }: { params: { token: st
         <div className="flex items-center justify-between border-b border-slate-200 pb-3">
           <div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">HÀNH TRÌNH TRUY XUẤT</h2>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Sắp xếp theo thứ tự thời gian gần nhất ở trên: Xuất bán → Thu hoạch → Vùng trồng
-            </p>
+
           </div>
-          <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-            3 mốc hành trình
-          </span>
+
         </div>
 
         {/* TIMELINE (Order: 03 Xuất bán ở trên -> 02 Thu hoạch -> 01 Vùng trồng ở dưới) */}

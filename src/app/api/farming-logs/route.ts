@@ -1,3 +1,5 @@
+import { removeLogStock } from "@/lib/farming-log-stock";
+import { prepareStockMovement } from "@/lib/farmer-stock-write";
 import { seasonDateBounds } from "@/lib/crop-season";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -83,6 +85,7 @@ export async function GET(request: Request) {
                 activityType: true,
                 otherActivity: true,
                 chemicalName: true,
+                materialsUsed: true,
                 dosage: true,
                 phiDays: true,
                 pestsDetected: true,
@@ -110,7 +113,7 @@ export async function POST(request: Request) {
         const activityType = String(formData.get("activityType") ?? "") as PrismaActivityTypeLabel;
         const otherActivity = String(formData.get("otherActivity") ?? "").trim();
         const actionDate = String(formData.get("actionDate") ?? "");
-        const chemicalName = String(formData.get("chemicalName") ?? "");
+        let chemicalName = String(formData.get("chemicalName") ?? "");
         const dosage = String(formData.get("dosage") ?? "");
         const phiDays = Number(formData.get("phiDays") ?? 0);
         const pestsDetected = String(formData.get("pestsDetected") ?? "Không phát hiện").trim() || "Không phát hiện";
@@ -127,6 +130,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ ok: false, error: "Ngày thực hiện không hợp lệ." }, { status: 400 });
         }
         const normalizedActivityType = toPrismaActivityType(activityType);
+        const supplyId = String(formData.get("supplyId") ?? "").trim();
+        const supplyQuantity = Number(formData.get("supplyQuantity") ?? 0);
+        if (supplyId) {
+            const selectedSupply = await prisma.farmerSupply.findFirst({ where: { id: supplyId, farmerId: session.user.id } });
+            if (!selectedSupply || !Number.isFinite(supplyQuantity) || supplyQuantity <= 0) return NextResponse.json({ ok: false, error: "Vật tư hoặc số lượng xuất kho không hợp lệ." }, { status: 400 });
+            chemicalName = selectedSupply.name;
+        }
         const requiresChemicalName = ["SPRAY_PESTICIDE", "FERTILIZE", "BASE_FERTILIZING", "FOLIAR_FERTILIZING"].includes(normalizedActivityType);
         const requiresDosage = requiresChemicalName;
 
@@ -186,9 +196,6 @@ export async function POST(request: Request) {
         const plan = planId ? await prisma.farmingPlan.findFirst({ where: { id: planId, farmerId: session.user.id, farmId, status: { not: "COMPLETED" } }, select: { id: true } }) : null;
         if (planId && !plan) return NextResponse.json({ ok: false, error: "Kế hoạch không hợp lệ hoặc đã hoàn thành." }, { status: 400 });
 
-        const supplyId = String(formData.get("supplyId") ?? "").trim();
-        const supplyQuantity = Number(formData.get("supplyQuantity") ?? 0);
-
         const created = await prisma.$transaction(async (tx) => {
             const logStage = toPrismaGrowthStage(stage);
             const log = await tx.farmingLog.create({ data: {
@@ -198,7 +205,7 @@ export async function POST(request: Request) {
                 actionDate: parsedActionDate,
                 activityType: normalizedActivityType,
                 otherActivity: normalizedActivityType === "OTHER" ? otherActivity : null,
-                chemicalName: requiresChemicalName ? chemicalName : null,
+                chemicalName: requiresChemicalName || supplyId ? chemicalName : null,
                 dosage: requiresDosage ? dosage : null,
                 phiDays: requiresDosage ? phiDays : null,
                 pestsDetected,
@@ -214,16 +221,8 @@ export async function POST(request: Request) {
 
             // Tự động trừ kho vật tư nếu có chọn vật tư
             if (supplyId && supplyQuantity > 0) {
-                const supply = await tx.farmerSupply.findFirst({
-                    where: { id: supplyId, farmerId: session.user.id },
-                });
-                if (supply) {
-                    const newQty = Math.max(0, supply.quantity - supplyQuantity);
-                    await tx.farmerSupply.update({
-                        where: { id: supply.id },
-                        data: { quantity: newQty },
-                    });
-
+                const supply = await prepareStockMovement(tx, { farmerId: session.user.id, supplyId, type: "OUT", quantity: supplyQuantity, actionDate: parsedActionDate });
+                {
                     const totalAmount = Number(supply.unitPrice) * supplyQuantity;
                     const txRecord = await tx.farmerSupplyTransaction.create({
                         data: {
@@ -320,22 +319,7 @@ export async function DELETE(request: Request) {
         }
 
         await prisma.$transaction(async (tx) => {
-            for (const st of log.supplyTransactions) {
-                if (st.type === "OUT" && st.quantity > 0) {
-                    await tx.farmerSupply.update({
-                        where: { id: st.supplyId },
-                        data: { quantity: { increment: st.quantity } },
-                    }).catch(() => null);
-                }
-            }
-
-            await tx.farmerSupplyTransaction.deleteMany({
-                where: { farmingLogId: log.id },
-            });
-
-            await tx.farmingLogMaterial.deleteMany({
-                where: { farmingLogId: log.id },
-            });
+            await removeLogStock(tx, log.id);
 
             await tx.pestMonitoringBook.updateMany({
                 where: { discoveryLogId: log.id },
@@ -370,4 +354,3 @@ export async function DELETE(request: Request) {
         );
     }
 }
-

@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, CheckCircle2, ClipboardList, Download, Loader2, Plus, RefreshCw, Search, X } from 'lucide-react';
+import { BarChart3, Receipt, ShoppingCart, TrendingUp, Wallet, ArrowRight, CheckCircle2, ClipboardList, Download, Loader2, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { addPayment, EXPENSE_CATEGORIES, Expense, formatPurchaseLotCode, formatProductionLotCode, GmpRecord, GmpState, inherit, isFailed, latestRecords, REGISTERS, sources, Stage, STAGES, Values } from '@/lib/processing-gmp';
 import { buildRegisterDocx, downloadFile, registerExportPeriod } from '@/lib/processing-gmp-export';
 import { normalizeUnitCode } from '@/lib/puc-phc';
@@ -1032,8 +1032,13 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
     } finally { setExporting(false); }
   }
 
-  return <><form id="processing-finance-export" onSubmit={event => { event.preventDefault(); void exportReport(); }} />{exportError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{exportError}</p>}<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"><Metric label="Giá trị xuất bán (đ)" value={fmt(sumSales)} /><Metric label="Giá trị thu mua (đ)" value={fmt(sumPurchases)} /><Metric label="Tổng chi phí khác (đ)" value={fmt(sumExpenses)} /><Metric label="Phải thu còn lại (đ)" value={fmt(receivable)} /><Metric label="Phải trả còn lại (đ)" value={fmt(payable)} warning /></div><section className="overflow-hidden rounded-2xl border bg-white"><div className="flex flex-wrap items-center justify-between gap-3 border-b p-3"><div className="flex flex-wrap gap-1">{tabs.map((name, i) => <button type="button" key={name} onClick={() => setTab(i)} className={`rounded-xl px-3 py-2 text-sm font-semibold ${tab === i ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'}`}>{name}</button>)}</div></div>
-    {tab < 2 && <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm border-collapse border border-slate-300"><thead className="bg-slate-100/90 text-xs text-slate-700"><tr>{['Ngày', 'Mã số lô hàng', 'Đối tác', 'Giá trị (đ)', 'Đã thanh toán', 'Còn lại', 'Trạng thái', 'Thao tác'].map(h => <th className="border border-slate-300 px-4 py-3 font-semibold text-center" key={h}>{h}</th>)}</tr></thead><tbody>{(tab === 0 ? sales : purchases).map(r => {
+  return <><form id="processing-finance-export" onSubmit={event => { event.preventDefault(); void exportReport(); }} />{exportError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{exportError}</p>}<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"><Metric label="Giá trị xuất bán (đ)" value={fmt(sumSales)} /><Metric label="Giá trị thu mua (đ)" value={fmt(sumPurchases)} /><Metric label="Tổng chi phí khác (đ)" value={fmt(sumExpenses)} /><Metric label="Phải thu còn lại (đ)" value={fmt(receivable)} /><Metric label="Phải trả còn lại (đ)" value={fmt(payable)} warning /></div><nav aria-label="Finance" className="grid grid-cols-2 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:grid-cols-5 sm:gap-2 sm:rounded-3xl sm:p-2">
+      {tabs.map((name, i) => {
+        const Icon = [TrendingUp, ShoppingCart, Receipt, Wallet, BarChart3][i];
+        return <button type="button" key={name} aria-pressed={tab === i} onClick={() => setTab(i)} className={"flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-center text-xs font-bold leading-tight transition sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm " + (tab === i ? "bg-brand-600 text-white shadow-soft" : "text-slate-600 hover:bg-brand-50 hover:text-brand-700")}><Icon aria-hidden="true" className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" /><span>{name}</span></button>;
+      })}
+    </nav><section className="overflow-hidden rounded-2xl border bg-white">
+    {tab < 2 && <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm border-collapse border border-slate-300"><thead className="bg-slate-100/90 text-xs text-slate-700"><tr>{[tab === 0 ? 'Ngày xuất bán' : 'Ngày thu mua', 'Mã số lô hàng', 'Đối tác', 'Giá trị (đ)', 'Đã thanh toán (đ)', 'Còn lại (đ)', 'Ngày thanh toán', 'Trạng thái', 'Thao tác'].map(h => <th className="border border-slate-300 px-4 py-3 font-semibold text-center" key={h}>{h}</th>)}</tr></thead><tbody>{(tab === 0 ? sales : purchases).map(r => {
       const isPaidFull = total(r) <= paid(r);
       const isPartiallyPaid = paid(r) > 0 && !isPaidFull;
       const remaining = Math.max(0, total(r) - paid(r));
@@ -1045,6 +1050,7 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
           <td className="border border-slate-200 px-4 py-3 font-mono">{fmt(total(r))}</td>
           <td className="border border-slate-200 px-4 py-3 font-mono text-emerald-700">{fmt(paid(r))}</td>
           <td className="border border-slate-200 px-4 py-3 font-mono font-bold">{fmt(remaining)}</td>
+          <td className="border border-slate-200 px-4 py-3 text-center whitespace-nowrap">{[...new Set(state.payments.filter(p => p.recordId === r.id && p.direction === (tab === 0 ? 'IN' : 'OUT') && p.amount > 0).map(p => p.date))].sort().map(d => <div key={d}>{formatDateVN(d)}</div>)}{!state.payments.some(p => p.recordId === r.id && p.direction === (tab === 0 ? 'IN' : 'OUT') && p.amount > 0) && '—'}</td>
           <td className="border border-slate-200 px-4 py-3 text-xs text-center align-middle">
             {isPaidFull ? (
               <span className="inline-flex items-center justify-center gap-1 font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
@@ -1235,7 +1241,7 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
           <table className="w-full min-w-[850px] text-left text-sm border-collapse border border-slate-300">
             <thead className="bg-slate-100/90 text-xs text-slate-700">
               <tr>
-                {['Ngày', 'Loại giao dịch', 'Nhóm/ Nghiệp vụ', 'Nội dung', 'Lô hàng liên quan', 'Phương thức', 'Số tiền'].map(h => (
+                {['Ngày', 'Loại giao dịch', 'Nhóm/ Nghiệp vụ', 'Nội dung', 'Lô hàng liên quan', 'Phương thức', 'Số tiền (đ)'].map(h => (
                   <th className="border border-slate-300 px-4 py-3 font-semibold text-center" key={h}>
                     {h}
                   </th>

@@ -61,8 +61,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
-            { label: "Thống kê", description: "Báo cáo chi phí, thuốc BVTV và phân bón", href: "/dashboard/farmer/statistics", icon: CircleDollarSign },
-            { label: "Tạo QR", description: "Tạo mã QR truy xuất nguồn gốc nông sản", href: "/dashboard/farmer/traceability", icon: QrCode },
+            { label: "Tài chính", description: "Thu, chi và biểu đồ thống kê", href: "/dashboard/farmer/statistics", icon: CircleDollarSign },
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Kế hoạch", description: "Lập lịch và theo dõi công việc canh tác", href: "/dashboard/farmer/plans", icon: CalendarDays },
             { label: "Tài liệu", description: "Tra cứu tài liệu kỹ thuật canh tác", href: "/documents", icon: BookOpenCheck },

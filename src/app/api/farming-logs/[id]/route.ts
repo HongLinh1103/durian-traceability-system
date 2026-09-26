@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { updateLogStock, removeLogStock } from "@/lib/farming-log-stock";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
@@ -83,6 +84,7 @@ export async function GET(
             include: {
                 farm: { select: { id: true, farmCode: true, farmName: true, farmerId: true } },
                 cropSeason: { select: { id: true, name: true, year: true, status: true } },
+                materialsUsed: true,
             },
         });
 
@@ -132,6 +134,7 @@ async function handleUpdate(request: Request, id: string) {
             include: {
                 farm: { select: { id: true, farmerId: true } },
                 cropSeason: { select: { id: true, status: true, startedAt: true, expectedEndAt: true, closedAt: true, year: true } },
+                supplyTransactions: { where: { type: "OUT" }, include: { supply: true } },
             },
         });
 
@@ -190,7 +193,7 @@ async function handleUpdate(request: Request, id: string) {
             parsedActionDate = d;
         }
 
-        const finalChemicalName = chemicalName !== undefined ? (chemicalName?.trim() || null) : log.chemicalName;
+        const finalChemicalName = log.supplyTransactions.length ? log.supplyTransactions.map(t => t.supply.name).join(" + ") : chemicalName !== undefined ? (chemicalName?.trim() || null) : log.chemicalName;
         const finalDosage = dosage !== undefined ? (dosage?.trim() || null) : log.dosage;
         const finalPhiDays = phiDays !== undefined && phiDays !== null && phiDays !== ""
             ? Number(phiDays)
@@ -214,14 +217,18 @@ async function handleUpdate(request: Request, id: string) {
             finalGaccCompliant = Boolean(isGACCCompliant);
         }
 
-        const updatedLog = await prisma.farmingLog.update({
+        const updatedLog = await prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT id FROM "FarmingLog" WHERE id = ${id} FOR UPDATE`;
+            if (body.materialQuantities !== undefined && (!Array.isArray(body.materialQuantities) || body.materialQuantities.some((q: any) => !q || typeof q.transactionId !== "string" || typeof q.quantity !== "number"))) throw new Error("Dữ liệu vật tư không hợp lệ");
+            const summary = await updateLogStock(tx, { logId: id, farmerId: log.farm.farmerId, actionDate: parsedActionDate, stage: normalizedStage as any, activityType: normalizedActivity as any, quantities: body.materialQuantities });
+            return tx.farmingLog.update({
             where: { id },
             data: {
                 stage: normalizedStage as any,
                 activityType: normalizedActivity as any,
                 otherActivity: finalOtherActivity,
                 actionDate: parsedActionDate,
-                chemicalName: finalChemicalName,
+                chemicalName: summary?.chemicalName ?? finalChemicalName,
                 dosage: finalDosage,
                 phiDays: finalPhiDays,
                 pestsDetected: finalPestsDetected,
@@ -229,6 +236,7 @@ async function handleUpdate(request: Request, id: string) {
                 images: Array.isArray(images) ? images : undefined,
                 isGACCCompliant: finalGaccCompliant,
             },
+            });
         });
 
         return NextResponse.json({
@@ -282,27 +290,8 @@ export async function DELETE(
         }
 
         await prisma.$transaction(async (tx) => {
-            // Hoàn lại kho vật tư nếu trước đó đã tự động trừ
-            for (const st of log.supplyTransactions) {
-                if (st.type === "OUT" && st.quantity > 0) {
-                    await tx.farmerSupply.update({
-                        where: { id: st.supplyId },
-                        data: { quantity: { increment: st.quantity } },
-                    }).catch(() => null);
-                }
-            }
+            await removeLogStock(tx, log.id);
 
-            // Xóa giao dịch vật tư liên quan
-            await tx.farmerSupplyTransaction.deleteMany({
-                where: { farmingLogId: log.id },
-            });
-
-            // Xóa vật tư nhật ký
-            await tx.farmingLogMaterial.deleteMany({
-                where: { farmingLogId: log.id },
-            });
-
-            // Bỏ liên kết sổ giám sát và biện pháp xử lý dịch hại
             await tx.pestMonitoringBook.updateMany({
                 where: { discoveryLogId: log.id },
                 data: { discoveryLogId: null },

@@ -12,8 +12,8 @@ export default async function StoreOrdersPage() {
     }
 
     return (
-        <main className="mx-auto max-w-5xl px-4 py-7">
-            <h1 className="mb-5 text-3xl font-black">Đơn hàng của cửa hàng</h1>
+        <main className="mx-auto w-full max-w-[1800px] space-y-6 px-3 py-5 sm:px-4">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Đơn hàng của cửa hàng</h1>
             <StoreOrdersManager />
         </main>
     );

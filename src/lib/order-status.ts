@@ -70,8 +70,8 @@ export const ORDER_STATUS_MAP: Record<string, StatusMeta> = {
     CANCELLED: {
         key: "CANCELLED",
         label: "Đã hủy",
-        badgeBg: "bg-slate-100 text-slate-700 border-slate-200",
-        badgeDot: "bg-slate-400",
+        badgeBg: "bg-red-50 text-red-800 border-red-200",
+        badgeDot: "bg-red-500",
         description: "Đơn hàng đã được hủy bỏ.",
     },
     REJECTED: {
@@ -218,10 +218,8 @@ export function formatOrderDateTime(dateStr?: string | Date | null): string {
     if (!dateStr) return "";
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return "";
-    const hours = String(d.getHours()).padStart(2, "0");
-    const minutes = String(d.getMinutes()).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric", hourCycle: "h23" }).formatToParts(d);
+    const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(p => p.type === type)?.value || "";
+    const hours = part("hour"), minutes = part("minute"), day = part("day"), month = part("month"), year = part("year");
     return `${hours}:${minutes} ${day}/${month}/${year}`;
 }

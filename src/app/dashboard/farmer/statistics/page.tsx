@@ -5,6 +5,7 @@ import { FarmerStatisticsOverview } from "@/components/farmer/farmer-statistics-
 import { getFarmerOverviewStatistics } from "@/lib/farmer-statistics-service";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "TÀI CHÍNH | TriViet" };
 
 export default async function Page({
     searchParams = {},
@@ -25,6 +26,7 @@ export default async function Page({
     const initialData = await getFarmerOverviewStatistics(session.user.id, {
         farmId: farmIdParam,
         year: yearParam,
+        cropSeasonId: typeof searchParams.cropSeasonId === "string" ? searchParams.cropSeasonId : "ALL",
     });
 
     return (

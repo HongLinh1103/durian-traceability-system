@@ -21,6 +21,7 @@ import {
     Pencil,
     AlertTriangle,
     MapPin,
+    FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatVietnameseDate } from "@/lib/date-format";
@@ -67,6 +68,8 @@ interface PestMonitoringTabProps {
     isSeasonActive?: boolean;
     farmName?: string;
     farmAddress?: string;
+    regionCode?: string;
+    regionName?: string;
     seasonName?: string;
     seasonYear?: number;
     onReopenSeason?: () => void;
@@ -92,6 +95,9 @@ interface PestBookSummary {
         otherActivity?: string | null;
     } | null;
     monitoringMethods?: string[];
+    controlMethod?: string | null;
+    chemicalName?: string | null;
+    dosage?: string | null;
     targetPart?: string | null;
     startDate: string;
     checkFrequencyDays: number;
@@ -101,6 +107,13 @@ interface PestBookSummary {
         id: string;
         farmName: string;
         farmCode: string;
+        regionCode?: string | null;
+        growingRegion?: string | null;
+        region?: {
+            id: string;
+            code: string;
+            name: string;
+        } | null;
         address?: string | null;
         ward?: string | null;
         district?: string | null;
@@ -217,6 +230,8 @@ export function PestMonitoringTab({
     isSeasonActive = true,
     farmName,
     farmAddress,
+    regionCode,
+    regionName,
     seasonName,
     seasonYear,
     onReopenSeason,
@@ -252,6 +267,9 @@ export function PestMonitoringTab({
     const [createBookForm, setCreateBookForm] = useState({
         pestName: "",
         scientificName: "",
+        controlMethod: "Phun thuốc" as "Phun thuốc" | "Bẫy",
+        chemicalName: "",
+        dosage: "",
         firstDetectedDate: new Date().toISOString().split("T")[0],
         discoveryStage: "FLOWER_INDUCTION",
         discoverySource: "",
@@ -259,7 +277,7 @@ export function PestMonitoringTab({
         useTraps: false,
         trapType: "Bẫy lồng",
         attractant: "",
-        monitoringMethods: ["Kiểm tra bẫy"] as string[],
+        monitoringMethods: ["Phun thuốc"] as string[],
         targetPart: "",
         checkFrequencyDays: "" as number | string,
         notes: "",
@@ -485,7 +503,7 @@ export function PestMonitoringTab({
                 ...prev.traps,
                 {
                     trapCode: "",
-                    trapType: "Bẫy lồng",
+                    trapType: prev.trapType || "Bẫy lồng",
                     locationName: "",
                     notes: "",
                 },
@@ -543,7 +561,7 @@ export function PestMonitoringTab({
             return;
         }
 
-        const isTrap = createBookForm.useTraps;
+        const isTrap = createBookForm.controlMethod === "Bẫy" || createBookForm.useTraps;
         if (isTrap) {
             if (!createBookForm.checkFrequencyDays || Number(createBookForm.checkFrequencyDays) < 1) {
                 alert("Vui lòng nhập Tần suất kiểm tra (ngày / lần).");
@@ -575,7 +593,7 @@ export function PestMonitoringTab({
                     .filter((t) => t.trapCode.trim() && t.locationName.trim())
                     .map((t) => ({
                         trapCode: t.trapCode.trim(),
-                        trapType: createBookForm.trapType,
+                        trapType: (createBookForm.trapType?.trim() || t.trapType || "Bẫy lồng"),
                         attractant: createBookForm.attractant.trim() || null,
                         locationName: t.locationName.trim(),
                         notes: t.notes?.trim() || null,
@@ -590,16 +608,19 @@ export function PestMonitoringTab({
                     cropSeasonId,
                     pestName: createBookForm.pestName.trim(),
                     scientificName: createBookForm.scientificName.trim() || null,
+                    controlMethod: createBookForm.controlMethod,
+                    chemicalName: createBookForm.controlMethod === "Phun thuốc" ? (createBookForm.chemicalName.trim() || null) : null,
+                    dosage: createBookForm.controlMethod === "Phun thuốc" ? (createBookForm.dosage.trim() || null) : null,
                     firstDetectedDate: createBookForm.firstDetectedDate || null,
                     discoveryStage: createBookForm.discoveryStage || null,
                     discoverySource: null,
                     discoveryLogId: createBookForm.discoveryLogId || null,
                     useTraps: isTrap,
-                    monitoringMethods: isTrap ? ["Kiểm tra bẫy"] : ["Quan sát trực tiếp"],
+                    monitoringMethods: isTrap ? ["Bẫy"] : ["Phun thuốc"],
                     targetPart: createBookForm.targetPart.trim() || null,
-                    trapType: isTrap ? createBookForm.trapType : null,
+                    trapType: isTrap ? (createBookForm.trapType?.trim() || "Bẫy lồng") : null,
                     attractant: isTrap ? (createBookForm.attractant.trim() || null) : null,
-                    checkFrequencyDays: Number(createBookForm.checkFrequencyDays),
+                    checkFrequencyDays: Number(createBookForm.checkFrequencyDays) || 7,
                     startDate: createBookForm.firstDetectedDate || new Date().toISOString().split("T")[0],
                     notes: createBookForm.notes.trim() || null,
                     traps: validTraps,
@@ -611,6 +632,9 @@ export function PestMonitoringTab({
                 setCreateBookForm({
                     pestName: "",
                     scientificName: "",
+                    controlMethod: "Phun thuốc",
+                    chemicalName: "",
+                    dosage: "",
                     firstDetectedDate: new Date().toISOString().split("T")[0],
                     discoveryStage: "FLOWER_INDUCTION",
                     discoverySource: "",
@@ -618,9 +642,9 @@ export function PestMonitoringTab({
                     useTraps: false,
                     trapType: "Bẫy lồng",
                     attractant: "",
-                    monitoringMethods: ["Kiểm tra bẫy"],
+                    monitoringMethods: ["Phun thuốc"],
                     targetPart: "",
-                    checkFrequencyDays: "3",
+                    checkFrequencyDays: "7",
                     notes: "",
                     traps: [
                         {
@@ -999,7 +1023,7 @@ export function PestMonitoringTab({
         }
 
         const summary = bookDetail.summary;
-        const hasTraps = bookDetail.traps.length > 0 || (bookDetail.monitoringMethods || []).includes("Kiểm tra bẫy");
+        const hasTraps = bookDetail.controlMethod === "Bẫy" || bookDetail.traps.length > 0 || (bookDetail.monitoringMethods || []).includes("Kiểm tra bẫy") || Boolean(bookDetail.trapType);
 
         // Chuẩn bị các dòng theo dõi chi tiết
         const sortedInspections = [...bookDetail.inspections].sort(
@@ -1076,6 +1100,22 @@ export function PestMonitoringTab({
             (seasonYear ? `${seasonYear - 1}-${seasonYear}` : "2025-2026")
         ).replace(/^Niên vụ\s*/i, "");
 
+        const regCode =
+            bookDetail.farm?.regionCode ||
+            bookDetail.farm?.region?.code ||
+            (bookDetail.farm?.growingRegion ? bookDetail.farm.growingRegion.split(" - ")[0].trim() : null) ||
+            regionCode ||
+            (bookDetail.farm?.farmCode ? bookDetail.farm.farmCode.replace(/-F\d+$/, "") : null) ||
+            "VN - DNOR - 0269";
+
+        const regName =
+            bookDetail.farm?.region?.name ||
+            (bookDetail.farm?.growingRegion && bookDetail.farm.growingRegion.includes(" - ")
+                ? bookDetail.farm.growingRegion.split(" - ").slice(1).join(" - ").trim()
+                : bookDetail.farm?.growingRegion) ||
+            regionName ||
+            "Kim Quy One Member Limited Liability Company";
+
         return (
             <div className="space-y-6">
                 {/* Header Action Bar */}
@@ -1132,22 +1172,42 @@ export function PestMonitoringTab({
                             size="sm"
                             disabled={exporting}
                             onClick={async () => {
-                                if (!bookExportRef.current) return;
                                 setExporting(true);
                                 try {
-                                    const { exportPestBook, pestBookFilename } = await import("@/lib/export-pest-book");
+                                    const { exportPestMonitoringBookDocx } = await import("@/lib/farmer-docx-export");
                                     const exportSeason = formatSeasonName(bookDetail.cropSeason || { name: seasonName || "", year: seasonYear || new Date().getFullYear() });
-                                    await exportPestBook(bookExportRef.current, pestBookFilename(bookDetail.pestName, exportSeason));
-                                } catch {
-                                    window.alert("Không thể xuất sổ Excel. Vui lòng thử lại.");
+                                    await exportPestMonitoringBookDocx({
+                                        farmName: bookDetail.farm?.farmName || farmName,
+                                        farmCode: bookDetail.farm?.farmCode,
+                                        regionCode: regCode,
+                                        regionName: regName,
+                                        farmAddress: farmAddressStr,
+                                        seasonName: exportSeason,
+                                        pestName: bookDetail.pestName,
+                                        scientificName: bookDetail.scientificName,
+                                        firstDetectedDate: bookDetail.firstDetectedDate || bookDetail.startDate,
+                                        startDate: bookDetail.startDate,
+                                        discoveryStage: formatStageLabel(bookDetail.discoveryStage || bookDetail.discoveryLog?.stage || "FRUIT_SETTING"),
+                                        controlMethod: bookDetail.controlMethod || (hasTraps ? "Bẫy" : "Phun thuốc"),
+                                        trapType: bookDetail.trapType || bookDetail.traps?.[0]?.trapType || "Bẫy lồng",
+                                        attractant: bookDetail.attractant || bookDetail.traps?.[0]?.attractant || "Pheromone Methyl Eugenol",
+                                        chemicalName: bookDetail.chemicalName,
+                                        dosage: bookDetail.dosage,
+                                        checkFrequencyDays: bookDetail.checkFrequencyDays || 7,
+                                        traps: bookDetail.traps,
+                                        inspections: sortedInspections,
+                                    });
+                                } catch (err) {
+                                    console.error("Export Word error:", err);
+                                    window.alert("Không thể xuất file Word. Vui lòng thử lại.");
                                 } finally {
                                     setExporting(false);
                                 }
                             }}
-                            className="rounded-2xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50"
+                            className="rounded-2xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer"
                         >
-                            <Printer className="mr-1.5 h-3.5 w-3.5" />
-                            {exporting ? "Đang xuất..." : "Xuất sổ Excel"}
+                            <FileText className="mr-1.5 h-3.5 w-3.5 text-blue-600" />
+                            {exporting ? "Đang xuất..." : "Xuất file"}
                         </Button>
                         {isSeasonActive && (
                             <Button
@@ -1180,27 +1240,33 @@ export function PestMonitoringTab({
 
                     {/* Thông tin chung của sổ */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3.5 gap-x-8 text-sm">
-                        {/* Hàng 1: Vườn & Mã vùng trồng */}
+                        {/* Hàng 1: Vườn & Tên vùng trồng */}
                         <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
                             <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Vườn:</span>
                             <span className="font-semibold text-slate-900">{bookDetail.farm?.farmName || farmName}</span>
                         </div>
                         <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
-                            <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Mã vùng trồng:</span>
-                            <span className="font-semibold text-slate-900">{bookDetail.farm?.farmCode || "Chưa cập nhật"}</span>
+                            <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Tên vùng trồng:</span>
+                            <span className="font-semibold text-slate-900">{regName}</span>
                         </div>
 
-                        {/* Hàng 2: Địa chỉ vườn & Niên vụ */}
+                        {/* Hàng 2: Mã vùng trồng & Niên vụ */}
                         <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
-                            <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Địa chỉ vườn:</span>
-                            <span className="font-semibold text-slate-900 break-words">{farmAddressStr}</span>
+                            <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Mã vùng trồng:</span>
+                            <span className="font-semibold text-slate-900">{regCode}</span>
                         </div>
                         <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
                             <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Niên vụ:</span>
                             <span className="font-semibold text-slate-900">{cleanSeasonName}</span>
                         </div>
 
-                        {/* Hàng 3: Sinh vật theo dõi & Tên khoa học */}
+                        {/* Hàng 3: Địa chỉ vườn */}
+                        <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2 md:col-span-2">
+                            <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Địa chỉ vườn:</span>
+                            <span className="font-semibold text-slate-900 break-words">{farmAddressStr}</span>
+                        </div>
+
+                        {/* Hàng 4: Sinh vật theo dõi & Tên khoa học */}
                         <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
                             <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Sinh vật theo dõi:</span>
                             <span className="font-bold text-brand-700">{bookDetail.pestName}</span>
@@ -1210,7 +1276,7 @@ export function PestMonitoringTab({
                             <span className="font-medium italic text-slate-800">{bookDetail.scientificName || "-"}</span>
                         </div>
 
-                        {/* Hàng 4: Ngày phát hiện đầu tiên & Giai đoạn cây khi phát hiện */}
+                        {/* Hàng 5: Ngày phát hiện đầu tiên & Giai đoạn cây khi phát hiện */}
                         <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
                             <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Ngày phát hiện đầu tiên:</span>
                             <span className="font-semibold text-slate-900">
@@ -1224,38 +1290,68 @@ export function PestMonitoringTab({
                             </span>
                         </div>
 
-                        {/* Hàng 5: Biện pháp xử lý & Tần suất kiểm tra */}
-                        <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
-                            <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">
-                                {hasTraps ? "Phương pháp theo dõi:" : "Biện pháp xử lý:"}
-                            </span>
-                            <span className="font-semibold text-slate-900">
-                                {methodsList.length > 0 ? methodsList.join(", ") : (hasTraps ? "Kiểm tra bẫy" : "Phun thuốc")}
-                            </span>
-                        </div>
-                        <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
-                            <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Tần suất kiểm tra:</span>
-                            <span className="font-bold text-brand-700">{bookDetail.checkFrequencyDays || 7} ngày/lần</span>
-                        </div>
-
-                        {/* Thông tin bổ sung cho sổ dạng bẫy (nếu có) */}
-                        {hasTraps && (
+                        {/* Hàng 6 trở đi: Cấu hình theo loại sổ */}
+                        {hasTraps ? (
                             <>
+                                {/* Hàng 6: Biện pháp xử lý & Tần suất kiểm tra */}
                                 <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
-                                    <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Loại bẫy sử dụng:</span>
-                                    <span className="font-semibold text-slate-900">{bookDetail.trapType || bookDetail.traps[0]?.trapType || "Bẫy lồng"}</span>
+                                    <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Biện pháp xử lý:</span>
+                                    <span className="font-semibold text-slate-900">{bookDetail.controlMethod || "Bẫy"}</span>
                                 </div>
+                                <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
+                                    <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Tần suất kiểm tra:</span>
+                                    <span className="font-bold text-brand-700">{bookDetail.checkFrequencyDays || 7} ngày/lần</span>
+                                </div>
+
+                                {/* Hàng 7: Chất dẫn dụ & Bộ phận theo dõi (nếu có) */}
                                 <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
                                     <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Chất dẫn dụ:</span>
                                     <span className="font-semibold text-slate-900">{bookDetail.attractant || bookDetail.traps[0]?.attractant || "Pheromone"}</span>
                                 </div>
+                                {bookDetail.targetPart && (
+                                    <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
+                                        <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Bộ phận theo dõi:</span>
+                                        <span className="font-semibold text-slate-900">{bookDetail.targetPart}</span>
+                                    </div>
+                                )}
                             </>
-                        )}
-                        {hasTraps && bookDetail.targetPart && (
-                            <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2 md:col-span-2">
-                                <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Bộ phận theo dõi:</span>
-                                <span className="font-semibold text-slate-900">{bookDetail.targetPart}</span>
-                            </div>
+                        ) : (
+                            <>
+                                {/* Hàng 6: Biện pháp xử lý & Tần suất kiểm tra */}
+                                <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
+                                    <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">
+                                        Biện pháp xử lý:
+                                    </span>
+                                    <span className="font-semibold text-slate-900">
+                                        {bookDetail.controlMethod || (methodsList.length > 0 ? methodsList.join(", ") : "Phun thuốc")}
+                                    </span>
+                                </div>
+                                <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
+                                    <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Tần suất kiểm tra:</span>
+                                    <span className="font-bold text-brand-700">{bookDetail.checkFrequencyDays || 7} ngày/lần</span>
+                                </div>
+
+                                {/* Hàng 7: Hoạt chất / chế phẩm & Liều lượng */}
+                                <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
+                                    <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Hoạt chất / chế phẩm:</span>
+                                    <span className="font-semibold text-slate-900">
+                                        {bookDetail.chemicalName || bookDetail.treatments?.[0]?.productUsed || "Chưa cập nhật"}
+                                    </span>
+                                </div>
+                                <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2">
+                                    <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Liều lượng:</span>
+                                    <span className="font-semibold text-slate-900">
+                                        {bookDetail.dosage || bookDetail.treatments?.[0]?.dosage || "Chưa cập nhật"}
+                                    </span>
+                                </div>
+
+                                {bookDetail.targetPart && (
+                                    <div className="flex items-start justify-between sm:justify-start gap-3 border-b border-slate-100 pb-2 md:col-span-2">
+                                        <span className="font-bold text-slate-700 min-w-[185px] sm:min-w-[210px] shrink-0">Bộ phận theo dõi:</span>
+                                        <span className="font-semibold text-slate-900">{bookDetail.targetPart}</span>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
 
@@ -1282,13 +1378,12 @@ export function PestMonitoringTab({
                                 <table className="w-full border-collapse border border-slate-300 text-left text-sm">
                                     <thead className="bg-slate-100/90 text-xs text-slate-700">
                                         <tr>
-                                            <th className="border border-slate-300 px-3.5 py-3 w-14 text-center align-middle font-semibold whitespace-nowrap">STT</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 text-center align-middle font-semibold whitespace-nowrap">Mã bẫy</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 text-center align-middle font-semibold whitespace-nowrap">Loại bẫy</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 text-center align-middle font-semibold whitespace-nowrap">Chất dẫn dụ / Mồi bẫy</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 text-center align-middle font-semibold whitespace-nowrap">Vị trí đặt</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 text-center align-middle font-semibold whitespace-nowrap">Ghi chú</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 text-center align-middle font-semibold whitespace-nowrap w-28">Trạng thái</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-16 min-w-[64px] text-center align-middle font-semibold whitespace-nowrap">STT</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-48 min-w-[180px] text-center align-middle font-semibold whitespace-nowrap">Mã bẫy</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-48 min-w-[180px] text-center align-middle font-semibold whitespace-nowrap">Loại bẫy</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-48 min-w-[180px] text-center align-middle font-semibold whitespace-nowrap">Chất dẫn dụ / Mồi bẫy</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-48 min-w-[180px] text-center align-middle font-semibold whitespace-nowrap">Vị trí đặt</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-72 min-w-[280px] text-center align-middle font-semibold whitespace-nowrap">Ghi chú</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1299,32 +1394,24 @@ export function PestMonitoringTab({
 
                                             return (
                                                 <tr key={trap.id} className="hover:bg-slate-50/70 transition">
-                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-center text-xs font-bold text-slate-500">{idx + 1}</td>
-                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-brand-700 text-xs text-center">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-center text-xs font-bold text-slate-500 whitespace-nowrap">{idx + 1}</td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-brand-700 text-xs text-center whitespace-nowrap">
                                                         {trap.trapCode}
                                                     </td>
-                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-800">
-                                                        {trap.trapType}
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-800 text-center whitespace-nowrap">
+                                                        {trap.trapType || bookDetail.trapType || "Bẫy lồng"}
                                                     </td>
-                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-700">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-700 text-center whitespace-nowrap">
                                                         {trap.attractant || bookDetail.attractant || "-"}
                                                     </td>
-                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-xs text-slate-700">{locStr}</td>
-                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-500">{trap.notes || "-"}</td>
-                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-center">
-                                                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${trap.status === "ACTIVE"
-                                                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                                            : "bg-slate-100 text-slate-600"
-                                                            }`}>
-                                                            {trap.status === "ACTIVE" ? "Đang dùng" : "Đã thu hồi"}
-                                                        </span>
-                                                    </td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-xs text-slate-700 text-center whitespace-nowrap">{locStr}</td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-500 text-center whitespace-nowrap">{trap.notes || "-"}</td>
                                                 </tr>
                                             );
                                         })}
                                         {bookDetail.traps.length === 0 && (
                                             <tr>
-                                                <td colSpan={7} className="border border-slate-200 py-10 text-center text-slate-400 text-xs">
+                                                <td colSpan={6} className="border border-slate-200 py-10 text-center text-slate-400 text-xs">
                                                     Chưa có bẫy nào được đăng ký trong sổ này. Bấm &quot;Thêm bẫy&quot; để khai báo.
                                                 </td>
                                             </tr>
@@ -1360,15 +1447,15 @@ export function PestMonitoringTab({
                                 <table className="w-full border-collapse border border-slate-300 text-left text-sm">
                                     <thead className="bg-slate-100/90 text-xs text-slate-700">
                                         <tr>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Ngày điều tra</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Bẫy</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Vị trí</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">
+                                            <th className="border border-slate-300 px-3.5 py-3 w-48 min-w-[180px] font-semibold text-center align-middle whitespace-nowrap">Ngày điều tra</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-48 min-w-[180px] font-semibold text-center align-middle whitespace-nowrap">Bẫy</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-48 min-w-[180px] font-semibold text-center align-middle whitespace-nowrap">Vị trí</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-48 min-w-[180px] font-semibold text-center align-middle whitespace-nowrap">
                                                 Kết quả thu được
                                             </th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Người điều tra</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Ghi chú / Tình trạng mồi</th>
-                                            <th className="border border-slate-300 w-[80px] px-2 py-3 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-48 min-w-[180px] font-semibold text-center align-middle whitespace-nowrap">Người điều tra</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-72 min-w-[280px] font-semibold text-center align-middle whitespace-nowrap">Ghi chú / Đánh giá</th>
+                                            <th className="border border-slate-300 w-[80px] min-w-[80px] px-2 py-3 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1382,21 +1469,21 @@ export function PestMonitoringTab({
                                                 <td className="border border-slate-200 px-3.5 py-2.5 font-mono font-bold text-brand-700 text-xs whitespace-nowrap text-center">
                                                     {row.trapCode}
                                                 </td>
-                                                <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-xs text-slate-700 whitespace-nowrap">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-xs text-slate-700 text-center whitespace-nowrap">
                                                     {row.location}
                                                 </td>
-                                                <td className="border border-slate-200 px-3.5 py-2.5 text-center font-bold">
-                                                    <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs ${row.pestsCount === 0
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-center font-bold whitespace-nowrap">
+                                                    <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs whitespace-nowrap ${row.pestsCount === 0
                                                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                                         : "bg-red-50 text-red-700 border border-red-200"
                                                         }`}>
                                                         {row.pestsCount} cá thể
                                                     </span>
                                                 </td>
-                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-800 whitespace-nowrap">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-800 whitespace-nowrap text-center">
                                                     {row.inspectorName}
                                                 </td>
-                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-600">
+                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-600 text-center whitespace-nowrap">
                                                     {row.notes}
                                                 </td>
                                                 <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 text-center">
@@ -1437,11 +1524,11 @@ export function PestMonitoringTab({
                                 <table className="w-full border-collapse border border-slate-300 text-left text-sm">
                                     <thead className="bg-slate-100/90 text-xs text-slate-700">
                                         <tr>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Ngày điều tra</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Kết quả điều tra</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Người điều tra</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Ghi chú / Đánh giá</th>
-                                            <th className="border border-slate-300 w-[80px] px-2 py-3 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-56 min-w-[200px] font-semibold text-center align-middle whitespace-nowrap">Ngày điều tra</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-56 min-w-[200px] font-semibold text-center align-middle whitespace-nowrap">Kết quả điều tra</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-56 min-w-[200px] font-semibold text-center align-middle whitespace-nowrap">Người điều tra</th>
+                                            <th className="border border-slate-300 px-3.5 py-3 w-80 min-w-[320px] font-semibold text-center align-middle whitespace-nowrap">Ghi chú / Đánh giá</th>
+                                            <th className="border border-slate-300 w-[80px] min-w-[80px] px-2 py-3 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1453,13 +1540,13 @@ export function PestMonitoringTab({
                                                     <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-900 whitespace-nowrap text-center">
                                                         {formatVietnameseDate(ins.inspectionDate)}
                                                     </td>
-                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-800 whitespace-pre-wrap break-words">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-800 whitespace-nowrap text-center">
                                                         {resultStr}
                                                     </td>
-                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-800 whitespace-nowrap">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-800 whitespace-nowrap text-center">
                                                         {ins.inspectorName}
                                                     </td>
-                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-600">
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-600 text-center whitespace-nowrap">
                                                         {ins.notes || ins.items?.[0]?.notes || "-"}
                                                     </td>
                                                     <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 text-center">
@@ -1501,99 +1588,6 @@ export function PestMonitoringTab({
                         </div>
                     </div>
 
-                    {/* MỤC 3: CÁC BIỆN PHÁP XỬ LÝ ĐÃ THỰC HIỆN */}
-                    <div className="space-y-3 pt-2">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                <ShieldAlert className="h-5 w-5 text-purple-600 shrink-0" />
-                                <span>CÁC BIỆN PHÁP XỬ LÝ THỰC HIỆN</span>
-                            </h3>
-                            <Button
-                                type="button"
-                                size="sm"
-                                onClick={() => setShowAddTreatmentModal(true)}
-                                className="h-8 shrink-0 whitespace-nowrap rounded-xl bg-purple-600 px-3 text-xs font-bold text-white hover:bg-purple-700 shadow-soft"
-                            >
-                                <Plus className="mr-1 h-3.5 w-3.5 shrink-0" />
-                                <span>Ghi nhận xử lý</span>
-                            </Button>
-                        </div>
-
-                        <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse border border-slate-300 text-left text-sm">
-                                    <thead className="bg-slate-100/90 text-xs text-slate-700">
-                                        <tr>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Ngày xử lý</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Biện pháp</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Thuốc / Chế phẩm</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Liều lượng</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Thời gian cách ly (PHI)</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle whitespace-nowrap">Khu vực / Diện tích</th>
-                                            <th className="border border-slate-300 px-3.5 py-3 font-semibold align-middle">Kết quả / Ghi chú</th>
-                                            <th className="border border-slate-300 w-[80px] px-2 py-3 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {bookDetail.treatments.map((tr) => (
-                                            <tr key={tr.id} className="hover:bg-slate-50/70 transition">
-                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-900 whitespace-nowrap text-center">
-                                                    {formatVietnameseDate(tr.treatmentDate)}
-                                                </td>
-                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-bold text-purple-700 whitespace-nowrap">
-                                                    {tr.treatmentType}
-                                                </td>
-                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-900 whitespace-nowrap">
-                                                    {tr.productUsed || "Không dùng hóa chất"}
-                                                </td>
-                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-700 whitespace-nowrap">
-                                                    {tr.dosage || "-"}
-                                                </td>
-                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-center font-bold text-amber-700 whitespace-nowrap">
-                                                    {tr.phiDays !== undefined && tr.phiDays !== null ? `${tr.phiDays} ngày` : "-"}
-                                                </td>
-                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-700 whitespace-nowrap">
-                                                    {tr.areaTreated || "Toàn vườn"}
-                                                </td>
-                                                <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-600">
-                                                    {tr.resultNotes || tr.notes || "-"}
-                                                </td>
-                                                <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 text-center">
-                                                    <div className="flex items-center justify-center gap-1.5">
-                                                        <button
-                                                            type="button"
-                                                            disabled={!isSeasonActive}
-                                                            onClick={() => handleOpenEditTreatment(tr)}
-                                                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-purple-200 bg-purple-50/60 text-purple-700 hover:bg-purple-100 hover:text-purple-800 disabled:opacity-40 transition cursor-pointer"
-                                                            title={isSeasonActive ? "Sửa" : "Vụ mùa đã đóng"}
-                                                        >
-                                                            <Pencil className="h-3.5 w-3.5" />
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            disabled={!isSeasonActive}
-                                                            onClick={() => handleOpenDeleteTreatment(tr)}
-                                                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-rose-200 bg-rose-50/60 text-rose-600 hover:bg-rose-100 hover:text-rose-700 disabled:opacity-40 transition cursor-pointer"
-                                                            title={isSeasonActive ? "Xóa" : "Vụ mùa đã đóng"}
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {bookDetail.treatments.length === 0 && (
-                                            <tr>
-                                                <td colSpan={8} className="border border-slate-200 py-6 text-center text-xs text-slate-400">
-                                                    Chưa có can thiệp xử lý nào. Mật độ sinh vật gây hại vẫn đang trong ngưỡng an toàn.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 {/* MODAL: THÊM BẪY MỚI TRONG DETAIL */}
@@ -2509,7 +2503,7 @@ export function PestMonitoringTab({
                     {filteredBooks.map((book) => {
                         const lastIns = book.latestInspection;
                         const lastTrt = book.latestTreatment;
-                        const isTrapBased = book.trapsCount > 0 || (book.monitoringMethods || []).includes("Kiểm tra bẫy");
+                        const isTrapBased = book.controlMethod === "Bẫy" || book.trapsCount > 0 || (book.monitoringMethods || []).includes("Kiểm tra bẫy") || Boolean(book.trapType);
 
                         return (
                             <div
@@ -2558,14 +2552,30 @@ export function PestMonitoringTab({
                                                 </span>
                                             </div>
                                         )}
-                                        {!isTrapBased && book.targetPart ? (
-                                            <div className="pt-1 border-t border-slate-200/60 text-slate-600">
-                                                <span className="text-slate-400">Bộ phận theo dõi: </span>
-                                                <span className="font-semibold text-slate-800">
-                                                    {book.targetPart}
-                                                </span>
-                                            </div>
-                                        ) : null}
+                                        {!isTrapBased && (
+                                            <>
+                                                {book.chemicalName && (
+                                                    <div className="flex items-center justify-between text-slate-600">
+                                                        <span className="text-slate-400">Thuốc/Chế phẩm:</span>
+                                                        <span className="font-semibold text-slate-800 truncate max-w-[170px]" title={book.chemicalName}>{book.chemicalName}</span>
+                                                    </div>
+                                                )}
+                                                {book.dosage && (
+                                                    <div className="flex items-center justify-between text-slate-600">
+                                                        <span className="text-slate-400">Liều lượng:</span>
+                                                        <span className="font-medium text-slate-800 truncate max-w-[170px]" title={book.dosage}>{book.dosage}</span>
+                                                    </div>
+                                                )}
+                                                {book.targetPart && (
+                                                    <div className="pt-1 border-t border-slate-200/60 text-slate-600">
+                                                        <span className="text-slate-400">Bộ phận theo dõi: </span>
+                                                        <span className="font-semibold text-slate-800">
+                                                            {book.targetPart}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
                                     </div>
 
                                     {/* Lần điều tra & Biện pháp gần nhất */}
@@ -2754,23 +2764,121 @@ export function PestMonitoringTab({
                                         <label className="block text-xs font-bold text-slate-600 mb-1">Ghi chú ban đầu</label>
                                         <textarea rows={3} value={createBookForm.notes} onChange={e => setCreateBookForm({ ...createBookForm, notes: e.target.value })} className="w-full rounded-2xl border border-slate-200 p-3 text-sm" />
                                     </div>
-                                    <label className="flex items-center gap-2 border-t border-slate-100 pt-4 text-sm font-bold text-slate-700">
-                                        <input type="checkbox" checked={createBookForm.useTraps} onChange={e => setCreateBookForm({ ...createBookForm, useTraps: e.target.checked })} />
-                                        Sử dụng bẫy để theo dõi
-                                    </label>
-                                    {createBookForm.useTraps && <div className="space-y-4">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {/* Biện pháp xử lý: Phun thuốc hoặc Bẫy */}
+                                    <div className="border-t border-slate-100 pt-3">
+                                        <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                                            Biện pháp xử lý <span className="text-rose-500">*</span>
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setCreateBookForm({
+                                                    ...createBookForm,
+                                                    controlMethod: "Phun thuốc",
+                                                    useTraps: false,
+                                                    monitoringMethods: ["Phun thuốc"]
+                                                })}
+                                                className={`flex items-center justify-center gap-2 rounded-2xl border px-3.5 py-2.5 text-sm font-bold transition cursor-pointer ${
+                                                    createBookForm.controlMethod === "Phun thuốc"
+                                                        ? "border-emerald-500 bg-emerald-50 text-emerald-800 shadow-xs"
+                                                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                                }`}
+                                            >
+                                                <span>Phun thuốc</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setCreateBookForm({
+                                                    ...createBookForm,
+                                                    controlMethod: "Bẫy",
+                                                    useTraps: true,
+                                                    monitoringMethods: ["Bẫy"]
+                                                })}
+                                                className={`flex items-center justify-center gap-2 rounded-2xl border px-3.5 py-2.5 text-sm font-bold transition cursor-pointer ${
+                                                    createBookForm.controlMethod === "Bẫy"
+                                                        ? "border-amber-500 bg-amber-50 text-amber-800 shadow-xs"
+                                                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                                }`}
+                                            >
+                                                <span>Bẫy</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Nếu chọn Phun thuốc: mục tên hoạt chất/chế phẩm và mục liều lượng */}
+                                    {createBookForm.controlMethod === "Phun thuốc" && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-2xl bg-emerald-50/40 p-3.5 border border-emerald-100 animate-in fade-in duration-200">
                                             <div>
-                                                <label className="block text-xs font-bold text-slate-600 mb-1">Loại bẫy *</label>
-                                                <select required value={createBookForm.trapType} onChange={e => setCreateBookForm({ ...createBookForm, trapType: e.target.value })} className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm">
-                                                    {["Bẫy lồng", "Bẫy dính", "Bẫy đèn", "Bẫy chai"].map(type => <option key={type}>{type}</option>)}
-                                                </select>
+                                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                    Tên hoạt chất / chế phẩm
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Ví dụ: Radiant 60SC, Abamectin..."
+                                                    value={createBookForm.chemicalName}
+                                                    onChange={(e) => setCreateBookForm({ ...createBookForm, chemicalName: e.target.value })}
+                                                    className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm focus:border-brand-500 focus:outline-none"
+                                                />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-bold text-slate-600 mb-1">Chất dẫn dụ / Mồi bẫy</label>
-                                                <input value={createBookForm.attractant} onChange={e => setCreateBookForm({ ...createBookForm, attractant: e.target.value })} className="h-10 w-full rounded-2xl border border-slate-200 px-3 text-sm" />
+                                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                    Liều lượng
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Ví dụ: 15 ml/bình 16 lít..."
+                                                    value={createBookForm.dosage}
+                                                    onChange={(e) => setCreateBookForm({ ...createBookForm, dosage: e.target.value })}
+                                                    className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm focus:border-brand-500 focus:outline-none"
+                                                />
                                             </div>
                                         </div>
+                                    )}
+
+                                    {/* Nếu chọn Bẫy: mục loại bẫy & chất dẫn dụ */}
+                                    {createBookForm.controlMethod === "Bẫy" && (
+                                        <div className="space-y-4 animate-in fade-in duration-200">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                        Loại bẫy
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        list="trap-type-suggestions"
+                                                        placeholder="Ví dụ: Bẫy lồng, bẫy dính..."
+                                                        value={createBookForm.trapType}
+                                                        onChange={(e) => {
+                                                            const newType = e.target.value;
+                                                            setCreateBookForm((prev) => ({
+                                                                ...prev,
+                                                                trapType: newType,
+                                                                traps: prev.traps.map((t) => ({ ...t, trapType: newType })),
+                                                            }));
+                                                        }}
+                                                        className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm focus:border-brand-500 focus:outline-none"
+                                                    />
+                                                    <datalist id="trap-type-suggestions">
+                                                        <option value="Bẫy lồng" />
+                                                        <option value="Bẫy dính" />
+                                                        <option value="Bẫy đèn" />
+                                                        <option value="Bẫy chai" />
+                                                        <option value="Bẫy pheromone" />
+                                                    </datalist>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                        Chất dẫn dụ
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Ví dụ: Pheromone Methyl Eugenol, protein thủy phân..."
+                                                        value={createBookForm.attractant}
+                                                        onChange={(e) => setCreateBookForm({ ...createBookForm, attractant: e.target.value })}
+                                                        className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm focus:border-brand-500 focus:outline-none"
+                                                    />
+                                                </div>
+                                            </div>
                                             {/* Bảng danh sách bẫy theo dõi (STT, Mã bẫy, Vị trí, Ghi chú) */}
                                             <div className="space-y-2 pt-1">
                                                 <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
@@ -2794,9 +2902,9 @@ export function PestMonitoringTab({
                                                             <thead className="bg-slate-100/90 font-semibold text-slate-700">
                                                                 <tr>
                                                                     <th className="border border-slate-300 px-3 py-2.5 text-center w-12">STT</th>
-                                                                    <th className="border border-slate-300 px-3 py-2.5 w-36">Mã bẫy *</th>
-                                                                    <th className="border border-slate-300 px-3 py-2.5 w-2/5 min-w-[200px]">Vị trí *</th>
-                                                                    <th className="border border-slate-300 px-3 py-2.5 min-w-[180px]">Ghi chú</th>
+                                                                    <th className="border border-slate-300 px-3 py-2.5 text-center w-36">Mã bẫy *</th>
+                                                                    <th className="border border-slate-300 px-3 py-2.5 text-center w-2/5 min-w-[200px]">Vị trí *</th>
+                                                                    <th className="border border-slate-300 px-3 py-2.5 text-center min-w-[180px]">Ghi chú</th>
                                                                     <th className="border border-slate-300 px-3 py-2.5 text-center w-14">Xóa</th>
                                                                 </tr>
                                                             </thead>
@@ -2867,7 +2975,8 @@ export function PestMonitoringTab({
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

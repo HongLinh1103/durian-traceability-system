@@ -24,6 +24,14 @@ export default async function FarmerJournalPage({
             farmName: true,
             farmCode: true,
             address: true,
+            growingRegion: true,
+            region: {
+                select: {
+                    id: true,
+                    code: true,
+                    name: true,
+                },
+            },
             cropSeasons: {
                 orderBy: [{ year: "desc" }, { sequence: "desc" }],
                 select: {
@@ -74,6 +82,14 @@ export default async function FarmerJournalPage({
                 farmName: true,
                 farmCode: true,
                 address: true,
+                growingRegion: true,
+                region: {
+                    select: {
+                        id: true,
+                        code: true,
+                        name: true,
+                    },
+                },
                 cropSeasons: {
                     select: {
                         id: true,
@@ -87,18 +103,35 @@ export default async function FarmerJournalPage({
                 },
             },
         });
-        farms = [newFarm];
+        farms = [newFarm as any];
     }
 
-    const formattedFarms = farms.map((f) => ({
-        ...f,
-        cropSeasons: f.cropSeasons.map((s) => ({
-            ...s,
-            name: formatSeasonName(s),
-            startedAt: s.startedAt ? s.startedAt.toISOString() : null,
-            closedAt: s.closedAt ? s.closedAt.toISOString() : null,
-        })),
-    }));
+    const formattedFarms = farms.map((f: any) => {
+        const regionCode =
+            f.region?.code ||
+            (f.growingRegion ? f.growingRegion.split(" - ")[0].trim() : null) ||
+            (f.farmCode ? f.farmCode.replace(/-F\d+$/, "") : null) ||
+            "VN - DNOR - 0269";
+
+        const regionName =
+            f.region?.name ||
+            (f.growingRegion && f.growingRegion.includes(" - ")
+                ? f.growingRegion.split(" - ").slice(1).join(" - ").trim()
+                : f.growingRegion) ||
+            null;
+
+        return {
+            ...f,
+            regionCode,
+            regionName,
+            cropSeasons: f.cropSeasons.map((s: any) => ({
+                ...s,
+                name: formatSeasonName(s),
+                startedAt: s.startedAt ? s.startedAt.toISOString() : null,
+                closedAt: s.closedAt ? s.closedAt.toISOString() : null,
+            })),
+        };
+    });
 
 
     return (

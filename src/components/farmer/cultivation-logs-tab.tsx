@@ -14,6 +14,7 @@ import {
     AlertCircle,
     Pencil,
     Trash2,
+    FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -139,6 +140,7 @@ export interface FarmingLogItem {
     activityType: string;
     otherActivity?: string | null;
     chemicalName?: string | null;
+    materialsUsed?: Array<{ id: string; transactionId: string | null; supplyName: string; quantity: number; unit: string }>;
     dosage?: string | null;
     phiDays?: number | null;
     pestsDetected?: string | null;
@@ -182,6 +184,8 @@ export function CultivationLogsTab({
     const [editingLog, setEditingLog] = useState<FarmingLogItem | null>(null);
     const [deletingLog, setDeletingLog] = useState<FarmingLogItem | null>(null);
     const [submittingAction, setSubmittingAction] = useState(false);
+    const [exporting, setExporting] = useState(false);
+    const [materialQuantities, setMaterialQuantities] = useState<Record<string, number>>({});
 
     const [editForm, setEditForm] = useState({
         date: "",
@@ -199,6 +203,7 @@ export function CultivationLogsTab({
     });
 
     const handleOpenEdit = (log: FarmingLogItem) => {
+        setMaterialQuantities(Object.fromEntries((log.materialsUsed || []).filter(m => m.transactionId).map(m => [m.transactionId!, m.quantity])));
         const d = new Date(log.actionDate);
         const dateStr = !isNaN(d.getTime())
             ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
@@ -275,6 +280,7 @@ export function CultivationLogsTab({
                     notes: editForm.notes,
                     isGACCCompliant: editForm.isGACCCompliant,
                     images: editForm.images,
+                    materialQuantities: Object.entries(materialQuantities).map(([transactionId, quantity]) => ({ transactionId, quantity })),
                 }),
             });
 
@@ -454,33 +460,70 @@ export function CultivationLogsTab({
                     </p>
                 </div>
 
-                {!isSeasonActive ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                        <div className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 border border-slate-200 shrink-0">
-                            <span>🔒 Vụ mùa đã đóng (Chế độ chỉ xem)</span>
-                        </div>
-                        {onReopenSeason && (
-                            <Button
-                                type="button"
-                                onClick={onReopenSeason}
-                                className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-xs sm:text-sm font-bold text-emerald-800 shadow-xs hover:bg-emerald-100 shrink-0"
-                            >
-                                <Unlock className="mr-1.5 h-4 w-4 text-emerald-600" />
-                                Mở khóa vụ mùa
-                            </Button>
-                        )}
-                    </div>
-                ) : (
+                <div className="flex items-center gap-2 shrink-0">
                     <Button
-                        asChild
-                        className="rounded-2xl bg-brand-600 text-sm font-bold text-white shadow-soft hover:bg-brand-700 shrink-0"
+                        type="button"
+                        variant="outline"
+                        disabled={exporting || logs.length === 0}
+                        onClick={async () => {
+                            setExporting(true);
+                            try {
+                                const { exportCultivationLogsDocx } = await import("@/lib/farmer-docx-export");
+                                const farmCode = logs[0]?.farm?.farmCode || "";
+                                const regionCode = farmCode ? farmCode.replace(/-F\d+$/, "") : "VN - DNOR - 0269";
+                                await exportCultivationLogsDocx({
+                                    farmName: farmName || logs[0]?.farm?.farmName || "Vườn sầu riêng",
+                                    regionCode,
+                                    seasonName: seasonName || logs[0]?.cropSeason?.name || "2025-2026",
+                                    logs: filteredLogs.length > 0 ? filteredLogs : logs,
+                                    activityLabels,
+                                    stageLabels,
+                                });
+                            } catch (err) {
+                                console.error("Export Word error:", err);
+                                toast({
+                                    title: "Lỗi xuất file",
+                                    description: "Không thể xuất file Word. Vui lòng thử lại.",
+                                    variant: "destructive",
+                                });
+                            } finally {
+                                setExporting(false);
+                            }
+                        }}
+                        className="rounded-2xl border-slate-200 bg-white text-xs sm:text-sm font-bold text-slate-700 shadow-xs hover:bg-slate-50 cursor-pointer"
                     >
-                        <Link href={newLogUrl}>
-                            <Plus className="mr-1.5 h-4 w-4" />
-                            Ghi nhật ký
-                        </Link>
+                        <FileText className="mr-1.5 h-4 w-4 text-blue-600" />
+                        {exporting ? "Đang xuất..." : "Xuất file"}
                     </Button>
-                )}
+
+                    {!isSeasonActive ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 border border-slate-200 shrink-0">
+                                <span>🔒 Vụ mùa đã đóng (Chế độ chỉ xem)</span>
+                            </div>
+                            {onReopenSeason && (
+                                <Button
+                                    type="button"
+                                    onClick={onReopenSeason}
+                                    className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-xs sm:text-sm font-bold text-emerald-800 shadow-xs hover:bg-emerald-100 shrink-0 cursor-pointer"
+                                >
+                                    <Unlock className="mr-1.5 h-4 w-4 text-emerald-600" />
+                                    Mở khóa vụ mùa
+                                </Button>
+                            )}
+                        </div>
+                    ) : (
+                        <Button
+                            asChild
+                            className="rounded-2xl bg-brand-600 text-sm font-bold text-white shadow-soft hover:bg-brand-700 shrink-0"
+                        >
+                            <Link href={newLogUrl}>
+                                <Plus className="mr-1.5 h-4 w-4" />
+                                Ghi nhật ký
+                            </Link>
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Thống kê tóm tắt nhanh vụ mùa */}
@@ -677,6 +720,7 @@ export function CultivationLogsTab({
                                                     <dt className="text-slate-400">Vật tư sử dụng</dt>
                                                     <dd className="mt-0.5 font-semibold text-slate-900">
                                                         {log.chemicalName}
+                                                        {log.materialsUsed?.map(m => <span key={m.id} className="mt-1 block text-xs font-normal text-slate-500">Xuất kho: {m.quantity.toLocaleString("vi-VN")} {m.unit} · {m.supplyName}</span>)}
                                                     </dd>
                                                 </div>
                                             )}
@@ -802,6 +846,7 @@ export function CultivationLogsTab({
                                                 </td>
                                                 <td className="border border-slate-200 break-words px-2.5 py-2.5 font-semibold text-slate-900 leading-snug">
                                                     {log.chemicalName || "—"}
+                                                    {log.materialsUsed?.map(m => <span key={m.id} className="mt-1 block text-xs text-slate-500">Xuất kho: {m.quantity.toLocaleString("vi-VN")} {m.unit} · {m.supplyName}</span>)}
                                                 </td>
                                                 <td className="border border-slate-200 break-words px-2.5 py-2.5 font-medium text-slate-700 leading-snug">
                                                     {log.dosage || "—"}
@@ -1004,6 +1049,7 @@ export function CultivationLogsTab({
                                         <Input
                                             placeholder="Ví dụ: NPK 20-20-15, Anvil 5SC..."
                                             value={editForm.chemicalName}
+                                            readOnly={!!editingLog.materialsUsed?.length}
                                             onChange={(e) => setEditForm((prev) => ({ ...prev, chemicalName: e.target.value }))}
                                             className="h-10 rounded-xl"
                                         />
@@ -1022,6 +1068,14 @@ export function CultivationLogsTab({
                                 </div>
 
                                 {/* Thời gian cách ly PHI & Sinh vật gây hại */}
+                                {!!editingLog.materialsUsed?.length && <div className="space-y-3 rounded-xl border border-slate-200 p-3">
+                                    <p className="text-sm font-semibold">Vật tư liên kết kho</p>
+                                    {editingLog.materialsUsed.filter(m => m.transactionId).map(m => <label key={m.id} className="block text-xs font-medium">
+                                        {m.supplyName} — Số lượng xuất ({m.unit})
+                                        <Input type="number" min="0.000001" step="any" required value={materialQuantities[m.transactionId!] ?? m.quantity} onChange={e => setMaterialQuantities(previous => ({ ...previous, [m.transactionId!]: Number(e.target.value) }))} className="mt-1" />
+                                    </label>)}
+                                    <p className="text-xs text-slate-500">Ngày và số lượng xuất kho cập nhật cùng nhật ký. Liều lượng pha/bón được ghi riêng.</p>
+                                </div>}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-700 mb-1">

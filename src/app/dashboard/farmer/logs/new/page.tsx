@@ -754,7 +754,6 @@ export default function NewFarmingLogPage() {
                                     onChange={(value) => form.setValue("actionTime", value, { shouldDirty: true, shouldValidate: true })}
                                 />
                                 <p className="mt-1 text-xs text-red-600">{form.formState.errors.actionTime?.message}</p>
-                                <p className="mt-1 text-xs text-slate-500">Mặc định là thời gian hiện tại của thiết bị (định dạng 24 giờ).</p>
                             </div>
                         </div>
 

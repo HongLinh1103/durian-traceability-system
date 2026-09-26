@@ -594,6 +594,7 @@ model User {
   email                   String?       @unique
   password                String
   fullName                String?
+  identityNumber          String?
   avatar                  String?
   birthDate               DateTime?
   gender                  String?
@@ -1307,12 +1308,24 @@ model HarvestRecord {
   farmingLog               FarmingLog?
   cropSeason               CropSeason?            @relation(fields: [cropSeasonId], references: [id], onDelete: SetNull)
   harvestLot               HarvestLot?
+  receipts                 FarmerHarvestReceipt[]
 
   @@index([farmerId, status, createdAt])
   @@index([buyerUserId, status, createdAt])
   @@index([farmId, expectedHarvestDate])
   @@index([cropSeasonId])
   @@map("harvest_records")
+}
+
+model FarmerHarvestReceipt {
+  id          String @id
+  harvestId   String
+  amount      Decimal @db.Decimal(14, 2)
+  receivedAt  DateTime
+  createdAt   DateTime @default(now())
+  harvest     HarvestRecord @relation(fields: [harvestId], references: [id], onDelete: Restrict)
+  @@index([harvestId])
+  @@map("farmer_harvest_receipts")
 }
 
 model HarvestVarietyItem {
@@ -1640,6 +1653,9 @@ model PestMonitoringBook {
   cropSeasonId       String
   pestName           String
   scientificName     String?
+  controlMethod      String?
+  chemicalName       String?
+  dosage             String?
   trapType           String?
   attractant         String?
   firstDetectedDate  DateTime?

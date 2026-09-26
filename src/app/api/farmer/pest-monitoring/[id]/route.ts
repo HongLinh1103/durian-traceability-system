@@ -14,6 +14,9 @@ const updateBookSchema = z.object({
     discoverySource: z.string().trim().max(200).optional().nullable(),
     discoveryLogId: z.string().optional().nullable(),
     monitoringMethods: z.array(z.string()).optional(),
+    controlMethod: z.string().trim().max(100).optional().nullable(),
+    chemicalName: z.string().trim().max(200).optional().nullable(),
+    dosage: z.string().trim().max(200).optional().nullable(),
     targetPart: z.string().trim().max(200).optional().nullable(),
     trapType: z.string().trim().max(100).optional().nullable(),
     attractant: z.string().trim().max(200).optional().nullable(),
@@ -68,7 +71,25 @@ export async function GET(
                 farmerId,
             },
             include: {
-                farm: { select: { id: true, farmName: true, farmCode: true, address: true, ward: true, district: true, province: true } },
+                farm: {
+                    select: {
+                        id: true,
+                        farmName: true,
+                        farmCode: true,
+                        growingRegion: true,
+                        address: true,
+                        ward: true,
+                        district: true,
+                        province: true,
+                        region: {
+                            select: {
+                                id: true,
+                                code: true,
+                                name: true,
+                            },
+                        },
+                    },
+                },
                 cropSeason: { select: { id: true, name: true, year: true, status: true } },
                 discoveryLog: {
                     select: {
@@ -142,10 +163,22 @@ export async function GET(
             treatmentsCount: book.treatments.length,
         };
 
+        const regionCode =
+            book.farm?.region?.code ||
+            (book.farm?.growingRegion ? book.farm.growingRegion.split(" - ")[0].trim() : null) ||
+            (book.farm?.farmCode ? book.farm.farmCode.replace(/-F\d+$/, "") : null) ||
+            "VN - DNOR - 0269";
+
         return NextResponse.json({
             success: true,
             data: {
                 ...book,
+                farm: book.farm
+                    ? {
+                        ...book.farm,
+                        regionCode,
+                    }
+                    : null,
                 firstDetectedDate: book.firstDetectedDate ? book.firstDetectedDate.toISOString() : null,
                 startDate: book.startDate.toISOString(),
                 createdAt: book.createdAt.toISOString(),
