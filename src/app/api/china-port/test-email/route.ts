@@ -4,12 +4,14 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { sendChinaPortEventEmail } from "@/lib/email-service";
 import type { ChinaPortNotificationPayload } from "@/lib/china-port-notification-templates";
+import { chinaPortNotificationSubject, generateChinaPortNotificationHtml } from "@/lib/china-port-notification-templates";
 
 export const runtime = "nodejs";
 
 const schema = z.object({
     emails: z.array(z.string().trim().email().max(254)).min(1).max(10),
     event: z.enum(["NEW_RECORD", "STATUS_CHANGED", "DATA_CHANGED"]),
+    preview: z.boolean().default(false),
 });
 
 export async function POST(request: Request) {
@@ -37,6 +39,14 @@ export async function POST(request: Request) {
         changes: [{ label: "Hiệu lực đến", before: "31/12/2028", after: "31/12/2029" }],
     };
     try {
+        if (parsed.data.preview) {
+            return NextResponse.json({
+                success: true,
+                subject: `[TEST] ${chinaPortNotificationSubject(payload)}`,
+                recipients: [...new Set(parsed.data.emails)],
+                html: generateChinaPortNotificationHtml(payload, process.env.NEXTAUTH_URL || "https://trivietdurian.com"),
+            }, { headers: { "Cache-Control": "no-store" } });
+        }
         const result = await sendChinaPortEventEmail(payload, [...new Set(parsed.data.emails)], { test: true });
         if (!result.success || result.simulated) {
             return NextResponse.json({ message: result.error || "Email chưa được gửi thật." }, { status: 502 });

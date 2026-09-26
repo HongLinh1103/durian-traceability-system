@@ -155,6 +155,7 @@ export function ChinaPortView({ canConfigureNotifications = false, adminEmail = 
     const [savingSettings, setSavingSettings] = useState(false);
     const [emailServiceReady, setEmailServiceReady] = useState<boolean | null>(null);
     const [testEvent, setTestEvent] = useState<NotificationEvent>("NEW_RECORD");
+    const [emailPreview, setEmailPreview] = useState<{ subject: string; recipients: string[]; html: string } | null>(null);
     const [sendingTestEmail, setSendingTestEmail] = useState(false);
     const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string } | null>(null);
     const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
@@ -193,7 +194,7 @@ export function ChinaPortView({ canConfigureNotifications = false, adminEmail = 
         setNotificationOpen(true);
     }
 
-    async function sendTestEmail() {
+    async function sendTestEmail(preview = false) {
         if (sendingTestEmail) return;
         const emails = [...new Set(notificationSettings.emails.map((value) => value.trim()).filter(Boolean))];
         if (!emails.length || emails.length > 10 || emails.some((value) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))) {
@@ -206,9 +207,13 @@ export function ChinaPortView({ canConfigureNotifications = false, adminEmail = 
             const response = await fetch("/api/china-port/test-email", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ emails, event: testEvent }),
+                body: JSON.stringify({ emails, event: testEvent, preview }),
             });
             const result = await response.json();
+            if (preview && response.ok && result.success) {
+                setEmailPreview(result);
+                return;
+            }
             setTestEmailResult({ success: response.ok && result.success === true, message: result.message || "Không thể gửi email thử." });
         } catch {
             setTestEmailResult({ success: false, message: "Không thể kết nối để gửi email thử. Kiểm tra kết nối và thử lại." });
@@ -1024,7 +1029,7 @@ export function ChinaPortView({ canConfigureNotifications = false, adminEmail = 
                 </div>
             </section>
 
-            {canConfigureNotifications && notificationOpen && (
+            {canConfigureNotifications && notificationOpen && !emailPreview && (
                 <div
                     className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
                     onMouseDown={(event) => event.target === event.currentTarget && setNotificationOpen(false)}
@@ -1085,7 +1090,8 @@ export function ChinaPortView({ canConfigureNotifications = false, adminEmail = 
                                                 <option value="STATUS_CHANGED">Trạng thái đăng ký thay đổi</option>
                                                 <option value="DATA_CHANGED">Thông tin đăng ký thay đổi</option>
                                             </select>
-                                            <Button type="button" disabled={sendingTestEmail} onClick={sendTestEmail} className="rounded-xl bg-emerald-700 text-white hover:bg-emerald-800"><Mail className="h-4 w-4" />{sendingTestEmail ? "Đang gửi…" : "Gửi email thử"}</Button>
+                                            <Button type="button" disabled={sendingTestEmail} onClick={() => void sendTestEmail(true)} variant="outline" className="rounded-xl">Xem trước email</Button>
+                                            <Button type="button" disabled={sendingTestEmail} onClick={() => void sendTestEmail()} className="rounded-xl bg-emerald-700 text-white hover:bg-emerald-800"><Mail className="h-4 w-4" />{sendingTestEmail ? "Đang xử lý…" : "Gửi email thử"}</Button>
                                         </div>
                                         {testEmailResult && <p role={testEmailResult.success ? "status" : "alert"} className={`mt-3 rounded-lg p-3 text-sm ${testEmailResult.success ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}`}>{testEmailResult.message}</p>}
                                     </div>
@@ -1101,6 +1107,18 @@ export function ChinaPortView({ canConfigureNotifications = false, adminEmail = 
                     </section>
                 </div>
             )}
+
+            {emailPreview && <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/60 p-4">
+                <section role="dialog" aria-modal="true" aria-labelledby="email-preview-title" className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+                    <header className="shrink-0 space-y-2 border-b p-4">
+                        <div className="flex items-center justify-between gap-4"><h2 id="email-preview-title" className="text-lg font-bold">XEM TRƯỚC EMAIL</h2><Button type="button" variant="outline" onClick={() => setEmailPreview(null)}>Đóng</Button></div>
+                        <p className="text-sm"><strong>Đến:</strong> {emailPreview.recipients.join(", ")}</p>
+                        <p className="text-sm"><strong>Tiêu đề:</strong> {emailPreview.subject}</p>
+                        <p className="text-xs text-slate-500">Dữ liệu kiểm thử. Đây là bản xem trước, chưa gửi email. Cách hiển thị có thể khác đôi chút giữa các ứng dụng email.</p>
+                    </header>
+                    <iframe title="Nội dung email thông báo China Port" sandbox="" srcDoc={emailPreview.html} className="min-h-0 w-full flex-1 border-0" style={{ height: "65vh", flexBasis: "65vh" }} />
+                </section>
+            </div>}
 
             {/* DETAIL MODAL (CHI TIẾT HỒ SƠ) */}
             {selectedDetailRow && (
