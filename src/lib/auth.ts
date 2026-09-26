@@ -27,6 +27,9 @@ export const authOptions: NextAuthOptions = {
                 });
 
                 if (!result.ok) {
+                    if (result.code === "AUTH_UNAVAILABLE") {
+                        throw new Error("AUTH_UNAVAILABLE");
+                    }
                     return null;
                 }
 

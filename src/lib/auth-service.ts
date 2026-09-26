@@ -26,8 +26,8 @@ export type LoginSuccess = {
 
 export type LoginFailure = {
     ok: false;
-    status: 401 | 403;
-    code: "INVALID_CREDENTIALS" | "ACCOUNT_PENDING" | "ACCOUNT_LOCKED";
+    status: 401 | 403 | 503;
+    code: "INVALID_CREDENTIALS" | "ACCOUNT_PENDING" | "ACCOUNT_LOCKED" | "AUTH_UNAVAILABLE";
     message: string;
 };
 
@@ -105,6 +105,12 @@ export async function authenticateLoginAttempt({ identifier, password, rememberM
         }
     } catch (err) {
         console.error("Database lookup error during auth:", err);
+        return {
+            ok: false,
+            status: 503,
+            code: "AUTH_UNAVAILABLE",
+            message: "Hệ thống đăng nhập tạm thời không khả dụng. Vui lòng thử lại sau.",
+        };
     }
 
     return {

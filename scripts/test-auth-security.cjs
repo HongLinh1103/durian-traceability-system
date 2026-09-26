@@ -43,7 +43,7 @@ const activeUser = { id: 'test-user', role: 'ADMIN', phone: 'test-phone', email:
 
 for (const [name, options, code] of [
     ['missing account', {}, 'INVALID_CREDENTIALS'],
-    ['database unavailable', { databaseError: true }, 'INVALID_CREDENTIALS'],
+    ['database unavailable', { databaseError: true }, 'AUTH_UNAVAILABLE'],
     ['wrong or previously changed password', { user: activeUser }, 'INVALID_CREDENTIALS'],
     ['locked account', { user: { ...activeUser, isLocked: true }, passwordMatches: true }, 'ACCOUNT_LOCKED'],
     ['deleted account', { user: { ...activeUser, deletedAt: new Date() }, passwordMatches: true }, 'ACCOUNT_LOCKED'],
@@ -54,6 +54,7 @@ for (const [name, options, code] of [
         const result = await login(request);
         assert.equal(result.ok, false);
         assert.equal(result.code, code);
+        assert.equal(result.status, code === 'AUTH_UNAVAILABLE' ? 503 : code === 'INVALID_CREDENTIALS' ? 401 : 403);
         assert.equal(writes.length, 0);
     });
 }

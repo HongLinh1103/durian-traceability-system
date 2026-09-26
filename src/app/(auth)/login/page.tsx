@@ -83,6 +83,9 @@ function LoginForm() {
             });
 
             if (!signInResult?.ok || signInResult.error) {
+                if (signInResult?.error === "AUTH_UNAVAILABLE" || signInResult?.error === "Configuration") {
+                    throw new Error("Hệ thống đăng nhập tạm thời không khả dụng. Vui lòng thử lại sau.");
+                }
                 throw new Error("Sai số điện thoại/email, mật khẩu hoặc tài khoản chưa được phê duyệt.");
             }
 
