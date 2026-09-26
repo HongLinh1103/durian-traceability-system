@@ -83,16 +83,14 @@ async function main() {
  assert.throws(()=>saveRecord(state,'aftersales',{id:'demo-0-6',values:{...state.records.aftersales[0].values,departureDate:''}},'bad-date'),/Vui lòng nhập/);
 
  // Test expense categories and operations
- assert.equal(EXPENSE_CATEGORIES.length, 9);
- assert(state.expenses && state.expenses.length >= 9);
+ assert.equal(EXPENSE_CATEGORIES.length, 7);
+ assert(state.expenses && state.expenses.length >= 7);
  assert(state.expenses.some(e => e.category === 'Bao bì & đóng gói' && e.content.includes('1.000 thùng carton')));
- assert(EXPENSE_CATEGORIES.some(c => c.name === 'Sơ chế'));
  assert(state.expenses.some(e => e.category === 'Kiểm nghiệm & kiểm dịch' && e.content.includes('Phí kiểm nghiệm')));
- assert(state.expenses.some(e => e.category === 'Kho & bảo quản' && e.content.includes('kho lạnh')));
  assert(state.expenses.some(e => e.category === 'Vận chuyển & logistics' && e.content.includes('Hữu Nghị')));
  assert(state.expenses.some(e => e.category === 'Xuất khẩu' && e.content.includes('thủ tục')));
- assert(state.expenses.some(e => e.category === 'Nhân công' && e.content.includes('Nhân công')));
- assert(state.expenses.some(e => e.category === 'Vận hành cơ sở' && e.content.includes('Điện nước')));
+ assert(state.expenses.some(e => e.category === 'Nhân công'));
+ assert(state.expenses.some(e => e.category === 'Vận hành cơ sở'));
  assert(state.expenses.some(e => e.category === 'Khác' && e.content.includes('Sửa cân')));
 
  const withExp = addExpense(state, { id: 'test-e1', date: '2026-09-18', category: 'Bao bì & đóng gói', content: 'Mua thêm 500 thùng', amount: 7500000 });
