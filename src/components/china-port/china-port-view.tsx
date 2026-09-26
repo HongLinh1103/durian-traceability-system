@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
     Search,
     RotateCcw,
@@ -188,6 +189,33 @@ export function ChinaPortView({ canConfigureNotifications = false, adminEmail = 
           .finally(() => { if (active) setLoadingSettings(false); });
         return () => { active = false; };
     }, [canConfigureNotifications]);
+
+    // Lock body scroll and handle Escape key when modals are open
+    useEffect(() => {
+        const isModalOpen = Boolean(notificationOpen || emailPreview || selectedDetailRow);
+        if (!isModalOpen || typeof document === "undefined") return;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                if (emailPreview) {
+                    setEmailPreview(null);
+                } else if (notificationOpen) {
+                    setNotificationOpen(false);
+                } else if (selectedDetailRow) {
+                    setSelectedDetailRow(null);
+                }
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [notificationOpen, emailPreview, selectedDetailRow]);
 
     function openNotificationSettings() {
         setTestEmailResult(null);
@@ -1029,12 +1057,12 @@ export function ChinaPortView({ canConfigureNotifications = false, adminEmail = 
                 </div>
             </section>
 
-            {canConfigureNotifications && notificationOpen && !emailPreview && (
+            {canConfigureNotifications && notificationOpen && !emailPreview && typeof document !== "undefined" && createPortal(
                 <div
-                    className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
+                    className="fixed inset-0 z-[200] flex h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm"
                     onMouseDown={(event) => event.target === event.currentTarget && setNotificationOpen(false)}
                 >
-                    <section role="dialog" aria-modal="true" aria-label="Cấu hình thông báo China Port" className="flex max-h-[90vh] w-full max-w-[760px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+                    <section role="dialog" aria-modal="true" aria-label="Cấu hình thông báo China Port" className="my-auto flex max-h-[90vh] w-full max-w-[760px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl animate-in fade-in-50 zoom-in-95 duration-150">
                         <header className="flex shrink-0 items-start justify-between border-b px-6 py-5">
                             <div>
                                 <h2 className="flex items-center gap-2 text-xl font-black text-slate-900"><Settings className="h-5 w-5 text-emerald-700" />Cấu hình thông báo China Port</h2>
@@ -1105,25 +1133,35 @@ export function ChinaPortView({ canConfigureNotifications = false, adminEmail = 
                             <Button type="button" disabled={loadingSettings || savingSettings} onClick={saveNotificationSettings} className="rounded-xl bg-emerald-700 text-white hover:bg-emerald-800"><Check className="h-4 w-4" />{savingSettings ? "Đang lưu…" : loadingSettings ? "Đang tải…" : "Lưu cấu hình"}</Button>
                         </footer>
                     </section>
-                </div>
+                </div>,
+                document.body
             )}
 
-            {emailPreview && <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/60 p-4">
-                <section role="dialog" aria-modal="true" aria-labelledby="email-preview-title" className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-                    <header className="shrink-0 space-y-2 border-b p-4">
-                        <div className="flex items-center justify-between gap-4"><h2 id="email-preview-title" className="text-lg font-bold">XEM TRƯỚC EMAIL</h2><Button type="button" variant="outline" onClick={() => setEmailPreview(null)}>Đóng</Button></div>
-                        <p className="text-sm"><strong>Đến:</strong> {emailPreview.recipients.join(", ")}</p>
-                        <p className="text-sm"><strong>Tiêu đề:</strong> {emailPreview.subject}</p>
-                        <p className="text-xs text-slate-500">Dữ liệu kiểm thử. Đây là bản xem trước, chưa gửi email. Cách hiển thị có thể khác đôi chút giữa các ứng dụng email.</p>
-                    </header>
-                    <iframe title="Nội dung email thông báo China Port" sandbox="" srcDoc={emailPreview.html} className="min-h-0 w-full flex-1 border-0" style={{ height: "65vh", flexBasis: "65vh" }} />
-                </section>
-            </div>}
+            {emailPreview && typeof document !== "undefined" && createPortal(
+                <div
+                    className="fixed inset-0 z-[210] flex h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm"
+                    onMouseDown={(event) => event.target === event.currentTarget && setEmailPreview(null)}
+                >
+                    <section role="dialog" aria-modal="true" aria-labelledby="email-preview-title" className="my-auto flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl animate-in fade-in-50 zoom-in-95 duration-150">
+                        <header className="shrink-0 space-y-2 border-b p-4">
+                            <div className="flex items-center justify-between gap-4"><h2 id="email-preview-title" className="text-lg font-bold">XEM TRƯỚC EMAIL</h2><Button type="button" variant="outline" onClick={() => setEmailPreview(null)}>Đóng</Button></div>
+                            <p className="text-sm"><strong>Đến:</strong> {emailPreview.recipients.join(", ")}</p>
+                            <p className="text-sm"><strong>Tiêu đề:</strong> {emailPreview.subject}</p>
+                            <p className="text-xs text-slate-500">Dữ liệu kiểm thử. Đây là bản xem trước, chưa gửi email. Cách hiển thị có thể khác đôi chút giữa các ứng dụng email.</p>
+                        </header>
+                        <iframe title="Nội dung email thông báo China Port" sandbox="" srcDoc={emailPreview.html} className="min-h-0 w-full flex-1 border-0" style={{ height: "65vh", flexBasis: "65vh" }} />
+                    </section>
+                </div>,
+                document.body
+            )}
 
             {/* DETAIL MODAL (CHI TIẾT HỒ SƠ) */}
-            {selectedDetailRow && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs overflow-y-auto">
-                    <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden my-8 border border-slate-200">
+            {selectedDetailRow && typeof document !== "undefined" && createPortal(
+                <div
+                    className="fixed inset-0 z-[200] flex h-screen w-screen items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm"
+                    onMouseDown={(event) => event.target === event.currentTarget && setSelectedDetailRow(null)}
+                >
+                    <div className="relative my-auto w-full max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden my-8 border border-slate-200 animate-in fade-in-50 zoom-in-95 duration-150">
                         {/* Modal Top */}
                         <div className="bg-gradient-to-r from-emerald-900 to-teal-950 p-6 text-white flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -1257,7 +1295,8 @@ export function ChinaPortView({ canConfigureNotifications = false, adminEmail = 
                             </Button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
