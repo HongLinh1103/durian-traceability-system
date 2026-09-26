@@ -102,12 +102,12 @@ function formatKg(weight: number | string | null | undefined): string {
 
 function formatPricePerKg(price: number | string | null | undefined): string {
     const num = Number(price || 0);
-    return `${num.toLocaleString("vi-VN")} đ/kg`;
+    return num.toLocaleString("vi-VN");
 }
 
 function formatTotal(weight: number | string | null | undefined, price: number | string | null | undefined): string {
     const total = Math.round(Number(weight || 0) * Number(price || 0));
-    return `${total.toLocaleString("vi-VN")} đ`;
+    return total.toLocaleString("vi-VN");
 }
 
 export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarvestsProps) {
@@ -549,8 +549,8 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                                 <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Khối lượng (kg)</th>
                                 <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Người mua</th>
                                 <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle min-w-[180px]">Địa chỉ</th>
-                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Giá bán</th>
-                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Thành tiền</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Giá bán (đ/kg)</th>
+                                <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Thành tiền (đ)</th>
                                 <th className="border border-slate-300 px-3.5 py-3 font-semibold whitespace-nowrap text-center align-middle">Thao tác</th>
                             </tr>
                         </thead>
