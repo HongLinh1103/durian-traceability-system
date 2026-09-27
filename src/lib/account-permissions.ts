@@ -29,8 +29,7 @@ export const ACCOUNT_PERMISSIONS_BY_ROLE: Record<string, AccountPermission[]> = 
     AREA_MANAGER: [
         { key: "AREA_DASHBOARD", label: "Tổng quan vùng trồng", path: "/dashboard/area-manager" },
         { key: "AREA_GARDENS", label: "Quản lý vườn trồng", path: "/region-manager/gardens" },
-        { key: "AREA_FARMERS", label: "Hồ sơ nông dân", path: "/region-manager/farmers" },
-        { key: "AREA_TRACEABILITY", label: "Truy xuất trong vùng", path: "/dashboard/area-manager/traceability" }, ...shared,
+        { key: "AREA_FARMERS", label: "Hồ sơ nông dân", path: "/region-manager/farmers" }, ...shared,
     ],
     COLLECTOR: [
         { key: "COLLECTOR_DASHBOARD", label: "Tổng quan vựa thu mua", path: "/dashboard/partner" },

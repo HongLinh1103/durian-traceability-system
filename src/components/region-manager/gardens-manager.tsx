@@ -174,9 +174,28 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
 
             <Card className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                 <div className="hidden max-w-full overflow-x-auto lg:block">
-                    <table className="w-full min-w-[1190px] table-fixed border-collapse border border-slate-300 text-left text-sm">
+                    <table className="w-full min-w-[1320px] table-fixed border-collapse border border-slate-300 text-left text-sm">
+                        <colgroup>
+                            <col className="w-[230px]" />
+                            <col className="w-[170px]" />
+                            <col className="w-[145px]" />
+                            <col className="w-[125px]" />
+                            <col className="w-[200px]" />
+                            <col className="w-[145px]" />
+                            <col className="w-[135px]" />
+                            <col className="w-[170px]" />
+                        </colgroup>
                         <thead className="bg-slate-100/90 text-xs text-slate-700">
-                            <tr>{[["Mã vườn", "w-[180px]"], ["Tên vườn", "w-[155px]"], ["Chủ vườn", "w-[135px]"], ["Số điện thoại", "w-[115px]"], ["Địa phương", "w-[190px]"], ["Nhật ký gần nhất", "w-[135px]"], ["Trạng thái", "w-[125px]"], ["Thao tác", "sticky right-0 w-[155px] bg-slate-100/95"]].map(([item, width]) => <th key={item} className={`${width} border border-slate-300 px-3 py-3 text-center align-middle font-semibold whitespace-nowrap`}>{item}</th>)}</tr>
+                            <tr>
+                                <th className="w-[230px] border border-slate-300 px-3.5 py-3 text-center align-middle font-semibold whitespace-nowrap">Mã vườn</th>
+                                <th className="w-[170px] border border-slate-300 px-3.5 py-3 text-left align-middle font-semibold whitespace-nowrap">Tên vườn</th>
+                                <th className="w-[145px] border border-slate-300 px-3.5 py-3 text-left align-middle font-semibold whitespace-nowrap">Chủ vườn</th>
+                                <th className="w-[125px] border border-slate-300 px-3 py-3 text-center align-middle font-semibold whitespace-nowrap">Số điện thoại</th>
+                                <th className="w-[200px] border border-slate-300 px-3.5 py-3 text-left align-middle font-semibold whitespace-nowrap">Địa phương</th>
+                                <th className="w-[145px] border border-slate-300 px-3 py-3 text-center align-middle font-semibold whitespace-nowrap">Nhật ký gần nhất</th>
+                                <th className="w-[135px] border border-slate-300 px-3 py-3 text-center align-middle font-semibold whitespace-nowrap">Trạng thái</th>
+                                <th className="sticky right-0 w-[170px] border border-slate-300 bg-slate-100/95 px-3 py-3 text-center align-middle font-semibold whitespace-nowrap">Thao tác</th>
+                            </tr>
                         </thead>
                         <tbody>
                             {paginated.map((garden) => <GardenRow key={garden.id} garden={garden} />)}
@@ -228,14 +247,14 @@ function statusFor(garden: Garden) {
 function GardenRow({ garden }: { garden: Garden }) {
     const status = statusFor(garden);
     return <tr className="hover:bg-slate-50/70 transition">
-        <td className="border border-slate-200 px-3 py-2.5 font-semibold text-emerald-700 text-center whitespace-nowrap">{garden.farmCode}</td>
-        <td className="border border-slate-200 px-3 py-2.5 font-semibold text-slate-900">{garden.farmName}</td>
-        <td className="border border-slate-200 px-3 py-2.5">{garden.ownerName}</td>
-        <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 text-center">{garden.ownerPhone}</td>
-        <td className="border border-slate-200 px-3 py-2.5">{garden.locality}</td>
-        <td className="border border-slate-200 px-3 py-2.5 text-center">{garden.latestLogDate ? formatVietnameseDate(new Date(garden.latestLogDate)) : "Chưa cập nhật"}</td>
-        <td className="border border-slate-200 px-3 py-2.5 text-center"><Badge className={`${status.className} h-7 whitespace-nowrap rounded-full px-2.5 py-0 text-xs`}>{status.label}</Badge></td>
-        <td className="border border-slate-200 sticky right-0 bg-white px-2 py-2.5 shadow-[-6px_0_10px_-10px_rgba(15,23,42,0.5)]"><div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+        <td className="w-[230px] border border-slate-200 px-3.5 py-2.5 font-semibold text-emerald-700 text-center whitespace-nowrap">{garden.farmCode}</td>
+        <td className="w-[170px] border border-slate-200 px-3.5 py-2.5 font-semibold text-slate-900 truncate" title={garden.farmName}>{garden.farmName}</td>
+        <td className="w-[145px] border border-slate-200 px-3.5 py-2.5 truncate" title={garden.ownerName}>{garden.ownerName}</td>
+        <td className="w-[125px] border border-slate-200 whitespace-nowrap px-3 py-2.5 text-center">{garden.ownerPhone}</td>
+        <td className="w-[200px] border border-slate-200 px-3.5 py-2.5 truncate" title={garden.locality}>{garden.locality}</td>
+        <td className="w-[145px] border border-slate-200 px-3.5 py-2.5 text-center whitespace-nowrap">{garden.latestLogDate ? formatVietnameseDate(new Date(garden.latestLogDate)) : "Chưa cập nhật"}</td>
+        <td className="w-[135px] border border-slate-200 px-3.5 py-2.5 text-center whitespace-nowrap"><Badge className={`${status.className} h-7 whitespace-nowrap rounded-full px-2.5 py-0 text-xs`}>{status.label}</Badge></td>
+        <td className="w-[170px] border border-slate-200 sticky right-0 bg-white px-2 py-2.5 shadow-[-6px_0_10px_-10px_rgba(15,23,42,0.5)]"><div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
             <Button asChild size="sm" variant="outline" className="h-8 px-2.5"><Link href={`/region-manager/gardens/${garden.id}`}><Search className="mr-1 h-3.5 w-3.5" />Chi tiết</Link></Button>
             <Button asChild size="sm" variant="outline" className="h-8 px-2.5"><Link href={`/region-manager/gardens/${garden.id}/logs`}><History className="mr-1 h-3.5 w-3.5" />Nhật ký</Link></Button>
         </div></td>

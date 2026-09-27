@@ -95,7 +95,7 @@ export default async function GardenDetailPage({ params }: { params: { gardenId:
     const latestLog = garden.farmingLogs[0]?.actionDate;
 
     return (
-        <main className="mx-auto min-h-screen max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+        <main className="mx-auto min-h-screen max-w-[1500px] space-y-6 px-4 py-6 sm:px-6">
             <Button asChild variant="outline" size="sm">
                 <Link href="/region-manager/gardens"><ArrowLeft className="mr-2 h-4 w-4" />Quay lại danh sách</Link>
             </Button>
