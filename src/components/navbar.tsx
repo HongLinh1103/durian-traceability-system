@@ -33,7 +33,6 @@ type DashboardLink = {
 };
 
 const dashboardLinks: DashboardLink[] = [
-    { href: "/dashboard/area-manager/traceability", label: "Truy xuất trong vùng", roles: ["AREA_MANAGER"] },
     { href: "/documents", label: "Tài liệu", roles: ["FARMER"], notificationKey: "documents" as const },
     { href: "/news", label: "Tin tức", roles: ["FARMER"], notificationKey: "news" as const },
     { href: "/china-port", label: "China Port", roles: ["FARMER", "COLLECTOR"] },
@@ -119,6 +118,7 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
             ? publicLinks
                 .filter((l) => {
                     if (l.href === "/") return false;
+                    if (userRole === "AREA_MANAGER" && ["/seedlings", "/collectors", "/processing-facilities", "/trace"].includes(l.href)) return false;
                     if (isAdmin && (l.href === "/collectors" || l.href === "/processing-facilities" || l.href === "/seedlings")) return false;
                     return true;
                 })

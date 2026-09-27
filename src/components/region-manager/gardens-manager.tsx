@@ -174,9 +174,9 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
 
             <Card className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
                 <div className="hidden max-w-full overflow-x-auto lg:block">
-                    <table className="w-full min-w-[1120px] table-fixed border-collapse border border-slate-300 text-left text-sm">
+                    <table className="w-full min-w-[1190px] table-fixed border-collapse border border-slate-300 text-left text-sm">
                         <thead className="bg-slate-100/90 text-xs text-slate-700">
-                            <tr>{[["Mã vườn", "w-[110px]"], ["Tên vườn", "w-[155px]"], ["Chủ vườn", "w-[135px]"], ["Số điện thoại", "w-[115px]"], ["Địa phương", "w-[190px]"], ["Nhật ký gần nhất", "w-[135px]"], ["Trạng thái", "w-[125px]"], ["Thao tác", "sticky right-0 w-[155px] bg-slate-100/95"]].map(([item, width]) => <th key={item} className={`${width} border border-slate-300 px-3 py-3 text-center align-middle font-semibold whitespace-nowrap`}>{item}</th>)}</tr>
+                            <tr>{[["Mã vườn", "w-[180px]"], ["Tên vườn", "w-[155px]"], ["Chủ vườn", "w-[135px]"], ["Số điện thoại", "w-[115px]"], ["Địa phương", "w-[190px]"], ["Nhật ký gần nhất", "w-[135px]"], ["Trạng thái", "w-[125px]"], ["Thao tác", "sticky right-0 w-[155px] bg-slate-100/95"]].map(([item, width]) => <th key={item} className={`${width} border border-slate-300 px-3 py-3 text-center align-middle font-semibold whitespace-nowrap`}>{item}</th>)}</tr>
                         </thead>
                         <tbody>
                             {paginated.map((garden) => <GardenRow key={garden.id} garden={garden} />)}
@@ -228,7 +228,7 @@ function statusFor(garden: Garden) {
 function GardenRow({ garden }: { garden: Garden }) {
     const status = statusFor(garden);
     return <tr className="hover:bg-slate-50/70 transition">
-        <td className="border border-slate-200 px-3 py-2.5 font-semibold text-emerald-700 text-center">{garden.farmCode}</td>
+        <td className="border border-slate-200 px-3 py-2.5 font-semibold text-emerald-700 text-center whitespace-nowrap">{garden.farmCode}</td>
         <td className="border border-slate-200 px-3 py-2.5 font-semibold text-slate-900">{garden.farmName}</td>
         <td className="border border-slate-200 px-3 py-2.5">{garden.ownerName}</td>
         <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 text-center">{garden.ownerPhone}</td>

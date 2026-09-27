@@ -41,7 +41,7 @@ export default async function GardenLogsPage({ params }: { params: { gardenId: s
     });
     if (!garden) notFound();
 
-    return <main className="mx-auto min-h-screen max-w-6xl space-y-5 px-4 py-6 sm:px-6">
+    return <main className="mx-auto min-h-screen w-full space-y-5 px-3 py-6 sm:px-4 xl:px-5">
         <div><Button asChild variant="outline" size="sm"><Link href="/region-manager/gardens"><ArrowLeft className="mr-2 h-4 w-4" />Quay lại danh sách</Link></Button></div>
         <Card className="rounded-[28px] border-emerald-100">
             <CardHeader>

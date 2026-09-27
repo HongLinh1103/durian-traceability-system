@@ -120,78 +120,10 @@ export interface RoleAssignedUser {
     role: string;
 }
 
-export const INITIAL_CUSTOM_ROLES: CustomRoleDef[] = [
-    {
-        key: "PROCESSING_STAFF",
-        name: "Nhân viên chế biến",
-        description: "Nhân viên thực hiện tiếp nhận, phân loại, bóc tách múi, cấp đông IQF và đóng gói thành phẩm tại xưởng",
-        targetGroup: "Cơ sở chế biến",
-        badgeColor: "bg-indigo-100 text-indigo-800 border-indigo-200",
-        status: "ACTIVE",
-        permissions: [
-            "RAW_MATERIAL_CLASSIFY_VIEW",
-            "RAW_MATERIAL_CLASSIFY_EXEC",
-            "PROCESSING_BATCH_VIEW",
-            "PROCESSING_BATCH_CREATE",
-            "PROCESSING_BATCH_COMPLETE",
-            "FINISHED_LOT_VIEW",
-            "FINISHED_LOT_CREATE",
-            "FINISHED_LOT_COMPLETE",
-            "SHIPMENT_VIEW",
-            "QR_TRACE_VIEW"
-        ],
-        assignedUserIds: []
-    },
-    {
-        key: "INTAKE_STAFF",
-        name: "Nhân viên tiếp nhận",
-        description: "Nhân viên thực hiện tiếp nhận nguyên liệu từ vườn/vựa, kiểm tra QC và phân loại quả tại xưởng",
-        targetGroup: "Cơ sở chế biến",
-        badgeColor: "bg-blue-100 text-blue-800 border-blue-200",
-        status: "ACTIVE",
-        permissions: [
-            "INTAKE_HARVEST_VIEW",
-            "INTAKE_HARVEST_ACCEPT",
-            "GOODS_RECEIPT_VIEW",
-            "GOODS_RECEIPT_CONFIRM",
-            "RAW_MATERIAL_CLASSIFY_VIEW",
-            "RAW_MATERIAL_CLASSIFY_EXEC",
-            "QC_INSPECTION_VIEW",
-            "QC_INSPECTION_CREATE",
-            "QC_INSPECTION_CONFIRM",
-            "QR_TRACE_VIEW"
-        ],
-        assignedUserIds: []
-    },
-    {
-        key: "DISPATCH_STAFF",
-        name: "Nhân viên xuất hàng",
-        description: "Nhân viên lập lệnh xuất hàng, gán cont lạnh, kiểm tra niêm phong và xuất kho thương mại",
-        targetGroup: "Cơ sở chế biến",
-        badgeColor: "bg-teal-100 text-teal-800 border-teal-200",
-        status: "ACTIVE",
-        permissions: [
-            "FINISHED_LOT_VIEW",
-            "SHIPMENT_VIEW",
-            "SHIPMENT_CREATE",
-            "SHIPMENT_CONFIRM",
-            "SHIPMENT_EXPORT_DOC",
-            "COMMERCIAL_DISPATCH_VIEW",
-            "COMMERCIAL_DISPATCH_CREATE",
-            "COMMERCIAL_DISPATCH_PRINT",
-            "QR_TRACE_VIEW",
-            "WAREHOUSE_EXPORT_VIEW",
-            "WAREHOUSE_EXPORT_CREATE",
-            "WAREHOUSE_TRANSFER_VIEW"
-        ],
-        assignedUserIds: []
-    }
-];
+// Custom roles are explicitly created by Admin; do not recreate retired demo roles.
+export const INITIAL_CUSTOM_ROLES: CustomRoleDef[] = [];
 
 export const MOCK_ASSIGNED_USERS: Record<string, RoleAssignedUser[]> = {
-    PROCESSING_STAFF: [],
-    INTAKE_STAFF: [],
-    DISPATCH_STAFF: [],
     ADMIN: [
         { id: "mock-admin-1", fullName: "Admin Trí Việt", phone: "0900 000 001", email: "admin@triviet.vn", organization: "Tổng bộ Quản trị Trí Việt", accountStatus: "APPROVED", role: "ADMIN" },
         { id: "mock-admin-2", fullName: "Quản Trị Viên Kỹ Thuật", phone: "0900 000 002", email: "tech@triviet.vn", organization: "Trung tâm Công nghệ & Vận hành", accountStatus: "APPROVED", role: "ADMIN" },

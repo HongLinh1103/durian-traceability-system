@@ -51,8 +51,8 @@ test('preview returns the event subject without sending any email',async()=>{
 test('the retired staff demo accounts do not reappear in role defaults',()=>{
     const data=load('src/lib/permissions-data.ts');
     for(const role of ['PROCESSING_STAFF','INTAKE_STAFF','DISPATCH_STAFF']){
-        assert.equal(data.MOCK_ASSIGNED_USERS[role].length,0);
-        assert.equal(data.INITIAL_CUSTOM_ROLES.find(item=>item.key===role).assignedUserIds.length,0);
+        assert.equal(data.MOCK_ASSIGNED_USERS[role],undefined);
+        assert.equal(data.INITIAL_CUSTOM_ROLES.some(item=>item.key===role),false);
     }
 });
 test('SMTP receives the same event subject and before/after content as the preview',async()=>{
