@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import {
     chinaPortNotificationSubject,
     generateChinaPortNotificationHtml,
+    generateChinaPortNotificationText,
     type ChinaPortNotificationPayload,
 } from "@/lib/china-port-notification-templates";
 
@@ -257,7 +258,7 @@ export async function sendChinaPortNewRecordsEmail(
         return { success: false, recipients: [], error: "Không tìm thấy địa chỉ email người nhận (Admin)" };
     }
 
-    const subject = `[China Port] Có dữ liệu mới thuộc Việt Nam (${records.length} bản ghi)`;
+    const subject = chinaPortNotificationSubject({ event: "NEW_RECORD", record: records[0] });
     const html = generateChinaPortEmailHtml(records, process.env.NEXTAUTH_URL || "https://trivietdurian.com");
     const text = `Hệ thống vừa phát hiện ${records.length} bản ghi mới thuộc Quốc gia/Vùng: Việt Nam từ cổng China Port (GACC).\nVui lòng truy cập hệ thống để xem chi tiết: ${process.env.NEXTAUTH_URL || "https://trivietdurian.com"}/china-port`;
 
@@ -315,7 +316,7 @@ export async function sendChinaPortEventEmail(
     const subject = `${isTest ? "[TEST] " : ""}${chinaPortNotificationSubject(payload)}`;
     const baseUrl = process.env.NEXTAUTH_URL || "https://trivietdurian.com";
     const html = generateChinaPortNotificationHtml(payload, baseUrl);
-    const text = `${subject}\n\nVui lòng truy cập TriViet để xem chi tiết: ${baseUrl}/china-port`;
+    const text = `${isTest ? "[TEST] " : ""}${generateChinaPortNotificationText(payload, baseUrl)}`;
     const transporter = createTransporter();
     if (!transporter) {
         return { success: false, recipients, error: "Chưa cấu hình SMTP trên server. Cần SMTP_HOST, SMTP_USER và SMTP_PASS để gửi email thật." };

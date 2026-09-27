@@ -78,5 +78,14 @@ function load(path, dependencies, extra = {}) {
     upstream = [{ ...upstream[0], chinaRegNo: 'VN-SECOND' }];
     await sync.syncChinaPortVietnamData();
     assert.equal(sent.length, 0, 'Disabled email must not send');
+    stored.emailEnabled = true;
+    stored.events = ['NEW_RECORD', 'STATUS_CHANGED', 'DATA_CHANGED'];
+    upstream = [{ ...upstream[0], regState: '3', corpNameEn: 'Updated company', validFrom: '2026-09-27' },
+        { chinaRegNo: 'VN-THIRD', countryCode: '704', regState: '1' }];
+    sent = [];
+    await sync.syncChinaPortVietnamData();
+    assert.deepEqual(sent.map(item => item.payload.event).sort(), ['DATA_CHANGED', 'NEW_RECORD', 'STATUS_CHANGED']);
+    const dataEvent = sent.find(item => item.payload.event === 'DATA_CHANGED').payload;
+    assert.ok(dataEvent.changes.some(change => change.label === 'Hiệu lực từ' && change.after === '2026-09-27'));
     console.log('PASS: settings authorization/validation/persistence, saved recipients, Vietnam filter, selected events, disabled email, no duplicates for unchanged data, SMTP failure retry. No real mail sent.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

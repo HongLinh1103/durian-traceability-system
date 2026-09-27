@@ -4,6 +4,7 @@ import { HarvestLot, PrismaClient, UserRole } from "@prisma/client";
 const prisma = new PrismaClient();
 const password = "TriViet@123";
 const at = (value: string) => new Date(`${value}T08:00:00+07:00`);
+const farmerNames = ["Nguyễn Văn Hải", "Trần Hữu Phúc", "Lê Thị Hồng", "Phạm Văn Hòa", "Đặng Thị Thu", "Hoàng Minh Đức"];
 
 async function user(email: string, phone: string, role: UserRole, fullName: string) {
     const hashed = await bcryptjs.hash(password, 10);
@@ -32,10 +33,11 @@ async function facility(ownerId: string, type: "COLLECTOR" | "PROCESSING_FACILIT
 }
 
 async function main() {
-    const admin = await user("admin@triviet.local", "0909100001", "ADMIN", "Admin TriViet Demo");
+    const admin = await prisma.user.findFirst({ where: { role: "ADMIN", isApproved: true, isLocked: false, deletedAt: null, NOT: { email: "admin@triviet.local" } }, orderBy: { createdAt: "asc" } });
+    if (!admin) throw new Error("Cần tài khoản Admin đang hoạt động trước khi khởi tạo dữ liệu truy xuất.");
     const managerLk = await user("manager.longkhanh@triviet.local", "0909100002", "AREA_MANAGER", "Trưởng ban Long Khánh");
     const managerTp = await user("manager.tanphu@triviet.local", "0909100003", "AREA_MANAGER", "Trưởng ban Tân Phú");
-    const farmers = await Promise.all(Array.from({ length: 6 }, (_, index) => user(`farmer${index + 1}@triviet.local`, `090920000${index + 1}`, "FARMER", `Nông dân Demo ${index + 1}`)));
+    const farmers = await Promise.all(farmerNames.map((name, index) => user(`farmer${index + 1}@triviet.local`, `090920000${index + 1}`, "FARMER", name)));
     await Promise.all([1, 2].map((index) => user(`store${index}@triviet.local`, `090925000${index}`, "STORE_OWNER", `Chủ cửa hàng Demo ${index}`)));
     const collectors = [await user("collector@triviet.vn", "0909000002", "COLLECTOR", "Nguyễn Thành Phát")];
     const processors = [await user("processor@triviet.vn", "0909000003", "PROCESSING_FACILITY", "Lê Văn Trị")];
