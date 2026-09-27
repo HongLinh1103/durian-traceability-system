@@ -32,13 +32,17 @@ export function getBuyerAddress(item: HarvestRow): string {
 export async function exportHarvestRecordsToWord(
     rows: HarvestRow[],
     seasonName: string,
-    farmName?: string
+    farmName?: string,
+    filename = "SỔ THU HOẠCH"
 ) {
-    await exportHarvestRecordsDocx({
-        rows,
-        seasonName,
-        farmName,
-    });
+    await exportHarvestRecordsDocx(
+        {
+            rows,
+            seasonName,
+            farmName,
+        },
+        filename
+    );
 }
 
 // Giữ lại alias để tương thích nếu còn tham chiếu

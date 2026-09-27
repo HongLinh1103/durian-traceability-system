@@ -946,8 +946,7 @@ export async function exportHarvestRecordsDocx(params: HarvestExportDocxParams, 
     `;
 
     const docxData = await packageDocx(bodyXml);
-    const cleanSeason = (seasonName || "TatCa").replace(/[^a-zA-Z0-9_-]/g, "_");
-    const saveName = filename || `So_Thu_Hoach_${cleanSeason}_${new Date().toISOString().slice(0, 10)}`;
+    const saveName = filename || "SỔ THU HOẠCH";
     downloadDocxFile(docxData, saveName);
 }
 
