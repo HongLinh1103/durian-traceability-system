@@ -800,13 +800,13 @@ export default function AdminAccountsPage() {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[1100px] border-collapse border border-slate-300 text-left text-xs sm:text-sm table-fixed">
+                        <table className="w-full min-w-[1140px] border-collapse border border-slate-300 text-left text-xs sm:text-sm table-fixed">
                             <colgroup>
                                 <col className="w-14" />
                                 <col className="min-w-[220px]" />
                                 <col className="w-36" />
                                 <col className="w-40" />
-                                <col className="w-[200px]" />
+                                <col className="w-[220px]" />
                                 <col className="w-28" />
                                 <col className="w-[180px]" />
                             </colgroup>
@@ -816,7 +816,7 @@ export default function AdminAccountsPage() {
                                     <th className="min-w-[220px] border border-slate-300 py-3 px-3.5 font-semibold text-left align-middle whitespace-nowrap">Tên người dùng</th>
                                     <th className="w-36 border border-slate-300 py-3 px-3 font-semibold text-center align-middle whitespace-nowrap">Số điện thoại</th>
                                     <th className="w-40 border border-slate-300 py-3 px-3 font-semibold text-center align-middle whitespace-nowrap">Vai trò</th>
-                                    <th className="w-[200px] border border-slate-300 py-3 px-3 font-semibold text-center align-middle whitespace-nowrap">Trạng thái</th>
+                                    <th className="w-[220px] border border-slate-300 py-3 px-3 font-semibold text-center align-middle whitespace-nowrap">Trạng thái</th>
                                     <th className="w-28 border border-slate-300 py-3 px-3 font-semibold text-center align-middle whitespace-nowrap">Ngày tạo</th>
                                     <th className="w-[180px] border border-slate-300 py-3 px-2 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
                                 </tr>
@@ -865,7 +865,7 @@ export default function AdminAccountsPage() {
                                             </td>
 
                                             {/* Trạng thái */}
-                                            <td className="w-[200px] border border-slate-200 py-2.5 px-3 whitespace-nowrap text-center">
+                                            <td className="w-[220px] border border-slate-200 py-2.5 px-3 whitespace-nowrap text-center">
                                                 {renderStatusBadge(u)}
                                             </td>
 

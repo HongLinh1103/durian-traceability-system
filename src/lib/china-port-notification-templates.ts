@@ -32,6 +32,10 @@ export function chinaPortNotificationSubject(payload: ChinaPortNotificationPaylo
     return `[TriViet - China Port] Thông tin đăng ký thay đổi - ${country}`;
 }
 
+export function chinaPortBatchNotificationSubject(country = "Viet Nam") {
+    return `[TriViet - China Port] Có cập nhật dữ liệu - ${clean(country).replace(/[\r\n]+/g, " ") || "Viet Nam"}`;
+}
+
 export function generateChinaPortSms(payload: ChinaPortNotificationPayload) {
     const record = payload.record;
     const country = clean(record.countryNameEn) || "Viet Nam";

@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
 import {
     chinaPortNotificationSubject,
+    chinaPortBatchNotificationSubject,
     generateChinaPortNotificationHtml,
     generateChinaPortNotificationText,
     type ChinaPortNotificationPayload,
@@ -258,7 +259,10 @@ export async function sendChinaPortNewRecordsEmail(
         return { success: false, recipients: [], error: "Không tìm thấy địa chỉ email người nhận (Admin)" };
     }
 
-    const subject = chinaPortNotificationSubject({ event: "NEW_RECORD", record: records[0] });
+    const country = records[0]?.countryNameEn?.trim() || "Viet Nam";
+    const subject = records.length > 1
+        ? chinaPortBatchNotificationSubject(country)
+        : chinaPortNotificationSubject({ event: "NEW_RECORD", record: records[0] });
     const html = generateChinaPortEmailHtml(records, process.env.NEXTAUTH_URL || "https://trivietdurian.com");
     const text = `Hệ thống vừa phát hiện ${records.length} bản ghi mới thuộc Quốc gia/Vùng: Việt Nam từ cổng China Port (GACC).\nVui lòng truy cập hệ thống để xem chi tiết: ${process.env.NEXTAUTH_URL || "https://trivietdurian.com"}/china-port`;
 
