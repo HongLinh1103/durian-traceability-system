@@ -9,6 +9,7 @@ import {
     ChevronDown,
     DollarSign,
     Download,
+    FileText,
     MapPin,
     Pencil,
     Plus,
@@ -28,7 +29,7 @@ import { formatVietnameseDate } from "@/lib/date-format";
 import {
     getBuyerName,
     getBuyerAddress,
-    exportHarvestRecordsToExcel,
+    exportHarvestRecordsToWord,
 } from "@/lib/export-harvests";
 import {
     buildBaseHarvestCode,
@@ -287,7 +288,7 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
         setDeletingItem(row);
     }
 
-    // Export File
+    // Export File Word (.docx)
     async function handleExportFile() {
         if (filteredRows.length === 0) return;
         setIsExporting(true);
@@ -296,16 +297,16 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
             const seasonLabel = activeSeasonObj
                 ? formatSeasonName(activeSeasonObj)
                 : (selectedSeasonFilter === "ALL" ? "Tất cả niên vụ" : "Niên vụ");
-            await exportHarvestRecordsToExcel(filteredRows, seasonLabel, activeSeasonObj?.farmName);
+            await exportHarvestRecordsToWord(filteredRows, seasonLabel, activeSeasonObj?.farmName);
             toast({
-                title: "Xuất file thành công",
-                description: `Đã xuất ${filteredRows.length} hồ sơ thu hoạch ra file Excel.`,
+                title: "Xuất file Word thành công",
+                description: `Đã xuất ${filteredRows.length} hồ sơ thu hoạch ra file Word (khổ A4 ngang).`,
                 variant: "success",
             });
         } catch (error) {
             toast({
                 title: "Không thể xuất file",
-                description: error instanceof Error ? error.message : "Đã có lỗi xảy ra.",
+                description: error instanceof Error ? error.message : "Đã có lỗi xảy ra khi tạo file Word.",
                 variant: "destructive",
             });
         } finally {
@@ -519,10 +520,10 @@ export function FarmerHarvests({ initialRows, seasons, facilities }: FarmerHarve
                             variant="outline"
                             onClick={handleExportFile}
                             disabled={filteredRows.length === 0 || isExporting}
-                            className="h-10 rounded-2xl border-slate-200 bg-white px-3.5 sm:px-4 font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition flex items-center gap-1.5 shrink-0 whitespace-nowrap text-xs sm:text-sm shadow-sm"
+                            className="h-10 rounded-2xl border-slate-200 bg-white px-3.5 sm:px-4 font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition flex items-center gap-1.5 shrink-0 whitespace-nowrap text-xs sm:text-sm shadow-sm cursor-pointer"
                         >
-                            <Download className="h-4 w-4 shrink-0 text-slate-500" />
-                            <span>{isExporting ? "Đang xuất..." : "Xuất file"}</span>
+                            <FileText className="h-4 w-4 shrink-0 text-blue-600" />
+                            <span>{isExporting ? "Đang xuất..." : "Xuất file Word"}</span>
                         </Button>
 
                         {/* Add Button */}

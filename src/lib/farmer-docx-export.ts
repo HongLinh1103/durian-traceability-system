@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { formatSeasonName } from "./crop-season";
 import { formatVietnameseDate } from "./date-format";
 
 const xml = (value: unknown) =>
@@ -765,3 +766,188 @@ export async function exportCultivationLogsDocx(params: CultivationExportParams,
     const saveName = filename || `Nhat_ky_canh_tac_${farmName}_${seasonName}`;
     downloadDocxFile(docxData, saveName);
 }
+
+// =========================================================================
+// 4. XUẤT SỔ THEO DÕI THU HOẠCH (WORD A4 NGANG)
+// =========================================================================
+export interface HarvestDocxItem {
+    id?: string;
+    code: string;
+    cropSeason?: {
+        id?: string;
+        name: string;
+        year: number;
+        status?: string;
+    } | null;
+    actualHarvestedAt?: string | Date | null;
+    expectedHarvestDate?: string | Date | null;
+    createdAt?: string | Date | null;
+    actualWeight?: number | string | null;
+    expectedWeight?: number | string | null;
+    expectedPricePerKg?: number | string | null;
+    buyerFacility?: {
+        id?: string;
+        name: string;
+        phone?: string | null;
+        address?: string | null;
+        province?: string | null;
+        ward?: string | null;
+    } | null;
+    transactionNote?: string | null;
+    farm?: {
+        id?: string;
+        farmName: string;
+        durianVariety?: string | null;
+    } | null;
+}
+
+export interface HarvestExportDocxParams {
+    farmName?: string;
+    seasonName?: string;
+    rows: HarvestDocxItem[];
+}
+
+function getHarvestBuyerName(item: HarvestDocxItem): string {
+    if (item.buyerFacility?.name) return item.buyerFacility.name;
+    const note = item.transactionNote || "";
+    if (note.includes(" · ")) return note.split(" · ")[0].trim();
+    if (note.includes(" - ")) return note.split(" - ")[0].trim();
+    return (note || "Chưa xác định").trim();
+}
+
+function getHarvestBuyerAddress(item: HarvestDocxItem): string {
+    if (item.buyerFacility) {
+        const parts = [item.buyerFacility.address, item.buyerFacility.ward, item.buyerFacility.province].filter(Boolean);
+        if (parts.length > 0) return parts.join(", ");
+    }
+    const note = item.transactionNote || "";
+    if (note.includes(" · ")) {
+        const parts = note.split(" · ");
+        if (parts.length > 1 && parts[1].trim()) return parts.slice(1).join(" · ").trim();
+    }
+    if (note.includes(" - ")) {
+        const parts = note.split(" - ");
+        if (parts.length > 1 && parts[1].trim()) return parts.slice(1).join(" - ").trim();
+    }
+    return "—";
+}
+
+export async function exportHarvestRecordsDocx(params: HarvestExportDocxParams, filename?: string) {
+    const title = "SỔ THEO DÕI THU HOẠCH SẦU RIÊNG";
+    const subTitle = "THEO DÕI SẢN LƯỢNG THU HOẠCH VÀ KẾT QUẢ TIÊU THỤ THEO NIÊN VỤ";
+
+    const farmName = params.farmName || params.rows[0]?.farm?.farmName || "Vườn sầu riêng";
+    const seasonName = params.seasonName || "Tất cả niên vụ";
+    const todayStr = formatVietnameseDate(new Date());
+
+    // Info Table
+    const infoWidths = [7994, 7994];
+    const infoRows = [
+        docxRow(
+            docxLabelValueCell("Vườn", farmName, 7994, { size: 20 }) +
+            docxLabelValueCell("Niên vụ", seasonName, 7994, { size: 20 })
+        ),
+        docxRow(
+            docxLabelValueCell("Ngày xuất sổ", todayStr, 7994, { size: 19 }) +
+            docxLabelValueCell("Tổng số lượt thu hoạch", `${params.rows.length} lượt`, 7994, { size: 19 })
+        ),
+    ];
+    const infoTableXml = docxTable(infoWidths, infoRows.join(""), DOCX_CONTENT_WIDTH, true);
+
+    // Harvest Records Table (Total: 15988 dxa)
+    // 700 + 1800 + 1500 + 1600 + 1700 + 2200 + 3088 + 1600 + 1800 = 15988 dxa
+    const widths = [700, 1800, 1500, 1600, 1700, 2200, 3088, 1600, 1800];
+    const headerCells = [
+        docxCell("STT", 700, { bold: true, size: 18, bgColor: "E2E8F0", align: "center" }),
+        docxCell("Mã lô TH", 1800, { bold: true, size: 18, bgColor: "E2E8F0", align: "center" }),
+        docxCell("Niên vụ", 1500, { bold: true, size: 18, bgColor: "E2E8F0", align: "center" }),
+        docxCell("Ngày thu hoạch", 1600, { bold: true, size: 18, bgColor: "E2E8F0", align: "center" }),
+        docxCell("Tổng sản lượng (kg)", 1700, { bold: true, size: 18, bgColor: "E2E8F0", align: "center" }),
+        docxCell("Người mua", 2200, { bold: true, size: 18, bgColor: "E2E8F0", align: "center" }),
+        docxCell("Địa chỉ", 3088, { bold: true, size: 18, bgColor: "E2E8F0", align: "center" }),
+        docxCell("Giá bán (đ/kg)", 1600, { bold: true, size: 18, bgColor: "E2E8F0", align: "center" }),
+        docxCell("Thành tiền (đ)", 1800, { bold: true, size: 18, bgColor: "E2E8F0", align: "center" }),
+    ].join("");
+
+    let totalWeight = 0;
+    let totalAmount = 0;
+
+    const rowsXml = params.rows.map((row, idx) => {
+        const weight = Number(row.actualWeight ?? row.expectedWeight ?? 0);
+        const price = Number(row.expectedPricePerKg ?? 0);
+        const total = Math.round(weight * price);
+        totalWeight += weight;
+        totalAmount += total;
+
+        const buyer = getHarvestBuyerName(row);
+        const address = getHarvestBuyerAddress(row);
+        const season = row.cropSeason ? formatSeasonName(row.cropSeason) : "—";
+        const dateStr = formatVietnameseDate(row.actualHarvestedAt || row.expectedHarvestDate || row.createdAt);
+
+        return docxRow(
+            docxCell(String(idx + 1), 700, { size: 18, align: "center" }) +
+            docxCell(row.code || "—", 1800, { bold: true, size: 18, align: "center" }) +
+            docxCell(season, 1500, { size: 18, align: "center" }) +
+            docxCell(dateStr, 1600, { size: 18, align: "center" }) +
+            docxCell(weight > 0 ? weight.toLocaleString("vi-VN") : "0", 1700, { bold: true, size: 18, align: "right" }) +
+            docxCell(buyer, 2200, { bold: true, size: 18, align: "left" }) +
+            docxCell(address, 3088, { size: 18, align: "left" }) +
+            docxCell(price > 0 ? price.toLocaleString("vi-VN") : "0", 1600, { size: 18, align: "right" }) +
+            docxCell(total > 0 ? total.toLocaleString("vi-VN") : "0", 1800, { bold: true, size: 18, align: "right" })
+        );
+    });
+
+    if (rowsXml.length === 0) {
+        rowsXml.push(
+            docxRow(docxCell("Chưa có hồ sơ thu hoạch nào", DOCX_CONTENT_WIDTH, { span: 9, size: 18, italic: true, align: "center" }))
+        );
+    } else {
+        rowsXml.push(
+            docxRow(
+                docxCell("Tổng cộng", 5600, { span: 4, bold: true, size: 18, align: "center", bgColor: "F1F5F9" }) +
+                docxCell(totalWeight > 0 ? totalWeight.toLocaleString("vi-VN") : "0", 1700, { bold: true, size: 18, align: "right", bgColor: "F1F5F9" }) +
+                docxCell("", 6888, { span: 3, bgColor: "F1F5F9" }) +
+                docxCell(totalAmount > 0 ? totalAmount.toLocaleString("vi-VN") : "0", 1800, { bold: true, size: 18, align: "right", bgColor: "F1F5F9" })
+            )
+        );
+    }
+
+    const today = new Date();
+    const signDateStr = `Ngày ${today.getDate()} tháng ${today.getMonth() + 1} năm ${today.getFullYear()}`;
+    const signatureXml = `
+        ${docxParagraph("", false, 14, "left", 140)}
+        ${docxTable(
+            [7994, 7994],
+            docxRow(
+                docxCell("", 7994) +
+                docxCell(signDateStr, 7994, { italic: true, align: "center", size: 18 })
+            ) +
+            docxRow(
+                docxCell("NGƯỜI LẬP SỔ", 7994, { bold: true, align: "center", size: 18 }) +
+                docxCell("CHỦ VƯỜN / ĐẠI DIỆN", 7994, { bold: true, align: "center", size: 18 })
+            ) +
+            docxRow(
+                docxCell("(Ký, ghi rõ họ tên)", 7994, { italic: true, align: "center", size: 16 }) +
+                docxCell("(Ký, ghi rõ họ tên)", 7994, { italic: true, align: "center", size: 16 })
+            ),
+            DOCX_CONTENT_WIDTH,
+            false
+        )}
+    `;
+
+    const bodyXml = `
+        ${docxParagraph(title, true, 28, "center", 40)}
+        ${docxParagraph(subTitle, false, 18, "center", 120, true)}
+        ${infoTableXml}
+        ${docxParagraph("", false, 14, "left", 100)}
+        ${docxParagraph("BẢNG KÊ CHI TIẾT THU HOẠCH VÀ TIÊU THỤ", true, 22, "left", 80)}
+        ${docxTable(widths, docxRow(headerCells, true) + rowsXml.join(""), DOCX_CONTENT_WIDTH, true)}
+        ${signatureXml}
+    `;
+
+    const docxData = await packageDocx(bodyXml);
+    const cleanSeason = (seasonName || "TatCa").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const saveName = filename || `So_Thu_Hoach_${cleanSeason}_${new Date().toISOString().slice(0, 10)}`;
+    downloadDocxFile(docxData, saveName);
+}
+
