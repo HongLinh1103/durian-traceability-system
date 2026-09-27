@@ -1110,7 +1110,7 @@ export function ChinaPortView({ canConfigureNotifications = false, adminEmail = 
                                     <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
                                         <h4 className="font-bold text-slate-900">Gửi email thử</h4>
                                         {emailServiceReady === false && <p role="status" className="mt-2 text-sm text-amber-800">Địa chỉ nhận có thể được lưu, nhưng dịch vụ gửi email của hệ thống chưa được cấu hình SMTP.</p>}
-                                        <p className="mt-1 text-sm text-slate-600">Gửi đến các email đã nhập ở trên bằng dữ liệu mẫu Việt Nam, không cần lưu cấu hình. Tiêu đề có [TEST]; dữ liệu China Port không bị thay đổi.</p>
+                                        <p className="mt-1 text-sm text-slate-600">Gửi đến các email đã nhập ở trên bằng dữ liệu mẫu Việt Nam, không cần lưu cấu hình; dữ liệu China Port không bị thay đổi.</p>
                                         <label htmlFor="china-port-test-event" className="mt-3 block text-sm font-semibold text-slate-700">Tình huống kiểm thử</label>
                                         <div className="mt-2 flex flex-col gap-3 sm:flex-row">
                                             <select id="china-port-test-event" value={testEvent} disabled={sendingTestEmail} onChange={(e) => setTestEvent(e.target.value as NotificationEvent)} className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm">

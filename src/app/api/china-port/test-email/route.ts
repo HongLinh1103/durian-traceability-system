@@ -39,15 +39,16 @@ export async function POST(request: Request) {
         changes: [{ label: "Hiệu lực đến", before: "31/12/2028", after: "31/12/2029" }],
     };
     try {
+        const isTestEnv = process.env.NODE_ENV !== "production";
         if (parsed.data.preview) {
             return NextResponse.json({
                 success: true,
-                subject: `[TEST] ${chinaPortNotificationSubject(payload)}`,
+                subject: `${isTestEnv ? "[TEST] " : ""}${chinaPortNotificationSubject(payload)}`,
                 recipients: [...new Set(parsed.data.emails)],
                 html: generateChinaPortNotificationHtml(payload, process.env.NEXTAUTH_URL || "https://trivietdurian.com"),
             }, { headers: { "Cache-Control": "no-store" } });
         }
-        const result = await sendChinaPortEventEmail(payload, [...new Set(parsed.data.emails)], { test: true });
+        const result = await sendChinaPortEventEmail(payload, [...new Set(parsed.data.emails)], { test: isTestEnv });
         if (!result.success || result.simulated) {
             return NextResponse.json({ message: result.error || "Email chưa được gửi thật." }, { status: 502 });
         }

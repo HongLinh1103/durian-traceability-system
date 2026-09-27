@@ -311,8 +311,8 @@ export async function sendChinaPortEventEmail(
     options: { test?: boolean } = {},
 ): Promise<EmailSendResult> {
     const recipients = customRecipients !== undefined ? customRecipients : await getAdminEmailRecipients();
-    if (!recipients.length) return { success: false, recipients: [], error: "Không tìm thấy email người nhận." };
-    const subject = `${options.test ? "[TEST] " : ""}${chinaPortNotificationSubject(payload)}`;
+    const isTest = Boolean(options.test) && process.env.NODE_ENV !== "production";
+    const subject = `${isTest ? "[TEST] " : ""}${chinaPortNotificationSubject(payload)}`;
     const baseUrl = process.env.NEXTAUTH_URL || "https://trivietdurian.com";
     const html = generateChinaPortNotificationHtml(payload, baseUrl);
     const text = `${subject}\n\nVui lòng truy cập TriViet để xem chi tiết: ${baseUrl}/china-port`;

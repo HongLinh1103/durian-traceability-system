@@ -24,7 +24,7 @@ export const chinaPortStatusLabel = (value: unknown) => value === "1" ? "Còn hi
 export function chinaPortNotificationSubject(payload: ChinaPortNotificationPayload) {
     const country = clean(payload.record.countryNameEn) || "Viet Nam";
     const code = clean(payload.record.overseasOfficialRegNo) || clean(payload.record.chinaRegNo);
-    if (payload.event === "NEW_RECORD") return `[TriViet - China Port] Phát hiện dữ liệu đăng ký mới - ${country}`;
+    if (payload.event === "NEW_RECORD") return `[TriViet - China Port] Có dữ liệu đăng ký mới tại ${country}`;
     if (payload.event === "STATUS_CHANGED") return `[TriViet - China Port] Cảnh báo thay đổi trạng thái - ${code}`;
     return `[TriViet - China Port] Thông tin đăng ký đã thay đổi - ${code}`;
 }

@@ -800,19 +800,29 @@ export default function AdminAccountsPage() {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[850px] border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                        <table className="w-full min-w-[980px] border-collapse border border-slate-300 text-left text-xs sm:text-sm table-fixed">
+                            <colgroup>
+                                <col className="w-14" />
+                                <col className="min-w-[220px]" />
+                                <col className="w-36" />
+                                <col className="w-40" />
+                                <col className="w-36" />
+                                <col className="w-28" />
+                                <col className="w-[180px]" />
+                            </colgroup>
                             <thead className="bg-slate-100/90 text-xs text-slate-700">
                                 <tr>
-                                    <th className="border border-slate-300 py-3 px-3.5 font-semibold text-center align-middle whitespace-nowrap">Người dùng</th>
-                                    <th className="border border-slate-300 py-3 px-3.5 font-semibold text-center align-middle whitespace-nowrap">Tài khoản</th>
-                                    <th className="border border-slate-300 py-3 px-3.5 font-semibold text-center align-middle whitespace-nowrap">Vai trò</th>
-                                    <th className="border border-slate-300 py-3 px-3.5 font-semibold text-center align-middle whitespace-nowrap">Trạng thái</th>
-                                    <th className="border border-slate-300 py-3 px-3.5 font-semibold text-center align-middle whitespace-nowrap">Ngày tạo</th>
-                                    <th className="border border-slate-300 py-3 px-3.5 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
+                                    <th className="w-14 border border-slate-300 py-3 px-2 font-semibold text-center align-middle whitespace-nowrap">STT</th>
+                                    <th className="min-w-[220px] border border-slate-300 py-3 px-3.5 font-semibold text-left align-middle whitespace-nowrap">Tên người dùng</th>
+                                    <th className="w-36 border border-slate-300 py-3 px-3 font-semibold text-center align-middle whitespace-nowrap">Số điện thoại</th>
+                                    <th className="w-40 border border-slate-300 py-3 px-3 font-semibold text-center align-middle whitespace-nowrap">Vai trò</th>
+                                    <th className="w-36 border border-slate-300 py-3 px-3 font-semibold text-center align-middle whitespace-nowrap">Trạng thái</th>
+                                    <th className="w-28 border border-slate-300 py-3 px-3 font-semibold text-center align-middle whitespace-nowrap">Ngày tạo</th>
+                                    <th className="w-[180px] border border-slate-300 py-3 px-2 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {users.map((u) => {
+                                {users.map((u, index) => {
                                     const roleBadge = roleLabels[u.role] || {
                                         label: u.role,
                                         className: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -820,47 +830,56 @@ export default function AdminAccountsPage() {
 
                                     return (
                                         <tr key={u.id} className="hover:bg-slate-50/70 transition">
-                                            {/* Người dùng: Avatar + Họ tên */}
+                                            {/* STT */}
+                                            <td className="w-14 border border-slate-200 py-2.5 px-2 text-center font-medium text-slate-500 text-xs whitespace-nowrap">
+                                                {(page - 1) * pagination.pageSize + index + 1}
+                                            </td>
+
+                                            {/* Tên người dùng: Avatar + Họ tên */}
                                             <td className="border border-slate-200 py-2.5 px-3.5">
                                                 <div className="flex items-center gap-2.5">
                                                     <div className="w-8 h-8 rounded-full bg-brand-50 border border-brand-200 text-brand-700 font-bold flex items-center justify-center text-xs shrink-0">
                                                         {(u.fullName || u.phone).charAt(0).toUpperCase()}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <div className="font-semibold text-slate-900 truncate max-w-[200px]">
+                                                        <div className="font-semibold text-slate-900 truncate max-w-[220px]">
                                                             {u.fullName || "Chưa đặt tên"}
                                                         </div>
-                                                        <div className="text-[11px] text-slate-500 truncate max-w-[200px]">
+                                                        <div className="text-[11px] text-slate-500 truncate max-w-[220px]">
                                                             {u.email || u.phone}
                                                         </div>
                                                     </div>
                                                 </div>
                                             </td>
 
-                                            {/* Tài khoản: SĐT / Username */}
-                                            <td className="border border-slate-200 py-2.5 px-3.5 font-mono font-medium text-slate-700 text-center">{u.phone}</td>
+                                            {/* Số điện thoại: SĐT */}
+                                            <td className="w-36 border border-slate-200 py-2.5 px-3 font-mono font-medium text-slate-700 text-center whitespace-nowrap">
+                                                {u.phone}
+                                            </td>
 
-                                            {/* Vai trò (Role) - Không dùng badge, hiển thị text thuần */}
-                                            <td className="border border-slate-200 py-2.5 px-3.5 text-center">
+                                            {/* Vai trò (Role) */}
+                                            <td className="w-40 border border-slate-200 py-2.5 px-3 text-center whitespace-nowrap">
                                                 <span className="font-semibold text-slate-800 text-xs">
                                                     {roleBadge.label}
                                                 </span>
                                             </td>
 
                                             {/* Trạng thái */}
-                                            <td className="border border-slate-200 py-2.5 px-3.5 whitespace-nowrap text-center">{renderStatusBadge(u)}</td>
+                                            <td className="w-36 border border-slate-200 py-2.5 px-3 whitespace-nowrap text-center">
+                                                {renderStatusBadge(u)}
+                                            </td>
 
                                             {/* Ngày tạo */}
-                                            <td className="border border-slate-200 py-2.5 px-3.5 whitespace-nowrap text-xs text-slate-500 text-center">
+                                            <td className="w-28 border border-slate-200 py-2.5 px-3 whitespace-nowrap text-xs text-slate-500 text-center">
                                                 {formatVietnameseDate(u.createdAt)}
                                             </td>
 
-                                            {/* Thao tác (đã xóa thao tác gán vai trò) */}
-                                            <td className="border border-slate-200 py-2.5 px-3.5 text-center whitespace-nowrap">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    {/* Nút Xem hồ sơ & duyệt nếu là PENDING */}
-                                                    {(u.accountStatus === "PENDING" ||
-                                                        u.accountStatus === "NEEDS_SUPPLEMENT") && (
+                                            {/* Thao tác */}
+                                            <td className="w-[180px] border border-slate-200 py-2.5 px-2 text-center whitespace-nowrap">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    {/* Xem & duyệt hồ sơ */}
+                                                    {u.accountStatus === "PENDING" ||
+                                                    u.accountStatus === "NEEDS_SUPPLEMENT" ? (
                                                         <Button
                                                             size="sm"
                                                             onClick={() => {
@@ -868,29 +887,25 @@ export default function AdminAccountsPage() {
                                                                 setReviewReasonInput("");
                                                                 setApprovalModalOpen(true);
                                                             }}
-                                                            className="h-7 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold gap-1"
+                                                            className="h-7 w-7 p-0 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-xs"
+                                                            title="Xem và duyệt hồ sơ"
                                                         >
                                                             <Eye className="h-3.5 w-3.5" />
-                                                            Xem hồ sơ
+                                                        </Button>
+                                                    ) : (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => {
+                                                                setUserToReview(u);
+                                                                setApprovalModalOpen(true);
+                                                            }}
+                                                            className="h-7 w-7 p-0 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                                                            title="Xem chi tiết hồ sơ"
+                                                        >
+                                                            <Eye className="h-3.5 w-3.5" />
                                                         </Button>
                                                     )}
-
-                                                    {/* Xem hồ sơ thường */}
-                                                    {u.accountStatus !== "PENDING" &&
-                                                        u.accountStatus !== "NEEDS_SUPPLEMENT" && (
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                onClick={() => {
-                                                                    setUserToReview(u);
-                                                                    setApprovalModalOpen(true);
-                                                                }}
-                                                                className="h-7 w-7 p-0 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-                                                                title="Xem chi tiết hồ sơ"
-                                                            >
-                                                                <Eye className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        )}
 
                                                     {/* Sửa thông tin */}
                                                     <Button
