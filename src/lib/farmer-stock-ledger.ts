@@ -24,8 +24,10 @@ export function stockLedger(movements: Movement[]) {
 }
 
 /** Disposals reduce physical stock, but are not cultivation usage costs. */
-export function isSupplyUsage(tx: { type: string; purpose?: string | null; notes?: string | null }) {
+export function isSupplyUsage(tx: { type: string; exportPurpose?: string | null; farmId?: string | null; cropSeasonId?: string | null; purpose?: string | null; notes?: string | null }) {
     if (tx.type !== "OUT") return false;
+    if (!tx.farmId || !tx.cropSeasonId) return false;
+    if (tx.exportPurpose) return tx.exportPurpose === "CULTIVATION";
     const normalize = (value: string) => value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
     const purpose = normalize(tx.purpose || "");
     const notes = normalize(tx.notes || "");

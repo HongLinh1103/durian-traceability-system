@@ -1,5 +1,5 @@
 import { prepareStockMovement } from "@/lib/farmer-stock-write";
-import { isSupplyUsage } from "@/lib/farmer-stock-ledger";
+import { rebuildMaterialFifo } from "@/lib/farmer-material-fifo";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSession } from "next-auth";
@@ -11,7 +11,10 @@ export const dynamic = "force-dynamic";
 const createTransactionSchema = z.object({
     supplyId: z.string().min(1, "Vui lòng chọn vật tư"),
     type: z.enum(["IN", "OUT", "ADJUSTMENT"]),
-    quantity: z.coerce.number().positive("Số lượng phải lớn hơn 0"),
+    exportPurpose: z.enum(["CULTIVATION", "DISPOSAL", "OTHER"]).optional(),
+    unitPrice: z.coerce.number().finite().nonnegative().optional(),
+    expiryDate: z.string().datetime({ offset: true }).optional().nullable(),
+    quantity: z.coerce.number().finite().positive("Số lượng phải lớn hơn 0"),
     farmId: z.string().optional().nullable(),
     cropSeasonId: z.string().optional().nullable(),
     stage: z.string().optional().nullable(),
@@ -113,9 +116,11 @@ export async function POST(request: Request) {
             );
         }
 
-        const { supplyId, type, quantity, farmId, cropSeasonId, stage, activityType, purpose, actionDate, notes } =
+        const { supplyId, type, quantity, farmId, cropSeasonId, stage, activityType, purpose, actionDate, notes, exportPurpose, unitPrice, expiryDate } =
             parsed.data;
 
+        if (type === "OUT" && (!exportPurpose || !notes?.trim())) return NextResponse.json({ success: false, message: "Chọn mục đích xuất và nhập nội dung" }, { status: 400 });
+        if (type === "OUT" && exportPurpose === "CULTIVATION" && (!farmId || !cropSeasonId)) return NextResponse.json({ success: false, message: "Xuất phục vụ canh tác phải chọn vườn và niên vụ" }, { status: 400 });
         if (farmId && !await prisma.farm.findFirst({ where: { id: farmId, farmerId }, select: { id: true } })) {
             return NextResponse.json({ success: false, message: "Vườn không thuộc tài khoản của bạn" }, { status: 400 });
         }
@@ -138,18 +143,20 @@ export async function POST(request: Request) {
         const txDate = actionDate ? new Date(actionDate) : new Date();
 
         const result = await prisma.$transaction(async (tx) => {
-            const currentSupply = await prepareStockMovement(tx, { farmerId, supplyId, type, quantity, actionDate: txDate, disposal: !isSupplyUsage({ type, purpose, notes }) });
+            const currentSupply = await prepareStockMovement(tx, { farmerId, supplyId, type, quantity, actionDate: txDate, disposal: exportPurpose === "DISPOSAL" });
 
             const transaction = await tx.farmerSupplyTransaction.create({
                 data: {
                     supplyId: supply.id,
                     farmerId,
-                    farmId: farmId || null,
-                    cropSeasonId: cropSeasonId || null,
+                    farmId: type === "OUT" && exportPurpose !== "CULTIVATION" ? null : farmId || null,
+                    cropSeasonId: type === "OUT" && exportPurpose !== "CULTIVATION" ? null : cropSeasonId || null,
                     type,
                     quantity,
-                    unitPrice: currentSupply.unitPrice,
-                    totalAmount: Number(currentSupply.unitPrice) * quantity,
+                    unitPrice: type === "IN" ? unitPrice ?? currentSupply.unitPrice : currentSupply.unitPrice,
+                    expiryDate: type === "IN" ? expiryDate ? new Date(expiryDate) : currentSupply.productBatch?.expiryDate : null,
+                    exportPurpose: type === "OUT" ? exportPurpose : null,
+                    totalAmount: Number(type === "IN" ? unitPrice ?? currentSupply.unitPrice : currentSupply.unitPrice) * quantity,
                     stage: stage as any || null,
                     activityType: activityType as any || null,
                     purpose: purpose || (type === "OUT" ? "Xuất kho sử dụng" : "Nhập kho vật tư"),
@@ -158,8 +165,9 @@ export async function POST(request: Request) {
                 },
             });
 
-            return transaction;
-        });
+            await rebuildMaterialFifo(tx, farmerId, type === "OUT" ? [transaction.id] : []);
+            return tx.farmerSupplyTransaction.findUniqueOrThrow({ where: { id: transaction.id } });
+        }, { timeout: 30000 });
 
         return NextResponse.json({ success: true, data: result }, { status: 201 });
     } catch (error: any) {

@@ -35,7 +35,7 @@ export async function GET(request: Request) {
                 orderBy: { createdAt: "desc" },
                 include: {
                     farmer: { select: { id: true, fullName: true, phone: true, address: true, province: true, district: true, ward: true, approvedAt: true } },
-                    region: { select: { name: true, address: true, province: true, district: true, ward: true } },
+                    region: { select: { code: true, name: true, address: true, province: true, district: true, ward: true } },
                     farmingLogs: {
                         orderBy: [{ actionDate: "desc" }, { createdAt: "desc" }],
                         take: 1,
@@ -59,12 +59,60 @@ export async function GET(request: Request) {
             console.warn("[AdminFarmingAPI] Error querying user identities:", idErr);
         }
 
+        function extractFarmPoints(farm: any): Array<{ lng: number; lat: number }> {
+            let raw = farm.boundary;
+            if (typeof raw === "string") {
+                try { raw = JSON.parse(raw); } catch { raw = null; }
+            }
+            let coords: any[] = [];
+            if (raw) {
+                if (Array.isArray(raw)) coords = raw;
+                else if (raw.type === "Polygon" && Array.isArray(raw.coordinates) && Array.isArray(raw.coordinates[0])) coords = raw.coordinates[0];
+                else if (raw.type === "MultiPolygon" && Array.isArray(raw.coordinates?.[0]?.[0])) coords = raw.coordinates[0][0];
+                else if (Array.isArray(raw.points)) coords = raw.points;
+            }
+            const points: Array<{ lng: number; lat: number }> = [];
+            for (const item of coords) {
+                if (Array.isArray(item) && item.length >= 2) {
+                    const num0 = Number(item[0]);
+                    const num1 = Number(item[1]);
+                    if (!Number.isNaN(num0) && !Number.isNaN(num1)) {
+                        let lng = num0;
+                        let lat = num1;
+                        if (num0 < 30 && num1 > 70) {
+                            lat = num0;
+                            lng = num1;
+                        }
+                        points.push({ lng: Number(lng.toFixed(6)), lat: Number(lat.toFixed(6)) });
+                    }
+                } else if (item && typeof item === "object") {
+                    const lat = Number(item.lat ?? item.latitude);
+                    const lng = Number(item.lng ?? item.longitude);
+                    if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+                        points.push({ lng: Number(lng.toFixed(6)), lat: Number(lat.toFixed(6)) });
+                    }
+                }
+            }
+            if (points.length > 2 && Math.abs(points[0].lng - points[points.length - 1].lng) < 1e-6 && Math.abs(points[0].lat - points[points.length - 1].lat) < 1e-6) {
+                points.pop();
+            }
+            if (points.length === 0) {
+                const lng = farm.longitude != null ? Number(farm.longitude.toFixed(6)) : (farm.centerLongitude != null ? Number(farm.centerLongitude.toFixed(6)) : null);
+                const lat = farm.latitude != null ? Number(farm.latitude.toFixed(6)) : (farm.centerLatitude != null ? Number(farm.centerLatitude.toFixed(6)) : null);
+                if (lng != null && lat != null) {
+                    points.push({ lng, lat });
+                }
+            }
+            return points;
+        }
+
         const rows = farms.map((farm) => {
             const latestLogDate = farm.farmingLogs?.[0]?.actionDate ?? null;
             // Explicitly labelled mock display data; never replace login phone numbers.
             const demoKey = createHash('sha256').update(farm.farmer?.id || farm.id).digest('hex').slice(0, 8).toUpperCase();
             const phone = farm.farmer?.phone?.startsWith("DEMO-REGION-") ? "" : farm.farmer?.phone?.trim() || "";
             const identity = (farm.farmer?.id ? identityMap.get(farm.farmer.id) : null)?.trim();
+            const regionCode = farm.region?.code || (farm.growingRegion && farm.growingRegion.includes(" - ") ? farm.growingRegion.split(" - ")[0].trim() : "") || "";
             return {
                 id: farm.id,
                 farmCode: farm.farmCode || "PUC-CHUA-CAP",
@@ -74,10 +122,13 @@ export async function GET(request: Request) {
                 ownerAddress: farm.farmer?.address || [farm.farmer?.ward, farm.farmer?.district, farm.farmer?.province].filter(Boolean).join(", "),
                 ownerPhone: phone || `DEMO-SDT-${demoKey}`,
                 identityNumber: identity || `DEMO-CCCD-${demoKey}`,
+                regionCode: regionCode || "Chưa có mã",
                 regionName: farm.region?.name || farm.growingRegion || "",
                 regionAddress: farm.region?.address || (farm.region ? [farm.region.ward, farm.region.district, farm.region.province].filter(Boolean).join(", ") : farm.address) || "",
                 latitude: farm.latitude != null ? Number(farm.latitude.toFixed(6)) : (farm.centerLatitude != null ? Number(farm.centerLatitude.toFixed(6)) : null),
                 longitude: farm.longitude != null ? Number(farm.longitude.toFixed(6)) : (farm.centerLongitude != null ? Number(farm.centerLongitude.toFixed(6)) : null),
+                boundary: farm.boundary ?? null,
+                points: extractFarmPoints(farm),
                 growingRegion: farm.growingRegion ?? "Chưa phân vùng",
                 growingRegionId: farm.growingRegionId,
                 address: farm.address ?? "",

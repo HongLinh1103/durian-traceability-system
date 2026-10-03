@@ -1,5 +1,5 @@
-import { removeLogStock } from "@/lib/farming-log-stock";
-import { prepareStockMovement } from "@/lib/farmer-stock-write";
+import { removeLogStock, createLogMaterials, materialSummary } from "@/lib/farming-log-stock";
+import { lockFarmerStock } from "@/lib/farmer-material-fifo";
 import { seasonDateBounds } from "@/lib/crop-season";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
         const otherActivity = String(formData.get("otherActivity") ?? "").trim();
         const actionDate = String(formData.get("actionDate") ?? "");
         let chemicalName = String(formData.get("chemicalName") ?? "");
-        const dosage = String(formData.get("dosage") ?? "");
+        let dosage = String(formData.get("dosage") ?? "");
         const phiDays = Number(formData.get("phiDays") ?? 0);
         const pestsDetected = String(formData.get("pestsDetected") ?? "Không phát hiện").trim() || "Không phát hiện";
         const plannedHarvestDate = String(formData.get("plannedHarvestDate") ?? "");
@@ -137,8 +137,18 @@ export async function POST(request: Request) {
             if (!selectedSupply || !Number.isFinite(supplyQuantity) || supplyQuantity <= 0) return NextResponse.json({ ok: false, error: "Vật tư hoặc số lượng xuất kho không hợp lệ." }, { status: 400 });
             chemicalName = selectedSupply.name;
         }
+        const materials = formData.get("materials") ? JSON.parse(String(formData.get("materials"))) : supplyId ? [{ supplyId, quantity: supplyQuantity, content: notes }] : [];
+        if (!Array.isArray(materials) || materials.length > 50 || materials.some((m: any) => !m || typeof m.supplyId !== "string" || !Number.isFinite(m.quantity) || m.quantity <= 0 || typeof m.content !== "string" || !m.content.trim() || (m.phiDays != null && (!Number.isInteger(m.phiDays) || m.phiDays < 0)))) return NextResponse.json({ ok: false, error: "Vật tư, số lượng hoặc nội dung sử dụng không hợp lệ" }, { status: 400 });
+        const selectedSupplies = await prisma.farmerSupply.findMany({ where: { farmerId: session.user.id, id: { in: materials.map((m: any) => m.supplyId) } } });
+        if (materials.some((m: any) => !selectedSupplies.some(s => s.id === m.supplyId))) return NextResponse.json({ ok: false, error: "Vật tư không thuộc kho của bạn" }, { status: 400 });
+        if (materials.length) {
+            const summary = materialSummary(materials.map((m: any) => { const s = selectedSupplies.find(s => s.id === m.supplyId)!; return { supplyName: s.name, quantity: m.quantity, unit: s.unit }; }));
+            chemicalName = summary.chemicalName; dosage = summary.dosage;
+        }
         const requiresChemicalName = ["SPRAY_PESTICIDE", "FERTILIZE", "BASE_FERTILIZING", "FOLIAR_FERTILIZING"].includes(normalizedActivityType);
         const requiresDosage = requiresChemicalName;
+        if (requiresChemicalName !== Boolean(materials.length)) return NextResponse.json({ ok: false, error: requiresChemicalName ? "Chọn ít nhất một vật tư trong kho" : "Hoạt động này không sử dụng vật tư" }, { status: 400 });
+        if (!Number.isInteger(phiDays) || phiDays < 0) return NextResponse.json({ ok: false, error: "Thời gian cách ly không hợp lệ" }, { status: 400 });
 
         if (
             !farmId ||
@@ -197,6 +207,7 @@ export async function POST(request: Request) {
         if (planId && !plan) return NextResponse.json({ ok: false, error: "Kế hoạch không hợp lệ hoặc đã hoàn thành." }, { status: 400 });
 
         const created = await prisma.$transaction(async (tx) => {
+            await lockFarmerStock(tx, session.user.id);
             const logStage = toPrismaGrowthStage(stage);
             const log = await tx.farmingLog.create({ data: {
                 farmId,
@@ -207,7 +218,7 @@ export async function POST(request: Request) {
                 otherActivity: normalizedActivityType === "OTHER" ? otherActivity : null,
                 chemicalName: requiresChemicalName || supplyId ? chemicalName : null,
                 dosage: requiresDosage ? dosage : null,
-                phiDays: requiresDosage ? phiDays : null,
+                phiDays: normalizedActivityType === "SPRAY_PESTICIDE" ? Math.max(phiDays, ...materials.map((m: any) => m.phiDays || 0)) : null,
                 pestsDetected,
                 isGACCCompliant:
                     normalizedActivityType !== "SPRAY_PESTICIDE" ||
@@ -219,48 +230,9 @@ export async function POST(request: Request) {
 
             if (plan) await tx.farmingPlan.update({ where: { id: plan.id }, data: { status: "COMPLETED", completedAt: new Date() } });
 
-            // Tự động trừ kho vật tư nếu có chọn vật tư
-            if (supplyId && supplyQuantity > 0) {
-                const supply = await prepareStockMovement(tx, { farmerId: session.user.id, supplyId, type: "OUT", quantity: supplyQuantity, actionDate: parsedActionDate });
-                {
-                    const totalAmount = Number(supply.unitPrice) * supplyQuantity;
-                    const txRecord = await tx.farmerSupplyTransaction.create({
-                        data: {
-                            supplyId: supply.id,
-                            farmerId: session.user.id,
-                            farmId,
-                            cropSeasonId: activeSeason.id,
-                            farmingLogId: log.id,
-                            type: "OUT",
-                            quantity: supplyQuantity,
-                            unitPrice: supply.unitPrice,
-                            totalAmount,
-                            stage: logStage,
-                            activityType: normalizedActivityType,
-                            purpose: `Sử dụng cho nhật ký: ${activityType}`,
-                            actionDate: parsedActionDate,
-                            notes: notes || null,
-                        },
-                    });
-
-                    await tx.farmingLogMaterial.create({
-                        data: {
-                            farmingLogId: log.id,
-                            supplyId: supply.id,
-                            supplyName: supply.name,
-                            supplyType: supply.type,
-                            quantity: supplyQuantity,
-                            unit: supply.unit,
-                            unitPrice: supply.unitPrice,
-                            totalCost: totalAmount,
-                            transactionId: txRecord.id,
-                        },
-                    });
-                }
-            }
-
+            await createLogMaterials(tx, { logId: log.id, farmerId: session.user.id, farmId, cropSeasonId: activeSeason.id, actionDate: parsedActionDate, stage: logStage, activityType: normalizedActivityType, materials });
             return log;
-        });
+        }, { timeout: 30000 });
 
         return NextResponse.json({ ok: true, id: created.id });
     } catch (error) {
@@ -340,7 +312,7 @@ export async function DELETE(request: Request) {
             await tx.farmingLog.delete({
                 where: { id: log.id },
             });
-        });
+        }, { timeout: 30000 });
 
         return NextResponse.json({
             ok: true,

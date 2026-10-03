@@ -7,13 +7,14 @@ import { FarmerJournalUnifiedView } from "@/components/farmer/farmer-journal-uni
 
 export default async function FarmerJournalPage({
     searchParams = {},
-    activeTab,
+    pageKind,
 }: {
-    activeTab: "weather" | "cultivation" | "pests";
+    pageKind: "cultivation" | "pests";
     searchParams?: { tab?: string; farmId?: string; seasonId?: string; year?: string };
 }) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) redirect(`/login?callbackUrl=${encodeURIComponent(`/dashboard/farmer/journal/${activeTab}`)}`);
+    const pagePath = pageKind === "pests" ? "/dashboard/farmer/pest-monitoring" : "/dashboard/farmer/journal/cultivation";
+    if (!session?.user?.id) redirect(`/login?callbackUrl=${encodeURIComponent(pagePath)}`);
     if (session.user.role !== "FARMER") redirect("/");
 
     // Lấy danh sách Vườn và Vụ mùa của nông dân
@@ -137,9 +138,9 @@ export default async function FarmerJournalPage({
     return (
         <main className="min-h-[calc(100vh-64px)] pb-12">
             <FarmerJournalUnifiedView
-                key={`${activeTab}:${searchParams.farmId || ""}:${searchParams.seasonId || ""}`}
+                key={`${pageKind}:${searchParams.farmId || ""}:${searchParams.seasonId || ""}`}
                 farms={formattedFarms}
-                initialActiveTab={activeTab}
+                pageKind={pageKind}
                 initialFarmId={searchParams.farmId}
                 initialSeasonId={searchParams.seasonId}
             />

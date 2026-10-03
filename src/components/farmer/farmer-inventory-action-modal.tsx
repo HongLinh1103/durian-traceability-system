@@ -1,5 +1,6 @@
 "use client";
 
+import { MaterialCombobox } from "@/components/farmer/material-combobox";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -70,6 +71,7 @@ export function FarmerInventoryActionModal({
         new Date().toISOString().slice(0, 10)
     );
     const [notesIn, setNotesIn] = useState("");
+    const [expiryDateIn, setExpiryDateIn] = useState("");
 
     // Form OUT state
     const [selectedSupplyIdOut, setSelectedSupplyIdOut] = useState<string>(
@@ -81,7 +83,7 @@ export function FarmerInventoryActionModal({
         farms[0]?.cropSeasons[0]?.id || ""
     );
     const [activityType, setActivityType] = useState<string>("FERTILIZE");
-    const [purpose, setPurpose] = useState<string>("Sử dụng cho hoạt động canh tác");
+    const [purpose, setPurpose] = useState<string>("CULTIVATION");
     const [actionDateOut, setActionDateOut] = useState<string>(
         new Date().toISOString().slice(0, 10)
     );
@@ -103,9 +105,10 @@ export function FarmerInventoryActionModal({
             setQuantityIn("1");
             setActionDateIn(new Date().toISOString().slice(0, 10));
             setNotesIn("");
+            setExpiryDateIn("");
         } else {
             if (supplies.length > 0) {
-                setSelectedSupplyIdOut(supplies[0].id);
+                setSelectedSupplyIdOut(supplies.find(s => s.quantity > 0)?.id || "");
             }
             setQuantityOut("1");
             if (farms.length > 0) {
@@ -146,7 +149,9 @@ export function FarmerInventoryActionModal({
                         supplyId: selectedSupplyForIn.id,
                         type: "IN",
                         quantity: qty,
+                        unitPrice: Number(unitPrice),
                         actionDate: actionDateIn,
+                        expiryDate: expiryDateIn ? new Date(expiryDateIn).toISOString() : null,
                         purpose: "Nhập bổ sung kho vật tư",
                         notes: notesIn.trim() || undefined,
                     }),
@@ -176,6 +181,8 @@ export function FarmerInventoryActionModal({
                         unit: unit.trim() || "bao",
                         quantity: qty,
                         unitPrice: price,
+                        actionDate: actionDateIn,
+                        expiryDate: expiryDateIn || null,
                         phiDays: phiDays ? parseInt(phiDays, 10) : null,
                         activeIngredients: activeIngredients.trim() || undefined,
                         notes: notesIn.trim() || undefined,
@@ -235,6 +242,7 @@ export function FarmerInventoryActionModal({
             return;
         }
 
+        if (!notesOut.trim() || (purpose === "CULTIVATION" && (!farmId || !cropSeasonId))) { toast({ title: "Nhập nội dung, vườn và niên vụ cho xuất phục vụ canh tác", variant: "destructive" }); return; }
         setSubmitting(true);
         try {
             const res = await fetch("/api/farmer/supplies/transactions", {
@@ -244,10 +252,10 @@ export function FarmerInventoryActionModal({
                     supplyId: selectedSupplyForOut.id,
                     type: "OUT",
                     quantity: qty,
-                    farmId: farmId || null,
-                    cropSeasonId: cropSeasonId || null,
+                    farmId: purpose === "CULTIVATION" ? farmId : null,
+                    cropSeasonId: purpose === "CULTIVATION" ? cropSeasonId : null,
                     activityType: activityType || null,
-                    purpose: purpose.trim() || "Xuất kho sử dụng cho canh tác",
+                    exportPurpose: purpose,
                     actionDate: actionDateOut,
                     notes: notesOut.trim() || undefined,
                 }),
@@ -503,6 +511,7 @@ export function FarmerInventoryActionModal({
                                         </div>
                                     </div>
 
+                                    <label className="block text-xs font-bold text-slate-700">Ngày hết hạn của lần nhập<Input type="date" value={expiryDateIn} onChange={e => setExpiryDateIn(e.target.value)} className="mt-1 rounded-xl" /></label>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -569,23 +578,10 @@ export function FarmerInventoryActionModal({
                                                 <label className="block text-xs font-bold text-slate-700 mb-1">
                                                     Chọn vật tư trong kho *
                                                 </label>
-                                                <select
-                                                    value={selectedSupplyIdOut}
-                                                    onChange={(e) => {
-                                                        const sId = e.target.value;
-                                                        setSelectedSupplyIdOut(sId);
-                                                    }}
-                                                    className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-800 focus:border-brand-500 focus:outline-none cursor-pointer"
-                                                >
-                                                    {supplies.map((s) => (
-                                                        <option key={s.id} value={s.id}>
-                                                            {s.name} ({SUPPLY_TYPE_LABELS[s.type] || s.type}) — Tồn kho: {s.quantity} {s.unit}
-                                                        </option>
-                                                    ))}
-                                                </select>
+<MaterialCombobox supplies={supplies} value={selectedSupplyIdOut} onChange={setSelectedSupplyIdOut} />
                                                 {selectedSupplyForOut && (
                                                     <p className="mt-1 text-xs text-slate-500">
-                                                        Số lượng khả dụng:{" "}
+                                                        Số lượng tồn:{" "}
                                                         <span className="font-bold text-brand-700">
                                                             {selectedSupplyForOut.quantity} {selectedSupplyForOut.unit}
                                                         </span>
@@ -624,13 +620,14 @@ export function FarmerInventoryActionModal({
                                                 </div>
                                             </div>
 
-                                            {farms.length > 0 && (
+                                            {purpose === "CULTIVATION" && (
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <div>
                                                         <label className="block text-xs font-bold text-slate-700 mb-1">
-                                                            Vườn sử dụng
+                                                            Vườn *
                                                         </label>
                                                         <select
+                                                            required
                                                             value={farmId}
                                                             onChange={(e) => {
                                                                 const fId = e.target.value;
@@ -651,9 +648,10 @@ export function FarmerInventoryActionModal({
 
                                                     <div>
                                                         <label className="block text-xs font-bold text-slate-700 mb-1">
-                                                            Niên vụ
+                                                            Niên vụ *
                                                         </label>
                                                         <select
+                                                            required
                                                             value={cropSeasonId}
                                                             onChange={(e) => setCropSeasonId(e.target.value)}
                                                             disabled={!farmId}
@@ -691,23 +689,18 @@ export function FarmerInventoryActionModal({
                                                     <label className="block text-xs font-bold text-slate-700 mb-1">
                                                         Mục đích xuất
                                                     </label>
-                                                    <Input
-                                                        value={purpose}
-                                                        onChange={(e) => setPurpose(e.target.value)}
-                                                        placeholder="Ví dụ: Bón nuôi trái đợt 1..."
-                                                        className="rounded-2xl"
-                                                    />
+<select required value={purpose} onChange={e => setPurpose(e.target.value)} className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3"><option value="CULTIVATION">Phục vụ canh tác</option><option value="DISPOSAL">Hủy vật tư</option><option value="OTHER">Khác</option></select>
                                                 </div>
                                             </div>
 
                                             <div>
                                                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                                                    Ghi chú thêm
+                                                    Nội dung *
                                                 </label>
                                                 <Input
                                                     value={notesOut}
                                                     onChange={(e) => setNotesOut(e.target.value)}
-                                                    placeholder="Ghi chú chi tiết về liều lượng, cây sử dụng..."
+                                                    placeholder="Nhập nội dung xuất vật tư"
                                                     className="rounded-2xl"
                                                 />
                                             </div>

@@ -23,7 +23,7 @@ export async function getFarmerFinanceLedger(farmerId: string, farmId: string, y
             return { id: h.id, code: h.code, season: h.cropSeason?.name || "Chưa xác định", date: (h.actualHarvestedAt || h.expectedHarvestDate).toISOString(), ...harvestValue(h), buyer: h.buyerFacility?.name || h.buyerUser?.fullName || noteParts[0]?.trim() || "Chưa xác định", address: address || "—", paid: receipt?.paid ?? 0, paidAt: receipt?.paidAt ?? null, canCollect: !["DRAFT", "CANCELLED", "REJECTED"].includes(h.status), status: h.status };
         }),
         expenses: [
-            ...supplies.filter(isSupplyUsage).map(t => ({ id: t.id, date: t.actionDate.toISOString(), category: t.supply.type, content: `${t.supply.name} · ${t.quantity.toLocaleString("vi-VN")} ${t.supply.unit}${t.purpose ? ` — ${t.purpose}` : ""}`, amount: Number(t.totalAmount) })),
+            ...supplies.filter(isSupplyUsage).map(t => ({ id: t.id, date: t.actionDate.toISOString(), category: t.supply.type, content: `${t.supply.name} · ${t.quantity.toLocaleString("vi-VN")} ${t.supply.unit}${t.notes || t.purpose ? ` — ${t.notes || t.purpose}` : ""}`, amount: Number(t.totalAmount) })),
             ...expenses.map(e => ({ id: e.id, date: e.expenseDate.toISOString(), category: e.category, content: e.title, amount: Number(e.amount) })),
         ].sort((a, b) => b.date.localeCompare(a.date)),
     };

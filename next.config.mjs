@@ -8,6 +8,7 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+    distDir: process.env.TRIVIET_BUILD_DIR || ".next",
     poweredByHeader: false,
     eslint: {
         ignoreDuringBuilds: true,

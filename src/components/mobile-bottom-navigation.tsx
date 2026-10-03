@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import {
     Bell,
+    Bug,
     Boxes,
     BookOpenCheck,
     CalendarDays,
@@ -61,6 +62,7 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Cá nhân", href: "/account", icon: UserRound },
         ],
         actions: [
+            { label: "Sổ sinh vật gây hại", description: "Theo dõi kiểm tra và biện pháp xử lý dịch hại", href: "/dashboard/farmer/pest-monitoring", icon: Bug },
             { label: "Tài chính", description: "Thu, chi và biểu đồ thống kê", href: "/dashboard/farmer/statistics", icon: CircleDollarSign },
             { label: "China Port", description: "Cổng thông tin & kiểm tra hồ sơ xuất khẩu", href: "/china-port", icon: Globe2 },
             { label: "Kế hoạch", description: "Lập lịch và theo dõi công việc canh tác", href: "/dashboard/farmer/plans", icon: CalendarDays },

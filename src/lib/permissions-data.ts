@@ -209,7 +209,7 @@ export const PERMISSION_MODULES: ModuleDef[] = [
     {
         id: "JOURNAL_MANAGEMENT",
         name: "QUẢN LÝ NHẬT KÝ",
-        title: "Nhật ký canh tác, thời tiết & sinh vật gây hại",
+        title: "Nhật ký canh tác",
         description: "Quản lý các loại nhật ký phục vụ truy xuất nguồn gốc và tiêu chuẩn VietGAP / GACC",
         iconName: "BookOpen",
         isSingleEntity: false,
@@ -225,28 +225,6 @@ export const PERMISSION_MODULES: ModuleDef[] = [
                     delete: { key: "FARMING_LOG_DELETE", label: "Xóa", action: "delete", description: "Xóa nhật ký canh tác" },
                 }
             },
-            {
-                id: "weather_journal",
-                name: "Nhật ký thời tiết",
-                description: "Theo dõi nhiệt độ, độ ẩm, lượng mưa và các hiện tượng thời tiết tại vườn",
-                actions: {
-                    view: { key: "WEATHER_LOG_VIEW", label: "Xem", action: "view", description: "Xem nhật ký thời tiết" },
-                    create: { key: "WEATHER_LOG_CREATE", label: "Tạo", action: "create", description: "Ghi nhận dữ liệu thời tiết" },
-                    edit: { key: "WEATHER_LOG_EDIT", label: "Chỉnh sửa", action: "edit", description: "Chỉnh sửa dữ liệu thời tiết" },
-                    delete: { key: "WEATHER_LOG_DELETE", label: "Xóa", action: "delete", description: "Xóa ghi chép thời tiết" },
-                }
-            },
-            {
-                id: "pest_journal",
-                name: "Nhật ký sinh vật gây hại",
-                description: "Ghi chép tình hình xuất hiện các loại sâu bệnh, nấm khuẩn và sinh vật gây hại",
-                actions: {
-                    view: { key: "PEST_LOG_VIEW", label: "Xem", action: "view", description: "Xem nhật ký sinh vật gây hại" },
-                    create: { key: "PEST_LOG_CREATE", label: "Tạo", action: "create", description: "Ghi nhận sự xuất hiện của sinh vật gây hại" },
-                    edit: { key: "PEST_LOG_EDIT", label: "Chỉnh sửa", action: "edit", description: "Chỉnh sửa ghi chép sinh vật gây hại" },
-                    delete: { key: "PEST_LOG_DELETE", label: "Xóa", action: "delete", description: "Xóa ghi chép sinh vật gây hại" },
-                }
-            }
         ]
     },
 
@@ -283,7 +261,7 @@ export const PERMISSION_MODULES: ModuleDef[] = [
             },
             {
                 id: "pest_monitoring",
-                name: "Theo dõi sinh vật gây hại",
+                name: "Sổ theo dõi sinh vật gây hại",
                 description: "Theo dõi mật độ dịch hại theo giai đoạn sinh trưởng và quản lý biện pháp xử lý",
                 actions: {
                     view: { key: "PEST_MONITORING_VIEW", label: "Xem", action: "view", description: "Xem sổ theo dõi sinh vật gây hại" },
@@ -961,14 +939,6 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, { moduleEnabled: Record<st
             "FARMING_LOG_CREATE",
             "FARMING_LOG_EDIT",
             "FARMING_LOG_DELETE",
-            "WEATHER_LOG_VIEW",
-            "WEATHER_LOG_CREATE",
-            "WEATHER_LOG_EDIT",
-            "WEATHER_LOG_DELETE",
-            "PEST_LOG_VIEW",
-            "PEST_LOG_CREATE",
-            "PEST_LOG_EDIT",
-            "PEST_LOG_DELETE",
             // Canh tác
             "FARM_PROFILE_VIEW",
             "FARM_PROFILE_CREATE",
@@ -1258,8 +1228,6 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, { moduleEnabled: Record<st
             // Giám sát canh tác & nhật ký
             "FARM_PROFILE_VIEW",
             "FARMING_LOG_VIEW",
-            "WEATHER_LOG_VIEW",
-            "PEST_LOG_VIEW",
             "PEST_MONITORING_VIEW",
             "PRODUCTION_STATS_PESTICIDE",
             "PRODUCTION_STATS_FERTILIZER",

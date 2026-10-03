@@ -3,9 +3,6 @@
 import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-    CloudSun,
-    Leaf,
-    Bug,
     CalendarPlus,
     LockKeyhole,
     Unlock,
@@ -13,7 +10,6 @@ import {
     X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { WeatherJournal } from "@/components/weather/weather-journal";
 import { PestMonitoringTab } from "@/components/farmer/pest-monitoring-tab";
 import { CultivationLogsTab } from "@/components/farmer/cultivation-logs-tab";
 
@@ -51,18 +47,16 @@ interface FarmOption {
 
 interface FarmerJournalUnifiedViewProps {
     farms: FarmOption[];
-    initialActiveTab: "weather" | "cultivation" | "pests";
+    pageKind: "cultivation" | "pests";
     initialFarmId?: string;
     initialSeasonId?: string;
-    cultivationContent?: React.ReactNode;
 }
 
 export function FarmerJournalUnifiedView({
     farms,
-    initialActiveTab = "weather",
+    pageKind = "cultivation",
     initialFarmId,
     initialSeasonId,
-    cultivationContent,
 }: FarmerJournalUnifiedViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -88,8 +82,7 @@ export function FarmerJournalUnifiedView({
 
     const currentSeason = currentFarm?.cropSeasons.find((s) => s.id === selectedSeasonId) || activeSeason || currentFarm?.cropSeasons[0];
 
-    // 3. Quản lý Tab chính (Thời tiết | Canh tác | Sinh vật gây hại)
-    const activeTab = initialActiveTab;
+    const pagePath = pageKind === "pests" ? "/dashboard/farmer/pest-monitoring" : "/dashboard/farmer/journal/cultivation";
 
     // Modal tạo vụ mùa mới
     const [showCreateSeasonModal, setShowCreateSeasonModal] = useState(false);
@@ -107,14 +100,12 @@ export function FarmerJournalUnifiedView({
     const [closingNote, setClosingNote] = useState("");
 
     // Cập nhật URL khi đổi Farm, Season hoặc Tab
-    const updateUrl = (tab: string, fId: string, sId: string) => {
+    const updateUrl = (fId: string, sId: string) => {
         const params = new URLSearchParams(searchParams.toString());
         params.delete("tab");
         if (fId) params.set("farmId", fId); else params.delete("farmId");
         if (sId) params.set("seasonId", sId); else params.delete("seasonId");
-        const href = `/dashboard/farmer/journal/${tab}?${params.toString()}`;
-        if (tab === activeTab) router.replace(href, { scroll: false });
-        else router.push(href, { scroll: false });
+        router.replace(`${pagePath}?${params.toString()}`, { scroll: false });
     };
 
     const handleFarmChange = (fId: string) => {
@@ -123,16 +114,12 @@ export function FarmerJournalUnifiedView({
         const nextActive = nextFarm?.cropSeasons.find((s) => s.status === "ACTIVE") || nextFarm?.cropSeasons[0];
         const nextSeasonId = nextActive?.id || "";
         setSelectedSeasonId(nextSeasonId);
-        updateUrl(activeTab, fId, nextSeasonId);
+        updateUrl(fId, nextSeasonId);
     };
 
     const handleSeasonChange = (sId: string) => {
         setSelectedSeasonId(sId);
-        updateUrl(activeTab, selectedFarmId, sId);
-    };
-
-    const handleTabChange = (tab: "weather" | "cultivation" | "pests") => {
-        updateUrl(tab, selectedFarmId, selectedSeasonId);
+        updateUrl(selectedFarmId, sId);
     };
 
     // Tạo Vụ mùa mới
@@ -234,6 +221,7 @@ export function FarmerJournalUnifiedView({
 
     return (
         <div className="mx-auto w-full max-w-[1800px] space-y-5 px-3 py-5 sm:px-4">
+            <header><h1 className="text-2xl font-black text-slate-900">{pageKind === "pests" ? "SỔ THEO DÕI SINH VẬT GÂY HẠI" : "NHẬT KÝ CANH TÁC"}</h1><p className="mt-1 text-sm text-slate-500">{pageKind === "pests" ? "Theo dõi kiểm tra, bẫy và biện pháp xử lý sinh vật gây hại theo từng vườn, niên vụ." : "Ghi nhận và quản lý các hoạt động canh tác theo từng vườn, niên vụ."}</p></header>
             {/* ========================================================================= */}
             {/* HEADER DÙNG CHUNG: VƯỜN & VỤ MÙA */}
             {/* ========================================================================= */}
@@ -362,43 +350,7 @@ export function FarmerJournalUnifiedView({
                 )}
             </div>
 
-            {/* ========================================================================= */}
-            {/* THANH 3 TAB CHÍNH: THỜI TIẾT | CANH TÁC | SINH VẬT GÂY HẠI */}
-            {/* ========================================================================= */}
-            <nav className="grid grid-cols-3 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:gap-2 sm:rounded-3xl sm:p-2" aria-label="Loại nhật ký">
-                {[
-                    { id: "weather", label: "Thời tiết", icon: CloudSun },
-                    { id: "cultivation", label: "Canh tác", icon: Leaf },
-                    { id: "pests", label: "Sinh vật gây hại", icon: Bug },
-                ].map((tab) => {
-                    const Icon = tab.icon;
-                    const isActive = activeTab === tab.id;
-                    return (
-                        <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => handleTabChange(tab.id as any)}
-                            className={`flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-center text-xs font-bold leading-tight transition sm:min-h-12 sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm ${
-                                isActive
-                                    ? "bg-brand-600 text-white shadow-soft"
-                                    : "text-slate-600 hover:bg-brand-50 hover:text-brand-700"
-                            }`}
-                        >
-                            <Icon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                            <span className="whitespace-nowrap">{tab.label}</span>
-                        </button>
-                    );
-                })}
-            </nav>
-
-            {/* ========================================================================= */}
-            {/* NỘI DUNG TỪNG TAB */}
-            {/* ========================================================================= */}
-            {activeTab === "weather" && (
-                <WeatherJournal defaultFarmId={selectedFarmId} />
-            )}
-
-            {activeTab === "cultivation" && (
+            {pageKind === "cultivation" && (
                 <CultivationLogsTab
                     farmId={selectedFarmId}
                     cropSeasonId={selectedSeasonId}
@@ -413,12 +365,12 @@ export function FarmerJournalUnifiedView({
                         if (selectedFarmId) params.set("farmId", selectedFarmId);
                         if (selectedSeasonId) params.set("seasonId", selectedSeasonId);
                         params.set("pest", pestName);
-                        router.push(`/dashboard/farmer/journal/pests?${params.toString()}`, { scroll: false });
+                        router.push(`/dashboard/farmer/pest-monitoring?${params.toString()}`, { scroll: false });
                     }}
                 />
             )}
 
-            {activeTab === "pests" && (
+            {pageKind === "pests" && (
                 <PestMonitoringTab
                     farmId={selectedFarmId}
                     cropSeasonId={selectedSeasonId}

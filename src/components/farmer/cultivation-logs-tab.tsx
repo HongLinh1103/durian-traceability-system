@@ -3,11 +3,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
-    Leaf,
     Plus,
-    Search,
     Sprout,
-    Image as ImageIcon,
     Loader2,
     X,
     Unlock,
@@ -176,8 +173,6 @@ export function CultivationLogsTab({
     const [logs, setLogs] = useState<FarmingLogItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [selectedStage, setSelectedStage] = useState<string>("ALL");
     const [previewImage, setPreviewImage] = useState<string | null>(null);
 
     const { toast } = useToast();
@@ -380,56 +375,11 @@ export function CultivationLogsTab({
         void loadLogs();
     }, [loadLogs]);
 
-    // Reset bộ lọc khi đổi mùa vụ
-    useEffect(() => {
-        setSelectedStage("ALL");
-        setSearchQuery("");
-    }, [cropSeasonId, farmId]);
-
-    // Lọc theo tìm kiếm và giai đoạn
-    const filteredLogs = useMemo(() => {
-        return logs.filter((log) => {
-            // Lọc giai đoạn
-            if (selectedStage !== "ALL" && log.stage !== selectedStage) {
-                return false;
-            }
-            // Lọc từ khóa
-            if (searchQuery.trim()) {
-                const q = searchQuery.toLowerCase().trim();
-                const actName = (
-                    log.activityType === "OTHER"
-                        ? log.otherActivity || "Khác"
-                        : activityLabels[log.activityType] ?? log.activityType
-                ).toLowerCase();
-                const stageName = (stageLabels[log.stage] ?? log.stage).toLowerCase();
-                const chem = (log.chemicalName || "").toLowerCase();
-                const pest = (log.pestsDetected || "").toLowerCase();
-                const notes = (log.notes || "").toLowerCase();
-                const farmText = (log.farm?.farmName || "").toLowerCase();
-
-                return (
-                    actName.includes(q) ||
-                    stageName.includes(q) ||
-                    chem.includes(q) ||
-                    pest.includes(q) ||
-                    notes.includes(q) ||
-                    farmText.includes(q)
-                );
-            }
-            return true;
-        });
-    }, [logs, selectedStage, searchQuery]);
-
     // Thống kê nhanh
     const stats = useMemo(() => {
         const total = logs.length;
-        const sprayOrFertilize = logs.filter((l) =>
-            ["SPRAY_PESTICIDE", "FERTILIZE", "BASE_FERTILIZING", "FOLIAR_FERTILIZING"].includes(
-                l.activityType
-            )
-        ).length;
-        const gaccCompliantCount = logs.filter((l) => l.isGACCCompliant).length;
-        const gaccRate = total > 0 ? Math.round((gaccCompliantCount / total) * 100) : 100;
+        const sprayCount = logs.filter(l => l.activityType === "SPRAY_PESTICIDE").length;
+        const fertilizeCount = logs.filter(l => ["FERTILIZE", "BASE_FERTILIZING", "FOLIAR_FERTILIZING"].includes(l.activityType)).length;
 
         // Đếm theo từng giai đoạn
         const stageCounts: Record<string, number> = {};
@@ -437,7 +387,7 @@ export function CultivationLogsTab({
             stageCounts[l.stage] = (stageCounts[l.stage] || 0) + 1;
         });
 
-        return { total, sprayOrFertilize, gaccRate, stageCounts };
+        return { total, sprayCount, fertilizeCount, stageCounts };
     }, [logs]);
 
     const newLogUrl = farmId
@@ -448,84 +398,6 @@ export function CultivationLogsTab({
 
     return (
         <div className="w-full space-y-5">
-            {/* Header đồng bộ với các tab */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
-                        <Leaf className="h-6 w-6 text-brand-600" />
-                        NHẬT KÝ CANH TÁC
-                    </h2>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                        Ghi chép các hoạt động chăm sóc, bón phân, tưới nước, tỉa cành và thu hoạch theo tiêu chuẩn VietGAP / GACC
-                    </p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        disabled={exporting || logs.length === 0}
-                        onClick={async () => {
-                            setExporting(true);
-                            try {
-                                const { exportCultivationLogsDocx } = await import("@/lib/farmer-docx-export");
-                                const farmCode = logs[0]?.farm?.farmCode || "";
-                                const regionCode = farmCode ? farmCode.replace(/-F\d+$/, "") : "VN - DNOR - 0269";
-                                await exportCultivationLogsDocx({
-                                    farmName: farmName || logs[0]?.farm?.farmName || "Vườn sầu riêng",
-                                    regionCode,
-                                    seasonName: seasonName || logs[0]?.cropSeason?.name || "2025-2026",
-                                    logs: filteredLogs.length > 0 ? filteredLogs : logs,
-                                    activityLabels,
-                                    stageLabels,
-                                });
-                            } catch (err) {
-                                console.error("Export Word error:", err);
-                                toast({
-                                    title: "Lỗi xuất file",
-                                    description: "Không thể xuất file Word. Vui lòng thử lại.",
-                                    variant: "destructive",
-                                });
-                            } finally {
-                                setExporting(false);
-                            }
-                        }}
-                        className="rounded-2xl border-slate-200 bg-white text-xs sm:text-sm font-bold text-slate-700 shadow-xs hover:bg-slate-50 cursor-pointer"
-                    >
-                        <FileText className="mr-1.5 h-4 w-4 text-blue-600" />
-                        {exporting ? "Đang xuất..." : "Xuất file"}
-                    </Button>
-
-                    {!isSeasonActive ? (
-                        <div className="flex flex-wrap items-center gap-2">
-                            <div className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 border border-slate-200 shrink-0">
-                                <span>🔒 Vụ mùa đã đóng (Chế độ chỉ xem)</span>
-                            </div>
-                            {onReopenSeason && (
-                                <Button
-                                    type="button"
-                                    onClick={onReopenSeason}
-                                    className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-xs sm:text-sm font-bold text-emerald-800 shadow-xs hover:bg-emerald-100 shrink-0 cursor-pointer"
-                                >
-                                    <Unlock className="mr-1.5 h-4 w-4 text-emerald-600" />
-                                    Mở khóa vụ mùa
-                                </Button>
-                            )}
-                        </div>
-                    ) : (
-                        <Button
-                            asChild
-                            className="rounded-2xl bg-brand-600 text-sm font-bold text-white shadow-soft hover:bg-brand-700 shrink-0"
-                        >
-                            <Link href={newLogUrl}>
-                                <Plus className="mr-1.5 h-4 w-4" />
-                                Ghi nhật ký
-                            </Link>
-                        </Button>
-                    )}
-                </div>
-            </div>
-
             {/* Thống kê tóm tắt nhanh vụ mùa */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-2xl bg-white border border-slate-200 p-3.5 shadow-xs">
@@ -535,15 +407,15 @@ export function CultivationLogsTab({
                     </p>
                 </div>
                 <div className="rounded-2xl bg-white border border-slate-200 p-3.5 shadow-xs">
-                    <p className="text-xs font-bold text-slate-400 uppercase">Phun thuốc / Bón phân</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase">Phun thuốc</p>
                     <p className="mt-1 text-xl font-black text-amber-600">
-                        {loading ? "..." : `${stats.sprayOrFertilize} lần`}
+                        {loading ? "..." : `${stats.sprayCount} lần`}
                     </p>
                 </div>
                 <div className="rounded-2xl bg-white border border-slate-200 p-3.5 shadow-xs">
-                    <p className="text-xs font-bold text-slate-400 uppercase">Tuân thủ GACC/VietGAP</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase">Bón phân</p>
                     <p className="mt-1 text-xl font-black text-emerald-600">
-                        {loading ? "..." : `${stats.gaccRate}%`}
+                        {loading ? "..." : `${stats.fertilizeCount} lần`}
                     </p>
                 </div>
                 <div className="rounded-2xl bg-white border border-slate-200 p-3.5 shadow-xs">
@@ -558,82 +430,77 @@ export function CultivationLogsTab({
                 </div>
             </div>
 
-            {/* Thanh tìm kiếm & lọc giai đoạn */}
-            <div className="space-y-3">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between">
-                    <div className="relative flex-1 max-w-md">
-                        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Tìm theo hoạt động, tên vật tư, ghi chú..."
-                            className="h-10 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none"
-                        />
-                        {searchQuery && (
-                            <button
+            {/* Thanh công cụ thao tác */}
+            <div className="flex items-center justify-end gap-2">
+                <Button
+                    type="button"
+                    variant="outline"
+                    disabled={exporting || logs.length === 0}
+                    onClick={async () => {
+                        setExporting(true);
+                        try {
+                            const { exportCultivationLogsDocx } = await import("@/lib/farmer-docx-export");
+                            const farmCode = logs[0]?.farm?.farmCode || "";
+                            const regionCode = farmCode ? farmCode.replace(/-F\d+$/, "") : "VN - DNOR - 0269";
+                            await exportCultivationLogsDocx({
+                                farmName: farmName || logs[0]?.farm?.farmName || "Vườn sầu riêng",
+                                regionCode,
+                                seasonName: seasonName || logs[0]?.cropSeason?.name || "2025-2026",
+                                logs,
+                                activityLabels,
+                                stageLabels,
+                            });
+                        } catch (err) {
+                            console.error("Export Word error:", err);
+                            toast({
+                                title: "Lỗi xuất file",
+                                description: "Không thể xuất file Word. Vui lòng thử lại.",
+                                variant: "destructive",
+                            });
+                        } finally {
+                            setExporting(false);
+                        }
+                    }}
+                    className="rounded-2xl border-slate-200 bg-white text-xs sm:text-sm font-bold text-slate-700 shadow-xs hover:bg-slate-50 cursor-pointer"
+                >
+                    <FileText className="mr-1.5 h-4 w-4 text-blue-600" />
+                    {exporting ? "Đang xuất..." : "Xuất file"}
+                </Button>
+
+                {!isSeasonActive ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 border border-slate-200 shrink-0">
+                            <span>🔒 Vụ mùa đã đóng (Chế độ chỉ xem)</span>
+                        </div>
+                        {onReopenSeason && (
+                            <Button
                                 type="button"
-                                onClick={() => setSearchQuery("")}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                onClick={onReopenSeason}
+                                className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-xs sm:text-sm font-bold text-emerald-800 shadow-xs hover:bg-emerald-100 shrink-0 cursor-pointer"
                             >
-                                <X className="h-4 w-4" />
-                            </button>
+                                <Unlock className="mr-1.5 h-4 w-4 text-emerald-600" />
+                                Mở khóa vụ mùa
+                            </Button>
                         )}
                     </div>
-
-                    <div className="text-xs font-semibold text-slate-500">
-                        Hiển thị <b>{filteredLogs.length}</b> / {logs.length} hoạt động
-                    </div>
-                </div>
-
-                {/* Filter chips theo giai đoạn sinh trưởng */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
-                    <button
-                        type="button"
-                        onClick={() => setSelectedStage("ALL")}
-                        className={`whitespace-nowrap rounded-full px-3.5 py-1.5 font-bold transition ${
-                            selectedStage === "ALL"
-                                ? "bg-brand-600 text-white shadow-xs"
-                                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-                        }`}
+                ) : (
+                    <Button
+                        asChild
+                        className="rounded-2xl bg-brand-600 text-sm font-bold text-white shadow-soft hover:bg-brand-700 shrink-0"
                     >
-                        Tất cả ({logs.length})
-                    </button>
-
-                    {STAGE_ORDER.map((st) => {
-                        const count = stats.stageCounts[st] || 0;
-                        if (count === 0 && selectedStage !== st) return null;
-                        const label = stageLabels[st] ?? st;
-                        const isSelected = selectedStage === st;
-                        return (
-                            <button
-                                key={st}
-                                type="button"
-                                onClick={() => setSelectedStage(st)}
-                                className={`whitespace-nowrap rounded-full px-3 py-1.5 font-bold transition flex items-center gap-1.5 ${
-                                    isSelected
-                                        ? "bg-brand-600 text-white shadow-xs"
-                                        : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-                                }`}
-                            >
-                                <span>{label}</span>
-                                <span
-                                    className={`rounded-full px-1.5 py-0.2 text-[10px] ${
-                                        isSelected
-                                            ? "bg-white/20 text-white"
-                                            : "bg-slate-100 text-slate-600"
-                                    }`}
-                                >
-                                    {count}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
+                        <Link href={newLogUrl}>
+                            <Plus className="mr-1.5 h-4 w-4" />
+                            Ghi nhật ký
+                        </Link>
+                    </Button>
+                )}
             </div>
 
             {/* Danh sách nhật ký canh tác */}
             <Card className="overflow-hidden rounded-2xl border border-slate-300 shadow-sm bg-white">
+                <div aria-live="polite" className="flex justify-end border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-500">
+                    <span>Tổng cộng: <b>{logs.length}</b> hoạt động</span>
+                </div>
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 space-y-3">
                         <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
@@ -654,154 +521,21 @@ export function CultivationLogsTab({
                             </Button>
                         </div>
                     </div>
-                ) : filteredLogs.length === 0 ? (
+                ) : logs.length === 0 ? (
                     <div className="py-16 text-center text-slate-500">
                         <Sprout className="mx-auto mb-3 h-10 w-10 text-slate-300" />
                         <b className="text-slate-800 text-base">
-                            {logs.length === 0
-                                ? "Chưa có nhật ký canh tác nào cho vụ mùa này"
-                                : "Không tìm thấy nhật ký phù hợp với bộ lọc"}
+                            Chưa có nhật ký canh tác nào cho vụ mùa này
                         </b>
                         <p className="mt-1 text-xs max-w-sm mx-auto text-slate-400">
-                            {logs.length === 0
-                                ? isSeasonActive
-                                    ? "Bấm 'Ghi nhật ký' ở góc trên để ghi chép hoạt động đầu tiên."
-                                    : "Vụ mùa lịch sử này chưa có ghi chép nhật ký nào."
-                                : "Thử đổi từ khóa tìm kiếm hoặc chọn 'Tất cả' giai đoạn để xem toàn bộ."}
+                            {isSeasonActive
+                                ? "Bấm 'Ghi nhật ký' ở góc trên để ghi chép hoạt động đầu tiên."
+                                : "Vụ mùa lịch sử này chưa có ghi chép nhật ký nào."}
                         </p>
                     </div>
                 ) : (
-                    <>
-                        {/* Mobile Card View */}
-                        <div className="space-y-3 p-3.5 md:hidden">
-                            {filteredLogs.map((log) => {
-                                const activityText =
-                                    log.activityType === "OTHER"
-                                        ? log.otherActivity || "Khác"
-                                        : activityLabels[log.activityType] ?? log.activityType;
-
-                                return (
-                                    <article
-                                        key={log.id}
-                                        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs space-y-3"
-                                    >
-                                        <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                                            <span className="text-xs font-bold text-slate-500">
-                                                {formatLogDateTime(log.actionDate)}
-                                            </span>
-                                            <span className="text-xs font-bold text-slate-800">
-                                                {stageLabels[log.stage] ?? log.stage}
-                                            </span>
-                                        </div>
-
-                                        <dl className="grid grid-cols-2 gap-2 text-xs">
-                                            <div>
-                                                <dt className="text-slate-400">Hoạt động</dt>
-                                                <dd className="mt-0.5 font-bold text-slate-900">
-                                                    {activityText}
-                                                </dd>
-                                            </div>
-                                            <div>
-                                                <dt className="text-slate-400">Cách ly (PHI)</dt>
-                                                <dd className="mt-0.5 font-semibold text-slate-700">
-                                                    {log.phiDays != null && log.phiDays > 0 ? `${log.phiDays} ngày` : "—"}
-                                                </dd>
-                                            </div>
-
-                                            <div className="col-span-2">
-                                                <dt className="text-slate-400 mb-1">Sinh vật gây hại phát hiện</dt>
-                                                <dd className="mt-0.5 text-xs font-medium text-slate-800">
-                                                    {renderPestsDetectedCell(log.pestsDetected, onNavigateToPestBook)}
-                                                </dd>
-                                            </div>
-
-                                            {log.chemicalName && (
-                                                <div className="col-span-2">
-                                                    <dt className="text-slate-400">Vật tư sử dụng</dt>
-                                                    <dd className="mt-0.5 font-semibold text-slate-900">
-                                                        {log.chemicalName}
-                                                        {log.materialsUsed?.map(m => <span key={m.id} className="mt-1 block text-xs font-normal text-slate-500">Xuất kho: {m.quantity.toLocaleString("vi-VN")} {m.unit} · {m.supplyName}</span>)}
-                                                    </dd>
-                                                </div>
-                                            )}
-
-                                            {log.dosage && (
-                                                <div className="col-span-2">
-                                                    <dt className="text-slate-400">Liều lượng</dt>
-                                                    <dd className="mt-0.5 font-semibold text-slate-900">
-                                                        {log.dosage}
-                                                    </dd>
-                                                </div>
-                                            )}
-
-                                            {log.notes && (
-                                                <div className="col-span-2">
-                                                    <dt className="text-slate-400">Ghi chú</dt>
-                                                    <dd className="mt-0.5 text-slate-600 leading-relaxed">
-                                                        {log.notes}
-                                                    </dd>
-                                                </div>
-                                            )}
-
-                                            {log.images && log.images.length > 0 && (
-                                                <div className="col-span-2 pt-1">
-                                                    <dt className="text-slate-400 mb-1.5 flex items-center gap-1">
-                                                        <ImageIcon className="h-3.5 w-3.5" />
-                                                        Ảnh đính kèm ({log.images.length})
-                                                    </dt>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {log.images.map((img, idx) => (
-                                                            <button
-                                                                key={idx}
-                                                                type="button"
-                                                                onClick={() => setPreviewImage(img)}
-                                                                className="relative h-14 w-14 rounded-xl overflow-hidden border border-slate-200 group"
-                                                            >
-                                                                <img
-                                                                    src={img}
-                                                                    alt={`Ảnh ${idx + 1}`}
-                                                                    className="h-full w-full object-cover group-hover:scale-105 transition"
-                                                                />
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </dl>
-
-                                        {/* Thao tác Sửa / Xóa cho mobile */}
-                                        <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-slate-100">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                disabled={!isSeasonActive}
-                                                onClick={() => handleOpenEdit(log)}
-                                                className="h-7 px-2.5 text-xs font-bold text-brand-700 border-brand-200 hover:bg-brand-50"
-                                            >
-                                                <Pencil className="mr-1 h-3 w-3" />
-                                                Sửa
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                disabled={!isSeasonActive}
-                                                onClick={() => handleOpenDelete(log)}
-                                                className="h-7 px-2.5 text-xs font-bold text-rose-600 border-rose-200 hover:bg-rose-50"
-                                            >
-                                                <Trash2 className="mr-1 h-3 w-3" />
-                                                Xóa
-                                            </Button>
-                                        </div>
-                                    </article>
-                                );
-                            })}
-                        </div>
-
-                        {/* Desktop Table View */}
-                        <div className="hidden md:block overflow-x-auto no-scrollbar">
-                            <table className="w-full table-fixed border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[1045px] table-fixed border-collapse border border-slate-300 text-left text-xs sm:text-sm">
                                 <thead className="bg-slate-100/90 text-xs text-slate-700">
                                     <tr>
                                         <th className="w-[100px] border border-slate-300 px-2.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Ngày thực hiện</th>
@@ -816,7 +550,7 @@ export function CultivationLogsTab({
                                     </tr>
                                 </thead>
                                 <tbody className="text-xs">
-                                    {filteredLogs.map((log) => {
+                                    {logs.map((log) => {
                                         const activityText =
                                             log.activityType === "OTHER"
                                                 ? log.otherActivity || "Khác"
@@ -918,7 +652,6 @@ export function CultivationLogsTab({
                                 </tbody>
                             </table>
                         </div>
-                    </>
                 )}
             </Card>
 

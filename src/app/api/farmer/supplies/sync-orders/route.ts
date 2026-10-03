@@ -1,3 +1,4 @@
+import { lockFarmerStock, rebuildMaterialFifo } from "@/lib/farmer-material-fifo";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -53,6 +54,7 @@ export async function POST() {
             items: {
                 include: {
                     product: true,
+                    batches: { include: { productBatch: true } },
                 },
             },
         },
@@ -82,6 +84,9 @@ export async function POST() {
     let syncedCount = 0;
 
     await prisma.$transaction(async (tx) => {
+        await lockFarmerStock(tx, farmerId);
+        const imported = await tx.farmerSupply.findMany({ where: { farmerId, orderItemId: { not: null } }, select: { orderItemId: true } });
+        for (const supply of imported) if (supply.orderItemId) importedOrderItemIds.add(supply.orderItemId);
         for (const order of completedOrders) {
             for (const item of order.items) {
                 if (importedOrderItemIds.has(item.id)) continue;
@@ -102,62 +107,30 @@ export async function POST() {
                     }
                 }
 
-                // Kiểm tra xem đã có vật tư cùng tên chưa
-                let supply = await tx.farmerSupply.findFirst({
-                    where: {
-                        farmerId: farmerId,
-                        name: { equals: item.productName, mode: "insensitive" },
-                        unit: { equals: item.unit, mode: "insensitive" },
-                    },
-                });
-
-                if (supply) {
-                    supply = await tx.farmerSupply.update({
-                        where: { id: supply.id },
-                        data: {
-                            quantity: supply.quantity + item.quantity,
-                            unitPrice: item.unitPrice,
-                            phiDays: item.product?.phiDays ?? supply.phiDays,
-                            brand: item.product?.brand || supply.brand,
-                        },
-                    });
-                } else {
-                    supply = await tx.farmerSupply.create({
-                        data: {
-                            farmerId: farmerId,
-                            name: item.productName,
-                            type: supplyType,
-                            brand: item.product?.brand || item.storeName,
-                            unit: item.unit,
-                            quantity: item.quantity,
-                            unitPrice: item.unitPrice,
-                            phiDays: item.product?.phiDays ?? null,
-                            orderItemId: item.id,
-                            productId: item.productId,
-                            notes: `Nhập tự động từ đơn mua ${order.orderCode}`,
-                        },
-                    });
+                // Keep each receipt/batch separate; the UI aggregates the material, not the receipt.
+                const receipts = item.batches.length ? item.batches.map(batch => ({ quantity: Number(batch.quantity), batch: batch.productBatch })) : [{ quantity: item.quantity, batch: null }];
+                if (Math.abs(receipts.reduce((sum, receipt) => sum + receipt.quantity, 0) - item.quantity) > 0.000001) throw new Error("Phân bổ lô hàng không khớp số lượng đơn mua");
+                for (const receipt of receipts) {
+                    const supply = await tx.farmerSupply.create({ data: {
+                        farmerId, name: item.productName, type: supplyType, brand: item.product?.brand || item.storeName,
+                        unit: item.unit, quantity: receipt.quantity, unitPrice: item.unitPrice,
+                        phiDays: item.product?.phiDays ?? null, orderItemId: item.id, productId: item.productId,
+                        productBatchId: receipt.batch?.id || null, orderId: order.id, storeId: order.storeId,
+                        sourceType: "STORE_PURCHASE", verified: true, notes: "Nhập tự động từ đơn mua " + order.orderCode,
+                    } });
+                    await tx.farmerSupplyTransaction.create({ data: {
+                        supplyId: supply.id, farmerId, type: "IN", quantity: receipt.quantity,
+                        unitPrice: item.unitPrice, totalAmount: Number(item.unitPrice) * receipt.quantity,
+                        purpose: "Nhập từ đơn hàng " + order.orderCode, notes: "Đơn mua vật tư " + order.orderCode,
+                        actionDate: order.createdAt, expiryDate: receipt.batch?.expiryDate || null,
+                    } });
                 }
-
-                // Tạo giao dịch nhập kho IN
-                await tx.farmerSupplyTransaction.create({
-                    data: {
-                        supplyId: supply.id,
-                        farmerId: farmerId,
-                        type: "IN",
-                        quantity: item.quantity,
-                        unitPrice: item.unitPrice,
-                        totalAmount: Number(item.unitPrice) * item.quantity,
-                        purpose: `Nhập từ đơn hàng ${order.orderCode} (${order.store.name || item.storeName})`,
-                        notes: `Đơn mua vật tư ${order.orderCode}`,
-                        actionDate: order.createdAt,
-                    },
-                });
-
+                importedOrderItemIds.add(item.id);
                 syncedCount++;
             }
         }
-    });
+        await rebuildMaterialFifo(tx, farmerId);
+    }, { timeout: 30000 });
 
     return NextResponse.json({
         success: true,

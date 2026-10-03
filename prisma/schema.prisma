@@ -1574,6 +1574,9 @@ model FarmerSupplyTransaction {
   stage        GrowthStage?
   activityType ActivityType?
   purpose      String?
+  exportPurpose String?
+  expiryDate    DateTime?
+  fifoAllocations Json?
   actionDate   DateTime              @default(now())
   notes        String?
   createdAt    DateTime              @default(now())
@@ -1601,6 +1604,8 @@ model FarmingLogMaterial {
   unitPrice     Decimal    @default(0) @db.Decimal(14, 2)
   totalCost     Decimal    @default(0) @db.Decimal(14, 2)
   transactionId String?
+  content       String?
+  phiDays       Int?
   createdAt     DateTime   @default(now())
 
   farmingLog FarmingLog    @relation(fields: [farmingLogId], references: [id], onDelete: Cascade)

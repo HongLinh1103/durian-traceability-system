@@ -7,6 +7,7 @@ export type FarmingLogImage = File;
 export type OfflineFarmingLogPayload = FarmingLogInput & {
     isGACCCompliant: boolean;
     images: FarmingLogImage[];
+    materials?: Array<{ supplyId: string; quantity: number; content: string; phiDays?: number }>;
 };
 
 export type OfflineFarmingLogRecord = {
@@ -73,6 +74,7 @@ async function submitQueuedLog(record: OfflineFarmingLogRecord) {
     formData.append("notes", record.payload.notes ?? "");
     formData.append("isGACCCompliant", String(record.payload.isGACCCompliant));
 
+    formData.append("materials", JSON.stringify(record.payload.materials || []));
     for (const image of record.payload.images) {
         formData.append("images", image, image.name);
     }

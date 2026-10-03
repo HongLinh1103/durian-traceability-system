@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import {
     Bug,
     Plus,
-    Search,
     ArrowLeft,
     Eye,
     Crosshair,
@@ -241,8 +240,6 @@ export function PestMonitoringTab({
     const searchParams = useSearchParams();
     const [books, setBooks] = useState<PestBookSummary[]>([]);
     const [loading, setLoading] = useState(true);
-    const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "CLOSED">("ALL");
-    const [searchQuery, setSearchQuery] = useState("");
 
     // Selected Book Detail View
     const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
@@ -377,7 +374,6 @@ export function PestMonitoringTab({
             const params = new URLSearchParams();
             if (farmId) params.set("farmId", farmId);
             if (cropSeasonId) params.set("cropSeasonId", cropSeasonId);
-            if (statusFilter !== "ALL") params.set("status", statusFilter);
 
             const res = await fetch(`/api/farmer/pest-monitoring?${params.toString()}`, { cache: "no-store" });
             if (res.ok) {
@@ -390,14 +386,12 @@ export function PestMonitoringTab({
         } finally {
             setLoading(false);
         }
-    }, [farmId, cropSeasonId, statusFilter]);
+    }, [farmId, cropSeasonId]);
 
     // Reset khi thay đổi vườn hoặc mùa vụ
     useEffect(() => {
         setSelectedBookId(null);
         setBookDetail(null);
-        setStatusFilter("ALL");
-        setSearchQuery("");
     }, [farmId, cropSeasonId]);
 
     useEffect(() => {
@@ -993,21 +987,6 @@ export function PestMonitoringTab({
         }
     };
 
-    // Filter books by search query
-    const filteredBooks = useMemo(() => {
-        return books.filter((b) => {
-            if (!searchQuery.trim()) return true;
-            const q = searchQuery.toLowerCase().trim();
-            return (
-                b.pestName.toLowerCase().includes(q) ||
-                (b.scientificName && b.scientificName.toLowerCase().includes(q)) ||
-                (b.trapType && b.trapType.toLowerCase().includes(q)) ||
-                (b.attractant && b.attractant.toLowerCase().includes(q)) ||
-                (b.targetPart && b.targetPart.toLowerCase().includes(q)) ||
-                (b.discoverySource && b.discoverySource.toLowerCase().includes(q))
-            );
-        });
-    }, [books, searchQuery]);
 
     // =========================================================================
     // RENDER: VIEW CHI TIẾT SỔ THEO DÕI
@@ -2415,18 +2394,8 @@ export function PestMonitoringTab({
     // =========================================================================
     return (
         <div className="space-y-5">
-            {/* Header Danh Sách */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
-                        <Bug className="h-6 w-6 text-brand-600" />
-                        SỔ THEO DÕI SINH VẬT GÂY HẠI
-                    </h2>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                        Quản lý bẫy dẫn dụ, định kỳ điều tra và kiểm soát dịch hại theo tiêu chuẩn VietGAP / GACC
-                    </p>
-                </div>
-
+            {/* Toolbar */}
+            <div className="flex items-center justify-end gap-2">
                 {!isSeasonActive ? (
                     <div className="flex flex-wrap items-center gap-2">
                         <div className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 border border-slate-200 shrink-0">
@@ -2455,42 +2424,12 @@ export function PestMonitoringTab({
                 )}
             </div>
 
-            {/* Filter and Search */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between">
-                <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Tìm kiếm sinh vật, phương pháp, loại bẫy..."
-                        className="h-10 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none"
-                    />
-                </div>
-
-                <div className="flex gap-1.5 text-xs">
-                    {(["ACTIVE", "CLOSED", "ALL"] as const).map((st) => (
-                        <button
-                            key={st}
-                            type="button"
-                            onClick={() => setStatusFilter(st)}
-                            className={`rounded-full px-3.5 py-2 font-bold transition ${statusFilter === st
-                                ? "bg-slate-900 text-white"
-                                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-                                }`}
-                        >
-                            {st === "ACTIVE" ? "Đang theo dõi" : st === "CLOSED" ? "Đã đóng" : "Tất cả"}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
             {/* Danh Sách Card */}
             {loading ? (
                 <div className="flex justify-center py-16">
                     <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
                 </div>
-            ) : filteredBooks.length === 0 ? (
+            ) : books.length === 0 ? (
                 <div className="rounded-3xl border border-slate-200 bg-white py-16 text-center text-slate-500 shadow-sm">
                     <Bug className="mx-auto mb-3 h-12 w-12 text-slate-300" />
                     <p className="font-bold text-slate-800 text-base">Chưa có sổ theo dõi sinh vật gây hại nào</p>
@@ -2500,7 +2439,7 @@ export function PestMonitoringTab({
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredBooks.map((book) => {
+                    {books.map((book) => {
                         const lastIns = book.latestInspection;
                         const lastTrt = book.latestTreatment;
                         const isTrapBased = book.controlMethod === "Bẫy" || book.trapsCount > 0 || (book.monitoringMethods || []).includes("Kiểm tra bẫy") || Boolean(book.trapType);

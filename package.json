@@ -35,7 +35,9 @@
         "seed:partner-finance": "npx tsx scripts/seed-partner-finance-data.ts",
         "test:traceability": "tsx scripts/test-traceability.ts",
         "test:processing-gmp": "tsc scripts/test-processing-gmp.ts --outDir scratch/gmp-test --module commonjs --target ES2022 --esModuleInterop --skipLibCheck && node scratch/gmp-test/scripts/test-processing-gmp.js",
-        "seed:processing-gmp": "tsc scripts/seed-processing-gmp.ts --outDir scratch/gmp-test --module commonjs --target ES2022 --esModuleInterop --skipLibCheck && node scratch/gmp-test/scripts/seed-processing-gmp.js"
+        "seed:processing-gmp": "tsc scripts/seed-processing-gmp.ts --outDir scratch/gmp-test --module commonjs --target ES2022 --esModuleInterop --skipLibCheck && node scratch/gmp-test/scripts/seed-processing-gmp.js",
+        "test:material-fifo": "tsx scripts/test-material-fifo.ts",
+        "materials:reconcile": "tsx scripts/reconcile-material-fifo.ts"
     },
     "dependencies": {
         "@hookform/resolvers": "^3.10.0",

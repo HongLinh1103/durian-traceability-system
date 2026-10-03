@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BookOpen, CalendarDays, ChevronRight } from "lucide-react";
+import { BookOpen, Bug, CalendarDays, ChevronRight } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { HeroBanner } from "@/components/home/HeroBanner";
@@ -38,6 +38,12 @@ export default async function FarmerDashboardPage() {
                         <div><p className="font-bold text-slate-900">Nhật ký canh tác</p><p className="text-sm text-slate-500">Xem và cập nhật hoạt động canh tác của vườn.</p></div>
                     </div>
                     <Button asChild className="h-11 rounded-2xl bg-brand-600 font-bold text-white hover:bg-brand-700 shadow-soft"><Link href="/dashboard/farmer/journal/cultivation">Xem nhật ký<ChevronRight className="ml-2 h-4 w-4" /></Link></Button>
+                </CardContent>
+            </Card>
+            <Card className="rounded-3xl border-slate-200 shadow-sm">
+                <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
+                    <div className="flex items-center gap-3"><span className="rounded-2xl bg-amber-50 p-3 text-amber-700"><Bug className="h-6 w-6" /></span><div><p className="font-bold text-slate-900">Sổ theo dõi sinh vật gây hại</p><p className="text-sm text-slate-500">Theo dõi kiểm tra, bẫy và biện pháp xử lý dịch hại.</p></div></div>
+                    <Button asChild className="h-11 rounded-2xl bg-brand-600 font-bold text-white hover:bg-brand-700 shadow-soft"><Link href="/dashboard/farmer/pest-monitoring">Mở sổ theo dõi<ChevronRight className="ml-2 h-4 w-4" /></Link></Button>
                 </CardContent>
             </Card>
             <Card className="rounded-3xl border-slate-200 shadow-sm">

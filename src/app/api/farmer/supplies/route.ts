@@ -1,3 +1,6 @@
+import { supplyPackaging } from "@/lib/supply-packaging";
+import { groupMaterials } from "@/lib/material-fifo";
+import { lockFarmerStock, rebuildMaterialFifo } from "@/lib/farmer-material-fifo";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSession } from "next-auth";
@@ -7,12 +10,14 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 const createSupplySchema = z.object({
+    actionDate: z.coerce.date().optional(),
+    expiryDate: z.coerce.date().optional().nullable(),
     name: z.string().trim().min(2, "Tên vật tư quá ngắn").max(200),
     type: z.enum(["FERTILIZER", "PESTICIDE", "EQUIPMENT", "OTHER"]),
     brand: z.string().trim().max(150).optional().nullable(),
     unit: z.string().trim().min(1, "Đơn vị tính không được trống").max(50),
-    quantity: z.coerce.number().min(0, "Số lượng không hợp lệ"),
-    unitPrice: z.coerce.number().min(0, "Đơn giá không hợp lệ"),
+    quantity: z.coerce.number().finite().min(0, "Số lượng không hợp lệ"),
+    unitPrice: z.coerce.number().finite().min(0, "Đơn giá không hợp lệ"),
     phiDays: z.coerce.number().int().min(0).optional().nullable(),
     activeIngredients: z.string().trim().max(500).optional().nullable(),
     notes: z.string().trim().max(1000).optional().nullable(),
@@ -201,11 +206,16 @@ export async function GET(request: Request) {
 
         const supplies = await prisma.farmerSupply.findMany({
             where: whereClause,
+            include: { orderItem: { select: { product: { select: { packaging: true } } } } },
             orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
         });
 
+        const groupedSupplies = groupMaterials(supplies.map(s => {
+            const info = supplyPackaging(s.unit, s.orderItem?.product?.packaging || null, s.quantity);
+            return { ...s, unit: info.unit, packaging: info.packaging };
+        }));
         const summary = {
-            totalItems: supplies.length,
+            totalItems: groupedSupplies.length,
             totalStockValue: supplies.reduce(
                 (sum, item) => sum + Number(item.unitPrice) * item.quantity,
                 0,
@@ -215,7 +225,7 @@ export async function GET(request: Request) {
             equipmentCount: supplies.filter((s) => s.type === "EQUIPMENT").length,
         };
 
-        return NextResponse.json({ success: true, data: supplies, summary });
+        return NextResponse.json({ success: true, data: groupedSupplies, summary });
     } catch (error: any) {
         console.error("Error in GET /api/farmer/supplies:", error);
         return NextResponse.json(
@@ -246,10 +256,11 @@ export async function POST(request: Request) {
             );
         }
 
-        const { name, type, brand, unit, quantity, unitPrice, phiDays, activeIngredients, notes } =
+        const { name, type, brand, unit, quantity, unitPrice, phiDays, activeIngredients, notes, actionDate, expiryDate } =
             parsed.data;
 
         const result = await prisma.$transaction(async (tx) => {
+            await lockFarmerStock(tx, farmerId);
             let supply = await tx.farmerSupply.findFirst({
                 where: {
                     farmerId,
@@ -299,13 +310,15 @@ export async function POST(request: Request) {
                         totalAmount: Number(unitPrice) * quantity,
                         purpose: "Nhập kho vật tư",
                         notes: notes || "Nhập kho thủ công",
-                        actionDate: new Date(),
+                        actionDate: actionDate || new Date(),
+                        expiryDate,
                     },
                 });
             }
 
+            await rebuildMaterialFifo(tx, farmerId);
             return supply;
-        });
+        }, { timeout: 30000 });
 
         return NextResponse.json({ success: true, data: result }, { status: 201 });
     } catch (error: any) {
