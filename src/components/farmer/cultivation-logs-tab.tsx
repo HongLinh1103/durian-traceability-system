@@ -579,8 +579,10 @@ export function CultivationLogsTab({
                                                     {renderPestsDetectedCell(log.pestsDetected, onNavigateToPestBook)}
                                                 </td>
                                                 <td className="border border-slate-200 break-words px-2.5 py-2.5 font-semibold text-slate-900 leading-snug">
-                                                    {log.chemicalName || "—"}
-                                                    {log.materialsUsed?.map(m => <span key={m.id} className="mt-1 block text-xs text-slate-500">Xuất kho: {m.quantity.toLocaleString("vi-VN")} {m.unit} · {m.supplyName}</span>)}
+                                                    {(log.materialsUsed?.length || 0) > 1 ? <details className="group">
+                                                        <summary className="cursor-pointer">{log.materialsUsed![0].supplyName} <span className="text-slate-500">+{log.materialsUsed!.length - 1}</span></summary>
+                                                        <div className="mt-2 space-y-1">{log.materialsUsed!.map(m => <div key={m.id}>{m.supplyName}</div>)}</div>
+                                                    </details> : log.materialsUsed?.[0]?.supplyName || log.chemicalName || "—"}
                                                 </td>
                                                 <td className="border border-slate-200 break-words px-2.5 py-2.5 font-medium text-slate-700 leading-snug">
                                                     {log.dosage || "—"}

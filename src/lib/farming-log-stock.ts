@@ -1,10 +1,12 @@
 import type { Prisma, ActivityType, GrowthStage } from "@prisma/client";
 import { lockFarmerStock, rebuildMaterialFifo } from "@/lib/farmer-material-fifo";
+import { selfOwnedMaterial, allowsSelfOwnedMaterials } from "@/lib/self-owned-materials";
+import { formatMaterialDosage } from "@/lib/material-dosage";
 
-export function materialSummary(materials: Array<{ supplyName: string; quantity: number; unit: string }>) {
+export function materialSummary(materials: Array<{ supplyName: string; quantity: number; unit: string }>, farm?: { areaSize: number; areaUnit?: string }) {
     return {
         chemicalName: materials.map(m => m.supplyName).join(" + "),
-        dosage: materials.map(m => `${m.quantity.toLocaleString("vi-VN", { maximumFractionDigits: 6 })} ${m.unit}`).join(" + "),
+        dosage: materials.map(m => formatMaterialDosage(m.quantity, m.unit, farm)).join(" + "),
     };
 }
 
@@ -37,7 +39,9 @@ export async function updateLogStock(tx: Prisma.TransactionClient, input: {
         await tx.farmingLogMaterial.create({ data: { farmingLogId: input.logId, supplyId: m.supplyId, supplyName: m.supply.name, supplyType: m.supply.type, unit: m.supply.unit, quantity: m.quantity, unitPrice: m.unitPrice, totalCost: Number(m.unitPrice) * m.quantity, transactionId: m.id } });
     }
     await rebuildMaterialFifo(tx, input.farmerId, revised.map(m => m.id));
-    return revised.length ? materialSummary(revised.map(m => ({ supplyName: m.supply.name, quantity: m.quantity, unit: m.supply.unit }))) : null;
+    const snapshots = await tx.farmingLogMaterial.findMany({ where: { farmingLogId: input.logId }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
+    const log = await tx.farmingLog.findUniqueOrThrow({ where: { id: input.logId }, include: { farm: true } });
+    return snapshots.length ? materialSummary(snapshots, log.farm) : null;
 }
 
 export type LogMaterialInput = { supplyId: string; quantity: number; content: string; phiDays?: number | null };
@@ -47,6 +51,13 @@ export async function createLogMaterials(tx: Prisma.TransactionClient, input: { 
     const movementIds: string[] = [];
     for (const m of input.materials) {
         if (!m || !Number.isFinite(m.quantity) || m.quantity <= 0 || !m.content?.trim()) throw new Error("Chọn vật tư, số lượng lớn hơn 0 và nội dung sử dụng");
+        const own = selfOwnedMaterial(m.supplyId);
+        if (own) {
+            if (!allowsSelfOwnedMaterials(input.activityType)) throw new Error("Vật tư tự có chỉ dùng cho hoạt động bón phân");
+            await tx.farmingLogMaterial.create({ data: { farmingLogId: input.logId, supplyName: own.name, supplyType: own.type, quantity: m.quantity, unit: own.unit, content: m.content.trim(), unitPrice: 0, totalCost: 0 } });
+            snapshots.push({ supplyName: own.name, quantity: m.quantity, unit: own.unit });
+            continue;
+        }
         const supply = await tx.farmerSupply.findFirst({ where: { id: m.supplyId, farmerId: input.farmerId } });
         if (!supply) throw new Error("Vật tư không thuộc kho của bạn");
         const movement = await tx.farmerSupplyTransaction.create({ data: { supplyId: supply.id, farmerId: input.farmerId, farmId: input.farmId, cropSeasonId: input.cropSeasonId, farmingLogId: input.logId, type: "OUT", quantity: m.quantity, unitPrice: 0, totalAmount: 0, exportPurpose: "CULTIVATION", purpose: "Phục vụ canh tác", notes: m.content.trim(), actionDate: input.actionDate, stage: input.stage, activityType: input.activityType } });
@@ -54,6 +65,7 @@ export async function createLogMaterials(tx: Prisma.TransactionClient, input: { 
         await tx.farmingLogMaterial.create({ data: { farmingLogId: input.logId, supplyId: supply.id, supplyName: supply.name, supplyType: supply.type, quantity: m.quantity, unit: supply.unit, transactionId: movement.id, content: m.content.trim(), phiDays: input.activityType === "SPRAY_PESTICIDE" ? m.phiDays ?? null : null } });
         snapshots.push({ supplyName: supply.name, quantity: m.quantity, unit: supply.unit });
     }
-    await rebuildMaterialFifo(tx, input.farmerId, movementIds);
-    return materialSummary(snapshots);
+    if (movementIds.length) await rebuildMaterialFifo(tx, input.farmerId, movementIds);
+    const farm = await tx.farm.findUniqueOrThrow({ where: { id: input.farmId } });
+    return materialSummary(snapshots, farm);
 }

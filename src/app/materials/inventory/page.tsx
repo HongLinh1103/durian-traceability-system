@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import { materialKey, groupMaterials, exportPurposeLabels, type ExportPurpose, type FifoAllocation } from "@/lib/material-fifo";
+import { materialKey, groupMaterials, exportPurposeLabels, type ExportPurpose } from "@/lib/material-fifo";
 import Link from "next/link";
 import { Boxes, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { getServerSession } from "next-auth";
@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { supplyPackaging } from "@/lib/supply-packaging";
 import { stockLedger } from "@/lib/farmer-stock-ledger";
 import { FarmerInventoryActionModal } from "@/components/farmer/farmer-inventory-action-modal";
+import { InventoryFilterBar } from "@/components/farmer/inventory-filter-bar";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Kho vật tư của tôi | TriViet" };
@@ -31,13 +32,16 @@ export default async function FarmerInventoryPage({ searchParams }: { searchPara
     if (session.user.role !== "FARMER") redirect("/");
     const type = searchParams.tab === "OUT" ? "OUT" : searchParams.tab === "IN" ? "IN" : "STOCK";
     const where: Prisma.FarmerSupplyTransactionWhereInput = { farmerId: session.user.id, type: type === "OUT" ? "OUT" : "IN" };
-    if (type === "OUT") {
-        if (searchParams.season) where.cropSeasonId = searchParams.season;
-        if (searchParams.purpose && searchParams.purpose in exportPurposeLabels) where.exportPurpose = searchParams.purpose;
+    if (type === "OUT" || type === "IN") {
         const supplyFilter: Prisma.FarmerSupplyWhereInput = {};
         if (["FERTILIZER", "PESTICIDE", "EQUIPMENT", "OTHER"].includes(searchParams.kind || "")) supplyFilter.type = searchParams.kind as any;
         if (searchParams.q?.trim()) supplyFilter.name = { contains: searchParams.q.trim(), mode: "insensitive" };
-        where.supply = supplyFilter;
+        if (Object.keys(supplyFilter).length > 0) where.supply = supplyFilter;
+
+        if (type === "OUT") {
+            if (searchParams.season) where.cropSeasonId = searchParams.season;
+            if (searchParams.purpose && searchParams.purpose in exportPurposeLabels) where.exportPurpose = searchParams.purpose;
+        }
     }
     const rawSupplies = type !== "STOCK" ? [] : await prisma.farmerSupply.findMany({
         where: { farmerId: session.user.id }, orderBy: [{ name: "asc" }, { id: "asc" }],
@@ -82,7 +86,7 @@ export default async function FarmerInventoryPage({ searchParams }: { searchPara
     const columns = type === "STOCK"
         ? ["Loại vật tư", "Tên vật tư", "Đơn vị tính", "Quy cách đóng gói", "Tổng nhập", "Tổng xuất", "Tồn kho"]
         : type === "OUT"
-        ? ["Ngày", "Loại vật tư", "Tên vật tư", "Nội dung", "Mục đích xuất", "Vườn", "Niên vụ", "Số lượng", "ĐVT", "Quy cách", "Khối lượng (kg)", "Thành tiền (đ)", "Thao tác"]
+        ? ["Ngày", "Niên vụ", "Loại vật tư", "Tên vật tư", "Mục đích xuất", "Nội dung", "Số lượng", "ĐVT", "Quy cách", "Khối lượng", "Thành tiền"]
         : ["Ngày", "Loại vật tư", "Tên vật tư", "Số lượng", "Đơn vị tính", "Quy cách đóng gói", "Khối lượng (kg)", "Đơn giá (đ)", "Thành tiền (đ)", "Ngày hết hạn"];
 
     return (
@@ -134,21 +138,28 @@ export default async function FarmerInventoryPage({ searchParams }: { searchPara
                 ))}
             </nav>
 
-            {type === "OUT" && <form className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-5">
-                <input type="hidden" name="tab" value="OUT" />
-                <label className="text-sm">Niên vụ<select name="season" defaultValue={searchParams.season || ""} className="mt-1 h-10 w-full rounded-xl border px-2"><option value="">Tất cả niên vụ</option>{farms.flatMap(f => f.cropSeasons.map(c => <option key={c.id} value={c.id}>{f.farmName} · {c.name}</option>))}</select></label>
-                <label className="text-sm">Mục đích xuất<select name="purpose" defaultValue={searchParams.purpose || ""} className="mt-1 h-10 w-full rounded-xl border px-2"><option value="">Tất cả</option>{Object.entries(exportPurposeLabels).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-                <label className="text-sm">Loại vật tư<select name="kind" defaultValue={searchParams.kind || ""} className="mt-1 h-10 w-full rounded-xl border px-2"><option value="">Tất cả loại</option>{Object.entries(labels).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-                <label className="text-sm">Tìm kiếm<input name="q" defaultValue={searchParams.q || ""} placeholder="Tên vật tư..." className="mt-1 h-10 w-full rounded-xl border px-3" /></label>
-                <button type="submit" className="self-end rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white">Lọc</button>
-            </form>}
+            {type === "IN" && (
+                <InventoryFilterBar
+                    type="IN"
+                    labels={labels}
+                />
+            )}
+
+            {type === "OUT" && (
+                <InventoryFilterBar
+                    type="OUT"
+                    labels={labels}
+                    exportPurposeLabels={exportPurposeLabels}
+                    farms={farms}
+                />
+            )}
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div className="overflow-x-auto">
                     <table className={`w-full border-collapse text-sm ${type === "OUT" ? "min-w-[1200px]" : "min-w-[1050px]"}`}>
                         <thead className="bg-slate-50 text-slate-700">
                             <tr>
                                 {columns.map((label) => (
-                                    <th key={label} scope="col" className="border border-slate-200 px-4 py-4 text-center font-semibold">
+                                    <th key={label} scope="col" className="border border-slate-200 px-4 py-4 text-center font-semibold whitespace-nowrap">
                                         {label}
                                     </th>
                                 ))}
@@ -188,36 +199,32 @@ export default async function FarmerInventoryPage({ searchParams }: { searchPara
                                 const info = supplyPackaging(tx.supply.unit, tx.supply.orderItem?.product?.packaging ?? null, tx.quantity);
                                 const purposeText = tx.purpose || (tx.activityType ? activityLabels[tx.activityType] : null) || tx.notes || "—";
                                 const exportPurpose = (tx.exportPurpose || (tx.farmId && tx.cropSeasonId ? "CULTIVATION" : "OTHER")) as ExportPurpose;
-                                const allocations = Array.isArray(tx.fifoAllocations) ? tx.fifoAllocations as unknown as FifoAllocation[] : [];
                                 const badge = <span className={"inline-block whitespace-nowrap rounded-full px-2 py-1 text-xs font-semibold " + (exportPurpose === "CULTIVATION" ? "bg-green-50 text-green-700" : exportPurpose === "DISPOSAL" ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-600")}>{exportPurposeLabels[exportPurpose]}</span>;
-                                const detail = <details><summary className="cursor-pointer whitespace-nowrap text-brand-700">Chi tiết FIFO</summary>{allocations.length ? <table className="mt-2 min-w-[430px] text-xs"><thead><tr>{["Ngày nhập", "Số lượng lấy", "Đơn giá", "HSD"].map(label => <th key={label} className="p-2">{label}</th>)}</tr></thead><tbody>{allocations.map((a, i) => <tr key={i}><td className="p-2">{date.format(new Date(a.actionDate))}</td><td className="p-2">{number.format(a.quantity)} {info.unit}</td><td className="p-2">{money.format(a.unitPrice)} đ</td><td className="p-2">{a.expiryDate ? date.format(new Date(a.expiryDate)) : "—"}</td></tr>)}</tbody></table> : <p className="mt-2 text-xs text-slate-500">Giao dịch cũ chưa có phân bổ FIFO.</p>}</details>;
                                 const cells = type === "OUT"
                                     ? [
-                                        { value: date.format(tx.actionDate), className: "text-center" },
-                                        { value: labels[tx.supply.type] || "Khác", className: "text-center" },
+                                        { value: date.format(tx.actionDate), className: "text-center whitespace-nowrap" },
+                                        { value: exportPurpose === "CULTIVATION" ? tx.cropSeason?.name || "—" : "—", className: "text-center whitespace-nowrap" },
+                                        { value: labels[tx.supply.type] || "Khác", className: "text-center whitespace-nowrap" },
                                         { value: tx.supply.name, className: "text-left font-medium text-slate-900" },
+                                        { value: badge, className: "text-center whitespace-nowrap" },
                                         { value: tx.notes || purposeText, className: "text-left text-slate-700" },
-                                        { value: badge, className: "text-center" },
-                                        { value: exportPurpose === "CULTIVATION" ? tx.farm?.farmName || "—" : "—", className: "text-center" },
-                                        { value: exportPurpose === "CULTIVATION" ? tx.cropSeason?.name || "—" : "—", className: "text-center" },
-                                        { value: number.format(tx.quantity), className: "text-center" },
-                                        { value: info.unit, className: "text-center" },
-                                        { value: info.packaging || "Chưa cập nhật", className: "text-center" },
-                                        { value: info.weightKg === null ? "—" : number.format(info.weightKg), className: "text-center" },
-                                        { value: money.format(Number(tx.totalAmount)), className: "text-center" },
-                                        { value: detail, className: "text-left" },
+                                        { value: number.format(tx.quantity), className: "text-center whitespace-nowrap font-medium" },
+                                        { value: info.unit, className: "text-center whitespace-nowrap" },
+                                        { value: info.packaging || "Chưa cập nhật", className: "text-center whitespace-nowrap" },
+                                        { value: info.weightKg === null ? "—" : `${number.format(info.weightKg)} kg`, className: "text-center whitespace-nowrap" },
+                                        { value: `${money.format(Number(tx.totalAmount))} đ`, className: "text-center whitespace-nowrap font-medium" },
                                     ]
                                     : [
-                                        { value: date.format(tx.actionDate), className: "text-center" },
-                                        { value: labels[tx.supply.type] || "Khác", className: "text-center" },
+                                        { value: date.format(tx.actionDate), className: "text-center whitespace-nowrap" },
+                                        { value: labels[tx.supply.type] || "Khác", className: "text-center whitespace-nowrap" },
                                         { value: tx.supply.name, className: "text-left font-medium text-slate-900" },
-                                        { value: number.format(tx.quantity), className: "text-center" },
-                                        { value: info.unit, className: "text-center" },
+                                        { value: number.format(tx.quantity), className: "text-center whitespace-nowrap font-medium" },
+                                        { value: info.unit, className: "text-center whitespace-nowrap" },
                                         { value: info.packaging || "Chưa cập nhật", className: "text-center" },
-                                        { value: info.weightKg === null ? "—" : number.format(info.weightKg), className: "text-center" },
-                                        { value: money.format(Number(tx.unitPrice)), className: "text-center" },
-                                        { value: money.format(Number(tx.totalAmount)), className: "text-center" },
-                                        { value: tx.expiryDate ? date.format(tx.expiryDate) : tx.supply.productBatch?.expiryDate ? date.format(tx.supply.productBatch.expiryDate) : "Chưa cập nhật", className: "text-center" },
+                                        { value: info.weightKg === null ? "—" : number.format(info.weightKg), className: "text-center whitespace-nowrap" },
+                                        { value: money.format(Number(tx.unitPrice)), className: "text-center whitespace-nowrap" },
+                                        { value: money.format(Number(tx.totalAmount)), className: "text-center whitespace-nowrap font-medium" },
+                                        { value: tx.expiryDate ? date.format(tx.expiryDate) : tx.supply.productBatch?.expiryDate ? date.format(tx.supply.productBatch.expiryDate) : "Chưa cập nhật", className: "text-center whitespace-nowrap" },
                                     ];
 
                                 return (

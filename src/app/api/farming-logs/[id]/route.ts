@@ -1,3 +1,4 @@
+import { selfOwnedMaterial, allowsSelfOwnedMaterials } from "@/lib/self-owned-materials";
 import { lockFarmerStock } from "@/lib/farmer-material-fifo";
 import { seasonDateBounds } from "@/lib/crop-season";
 import { NextResponse } from "next/server";
@@ -198,10 +199,10 @@ async function handleUpdate(request: Request, id: string) {
         if (log.cropSeason) { const bounds = seasonDateBounds(log.cropSeason); const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).format(parsedActionDate); if (day < bounds.min || day > bounds.max) return NextResponse.json({ ok: false, error: "Ngày nhật ký phải nằm trong niên vụ" }, { status: 400 }); }
         const usesMaterials = ["SPRAY_PESTICIDE", "FERTILIZE", "BASE_FERTILIZING", "FOLIAR_FERTILIZING"].includes(normalizedActivity);
         if (body.materials !== undefined && (!Array.isArray(body.materials) || body.materials.length > 50 || body.materials.some((m: any) => !m || typeof m.supplyId !== "string" || !Number.isFinite(m.quantity) || m.quantity <= 0 || typeof m.content !== "string" || !m.content.trim() || (m.phiDays != null && (!Number.isInteger(m.phiDays) || m.phiDays < 0))))) return NextResponse.json({ ok: false, error: "Vật tư, số lượng, nội dung hoặc PHI không hợp lệ" }, { status: 400 });
-        if (usesMaterials && body.materials !== undefined && !body.materials.length) return NextResponse.json({ ok: false, error: "Chọn ít nhất một vật tư trong kho" }, { status: 400 });
+        if (usesMaterials && body.materials !== undefined && !body.materials.length) return NextResponse.json({ ok: false, error: "Chọn ít nhất một vật tư" }, { status: 400 });
         const requestedSupplies = body.materials ? await prisma.farmerSupply.findMany({ where: { farmerId: log.farm.farmerId, id: { in: body.materials.map((m: any) => m.supplyId) } } }) : [];
-        if (body.materials?.some((m: any) => !requestedSupplies.some(s => s.id === m.supplyId))) return NextResponse.json({ ok: false, error: "Vật tư không thuộc kho của chủ nhật ký" }, { status: 400 });
-        const finalChemicalName = body.materials ? requestedSupplies.map(s => s.name).join(" + ") : log.supplyTransactions.length ? log.supplyTransactions.map(t => t.supply.name).join(" + ") : chemicalName !== undefined ? (chemicalName?.trim() || null) : log.chemicalName;
+        if (body.materials?.some((m: any) => !(selfOwnedMaterial(m.supplyId) && allowsSelfOwnedMaterials(normalizedActivity)) && !requestedSupplies.some(s => s.id === m.supplyId))) return NextResponse.json({ ok: false, error: "Vật tư không thuộc kho của chủ nhật ký" }, { status: 400 });
+        const finalChemicalName = body.materials ? body.materials.map((m: any) => (selfOwnedMaterial(m.supplyId) || requestedSupplies.find(s => s.id === m.supplyId))!.name).join(" + ") : log.supplyTransactions.length ? log.supplyTransactions.map(t => t.supply.name).join(" + ") : chemicalName !== undefined ? (chemicalName?.trim() || null) : log.chemicalName;
         const finalDosage = dosage !== undefined ? (dosage?.trim() || null) : log.dosage;
         const finalPhiDays = phiDays !== undefined && phiDays !== null && phiDays !== ""
             ? Number(phiDays)

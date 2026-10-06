@@ -1,3 +1,4 @@
+import { selfOwnedMaterial, allowsSelfOwnedMaterials } from "@/lib/self-owned-materials";
 import { removeLogStock, createLogMaterials, materialSummary } from "@/lib/farming-log-stock";
 import { lockFarmerStock } from "@/lib/farmer-material-fifo";
 import { seasonDateBounds } from "@/lib/crop-season";
@@ -65,6 +66,8 @@ export async function GET(request: Request) {
                 id: true,
                 farmCode: true,
                 farmName: true,
+                areaSize: true,
+                areaUnit: true,
                 durianVariety: true,
                 cropSeasons: {
                     orderBy: [{ year: "desc" }, { sequence: "desc" }],
@@ -140,14 +143,16 @@ export async function POST(request: Request) {
         const materials = formData.get("materials") ? JSON.parse(String(formData.get("materials"))) : supplyId ? [{ supplyId, quantity: supplyQuantity, content: notes }] : [];
         if (!Array.isArray(materials) || materials.length > 50 || materials.some((m: any) => !m || typeof m.supplyId !== "string" || !Number.isFinite(m.quantity) || m.quantity <= 0 || typeof m.content !== "string" || !m.content.trim() || (m.phiDays != null && (!Number.isInteger(m.phiDays) || m.phiDays < 0)))) return NextResponse.json({ ok: false, error: "Vật tư, số lượng hoặc nội dung sử dụng không hợp lệ" }, { status: 400 });
         const selectedSupplies = await prisma.farmerSupply.findMany({ where: { farmerId: session.user.id, id: { in: materials.map((m: any) => m.supplyId) } } });
-        if (materials.some((m: any) => !selectedSupplies.some(s => s.id === m.supplyId))) return NextResponse.json({ ok: false, error: "Vật tư không thuộc kho của bạn" }, { status: 400 });
+        if (materials.some((m: any) => !(selfOwnedMaterial(m.supplyId) && allowsSelfOwnedMaterials(normalizedActivityType)) && !selectedSupplies.some(s => s.id === m.supplyId))) return NextResponse.json({ ok: false, error: "Vật tư không thuộc kho của bạn" }, { status: 400 });
         if (materials.length) {
-            const summary = materialSummary(materials.map((m: any) => { const s = selectedSupplies.find(s => s.id === m.supplyId)!; return { supplyName: s.name, quantity: m.quantity, unit: s.unit }; }));
+            const summary = materialSummary(materials.map((m: any) => { const s = selfOwnedMaterial(m.supplyId) || selectedSupplies.find(s => s.id === m.supplyId)!; return { supplyName: s.name, quantity: m.quantity, unit: s.unit }; }));
             chemicalName = summary.chemicalName; dosage = summary.dosage;
         }
         const requiresChemicalName = ["SPRAY_PESTICIDE", "FERTILIZE", "BASE_FERTILIZING", "FOLIAR_FERTILIZING"].includes(normalizedActivityType);
+        const allowsMaterials = ["SPRAY_PESTICIDE", "FERTILIZE", "BASE_FERTILIZING", "FOLIAR_FERTILIZING", "PEST_INSPECTION"].includes(normalizedActivityType);
         const requiresDosage = requiresChemicalName;
-        if (requiresChemicalName !== Boolean(materials.length)) return NextResponse.json({ ok: false, error: requiresChemicalName ? "Chọn ít nhất một vật tư trong kho" : "Hoạt động này không sử dụng vật tư" }, { status: 400 });
+        if (requiresChemicalName && !materials.length) return NextResponse.json({ ok: false, error: "Chọn ít nhất một vật tư" }, { status: 400 });
+        if (!allowsMaterials && materials.length) return NextResponse.json({ ok: false, error: "Hoạt động này không sử dụng vật tư" }, { status: 400 });
         if (!Number.isInteger(phiDays) || phiDays < 0) return NextResponse.json({ ok: false, error: "Thời gian cách ly không hợp lệ" }, { status: 400 });
 
         if (
@@ -168,7 +173,7 @@ export async function POST(request: Request) {
                 farmerId: session.user.id,
                 isActive: true,
             },
-            select: { id: true, cropSeasons: { where: { status: "ACTIVE" }, take: 1, select: { id: true, name: true, year: true, startedAt: true, expectedEndAt: true, closedAt: true } } },
+            select: { id: true, areaSize: true, areaUnit: true, cropSeasons: { where: { status: "ACTIVE" }, take: 1, select: { id: true, name: true, year: true, startedAt: true, expectedEndAt: true, closedAt: true } } },
         });
         if (!ownedFarm) {
             return NextResponse.json(
@@ -177,6 +182,10 @@ export async function POST(request: Request) {
             );
         }
         const activeSeason = ownedFarm.cropSeasons[0];
+        if (materials.length) dosage = materialSummary(materials.map((m: any) => {
+            const s = selfOwnedMaterial(m.supplyId) || selectedSupplies.find(s => s.id === m.supplyId)!;
+            return { supplyName: s.name, quantity: m.quantity, unit: s.unit };
+        }), ownedFarm).dosage;
         if (!activeSeason) {
             return NextResponse.json(
                 { ok: false, error: "Vườn chưa có vụ mùa đang hoạt động. Hãy bắt đầu vụ mùa mới trước khi ghi nhật ký." },

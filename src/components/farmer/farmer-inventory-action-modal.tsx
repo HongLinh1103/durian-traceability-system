@@ -300,7 +300,7 @@ export function FarmerInventoryActionModal({
                 <Button
                     type="button"
                     onClick={handleOpen}
-                    className="h-10 rounded-2xl bg-amber-600 px-4 font-bold text-white shadow-soft hover:bg-amber-700 transition flex items-center gap-1.5 shrink-0 text-xs sm:text-sm cursor-pointer"
+                    className="h-10 rounded-2xl bg-brand-600 px-4 font-bold text-white shadow-soft hover:bg-brand-700 transition flex items-center gap-1.5 shrink-0 text-xs sm:text-sm cursor-pointer"
                 >
                     <ArrowUpFromLine className="h-4 w-4 shrink-0" />
                     <span>Xuất vật tư</span>
@@ -582,9 +582,12 @@ export function FarmerInventoryActionModal({
                                                 {selectedSupplyForOut && (
                                                     <p className="mt-1 text-xs text-slate-500">
                                                         Số lượng tồn:{" "}
-                                                        <span className="font-bold text-brand-700">
+                                                        <span className={`font-bold ${selectedSupplyForOut.quantity <= 2 ? "text-red-600" : "text-brand-700"}`}>
                                                             {selectedSupplyForOut.quantity} {selectedSupplyForOut.unit}
                                                         </span>
+                                                        {selectedSupplyForOut.quantity <= 2 && (
+                                                            <span className="ml-1 text-xs font-semibold text-red-600">(Tồn ít)</span>
+                                                        )}
                                                     </p>
                                                 )}
                                             </div>
@@ -721,7 +724,7 @@ export function FarmerInventoryActionModal({
                                         <Button
                                             type="submit"
                                             disabled={submitting || supplies.length === 0}
-                                            className="rounded-2xl bg-amber-600 px-5 font-bold text-white hover:bg-amber-700 shadow-soft"
+                                            className="rounded-2xl bg-brand-600 px-5 font-bold text-white hover:bg-brand-700 shadow-soft"
                                         >
                                             {submitting ? (
                                                 <>
