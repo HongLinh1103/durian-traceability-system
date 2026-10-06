@@ -225,7 +225,42 @@ export async function GET(request: Request) {
             equipmentCount: supplies.filter((s) => s.type === "EQUIPMENT").length,
         };
 
-        return NextResponse.json({ success: true, data: groupedSupplies, summary });
+        const previousSelfOwnedMaterials = await prisma.farmingLogMaterial.findMany({
+            where: {
+                farmingLog: { farm: { farmerId } },
+                OR: [
+                    { supplyId: null },
+                    { supplyId: { startsWith: "self-owned" } },
+                    { transactionId: null },
+                ],
+            },
+            select: {
+                supplyName: true,
+                unit: true,
+                createdAt: true,
+            },
+            orderBy: { createdAt: "desc" },
+            take: 100,
+        });
+
+        const seenSelfOwned = new Set<string>();
+        const selfOwnedSupplies: Array<{ id: string; name: string; unit: string; quantity: number; type: "FERTILIZER"; source: "SELF_OWNED" }> = [];
+        for (const item of previousSelfOwnedMaterials) {
+            const trimmed = item.supplyName.trim();
+            if (trimmed && !seenSelfOwned.has(trimmed.toLowerCase())) {
+                seenSelfOwned.add(trimmed.toLowerCase());
+                selfOwnedSupplies.push({
+                    id: `self-owned:${encodeURIComponent(trimmed)}`,
+                    name: trimmed,
+                    unit: item.unit || "kg",
+                    quantity: 0,
+                    type: "FERTILIZER",
+                    source: "SELF_OWNED",
+                });
+            }
+        }
+
+        return NextResponse.json({ success: true, data: groupedSupplies, summary, selfOwnedMaterials: selfOwnedSupplies });
     } catch (error: any) {
         console.error("Error in GET /api/farmer/supplies:", error);
         return NextResponse.json(

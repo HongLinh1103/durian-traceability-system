@@ -1,7 +1,7 @@
 "use client";
-import { SELF_OWNED_MATERIALS, selfOwnedMaterial } from "@/lib/self-owned-materials";
+import { selfOwnedMaterial } from "@/lib/self-owned-materials";
 import { formatMaterialDosage } from "@/lib/material-dosage";
-import { MaterialCombobox } from "@/components/farmer/material-combobox";
+import { MaterialCombobox, type MaterialOption } from "@/components/farmer/material-combobox";
 
 import { seasonDateBounds } from "@/lib/crop-season";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -169,6 +169,7 @@ export default function NewFarmingLogPage() {
     const [prohibitedEntries, setProhibitedEntries] = useState<ProhibitedChemicalEntry[]>([]);
     const [masterDataLoading, setMasterDataLoading] = useState(true);
     const [inventorySupplies, setInventorySupplies] = useState<Array<{ id: string; name: string; type: string; unit: string; quantity: number; phiDays?: number | null }>>([]);
+    const [selfOwnedSupplies, setSelfOwnedSupplies] = useState<MaterialOption[]>([]);
     const [materials, setMaterials] = useState<Array<{ supplyId: string; quantity: number; content: string; phiDays?: number }>>([{ supplyId: "", quantity: 1, content: "", phiDays: 0 }]);
     const now = useMemo(() => new Date(), []);
     const planId = searchParams.get("planId") ?? "";
@@ -244,6 +245,7 @@ export default function NewFarmingLogPage() {
                     const suppliesPayload = await suppliesResponse.json();
                     if (suppliesPayload.success) {
                         setInventorySupplies(suppliesPayload.data || []);
+                        setSelfOwnedSupplies(suppliesPayload.selfOwnedMaterials || []);
                     }
                 }
             } finally {
@@ -846,7 +848,20 @@ export default function NewFarmingLogPage() {
                                     )}
                                     <div>
                                         <Label>Tên vật tư {isPestInspection ? "(nếu có sử dụng)" : "*"}</Label>
-                                        <MaterialCombobox supplies={[...inventorySupplies.filter(s => isSpraying ? s.type === "PESTICIDE" : isFertilizing ? s.type === "FERTILIZER" : s.type !== "FERTILIZER"), ...(isFertilizing ? SELF_OWNED_MATERIALS : [])]} value={m.supplyId} onChange={id => { update({ supplyId: id }); const s = inventorySupplies.find(s => s.id === id); if (isSpraying) update({ supplyId: id, phiDays: s?.phiDays || 0 }); }} />
+                                        <MaterialCombobox
+                                            supplies={inventorySupplies.filter(s => isSpraying ? s.type === "PESTICIDE" : isFertilizing ? s.type === "FERTILIZER" : s.type !== "FERTILIZER")}
+                                            selfOwnedSupplies={selfOwnedSupplies}
+                                            allowSelfOwned={isFertilizing}
+                                            value={m.supplyId}
+                                            onChange={id => {
+                                                update({ supplyId: id });
+                                                const s = inventorySupplies.find(s => s.id === id);
+                                                if (isSpraying) update({ supplyId: id, phiDays: s?.phiDays || 0 });
+                                            }}
+                                            onAddSelfOwned={item => {
+                                                setSelfOwnedSupplies(prev => prev.some(x => x.name.toLowerCase() === item.name.toLowerCase()) ? prev : [item, ...prev]);
+                                            }}
+                                        />
                                     </div>
                                     <div className="grid grid-cols-3 gap-2.5">
                                         <div><Label className="flex min-h-10 items-end pb-1 text-xs sm:min-h-0">Số lượng tồn</Label><Input readOnly className={`bg-slate-50 ${selected && !own && selected.quantity <= 2 ? "text-red-600 font-bold border-red-300 bg-red-50/50" : "text-slate-500"}`} value={own ? "Không qua kho" : selected?.quantity ?? ""} /></div>

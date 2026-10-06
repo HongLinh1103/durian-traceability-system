@@ -1,46 +1,63 @@
 "use client";
 import React, { useId, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
+import { selfOwnedMaterial } from "@/lib/self-owned-materials";
 
 export type MaterialOption = {
     id: string;
     name: string;
     quantity: number;
     unit: string;
+    type?: string;
     packaging?: string | null;
-    source?: "SELF_OWNED";
+    source?: "WAREHOUSE" | "SELF_OWNED";
 };
+
+interface MaterialComboboxProps {
+    supplies: MaterialOption[];
+    selfOwnedSupplies?: MaterialOption[];
+    allowSelfOwned?: boolean;
+    value: string;
+    onChange: (id: string) => void;
+    onAddSelfOwned?: (item: MaterialOption) => void;
+}
 
 export function MaterialCombobox({
     supplies,
+    selfOwnedSupplies = [],
+    allowSelfOwned = false,
     value,
     onChange,
-}: {
-    supplies: MaterialOption[];
-    value: string;
-    onChange: (id: string) => void;
-}) {
+    onAddSelfOwned,
+}: MaterialComboboxProps) {
     const id = useId();
     const inputRef = useRef<HTMLInputElement>(null);
     const [query, setQuery] = useState("");
     const [isSearching, setIsSearching] = useState(false);
     const [open, setOpen] = useState(false);
-    const [active, setActive] = useState(0);
+    const [customNameInput, setCustomNameInput] = useState("");
 
-    const selected = supplies.find((s) => s.id === value);
+    const selected =
+        supplies.find((s) => s.id === value) ||
+        selfOwnedSupplies.find((s) => s.id === value) ||
+        (value.startsWith("self-owned:") ? selfOwnedMaterial(value) : undefined);
 
     const normalizedQuery = isSearching ? query.trim().toLocaleLowerCase("vi") : "";
-    const filtered = supplies.filter(
+
+    const warehouseFiltered = supplies.filter(
         (s) => !normalizedQuery || s.name.toLocaleLowerCase("vi").includes(normalizedQuery)
     );
-
-    // Hiển thị tất cả vật tư: vật tư tồn > 2 hiển thị trước, vật tư tồn <= 2 hiển thị ở cuối dropdown
-    const inStock = filtered.filter((s) => !s.source && Number(s.quantity ?? 0) > 2);
-    const lowStock = filtered.filter(
-        (s) => !s.source && (!Number.isFinite(Number(s.quantity ?? 0)) || Number(s.quantity ?? 0) <= 2)
+    const inStock = warehouseFiltered.filter((s) => Number(s.quantity ?? 0) > 2);
+    const lowStock = warehouseFiltered.filter(
+        (s) => !Number.isFinite(Number(s.quantity ?? 0)) || Number(s.quantity ?? 0) <= 2
     );
-    const options = [...inStock, ...lowStock, ...filtered.filter(s => s.source === "SELF_OWNED")];
-    const grouped = supplies.some(s => s.source === "SELF_OWNED");
+    const warehouseOptions = [...inStock, ...lowStock];
+
+    const selfOwnedOptions = allowSelfOwned
+        ? selfOwnedSupplies.filter(
+              (s) => !normalizedQuery || s.name.toLocaleLowerCase("vi").includes(normalizedQuery)
+          )
+        : [];
 
     const choose = (s: MaterialOption) => {
         onChange(s.id);
@@ -52,8 +69,23 @@ export function MaterialCombobox({
     const handleOpen = () => {
         setOpen(true);
         setIsSearching(false);
-        const idx = options.findIndex((s) => s.id === value);
-        setActive(idx >= 0 ? idx : 0);
+    };
+
+    const handleAddCustomMaterial = () => {
+        const trimmed = customNameInput.trim();
+        if (!trimmed) return;
+        const newId = `self-owned:${encodeURIComponent(trimmed)}`;
+        const newItem: MaterialOption = {
+            id: newId,
+            name: trimmed,
+            quantity: 0,
+            unit: "kg",
+            type: "FERTILIZER",
+            source: "SELF_OWNED",
+        };
+        onAddSelfOwned?.(newItem);
+        choose(newItem);
+        setCustomNameInput("");
     };
 
     return (
@@ -75,7 +107,6 @@ export function MaterialCombobox({
                     aria-expanded={open}
                     aria-controls={id}
                     aria-autocomplete="list"
-                    aria-activedescendant={open && options[active] ? `${id}-${active}` : undefined}
                     className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-3 pr-10 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer"
                     placeholder="Tìm kiếm hoặc chọn vật tư..."
                     value={isSearching ? query : (selected?.name || "")}
@@ -92,7 +123,6 @@ export function MaterialCombobox({
                     onChange={(e) => {
                         setQuery(e.target.value);
                         setIsSearching(true);
-                        setActive(0);
                         setOpen(true);
                     }}
                     onKeyDown={(e) => {
@@ -100,20 +130,6 @@ export function MaterialCombobox({
                             setOpen(false);
                             setIsSearching(false);
                             setQuery("");
-                        }
-                        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                            e.preventDefault();
-                            if (!open) {
-                                handleOpen();
-                            } else {
-                                setActive((i) =>
-                                    Math.max(0, Math.min(options.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))
-                                );
-                            }
-                        }
-                        if (e.key === "Enter" && open) {
-                            e.preventDefault();
-                            if (options[active]) choose(options[active]);
                         }
                     }}
                 />
@@ -128,8 +144,6 @@ export function MaterialCombobox({
                         setOpen((prev) => {
                             if (!prev) {
                                 setIsSearching(false);
-                                const idx = options.findIndex((s) => s.id === value);
-                                setActive(idx >= 0 ? idx : 0);
                                 inputRef.current?.focus();
                                 return true;
                             }
@@ -147,53 +161,152 @@ export function MaterialCombobox({
                 </button>
             </div>
             {open && (
-                <ul
+                <div
                     id={id}
                     role="listbox"
-                    className="absolute z-30 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg"
+                    className="absolute z-30 mt-1 max-h-80 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl"
                 >
-                    {options.map((s, i) => {
-                        const qty = Number(s.quantity ?? 0);
-                        const isLowStock = !Number.isFinite(qty) || qty <= 2;
-                        const isSelected = s.id === value;
+                    {/* NHÓM 1: VẬT TƯ TRONG KHO */}
+                    <div className="sticky top-0 z-10 flex items-center justify-between rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm">
+                        <span className="flex items-center gap-1.5">
+                            <span>📦</span>
+                            <span>VẬT TƯ TRONG KHO</span>
+                        </span>
+                        <span className="text-[11px] font-normal text-slate-500">
+                            {warehouseOptions.length} vật tư
+                        </span>
+                    </div>
 
-                        return (
-                            <React.Fragment key={s.id}>
-                            {grouped && (i === 0 || options[i - 1].source !== s.source) && <li role="presentation" className="px-3 py-2 text-xs font-bold text-slate-500">{s.source ? "VẬT TƯ TỰ CÓ / KHÔNG QUA KHO" : "VẬT TƯ TRONG KHO"}</li>}
-                            <li
-                                id={`${id}-${i}`}
-                                key={s.id}
-                                role="option"
-                                aria-selected={isSelected}
-                                className={`cursor-pointer rounded-lg p-3 text-sm transition-colors hover:bg-brand-50 ${
-                                    isSelected
-                                        ? "bg-brand-50/70"
-                                        : i === active
-                                        ? "bg-slate-50"
-                                        : ""
-                                }`}
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => choose(s)}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <span className={`block font-semibold ${isSelected ? "text-brand-900" : "text-slate-800"}`}>
-                                        {s.name}
+                    <div className="py-1">
+                        {warehouseOptions.map((s) => {
+                            const qty = Number(s.quantity ?? 0);
+                            const isLowStock = !Number.isFinite(qty) || qty <= 2;
+                            const isSelected = s.id === value;
+
+                            return (
+                                <div
+                                    key={s.id}
+                                    role="option"
+                                    aria-selected={isSelected}
+                                    className={`cursor-pointer rounded-lg p-2.5 text-sm transition-colors hover:bg-slate-100 ${
+                                        isSelected ? "bg-slate-100/80 font-medium" : ""
+                                    }`}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => choose(s)}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className={`block font-semibold ${isSelected ? "text-slate-900" : "text-slate-800"}`}>
+                                            {s.name}
+                                        </span>
+                                    </div>
+                                    <span className="mt-0.5 block text-xs text-slate-500">
+                                        <span className={isLowStock ? "font-semibold text-red-600" : ""}>
+                                            Tồn: {qty.toLocaleString("vi-VN")} {s.unit}
+                                        </span>
+                                        {s.packaging ? ` · Quy cách: ${s.packaging}` : ""}
                                     </span>
                                 </div>
-                                <span className="mt-0.5 block text-xs text-slate-500">
-                                    {s.source ? "Nguồn tự có · Không qua kho" : <span className={isLowStock ? "font-semibold text-red-600" : ""}>
-                                        Tồn: {qty.toLocaleString("vi-VN")} {s.unit}
-                                    </span>}
-                                    {s.packaging ? ` · Quy cách: ${s.packaging}` : ""}
+                            );
+                        })}
+                        {!warehouseOptions.length && (
+                            <div className="p-2.5 text-center text-xs text-slate-400">
+                                Không tìm thấy vật tư trong kho phù hợp.
+                            </div>
+                        )}
+                    </div>
+
+                    {/* NHÓM 2: VẬT TƯ TỰ CÓ */}
+                    {allowSelfOwned && (
+                        <div className="mt-2 border-t-2 border-emerald-200/80 pt-2">
+                            {/* Tiêu đề nhóm Vật tư tự có */}
+                            <div className="sticky top-0 z-10 flex items-center justify-between rounded-lg bg-emerald-100/90 px-3 py-1.5 text-xs font-bold text-emerald-900 shadow-sm">
+                                <span className="flex items-center gap-1.5">
+                                    <span>🌿</span>
+                                    <span>VẬT TƯ TỰ CÓ</span>
                                 </span>
-                            </li>
-                            </React.Fragment>
-                        );
-                    })}
-                    {!options.length && (
-                        <li className="p-3 text-sm text-slate-500 text-center">Không tìm thấy vật tư phù hợp.</li>
+                                <span className="rounded-full bg-emerald-200/70 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                                    Tự chuẩn bị / tự ủ
+                                </span>
+                            </div>
+
+                            {/* Ô nhập tên vật tư tự có để nông dân tự nhập */}
+                            <div
+                                className="my-2 rounded-xl border border-emerald-200 bg-emerald-50/50 p-2.5"
+                                onMouseDown={(e) => e.stopPropagation()}
+                            >
+                                <label className="block text-xs font-semibold text-emerald-900 mb-1">
+                                    Nhập vật tư tự chuẩn bị / tự ủ mới:
+                                </label>
+                                <div className="flex gap-1.5">
+                                    <input
+                                        type="text"
+                                        placeholder="Ví dụ: Phân chuồng ủ hoai mục..."
+                                        value={customNameInput}
+                                        onChange={(e) => setCustomNameInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                handleAddCustomMaterial();
+                                            }
+                                        }}
+                                        className="h-8.5 flex-1 rounded-lg border border-emerald-300 bg-white px-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleAddCustomMaterial}
+                                        disabled={!customNameInput.trim()}
+                                        className="h-8.5 shrink-0 rounded-lg bg-emerald-700 px-3 text-xs font-semibold text-white shadow-sm hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 transition cursor-pointer"
+                                    >
+                                        <Plus className="h-3.5 w-3.5" />
+                                        <span>Thêm</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Dòng chữ nhỏ Các vật tư đã thêm bên dưới tiêu đề Vật tư tự có */}
+                            <div className="px-2 pt-1 pb-1">
+                                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                                    Các vật tư đã thêm
+                                </span>
+                            </div>
+
+                            {/* Liệt kê những vật tư tự có mà nông dân đã nhập trước đây */}
+                            <div className="py-1">
+                                {selfOwnedOptions.length > 0 ? (
+                                    selfOwnedOptions.map((s) => {
+                                        const isSelected = s.id === value;
+
+                                        return (
+                                            <div
+                                                key={s.id}
+                                                role="option"
+                                                aria-selected={isSelected}
+                                                className={`cursor-pointer rounded-lg p-2.5 text-sm transition-colors hover:bg-emerald-50 ${
+                                                    isSelected ? "bg-emerald-50/90 font-medium" : ""
+                                                }`}
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                onClick={() => choose(s)}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <span className={`block font-semibold ${isSelected ? "text-emerald-950" : "text-slate-800"}`}>
+                                                        {s.name}
+                                                    </span>
+                                                </div>
+                                                <span className="mt-0.5 block text-xs font-medium text-emerald-700">
+                                                    Tự có · Không qua kho
+                                                </span>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="px-3 py-2 text-xs text-slate-400 italic">
+                                        Chưa có vật tư tự có nào trước đây.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     )}
-                </ul>
+                </div>
             )}
         </div>
     );
