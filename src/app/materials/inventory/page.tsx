@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { supplyPackaging } from "@/lib/supply-packaging";
 import { stockLedger } from "@/lib/farmer-stock-ledger";
 import { FarmerInventoryActionModal } from "@/components/farmer/farmer-inventory-action-modal";
+import { FarmerInventoryRowActions } from "@/components/farmer/farmer-inventory-row-actions";
 import { InventoryFilterBar } from "@/components/farmer/inventory-filter-bar";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,15 @@ const activityLabels: Record<string, string> = {
 const number = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 3 });
 const money = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 });
 const date = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+const formatIsoVn = (d: Date | null | undefined) => {
+    if (!d) return null;
+    return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(d);
+};
 
 export default async function FarmerInventoryPage({ searchParams }: { searchParams: { tab?: string; page?: string; season?: string; purpose?: string; kind?: string; q?: string } }) {
     const session = await getServerSession(authOptions);
@@ -61,14 +71,19 @@ export default async function FarmerInventoryPage({ searchParams }: { searchPara
     const transactions = type === "STOCK" ? [] : await prisma.farmerSupplyTransaction.findMany({
         where, take: 15, skip: (page - 1) * 15,
         orderBy: [{ actionDate: "desc" }, { createdAt: "desc" }, { id: "desc" }],
-        include: { farm: { select: { farmName: true } }, cropSeason: { select: { name: true } }, supply: { select: { name: true, type: true, unit: true, productBatch: { select: { expiryDate: true } }, orderItem: { select: { product: { select: { packaging: true } } } } } } },
+        include: { farmingLog: { select: { materialsUsed: true } }, farm: { select: { farmName: true } }, cropSeason: { select: { name: true } }, supply: { select: { id: true, name: true, type: true, unit: true, packaging: true, productBatch: { select: { expiryDate: true } }, orderItem: { select: { product: { select: { packaging: true } } } } } } },
     });
     const pageLink = (target: number) => "/materials/inventory?" + new URLSearchParams({ ...Object.fromEntries(Object.entries(searchParams).filter(([, value]) => value !== undefined)) as Record<string, string>, tab: type, page: String(target) }).toString();
     const allSupplies = (type === "IN" || type === "OUT") ? await prisma.farmerSupply.findMany({
         where: { farmerId: session.user.id },
-        select: { id: true, name: true, type: true, unit: true, quantity: true, unitPrice: true, productId: true, orderItem: { select: { product: { select: { packaging: true } } } } },
+        select: { id: true, name: true, type: true, unit: true, quantity: true, unitPrice: true, packaging: true, productId: true, orderItem: { select: { product: { select: { packaging: true } } } } },
         orderBy: { name: "asc" },
     }) : [];
+
+    const inSupplies = (type === "IN") ? JSON.parse(JSON.stringify(groupMaterials(allSupplies.map(s => {
+        const info = supplyPackaging(s.unit, s.packaging || s.orderItem?.product?.packaging || null, s.quantity);
+        return { ...s, unit: info.unit, packaging: info.packaging };
+    })))) : [];
 
     const farms = (type === "OUT") ? await prisma.farm.findMany({
         where: { farmerId: session.user.id, isActive: true },
@@ -86,8 +101,8 @@ export default async function FarmerInventoryPage({ searchParams }: { searchPara
     const columns = type === "STOCK"
         ? ["Loại vật tư", "Tên vật tư", "Đơn vị tính", "Quy cách đóng gói", "Tổng nhập", "Tổng xuất", "Tồn kho"]
         : type === "OUT"
-        ? ["Ngày", "Niên vụ", "Loại vật tư", "Tên vật tư", "Mục đích xuất", "Nội dung", "Số lượng", "ĐVT", "Quy cách", "Khối lượng", "Thành tiền"]
-        : ["Ngày", "Loại vật tư", "Tên vật tư", "Số lượng", "Đơn vị tính", "Quy cách đóng gói", "Khối lượng (kg)", "Đơn giá (đ)", "Thành tiền (đ)", "Ngày hết hạn"];
+        ? ["Ngày", "Niên vụ", "Loại vật tư", "Tên vật tư", "Mục đích xuất", "Nội dung", "Nguồn ghi nhận", "Số lượng", "ĐVT", "Quy cách", "Khối lượng", "Thành tiền"]
+        : ["Ngày", "Loại vật tư", "Tên vật tư", "Số lượng", "Đơn vị tính", "Quy cách đóng gói", "Khối lượng (kg)", "Đơn giá (đ)", "Thành tiền (đ)", "Ngày hết hạn", "Thao tác"];
 
     return (
         <main className="mx-auto min-h-[calc(100vh-64px)] w-full max-w-[1650px] space-y-6 px-4 py-7 sm:px-6">
@@ -103,10 +118,7 @@ export default async function FarmerInventoryPage({ searchParams }: { searchPara
                 {type === "IN" && (
                     <FarmerInventoryActionModal
                         mode="IN"
-                        supplies={JSON.parse(JSON.stringify(groupMaterials(allSupplies.map(s => {
-                            const info = supplyPackaging(s.unit, s.orderItem?.product?.packaging || null, s.quantity);
-                            return { ...s, unit: info.unit, packaging: info.packaging };
-                        }))))}
+                        supplies={inSupplies}
                         farms={[]}
                     />
                 )}
@@ -114,7 +126,7 @@ export default async function FarmerInventoryPage({ searchParams }: { searchPara
                     <FarmerInventoryActionModal
                         mode="OUT"
                         supplies={JSON.parse(JSON.stringify(allSupplies.map(s => {
-                            const info = supplyPackaging(s.unit, s.orderItem?.product?.packaging || null, s.quantity);
+                            const info = supplyPackaging(s.unit, s.packaging || s.orderItem?.product?.packaging || null, s.quantity);
                             return { ...s, unit: info.unit, packaging: info.packaging };
                         })))}
                         farms={JSON.parse(JSON.stringify(farms))}
@@ -155,7 +167,7 @@ export default async function FarmerInventoryPage({ searchParams }: { searchPara
             )}
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div className="overflow-x-auto">
-                    <table className={`w-full border-collapse text-sm ${type === "OUT" ? "min-w-[1200px]" : "min-w-[1050px]"}`}>
+                    <table className={`w-full border-collapse text-sm ${type === "OUT" ? "min-w-[1200px]" : type === "IN" ? "min-w-[1150px]" : "min-w-[1050px]"}`}>
                         <thead className="bg-slate-50 text-slate-700">
                             <tr>
                                 {columns.map((label) => (
@@ -168,7 +180,7 @@ export default async function FarmerInventoryPage({ searchParams }: { searchPara
                         <tbody>
                             {supplies.map((supply) => {
                                 const ledger = stockLedger(supply.transactions);
-                                const info = supplyPackaging(supply.unit, supply.orderItem?.product?.packaging ?? null, ledger.balance);
+                                const info = supplyPackaging(supply.unit, supply.packaging || supply.orderItem?.product?.packaging || null, ledger.balance);
                                 return (
                                     <tr key={supply.id} className="hover:bg-slate-50/70 transition">
                                         {[
@@ -196,7 +208,8 @@ export default async function FarmerInventoryPage({ searchParams }: { searchPara
                                 );
                             })}
                             {transactions.map((tx) => {
-                                const info = supplyPackaging(tx.supply.unit, tx.supply.orderItem?.product?.packaging ?? null, tx.quantity);
+                                const material = tx.farmingLog?.materialsUsed.find(m => m.transactionId === tx.id);
+                                const info = supplyPackaging(material?.unit || tx.supply.unit, tx.supply.packaging || tx.supply.orderItem?.product?.packaging || null, tx.quantity);
                                 const purposeText = tx.purpose || (tx.activityType ? activityLabels[tx.activityType] : null) || tx.notes || "—";
                                 const exportPurpose = (tx.exportPurpose || (tx.farmId && tx.cropSeasonId ? "CULTIVATION" : "OTHER")) as ExportPurpose;
                                 const badge = <span className={"inline-block whitespace-nowrap rounded-full px-2 py-1 text-xs font-semibold " + (exportPurpose === "CULTIVATION" ? "bg-green-50 text-green-700" : exportPurpose === "DISPOSAL" ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-600")}>{exportPurposeLabels[exportPurpose]}</span>;
@@ -205,9 +218,10 @@ export default async function FarmerInventoryPage({ searchParams }: { searchPara
                                         { value: date.format(tx.actionDate), className: "text-center whitespace-nowrap" },
                                         { value: exportPurpose === "CULTIVATION" ? tx.cropSeason?.name || "—" : "—", className: "text-center whitespace-nowrap" },
                                         { value: labels[tx.supply.type] || "Khác", className: "text-center whitespace-nowrap" },
-                                        { value: tx.supply.name, className: "text-left font-medium text-slate-900" },
+                                        { value: material?.supplyName || tx.supply.name, className: "text-left font-medium text-slate-900" },
                                         { value: badge, className: "text-center whitespace-nowrap" },
-                                        { value: tx.notes || purposeText, className: "text-left text-slate-700" },
+                                        { value: material?.content || tx.notes || purposeText, className: "text-left text-slate-700" },
+                                        { value: tx.farmingLogId ? <Link href={"/dashboard/farmer/journal/cultivation?" + new URLSearchParams({ farmId: tx.farmId || "", seasonId: tx.cropSeasonId || "" }).toString()} className="font-medium text-brand-700 underline">Nhật ký canh tác</Link> : "Xuất kho thủ công", className: "text-center" },
                                         { value: number.format(tx.quantity), className: "text-center whitespace-nowrap font-medium" },
                                         { value: info.unit, className: "text-center whitespace-nowrap" },
                                         { value: info.packaging || "Chưa cập nhật", className: "text-center whitespace-nowrap" },
@@ -225,6 +239,31 @@ export default async function FarmerInventoryPage({ searchParams }: { searchPara
                                         { value: money.format(Number(tx.unitPrice)), className: "text-center whitespace-nowrap" },
                                         { value: money.format(Number(tx.totalAmount)), className: "text-center whitespace-nowrap font-medium" },
                                         { value: tx.expiryDate ? date.format(tx.expiryDate) : tx.supply.productBatch?.expiryDate ? date.format(tx.supply.productBatch.expiryDate) : "Chưa cập nhật", className: "text-center whitespace-nowrap" },
+                                        {
+                                            value: (
+                                                <FarmerInventoryRowActions
+                                                    transaction={{
+                                                        id: tx.id,
+                                                        supplyId: tx.supplyId,
+                                                        quantity: tx.quantity,
+                                                        unitPrice: Number(tx.unitPrice),
+                                                        totalAmount: Number(tx.totalAmount),
+                                                        actionDate: formatIsoVn(tx.actionDate) || "",
+                                                        expiryDate: formatIsoVn(tx.expiryDate || tx.supply.productBatch?.expiryDate),
+                                                        notes: tx.notes || null,
+                                                        supply: {
+                                                            id: tx.supply.id,
+                                                            name: tx.supply.name,
+                                                            type: tx.supply.type,
+                                                            unit: info.unit,
+                                                            packaging: info.packaging,
+                                                        },
+                                                    }}
+                                                    supplies={inSupplies}
+                                                />
+                                            ),
+                                            className: "text-center whitespace-nowrap",
+                                        },
                                     ];
 
                                 return (

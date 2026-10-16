@@ -1,6 +1,8 @@
 "use client";
 
 import { MaterialCombobox } from "@/components/farmer/material-combobox";
+import { formatMoneyInput, parseMoneyInput, moneyInputFromNumber } from "@/lib/vietnamese-money-input";
+import { supplyPackaging } from "@/lib/supply-packaging";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -16,6 +18,7 @@ export type SupplyOption = {
     unit: string;
     quantity: number;
     unitPrice: number | string;
+    packaging?: string | null;
 };
 
 export type FarmOption = {
@@ -29,10 +32,30 @@ export type FarmOption = {
     }[];
 };
 
+export type TransactionEditData = {
+    id: string;
+    supplyId: string;
+    quantity: number;
+    unitPrice: number;
+    totalAmount: number;
+    actionDate: string;
+    expiryDate?: string | null;
+    notes?: string | null;
+    supply: {
+        id: string;
+        name: string;
+        type: string;
+        unit: string;
+        packaging?: string | null;
+    };
+};
+
 interface FarmerInventoryActionModalProps {
     mode: "IN" | "OUT";
     supplies: SupplyOption[];
     farms: FarmOption[];
+    editTransaction?: TransactionEditData;
+    trigger?: React.ReactNode;
 }
 
 const SUPPLY_TYPE_LABELS: Record<string, string> = {
@@ -46,6 +69,8 @@ export function FarmerInventoryActionModal({
     mode,
     supplies,
     farms,
+    editTransaction,
+    trigger,
 }: FarmerInventoryActionModalProps) {
     const router = useRouter();
     const { toast } = useToast();
@@ -60,11 +85,11 @@ export function FarmerInventoryActionModal({
         supplies[0]?.id || ""
     );
     const [name, setName] = useState("");
-    const [type, setType] = useState<string>("FERTILIZER");
-    const [brand, setBrand] = useState("");
-    const [unit, setUnit] = useState("bao");
-    const [quantityIn, setQuantityIn] = useState<string>("1");
-    const [unitPrice, setUnitPrice] = useState<string>("0");
+    const [type, setType] = useState<string>("");
+    const [unit, setUnit] = useState("");
+    const [packaging, setPackaging] = useState("");
+    const [quantityIn, setQuantityIn] = useState<string>("");
+    const [unitPrice, setUnitPrice] = useState<string>("");
     const [phiDays, setPhiDays] = useState<string>("");
     const [activeIngredients, setActiveIngredients] = useState("");
     const [actionDateIn, setActionDateIn] = useState<string>(
@@ -92,20 +117,100 @@ export function FarmerInventoryActionModal({
     const selectedSupplyForOut = supplies.find((s) => s.id === selectedSupplyIdOut);
     const selectedSupplyForIn = supplies.find((s) => s.id === selectedSupplyIdIn);
 
+    const resetNewSupplyForm = () => {
+        setName("");
+        setType("");
+        setUnit("");
+        setPackaging("");
+        setQuantityIn("1");
+        setUnitPrice("");
+        setPhiDays("");
+        setActiveIngredients("");
+        setActionDateIn(new Date().toISOString().slice(0, 10));
+        setNotesIn("");
+        setExpiryDateIn("");
+    };
+
+    const handleSelectSupplyIn = (sId: string) => {
+        setSelectedSupplyIdIn(sId);
+        const found = supplies.find((s) => s.id === sId);
+        if (found) {
+            setType(found.type || "");
+            setUnit(found.unit || "");
+            setPackaging(found.packaging || "");
+            setUnitPrice(moneyInputFromNumber(found.unitPrice || 0));
+        }
+    };
+
+    const handleSwitchToExisting = () => {
+        setInSource("EXISTING");
+        const found = supplies.find((s) => s.id === selectedSupplyIdIn) || supplies[0];
+        if (found) {
+            setSelectedSupplyIdIn(found.id);
+            setType(found.type || "");
+            setUnit(found.unit || "");
+            if (!editTransaction) {
+                setPackaging(found.packaging || "");
+                setUnitPrice(moneyInputFromNumber(found.unitPrice || 0));
+                setActionDateIn(new Date().toISOString().slice(0, 10));
+            }
+        }
+    };
+
+    const handleSwitchToNew = () => {
+        setInSource("NEW");
+        if (!editTransaction) {
+            resetNewSupplyForm();
+        }
+    };
+
     const handleOpen = () => {
         if (mode === "IN") {
-            if (supplies.length > 0) {
+            if (editTransaction) {
+                const matchedSupply =
+                    supplies.find((s) => s.id === editTransaction.supplyId) ||
+                    supplies.find((s) => (s as any).memberIds?.includes(editTransaction.supplyId)) ||
+                    supplies.find(
+                        (s) =>
+                            s.name.trim().toLowerCase() === editTransaction.supply.name.trim().toLowerCase() &&
+                            s.type === editTransaction.supply.type
+                    );
+                if (matchedSupply) {
+                    setInSource("EXISTING");
+                    setSelectedSupplyIdIn(matchedSupply.id);
+                } else if (supplies.length > 0) {
+                    setInSource("EXISTING");
+                    setSelectedSupplyIdIn(supplies[0].id);
+                } else {
+                    setInSource("NEW");
+                }
+                setName(editTransaction.supply.name);
+                setType(editTransaction.supply.type);
+                setUnit(editTransaction.supply.unit);
+                setPackaging(editTransaction.supply.packaging || "");
+                setQuantityIn(String(editTransaction.quantity));
+                setUnitPrice(moneyInputFromNumber(editTransaction.unitPrice));
+                setActionDateIn(editTransaction.actionDate.slice(0, 10));
+                setExpiryDateIn(editTransaction.expiryDate ? editTransaction.expiryDate.slice(0, 10) : "");
+                setNotesIn(editTransaction.notes || "");
+            } else if (supplies.length > 0) {
                 setInSource("EXISTING");
-                setSelectedSupplyIdIn(supplies[0].id);
-                setUnit(supplies[0].unit);
-                setUnitPrice(String(supplies[0].unitPrice || 0));
+                const initialSupply = supplies[0];
+                setSelectedSupplyIdIn(initialSupply.id);
+                setType(initialSupply.type || "");
+                setUnit(initialSupply.unit || "");
+                setPackaging(initialSupply.packaging || "");
+                setUnitPrice(moneyInputFromNumber(initialSupply.unitPrice || 0));
+                setQuantityIn("1");
+                setActionDateIn(new Date().toISOString().slice(0, 10));
+                setNotesIn("");
+                setExpiryDateIn("");
             } else {
                 setInSource("NEW");
+                resetNewSupplyForm();
+                setNotesIn("");
+                setExpiryDateIn("");
             }
-            setQuantityIn("1");
-            setActionDateIn(new Date().toISOString().slice(0, 10));
-            setNotesIn("");
-            setExpiryDateIn("");
         } else {
             if (supplies.length > 0) {
                 setSelectedSupplyIdOut(supplies.find(s => s.quantity > 0)?.id || "");
@@ -115,7 +220,7 @@ export function FarmerInventoryActionModal({
                 setFarmId(farms[0].id);
                 setCropSeasonId(farms[0].cropSeasons[0]?.id || "");
             }
-            setPurpose("Sử dụng cho hoạt động canh tác");
+            setPurpose("CULTIVATION");
             setActionDateOut(new Date().toISOString().slice(0, 10));
             setNotesOut("");
         }
@@ -139,8 +244,49 @@ export function FarmerInventoryActionModal({
             return;
         }
 
+        const price = parseMoneyInput(unitPrice);
+        if (!Number.isFinite(price) || price < 0) {
+            toast({
+                title: "Lỗi nhập liệu",
+                description: "Nhập đơn giá hợp lệ.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         setSubmitting(true);
         try {
+            if (editTransaction) {
+                const res = await fetch(`/api/farmer/supplies/transactions/${editTransaction.id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        supplyId: inSource === "EXISTING" && selectedSupplyForIn ? selectedSupplyForIn.id : editTransaction.supplyId,
+                        name: inSource === "NEW" ? name.trim() : undefined,
+                        type: inSource === "NEW" ? type : undefined,
+                        unit: inSource === "NEW" ? unit.trim() : undefined,
+                        quantity: qty,
+                        unitPrice: price,
+                        actionDate: actionDateIn,
+                        expiryDate: expiryDateIn ? new Date(expiryDateIn).toISOString() : null,
+                        packaging: packaging.trim() || null,
+                        notes: notesIn.trim() || undefined,
+                    }),
+                });
+                const data = await res.json().catch(() => null);
+                if (!res.ok || !data?.success) {
+                    throw new Error(data?.message || "Không thể cập nhật đợt nhập vật tư.");
+                }
+                toast({
+                    title: "Thành công",
+                    description: "Đã cập nhật đợt nhập vật tư thành công.",
+                    variant: "success",
+                });
+                setOpen(false);
+                router.refresh();
+                return;
+            }
+
             if (inSource === "EXISTING" && selectedSupplyForIn) {
                 const res = await fetch("/api/farmer/supplies/transactions", {
                     method: "POST",
@@ -149,9 +295,10 @@ export function FarmerInventoryActionModal({
                         supplyId: selectedSupplyForIn.id,
                         type: "IN",
                         quantity: qty,
-                        unitPrice: Number(unitPrice),
+                        unitPrice: price,
                         actionDate: actionDateIn,
                         expiryDate: expiryDateIn ? new Date(expiryDateIn).toISOString() : null,
+                        packaging: packaging.trim() || null,
                         purpose: "Nhập bổ sung kho vật tư",
                         notes: notesIn.trim() || undefined,
                     }),
@@ -170,15 +317,32 @@ export function FarmerInventoryActionModal({
                     setSubmitting(false);
                     return;
                 }
-                const price = parseFloat(unitPrice) || 0;
+                if (!type) {
+                    toast({
+                        title: "Lỗi nhập liệu",
+                        description: "Vui lòng chọn phân loại vật tư.",
+                        variant: "destructive",
+                    });
+                    setSubmitting(false);
+                    return;
+                }
+                if (!unit.trim()) {
+                    toast({
+                        title: "Lỗi nhập liệu",
+                        description: "Vui lòng nhập đơn vị tính.",
+                        variant: "destructive",
+                    });
+                    setSubmitting(false);
+                    return;
+                }
                 const res = await fetch("/api/farmer/supplies", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         name: name.trim(),
                         type,
-                        brand: brand.trim() || undefined,
-                        unit: unit.trim() || "bao",
+                        unit: unit.trim(),
+                        packaging: packaging.trim() || null,
                         quantity: qty,
                         unitPrice: price,
                         actionDate: actionDateIn,
@@ -285,9 +449,27 @@ export function FarmerInventoryActionModal({
 
     const activeFarm = farms.find((f) => f.id === farmId);
 
+    const currentUnit = inSource === "EXISTING" ? (selectedSupplyForIn?.unit || unit) : unit;
+    const qtyNumber = parseFloat(quantityIn);
+    const validQty = !isNaN(qtyNumber) && qtyNumber > 0 ? qtyNumber : 0;
+    const priceNumber = parseMoneyInput(unitPrice);
+    const validPrice = Number.isFinite(priceNumber) && priceNumber >= 0 ? priceNumber : 0;
+    const totalAmount = validQty * validPrice;
+    const totalAmountStr = totalAmount > 0 ? `${Math.round(totalAmount).toLocaleString("vi-VN")} đ` : "0 đ";
+
+    const packagingInfo = supplyPackaging(currentUnit, packaging, validQty);
+    const calculatedWeightStr =
+        validQty > 0 && packagingInfo.weightKg !== null
+            ? `${packagingInfo.weightKg.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} kg`
+            : "—";
+
     return (
         <>
-            {mode === "IN" ? (
+            {trigger ? (
+                <div onClick={handleOpen} className="inline-block cursor-pointer">
+                    {trigger}
+                </div>
+            ) : mode === "IN" ? (
                 <Button
                     type="button"
                     onClick={handleOpen}
@@ -319,10 +501,16 @@ export function FarmerInventoryActionModal({
                             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                                 <div>
                                     <h3 className="text-lg font-black text-slate-900 sm:text-xl">
-                                        {mode === "IN" ? "Nhập vật tư vào kho" : "Xuất kho vật tư"}
+                                        {editTransaction
+                                            ? "Chỉnh sửa đợt nhập vật tư"
+                                            : mode === "IN"
+                                            ? "Nhập vật tư vào kho"
+                                            : "Xuất kho vật tư"}
                                     </h3>
                                     <p className="mt-0.5 text-xs text-slate-500">
-                                        {mode === "IN"
+                                        {editTransaction
+                                            ? "Cập nhật thông tin chi tiết của đợt nhập vật tư đã ghi nhận."
+                                            : mode === "IN"
                                             ? "Ghi nhận đợt nhập phân bón, thuốc BVTV hoặc thiết bị vào kho lưu trữ."
                                             : "Ghi nhận xuất kho vật tư phục vụ hoạt động canh tác tại vườn."}
                                     </p>
@@ -344,7 +532,7 @@ export function FarmerInventoryActionModal({
                                         <div className="flex rounded-2xl border border-slate-200 bg-slate-50/80 p-1">
                                             <button
                                                 type="button"
-                                                onClick={() => setInSource("EXISTING")}
+                                                onClick={handleSwitchToExisting}
                                                 className={`flex-1 rounded-xl py-2 text-xs font-bold transition ${
                                                     inSource === "EXISTING"
                                                         ? "bg-white text-brand-700 shadow-sm"
@@ -355,7 +543,7 @@ export function FarmerInventoryActionModal({
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => setInSource("NEW")}
+                                                onClick={handleSwitchToNew}
                                                 className={`flex-1 rounded-xl py-2 text-xs font-bold transition ${
                                                     inSource === "NEW"
                                                         ? "bg-white text-brand-700 shadow-sm"
@@ -367,22 +555,15 @@ export function FarmerInventoryActionModal({
                                         </div>
                                     )}
 
-                                    {inSource === "EXISTING" && supplies.length > 0 ? (
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-700 mb-1">
-                                                Chọn vật tư cần nhập thêm *
-                                            </label>
+                                    {/* Hàng 1: Tên vật tư */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                                            Tên vật tư *
+                                        </label>
+                                        {inSource === "EXISTING" && supplies.length > 0 ? (
                                             <select
                                                 value={selectedSupplyIdIn}
-                                                onChange={(e) => {
-                                                    const sId = e.target.value;
-                                                    setSelectedSupplyIdIn(sId);
-                                                    const found = supplies.find((s) => s.id === sId);
-                                                    if (found) {
-                                                        setUnit(found.unit);
-                                                        setUnitPrice(String(found.unitPrice || 0));
-                                                    }
-                                                }}
+                                                onChange={(e) => handleSelectSupplyIn(e.target.value)}
                                                 className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-800 focus:border-brand-500 focus:outline-none cursor-pointer"
                                             >
                                                 {supplies.map((s) => (
@@ -391,97 +572,82 @@ export function FarmerInventoryActionModal({
                                                     </option>
                                                 ))}
                                             </select>
-                                        </div>
-                                    ) : (
-                                        <>
+                                        ) : (
+                                            <Input
+                                                required
+                                                value={name}
+                                                onChange={(e) => setName(e.target.value)}
+                                                placeholder="Ví dụ: NPK Đầu Trâu 16-16-8, Anvil 5SC..."
+                                                className="rounded-2xl"
+                                            />
+                                        )}
+                                    </div>
+
+                                    {/* Hàng 2: Phân loại */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                                            Phân loại {inSource === "NEW" && "*"}
+                                        </label>
+                                        {inSource === "EXISTING" ? (
+                                            <select
+                                                disabled
+                                                value={selectedSupplyForIn?.type || type || ""}
+                                                className="h-10 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 text-sm font-medium text-slate-600 cursor-not-allowed"
+                                            >
+                                                <option value="" disabled>Chọn loại vật tư</option>
+                                                <option value="FERTILIZER">Phân bón</option>
+                                                <option value="PESTICIDE">Thuốc BVTV</option>
+                                                <option value="EQUIPMENT">Thiết bị</option>
+                                                <option value="OTHER">Khác</option>
+                                            </select>
+                                        ) : (
+                                            <select
+                                                required
+                                                value={type}
+                                                onChange={(e) => setType(e.target.value)}
+                                                className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-800 focus:border-brand-500 focus:outline-none cursor-pointer"
+                                            >
+                                                <option value="" disabled>Chọn loại vật tư</option>
+                                                <option value="FERTILIZER">Phân bón</option>
+                                                <option value="PESTICIDE">Thuốc BVTV</option>
+                                                <option value="EQUIPMENT">Thiết bị</option>
+                                                <option value="OTHER">Khác</option>
+                                            </select>
+                                        )}
+                                    </div>
+
+                                    {/* Thông tin bổ sung cho Thuốc BVTV (khi thêm vật tư mới) */}
+                                    {inSource === "NEW" && type === "PESTICIDE" && (
+                                        <div className="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                                                    Tên vật tư *
+                                                    Thời gian cách ly PHI (ngày)
                                                 </label>
                                                 <Input
-                                                    required
-                                                    value={name}
-                                                    onChange={(e) => setName(e.target.value)}
-                                                    placeholder="Ví dụ: NPK Đầu Trâu 16-16-8, Anvil 5SC..."
+                                                    type="number"
+                                                    min="0"
+                                                    value={phiDays}
+                                                    onChange={(e) => setPhiDays(e.target.value)}
+                                                    placeholder="7, 14..."
                                                     className="rounded-2xl"
                                                 />
                                             </div>
-
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                                                        Phân loại *
-                                                    </label>
-                                                    <select
-                                                        value={type}
-                                                        onChange={(e) => setType(e.target.value)}
-                                                        className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-800 focus:border-brand-500 focus:outline-none cursor-pointer"
-                                                    >
-                                                        <option value="FERTILIZER">Phân bón</option>
-                                                        <option value="PESTICIDE">Thuốc BVTV</option>
-                                                        <option value="EQUIPMENT">Thiết bị</option>
-                                                        <option value="OTHER">Khác</option>
-                                                    </select>
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                                                        Thương hiệu / Hãng
-                                                    </label>
-                                                    <Input
-                                                        value={brand}
-                                                        onChange={(e) => setBrand(e.target.value)}
-                                                        placeholder="Ví dụ: Đầu Trâu, Syngenta..."
-                                                        className="rounded-2xl"
-                                                    />
-                                                </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                    Hoạt chất chính
+                                                </label>
+                                                <Input
+                                                    value={activeIngredients}
+                                                    onChange={(e) => setActiveIngredients(e.target.value)}
+                                                    placeholder="Copper Hydroxide..."
+                                                    className="rounded-2xl"
+                                                />
                                             </div>
-
-                                            {type === "PESTICIDE" && (
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                                                            Thời gian cách ly PHI (ngày)
-                                                        </label>
-                                                        <Input
-                                                            type="number"
-                                                            min="0"
-                                                            value={phiDays}
-                                                            onChange={(e) => setPhiDays(e.target.value)}
-                                                            placeholder="7, 14..."
-                                                            className="rounded-2xl"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                                                            Hoạt chất chính
-                                                        </label>
-                                                        <Input
-                                                            value={activeIngredients}
-                                                            onChange={(e) => setActiveIngredients(e.target.value)}
-                                                            placeholder="Copper Hydroxide..."
-                                                            className="rounded-2xl"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </>
+                                        </div>
                                     )}
 
+                                    {/* Hàng 3: Số lượng nhập, Đơn vị tính, Quy cách đóng gói */}
                                     <div className="grid grid-cols-3 gap-3">
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-700 mb-1">
-                                                Đơn vị tính *
-                                            </label>
-                                            <Input
-                                                required
-                                                disabled={inSource === "EXISTING"}
-                                                value={unit}
-                                                onChange={(e) => setUnit(e.target.value)}
-                                                placeholder="bao, chai, gói, kg..."
-                                                className="rounded-2xl"
-                                            />
-                                        </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-700 mb-1">
                                                 Số lượng nhập *
@@ -498,20 +664,70 @@ export function FarmerInventoryActionModal({
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-700 mb-1">
-                                                Đơn giá (đ/{unit || "ĐVT"})
+                                                Đơn vị tính *
                                             </label>
                                             <Input
-                                                type="number"
-                                                min="0"
-                                                step="1000"
-                                                value={unitPrice}
-                                                onChange={(e) => setUnitPrice(e.target.value)}
+                                                required
+                                                disabled={inSource === "EXISTING"}
+                                                value={currentUnit}
+                                                onChange={(e) => setUnit(e.target.value)}
+                                                placeholder="bao, chai, gói, kg..."
+                                                className={`rounded-2xl ${inSource === "EXISTING" ? "bg-slate-50 text-slate-600 cursor-not-allowed" : ""}`}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                Quy cách đóng gói
+                                            </label>
+                                            <Input
+                                                value={packaging}
+                                                onChange={(e) => setPackaging(e.target.value)}
+                                                placeholder="Ví dụ: 25 kg/bao, 500 ml/chai"
+                                                maxLength={150}
                                                 className="rounded-2xl"
                                             />
                                         </div>
                                     </div>
 
-                                    <label className="block text-xs font-bold text-slate-700">Ngày hết hạn của lần nhập<Input type="date" value={expiryDateIn} onChange={e => setExpiryDateIn(e.target.value)} className="mt-1 rounded-xl" /></label>
+                                    {/* Hàng 4: Khối lượng, Đơn giá, Thành tiền */}
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                Khối lượng (kg)
+                                            </label>
+                                            <Input
+                                                readOnly
+                                                value={calculatedWeightStr}
+                                                placeholder="—"
+                                                className="rounded-2xl bg-slate-50 text-slate-700 cursor-default font-medium"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                Đơn giá (đ/{currentUnit || "ĐVT"}) *
+                                            </label>
+                                            <Input
+                                                type="text"
+                                                inputMode="decimal"
+                                                required
+                                                value={unitPrice}
+                                                onChange={(e) => setUnitPrice(formatMoneyInput(e.target.value))}
+                                                className="rounded-2xl font-medium"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                Thành tiền (đ)
+                                            </label>
+                                            <Input
+                                                readOnly
+                                                value={totalAmountStr}
+                                                className="rounded-2xl bg-slate-50 font-bold text-brand-700 cursor-default"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Hàng 5: Ngày nhập kho và Ngày hết hạn */}
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -527,15 +743,28 @@ export function FarmerInventoryActionModal({
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-700 mb-1">
-                                                Ghi chú nhập
+                                                Ngày hết hạn
                                             </label>
                                             <Input
-                                                value={notesIn}
-                                                onChange={(e) => setNotesIn(e.target.value)}
-                                                placeholder="Ví dụ: Nhập đợt vụ mới..."
+                                                type="date"
+                                                value={expiryDateIn}
+                                                onChange={(e) => setExpiryDateIn(e.target.value)}
                                                 className="rounded-2xl"
                                             />
                                         </div>
+                                    </div>
+
+                                    {/* Ghi chú */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                                            Ghi chú nhập
+                                        </label>
+                                        <Input
+                                            value={notesIn}
+                                            onChange={(e) => setNotesIn(e.target.value)}
+                                            placeholder="Ví dụ: Nhập đợt vụ mới..."
+                                            className="rounded-2xl"
+                                        />
                                     </div>
 
                                     {/* Action Buttons */}
@@ -559,6 +788,8 @@ export function FarmerInventoryActionModal({
                                                     <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                                                     Đang lưu...
                                                 </>
+                                            ) : editTransaction ? (
+                                                "Lưu thay đổi"
                                             ) : (
                                                 "Xác nhận nhập kho"
                                             )}

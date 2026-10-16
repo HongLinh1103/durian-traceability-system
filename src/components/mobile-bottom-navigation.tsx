@@ -49,7 +49,7 @@ type QuickAction = {
 };
 
 type RoleNavigation = {
-    items: NavItem[];
+    items: [NavItem, NavItem, NavItem, NavItem];
     actions?: QuickAction[];
 };
 
@@ -130,9 +130,9 @@ const navigationByRole: Record<string, RoleNavigation> = {
     PROCESSING_FACILITY: {
         items: [
             { label: "Tổng quan", href: "/dashboard/processing", icon: Home },
-            { label: "Thu mua", href: "/dashboard/processing/purchases", icon: ClipboardList, matches: ["/dashboard/processing/purchases"] },
             { label: "Nhập hàng", href: "/dashboard/processing/grading", icon: Boxes, matches: ["/dashboard/processing/grading"] },
             { label: "Đóng gói", href: "/dashboard/processing/processing", icon: Factory, matches: ["/dashboard/processing/processing"] },
+            { label: "Cá nhân", href: "/account", icon: UserRound, matches: ["/account"] },
         ],
         actions: [
             { label: "Tiếp nhận & Sơ chế", description: "Sổ BM-GMP-02", href: "/dashboard/processing/preprocessing", icon: ClipboardList },

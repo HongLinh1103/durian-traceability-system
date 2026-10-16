@@ -213,10 +213,10 @@ export function ProcessingOverviewDashboard() {
 
                     <div className="flex items-center gap-2">
                         <Link
-                            href="/dashboard/processing/purchases"
+                            href="/dashboard/processing/grading"
                             className="inline-flex items-center gap-1.5 rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
                         >
-                            <span>+ Thu mua mới</span>
+                            <span>Sổ nhập hàng</span>
                             <ArrowRight className="h-4 w-4" />
                         </Link>
                     </div>
@@ -485,13 +485,13 @@ export function ProcessingOverviewDashboard() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                     <Link
-                        href="/dashboard/processing/purchases"
+                        href="/dashboard/processing/grading"
                         className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-500 hover:shadow-md"
                     >
                         <div>
                             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Bước 1</span>
-                            <h4 className="font-bold text-sm text-slate-900 group-hover:text-emerald-700">Hồ sơ thu mua</h4>
-                            <p className="text-xs text-slate-500 mt-1">Ghi nhận lô, mã vùng trồng, sinh công nợ phải trả</p>
+                            <h4 className="font-bold text-sm text-slate-900 group-hover:text-emerald-700">Hồ sơ thu hoạch</h4>
+                            <p className="text-xs text-slate-500 mt-1">Đồng bộ hồ sơ thu hoạch, tiếp nhận và phân loại</p>
                         </div>
                         <span className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
                             Xem hồ sơ <ArrowRight className="h-3 w-3" />

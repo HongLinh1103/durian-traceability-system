@@ -1,3 +1,4 @@
+import { isValidLogMaterial } from "@/lib/farming-log-stock";
 import { selfOwnedMaterial, allowsSelfOwnedMaterials } from "@/lib/self-owned-materials";
 import { lockFarmerStock } from "@/lib/farmer-material-fifo";
 import { seasonDateBounds } from "@/lib/crop-season";
@@ -135,7 +136,7 @@ async function handleUpdate(request: Request, id: string) {
         const log = await prisma.farmingLog.findUnique({
             where: { id },
             include: {
-                farm: { select: { id: true, farmerId: true } },
+                farm: { select: { id: true, farmerId: true, areaSize: true, areaUnit: true } },
                 cropSeason: { select: { id: true, name: true, status: true, startedAt: true, expectedEndAt: true, closedAt: true, year: true } },
                 supplyTransactions: { where: { type: "OUT" }, include: { supply: true } },
             },
@@ -198,9 +199,10 @@ async function handleUpdate(request: Request, id: string) {
 
         if (log.cropSeason) { const bounds = seasonDateBounds(log.cropSeason); const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).format(parsedActionDate); if (day < bounds.min || day > bounds.max) return NextResponse.json({ ok: false, error: "Ngày nhật ký phải nằm trong niên vụ" }, { status: 400 }); }
         const usesMaterials = ["SPRAY_PESTICIDE", "FERTILIZE", "BASE_FERTILIZING", "FOLIAR_FERTILIZING"].includes(normalizedActivity);
-        if (body.materials !== undefined && (!Array.isArray(body.materials) || body.materials.length > 50 || body.materials.some((m: any) => !m || typeof m.supplyId !== "string" || !Number.isFinite(m.quantity) || m.quantity <= 0 || typeof m.content !== "string" || !m.content.trim() || (m.phiDays != null && (!Number.isInteger(m.phiDays) || m.phiDays < 0))))) return NextResponse.json({ ok: false, error: "Vật tư, số lượng, nội dung hoặc PHI không hợp lệ" }, { status: 400 });
+        if (body.materials !== undefined && (!Array.isArray(body.materials) || body.materials.length > 50 || body.materials.some((m: any) => !isValidLogMaterial(m)))) return NextResponse.json({ ok: false, error: "Vật tư, số lượng, nội dung hoặc PHI không hợp lệ" }, { status: 400 });
         if (usesMaterials && body.materials !== undefined && !body.materials.length) return NextResponse.json({ ok: false, error: "Chọn ít nhất một vật tư" }, { status: 400 });
         const requestedSupplies = body.materials ? await prisma.farmerSupply.findMany({ where: { farmerId: log.farm.farmerId, id: { in: body.materials.map((m: any) => m.supplyId) } } }) : [];
+        if (body.materials?.some((m: any) => (m.appliedArea ?? log.farm.areaSize) <= 0 || (m.appliedArea ?? log.farm.areaSize) > log.farm.areaSize)) return NextResponse.json({ ok: false, error: "Diện tích áp dụng phải lớn hơn 0 và không vượt diện tích vườn" }, { status: 400 });
         if (body.materials?.some((m: any) => !(selfOwnedMaterial(m.supplyId) && allowsSelfOwnedMaterials(normalizedActivity)) && !requestedSupplies.some(s => s.id === m.supplyId))) return NextResponse.json({ ok: false, error: "Vật tư không thuộc kho của chủ nhật ký" }, { status: 400 });
         const finalChemicalName = body.materials ? body.materials.map((m: any) => (selfOwnedMaterial(m.supplyId) || requestedSupplies.find(s => s.id === m.supplyId))!.name).join(" + ") : log.supplyTransactions.length ? log.supplyTransactions.map(t => t.supply.name).join(" + ") : chemicalName !== undefined ? (chemicalName?.trim() || null) : log.chemicalName;
         const finalDosage = dosage !== undefined ? (dosage?.trim() || null) : log.dosage;
@@ -235,8 +237,8 @@ async function handleUpdate(request: Request, id: string) {
             let summary = null;
             if (usesMaterials && body.materials !== undefined) {
                 if (!log.cropSeasonId) throw new Error("Nhật ký chưa có niên vụ");
-                await removeLogStock(tx, id, false);
-                summary = await createLogMaterials(tx, { logId: id, farmerId: log.farm.farmerId, farmId: log.farmId, cropSeasonId: log.cropSeasonId, actionDate: parsedActionDate, stage: normalizedStage as any, activityType: normalizedActivity as any, materials: body.materials });
+                const removedMovements = await removeLogStock(tx, id, false);
+                summary = await createLogMaterials(tx, { logId: id, farmerId: log.farm.farmerId, farmId: log.farmId, cropSeasonId: log.cropSeasonId, actionDate: parsedActionDate, stage: normalizedStage as any, activityType: normalizedActivity as any, materials: body.materials, rebuildStock: removedMovements > 0 });
             } else summary = usesMaterials ? await updateLogStock(tx, { logId: id, farmerId: log.farm.farmerId, actionDate: parsedActionDate, stage: normalizedStage as any, activityType: normalizedActivity as any, quantities: body.materialQuantities }) : null;
             return tx.farmingLog.update({
             where: { id },

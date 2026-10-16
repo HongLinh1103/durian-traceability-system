@@ -1,6 +1,6 @@
 "use client";
-import React, { useId, useRef, useState } from "react";
-import { ChevronDown, Plus } from "lucide-react";
+import React, { useId, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { selfOwnedMaterial } from "@/lib/self-owned-materials";
 
 export type MaterialOption = {
@@ -37,15 +37,32 @@ export function MaterialCombobox({
     const [open, setOpen] = useState(false);
     const [customNameInput, setCustomNameInput] = useState("");
 
+    const effectiveSelfOwnedSupplies = useMemo(() => {
+        const list = [...selfOwnedSupplies];
+        if (!list.some((s) => s.name.toLowerCase().includes("chuồng") || s.id === "self-owned:composted-manure")) {
+            list.unshift({
+                id: "self-owned:composted-manure",
+                name: "Phân chuồng ủ hoai mục",
+                unit: "kg",
+                quantity: 0,
+                type: "FERTILIZER",
+                source: "SELF_OWNED",
+            });
+        }
+        return list;
+    }, [selfOwnedSupplies]);
+
     const selected =
         supplies.find((s) => s.id === value) ||
-        selfOwnedSupplies.find((s) => s.id === value) ||
+        effectiveSelfOwnedSupplies.find((s) => s.id === value) ||
         (value.startsWith("self-owned:") ? selfOwnedMaterial(value) : undefined);
 
     const normalizedQuery = isSearching ? query.trim().toLocaleLowerCase("vi") : "";
 
     const warehouseFiltered = supplies.filter(
-        (s) => !normalizedQuery || s.name.toLocaleLowerCase("vi").includes(normalizedQuery)
+        (s) =>
+            (!normalizedQuery || s.name.toLocaleLowerCase("vi").includes(normalizedQuery)) &&
+            !s.name.toLocaleLowerCase("vi").includes("chuồng")
     );
     const inStock = warehouseFiltered.filter((s) => Number(s.quantity ?? 0) > 2);
     const lowStock = warehouseFiltered.filter(
@@ -54,7 +71,7 @@ export function MaterialCombobox({
     const warehouseOptions = [...inStock, ...lowStock];
 
     const selfOwnedOptions = allowSelfOwned
-        ? selfOwnedSupplies.filter(
+        ? effectiveSelfOwnedSupplies.filter(
               (s) => !normalizedQuery || s.name.toLocaleLowerCase("vi").includes(normalizedQuery)
           )
         : [];
@@ -168,10 +185,7 @@ export function MaterialCombobox({
                 >
                     {/* NHÓM 1: VẬT TƯ TRONG KHO */}
                     <div className="sticky top-0 z-10 flex items-center justify-between rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm">
-                        <span className="flex items-center gap-1.5">
-                            <span>📦</span>
-                            <span>VẬT TƯ TRONG KHO</span>
-                        </span>
+                        <span>VẬT TƯ TRONG KHO</span>
                         <span className="text-[11px] font-normal text-slate-500">
                             {warehouseOptions.length} vật tư
                         </span>
@@ -220,27 +234,15 @@ export function MaterialCombobox({
                         <div className="mt-2 border-t-2 border-emerald-200/80 pt-2">
                             {/* Tiêu đề nhóm Vật tư tự có */}
                             <div className="sticky top-0 z-10 flex items-center justify-between rounded-lg bg-emerald-100/90 px-3 py-1.5 text-xs font-bold text-emerald-900 shadow-sm">
-                                <span className="flex items-center gap-1.5">
-                                    <span>🌿</span>
-                                    <span>VẬT TƯ TỰ CÓ</span>
-                                </span>
-                                <span className="rounded-full bg-emerald-200/70 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
-                                    Tự chuẩn bị / tự ủ
-                                </span>
+                                <span>VẬT TƯ TỰ CHUẨN BỊ/TỰ Ủ</span>
                             </div>
 
-                            {/* Ô nhập tên vật tư tự có để nông dân tự nhập */}
-                            <div
-                                className="my-2 rounded-xl border border-emerald-200 bg-emerald-50/50 p-2.5"
-                                onMouseDown={(e) => e.stopPropagation()}
-                            >
-                                <label className="block text-xs font-semibold text-emerald-900 mb-1">
-                                    Nhập vật tư tự chuẩn bị / tự ủ mới:
-                                </label>
-                                <div className="flex gap-1.5">
+                            {/* Ô text đơn thuần, có placeholder bên trong */}
+                            <div className="py-2 px-1" onMouseDown={(e) => e.stopPropagation()}>
+                                <div className="relative flex items-center">
                                     <input
                                         type="text"
-                                        placeholder="Ví dụ: Phân chuồng ủ hoai mục..."
+                                        placeholder="Nhập tên vật tư tự có..."
                                         value={customNameInput}
                                         onChange={(e) => setCustomNameInput(e.target.value)}
                                         onKeyDown={(e) => {
@@ -249,17 +251,17 @@ export function MaterialCombobox({
                                                 handleAddCustomMaterial();
                                             }
                                         }}
-                                        className="h-8.5 flex-1 rounded-lg border border-emerald-300 bg-white px-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 pr-14 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={handleAddCustomMaterial}
-                                        disabled={!customNameInput.trim()}
-                                        className="h-8.5 shrink-0 rounded-lg bg-emerald-700 px-3 text-xs font-semibold text-white shadow-sm hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 transition cursor-pointer"
-                                    >
-                                        <Plus className="h-3.5 w-3.5" />
-                                        <span>Thêm</span>
-                                    </button>
+                                    {customNameInput.trim() && (
+                                        <button
+                                            type="button"
+                                            onClick={handleAddCustomMaterial}
+                                            className="absolute right-1 top-1 bottom-1 rounded-md bg-emerald-600 px-2.5 text-xs font-semibold text-white hover:bg-emerald-700 transition cursor-pointer"
+                                        >
+                                            Chọn
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -292,9 +294,6 @@ export function MaterialCombobox({
                                                         {s.name}
                                                     </span>
                                                 </div>
-                                                <span className="mt-0.5 block text-xs font-medium text-emerald-700">
-                                                    Tự có · Không qua kho
-                                                </span>
                                             </div>
                                         );
                                     })

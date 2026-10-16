@@ -6,6 +6,27 @@ import { mkdir, writeFile } from 'node:fs/promises';
 
 async function main() {
  const state=createDemoState();
+ // Follow a mixed-grade lot through all stages, including independently rounded samples.
+ let graded=createDemoState();
+ for (const stage of STAGES.slice(1)) graded.records[stage]=[];
+ graded.payments=[];
+ const purchaseTemplate=state.records.purchases[0];
+ graded=saveRecord(graded,'purchases',{season:purchaseTemplate.season,values:{...purchaseTemplate.values,price:''}},'optional-price');
+ assert.equal(graded.records.purchases[0].values.total,0);
+ graded=saveRecord(graded,'receiving',{sourceId:'optional-price',values:{...state.records.receiving[0].values,grade1:700,grade2:200,grade3:100,gradeOther:100}},'graded-receiving');
+ graded=saveRecord(graded,'preprocessing',{sourceId:'graded-receiving',values:{...state.records.preprocessing[0].values,outputWeight1:700,outputWeight2:200,outputWeight3:100,outputWeightOther:100,qualityOkOther:'Đ'}},'graded-prep');
+ assert.equal(graded.records.preprocessing[0].values.inputWeightOther,100);
+ const packValues={...state.records.packaging[0].values,quantity_boxes1:100,quantity_boxes2:10,quantity_boxes3:5,quantity_boxesOther:51,weight_kg1:680,weight_kg2:180,weight_kg3:90,weight_kgOther:90};
+ assert.throws(()=>saveRecord(graded,'packaging',{sourceId:'graded-prep',values:{...packValues,weight_kgOther:101}},'over-grade'));
+ graded=saveRecord(graded,'packaging',{sourceId:'graded-prep',values:packValues},'graded-pack');
+ assert.equal(graded.records.packaging[0].values.inputWeightOther,100);
+ graded=saveRecord(graded,'inspection',{sourceId:'graded-pack',values:{...state.records.inspection.find(r=>r.values.mealybug==='Không')!.values,date:'2026-09-10',quantity_boxes:166,weight_kg:1040,quantity_boxes1:100,quantity_boxes2:10,quantity_boxes3:5,quantity_boxesOther:51,weight_kg1:680,weight_kg2:180,weight_kg3:90,weight_kgOther:90}},'graded-inspect');
+ assert.deepEqual(['1','2','3','Other'].map(g=>graded.records.inspection[0].values['sample'+g]),[2,1,1,2]);
+ assert.equal(graded.records.inspection[0].values.inputWeightOther,90);
+ assert.equal(graded.records.inspection[0].values.quantity_boxes,166);
+ assert.equal(graded.records.inspection[0].values.weight_kg,1040);
+ assert.throws(()=>saveRecord(graded,'inspection',{sourceId:'graded-pack',values:{...graded.records.inspection[0].values,quantity_boxes1:101,quantity_boxesOther:50}},'over-inspection-grade'));
+
  const draftState=createDemoState();
  draftState.payments=[];
  for(const stage of STAGES.slice(1)) for(const r of draftState.records[stage]) r.draft=true;
@@ -18,7 +39,7 @@ async function main() {
  const draftPrep=draftState.records.preprocessing[0];
  assert.throws(()=>saveRecord(draftState,'preprocessing',{id:draftPrep.id,values:draftPrep.values},draftPrep.id),/hoàn tất/);
  assert.throws(()=>addPayment(draftState,{id:'draft-payment',recordId:draftState.records.sales[0].id,direction:'IN',date:'2026-09-10',amount:1,method:'Tiền mặt'}),/hoàn tất/);
- assert.deepEqual(REGISTERS.preprocessing.fields.map(f=>f.key), ['date','productLot','inputWeight','supplierOk','transportOk','materialOk','brushOk','airOk','dryStart','dryEnd','dryOk','qualityOk','outputWeight','correction','supervisor']);
+ assert.deepEqual(REGISTERS.preprocessing.fields.map(f=>f.key), ['date','productLot','inputWeight1','inputWeight2','inputWeight3','inputWeightOther','inputWeight','supplierOk','transportOk','materialOk','brushOk','airOk','dryStart','dryEnd','dryOk','qualityOk1','qualityOk2','qualityOk3','qualityOkOther','qualityOk','outputWeight1','outputWeight2','outputWeight3','outputWeightOther','outputWeight','correction','supervisor']);
  const prepValues={...state.records.preprocessing[0].values,date:'2026-09-10',supplier:'Nhà cung cấp tự nhập'};
  for (const key of ['brushOk','dryOk']) {
   assert.throws(()=>saveRecord(state,'preprocessing',{sourceId:'demo-5-1',values:{...prepValues,[key]:'K',correction:''}},`missing-correction-${key}`),/khắc phục/);
@@ -74,7 +95,9 @@ async function main() {
  assert.throws(()=>saveRecord(state,'sales',{sourceId:'demo-7-4',values:state.records.sales[0].values},'bad-sale'),/chưa đủ điều kiện/);
  const failed=state.records.inspection.find(r=>r.id==='demo-7-4')!;
  const passed={...failed.values,date:'2026-09-09',mealybug:'Không',quantity_boxes:58,weight_kg:1044};
- assert.throws(()=>saveRecord(state,'inspection',{sourceId:failed.sourceId,values:{...passed,sample1:0,sample2:0,sample3:0}},'bad-sample'),/2%/);
+ for (const g of ['1','2','3','Other']) { (passed as Record<string, string | number>)['quantity_boxes'+g] = failed.values['inputBoxes'+g]; (passed as Record<string, string | number>)['weight_kg'+g] = failed.values['inputWeight'+g]; }
+ const autoSample=saveRecord(state,'inspection',{sourceId:failed.sourceId,values:{...passed,sample1:0,sample2:0,sample3:0}},'auto-sample');
+ assert.equal(autoSample.records.inspection.find(r=>r.id==='auto-sample')!.values.sample2,1,'Samples are calculated from each source grade, ignoring submitted values');
  const retested=saveRecord(state,'inspection',{sourceId:failed.sourceId,values:passed},'retested');
  assert(sources(retested,'sales').some(r=>r.id==='retested'));
  assert.equal(retested.records.inspection.filter(r=>r.sourceId===failed.sourceId).length,2,'Keep failed inspection history');

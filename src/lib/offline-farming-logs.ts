@@ -7,7 +7,7 @@ export type FarmingLogImage = File;
 export type OfflineFarmingLogPayload = FarmingLogInput & {
     isGACCCompliant: boolean;
     images: FarmingLogImage[];
-    materials?: Array<{ supplyId: string; quantity: number; content: string; phiDays?: number }>;
+    materials?: Array<{ supplyId: string; quantity: number; content: string; dosage?: string; appliedArea?: number; phiDays?: number }>;
 };
 
 export type OfflineFarmingLogRecord = {

@@ -62,7 +62,7 @@ function buildLogFormData(
     values: FarmingLogInput,
     images: File[],
     isGACCCompliant: boolean,
-    materials: Array<{ supplyId: string; quantity: number; content: string; phiDays?: number }> = [],
+    materials: Array<{ supplyId: string; quantity: number; content: string; dosage?: string; appliedArea?: number; phiDays?: number }> = [],
 ) {
     const formData = new FormData();
 
@@ -170,7 +170,8 @@ export default function NewFarmingLogPage() {
     const [masterDataLoading, setMasterDataLoading] = useState(true);
     const [inventorySupplies, setInventorySupplies] = useState<Array<{ id: string; name: string; type: string; unit: string; quantity: number; phiDays?: number | null }>>([]);
     const [selfOwnedSupplies, setSelfOwnedSupplies] = useState<MaterialOption[]>([]);
-    const [materials, setMaterials] = useState<Array<{ supplyId: string; quantity: number; content: string; phiDays?: number }>>([{ supplyId: "", quantity: 1, content: "", phiDays: 0 }]);
+    const [materials, setMaterials] = useState<Array<{ supplyId: string; quantity: number; content: string; dosage?: string; appliedArea?: number; phiDays?: number }>>([{ supplyId: "", quantity: 1, content: "", phiDays: 0 }]);
+    const [materialContent, setMaterialContent] = useState("");
     const now = useMemo(() => new Date(), []);
     const planId = searchParams.get("planId") ?? "";
 
@@ -196,6 +197,7 @@ export default function NewFarmingLogPage() {
     const chemicalName = form.watch("chemicalName");
     const actionDate = form.watch("actionDate");
     const selectedFarmId = form.watch("farmId");
+    const selectedFarm = farms.find(farm => farm.id === selectedFarmId);
     const activeSeason = farms.find(farm => farm.id === selectedFarmId)?.cropSeasons?.find(season => season.status === "ACTIVE");
     const dateBounds = activeSeason ? seasonDateBounds(activeSeason) : undefined;
     const phiDays = Number(form.watch("phiDays") ?? 0);
@@ -278,7 +280,7 @@ export default function NewFarmingLogPage() {
         const selected = materials.map(m => ({ ...m, supply: selfOwnedMaterial(m.supplyId) || inventorySupplies.find(s => s.id === m.supplyId) }));
         form.setValue("chemicalName", selected.map(m => m.supply?.name).filter(Boolean).join(" + "));
         form.setValue("phiDays", isSpraying ? Math.max(0, ...materials.map(m => m.phiDays || 0)) : 0);
-        form.setValue("dosage", selected.filter(m => m.supply).map(m => formatMaterialDosage(m.quantity, m.supply!.unit, farms.find(f => f.id === selectedFarmId))).join(" + "));
+        form.setValue("dosage", selected.filter(m => m.supply).map(m => m.dosage ?? formatMaterialDosage(m.quantity, m.supply!.unit, selectedFarm, !!selfOwnedMaterial(m.supplyId))).join(" + "));
     }, [materials, inventorySupplies, form, isSpraying, farms, selectedFarmId]);
     const prohibitedMatch = useMemo(
         () => isSpraying ? matchProhibitedChemical(chemicalName, prohibitedEntries) : { status: "none" as const },
@@ -564,11 +566,11 @@ export default function NewFarmingLogPage() {
         }
         const isMaterialMandatory = isSpraying || isFertilizing;
         const hasSelectedSupply = materials.some(m => Boolean(m.supplyId));
-        const logMaterials = (isMaterialMandatory || (isPestInspection && hasSelectedSupply)) ? materials : [];
+        const logMaterials = (isMaterialMandatory || (isPestInspection && hasSelectedSupply)) ? materials.map(m => ({ ...m, quantity: selfOwnedMaterial(m.supplyId) ? 0 : m.quantity, content: materialContent.trim(), dosage: m.dosage ?? formatMaterialDosage(m.quantity, (selfOwnedMaterial(m.supplyId) || inventorySupplies.find(s => s.id === m.supplyId))?.unit || "", selectedFarm, !!selfOwnedMaterial(m.supplyId)) })) : [];
         if (logMaterials.length > 0) {
             const requested = new Map<string, number>();
             for (const m of logMaterials) requested.set(m.supplyId, (requested.get(m.supplyId) || 0) + m.quantity);
-            if (logMaterials.some(m => !m.supplyId || !Number.isFinite(m.quantity) || m.quantity <= 0 || !m.content.trim()) || [...requested].some(([id, qty]) => !selfOwnedMaterial(id) && qty > (inventorySupplies.find(s => s.id === id)?.quantity || 0))) {
+            if (logMaterials.some(m => !m.supplyId || (!selfOwnedMaterial(m.supplyId) && (!Number.isFinite(m.quantity) || m.quantity <= 0)) || !m.content.trim()) || [...requested].some(([id, qty]) => !selfOwnedMaterial(id) && qty > (inventorySupplies.find(s => s.id === id)?.quantity || 0))) {
                 toast({ title: "Kiểm tra vật tư", description: "Chọn vật tư trong kho, nhập nội dung và số lượng lớn hơn 0, không vượt tổng tồn.", variant: "destructive" }); return;
             }
         }
@@ -642,6 +644,7 @@ export default function NewFarmingLogPage() {
             }
 
             setMaterials([{ supplyId: "", quantity: 1, content: "" }]);
+            setMaterialContent("");
             form.reset({
                 stage: growthStages[0],
                 activityType: activityTypes[0],
@@ -708,7 +711,7 @@ export default function NewFarmingLogPage() {
     const backUrl = `/dashboard/farmer/journal?tab=cultivation${backFarmId ? `&farmId=${backFarmId}` : ""}${backSeasonId ? `&seasonId=${backSeasonId}` : ""}`;
 
     return (
-        <main className="mx-auto min-h-screen max-w-4xl overflow-x-clip px-3 py-4 sm:px-6 lg:px-8 space-y-4">
+        <main className="mx-auto min-h-screen max-w-7xl overflow-x-clip px-2 py-4 sm:px-3 lg:px-4 space-y-4">
             <div className="flex items-center gap-3">
                 <Link
                     href={backUrl}
@@ -745,7 +748,7 @@ export default function NewFarmingLogPage() {
                     </div>
                 </CardHeader>
 
-                <CardContent>
+                <CardContent className="px-3 sm:px-4">
                     <form className="min-w-0 space-y-6" onSubmit={onSubmit}>
                         <div>
                             <Label htmlFor="farmId">Vườn canh tác / Mã vùng trồng (PUC)</Label>
@@ -832,60 +835,42 @@ export default function NewFarmingLogPage() {
                             </div>}
                         </div>
 
-                        {hasMaterials && <div className="space-y-4">
+                        {hasMaterials && <section className="space-y-4" aria-label="Vật tư sử dụng">
+                            <div className="flex items-center justify-between gap-2"><h3 className="text-lg font-bold">Vật tư sử dụng</h3><span className="text-sm text-slate-500">{materials.filter(m => m.supplyId).length} vật tư</span></div>
                             {form.formState.errors.chemicalName && <p role="alert" className="text-sm text-red-600">Chọn ít nhất một vật tư.</p>}
+                            <div className="hidden grid-cols-[minmax(0,2fr)_0.5fr_0.8fr_0.5fr_minmax(0,1.5fr)_0.6fr_1.5rem] gap-3 text-xs font-semibold text-slate-500 sm:grid" aria-hidden="true"><span>Tên vật tư</span><span>Tồn</span><span>SL sử dụng</span><span>ĐVT</span><span>Liều lượng</span><span>PHI (ngày)</span><span /></div>
+                            <div className="divide-y divide-slate-100">
                             {materials.map((m, index) => {
                                 const own = selfOwnedMaterial(m.supplyId);
                                 const selected = own || inventorySupplies.find(s => s.id === m.supplyId);
                                 const update = (value: Partial<typeof m>) => setMaterials(previous => previous.map((item, i) => i === index ? { ...item, ...value } : item));
                                 const totalRequested = materials.filter(item => item.supplyId === m.supplyId).reduce((total, item) => total + item.quantity, 0);
-                                return <div key={index} className={`space-y-3 ${materials.length > 1 ? "rounded-2xl border border-slate-200 p-3.5" : ""}`}>
-                                    {materials.length > 1 && (
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs font-bold text-slate-500 uppercase">Vật tư #{index + 1}</span>
-                                            <button type="button" className="text-xs font-semibold text-red-600 hover:text-red-700" onClick={() => setMaterials(previous => previous.filter((_, i) => i !== index))}>Xóa vật tư này</button>
-                                        </div>
-                                    )}
-                                    <div>
-                                        <Label>Tên vật tư {isPestInspection ? "(nếu có sử dụng)" : "*"}</Label>
-                                        <MaterialCombobox
-                                            supplies={inventorySupplies.filter(s => isSpraying ? s.type === "PESTICIDE" : isFertilizing ? s.type === "FERTILIZER" : s.type !== "FERTILIZER")}
-                                            selfOwnedSupplies={selfOwnedSupplies}
-                                            allowSelfOwned={isFertilizing}
-                                            value={m.supplyId}
-                                            onChange={id => {
-                                                update({ supplyId: id });
-                                                const s = inventorySupplies.find(s => s.id === id);
-                                                if (isSpraying) update({ supplyId: id, phiDays: s?.phiDays || 0 });
-                                            }}
-                                            onAddSelfOwned={item => {
-                                                setSelfOwnedSupplies(prev => prev.some(x => x.name.toLowerCase() === item.name.toLowerCase()) ? prev : [item, ...prev]);
-                                            }}
-                                        />
+                                return <div key={index} className="space-y-2 py-3">
+                                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_1.5rem] items-end gap-3 sm:grid-cols-[minmax(0,2fr)_0.5fr_0.8fr_0.5fr_minmax(0,1.5fr)_0.6fr_1.5rem] sm:items-center">
+                                        <div className="col-span-3 min-w-0 sm:col-span-1"><MaterialCombobox
+                                            supplies={inventorySupplies.filter(s => (isSpraying ? s.type === "PESTICIDE" : isFertilizing ? s.type === "FERTILIZER" : s.type !== "FERTILIZER") && !s.name.toLowerCase().includes("chuồng"))}
+                                            selfOwnedSupplies={selfOwnedSupplies} allowSelfOwned={isFertilizing} value={m.supplyId}
+                                            onChange={id => { const supply = inventorySupplies.find(s => s.id === id); update({ supplyId: id, dosage: undefined, phiDays: isSpraying ? supply?.phiDays || 0 : 0 }); }}
+                                            onAddSelfOwned={item => setSelfOwnedSupplies(prev => prev.some(x => x.name.toLowerCase() === item.name.toLowerCase()) ? prev : [item, ...prev])}
+                                        />{own && <span className="mt-1 block text-xs text-emerald-700">Vật tư tự chuẩn bị/tự ủ</span>}</div>
+                                        {!own ? <>
+                                            <div className="text-sm"><span className="mb-1 block text-xs font-semibold sm:hidden">Tồn</span><span className="flex h-11 items-center">{selected?.quantity ?? "—"}</span></div>
+                                            <div><span className="mb-1 block text-xs font-semibold sm:hidden">SL sử dụng *</span><Input aria-label={"Số lượng sử dụng vật tư " + (index + 1)} type="number" required min="0.000001" step="any" max={selected?.quantity} value={m.quantity} onChange={e => update({ quantity: Number(e.target.value) })} /></div>
+                                            <div className="text-sm"><span className="mb-1 block text-xs font-semibold sm:hidden">ĐVT</span><span className="flex h-11 items-center">{selected?.unit || "—"}</span></div>
+                                        </> : <><span className="hidden sm:block" aria-hidden="true">—</span><span className="hidden sm:block" aria-hidden="true">—</span><span className="hidden sm:block" aria-hidden="true">—</span></>}
+                                        <div className="col-span-2 min-w-0 sm:col-span-1"><span className="mb-1 block text-xs font-semibold sm:hidden">Liều lượng</span><Input aria-label={"Liều lượng vật tư " + (index + 1)} required={!!selected} maxLength={500} value={m.dosage ?? (selected ? formatMaterialDosage(m.quantity, selected.unit, selectedFarm, !!own) : "")} onChange={e => update({ dosage: e.target.value })} /></div>
+                                        <div className="min-w-0"><span className="mb-1 block text-xs font-semibold sm:hidden">PHI (ngày)</span><Input aria-label={"PHI vật tư " + (index + 1)} type="number" min="0" step="1" disabled={!isSpraying} value={isSpraying ? m.phiDays ?? 0 : ""} onChange={e => update({ phiDays: Number(e.target.value) })} /></div>
+                                        <button type="button" aria-label={"Xóa vật tư " + (index + 1)} className="col-start-4 row-start-1 self-center text-red-600 sm:col-start-auto sm:row-start-auto" onClick={() => setMaterials(previous => previous.filter((_, i) => i !== index))}><X className="h-4 w-4" /></button>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2.5">
-                                        <div><Label className="flex min-h-10 items-end pb-1 text-xs sm:min-h-0">Số lượng tồn</Label><Input readOnly className={`bg-slate-50 ${selected && !own && selected.quantity <= 2 ? "text-red-600 font-bold border-red-300 bg-red-50/50" : "text-slate-500"}`} value={own ? "Không qua kho" : selected?.quantity ?? ""} /></div>
-                                        <div><Label className="flex min-h-10 items-end pb-1 text-xs sm:min-h-0">Số lượng sử dụng *</Label><Input aria-label={"Số lượng sử dụng vật tư " + (index + 1)} type="number" required min="0.000001" step="any" max={own ? undefined : selected?.quantity} value={m.quantity} onChange={e => update({ quantity: Number(e.target.value) })} /></div>
-                                        <div><Label className="flex min-h-10 items-end pb-1 text-xs sm:min-h-0">Đơn vị tính</Label><Input readOnly className="bg-slate-50 text-slate-500" value={selected?.unit || ""} /></div>
-                                    </div>
-                                    {selected && !own && selected.quantity <= 2 && <p className="text-xs font-semibold text-red-600">Cảnh báo: Vật tư này đã hết tồn trong kho ({selected.quantity} {selected.unit}).</p>}
-                                    {selected && !own && selected.quantity > 2 && totalRequested > selected.quantity && <p role="alert" className="text-sm text-red-600">Số lượng sử dụng vượt quá số lượng tồn hiện tại ({selected.quantity} {selected.unit}).</p>}
-                                    <div>
-                                        <Label>Liều lượng</Label>
-                                        <Input readOnly value={selected ? formatMaterialDosage(m.quantity, selected.unit, farms.find(f => f.id === selectedFarmId)) : ""} className="bg-slate-50" />
-                                    </div>
-                                    <div>
-                                        <Label>Nội dung sử dụng *</Label>
-                                        <Input required value={m.content} onChange={e => update({ content: e.target.value })} placeholder="Ví dụ: Phun phòng nấm bệnh trên lá non" />
-                                    </div>
-                                    {isSpraying && <div><Label>Thời gian cách ly (PHI) — ngày</Label><Input type="number" min="0" step="1" value={m.phiDays || 0} onChange={e => update({ phiDays: Number(e.target.value) })} /></div>}
+                                    {selected && !own && selected.quantity <= 2 && <p role="alert" className="text-xs font-semibold text-red-600">Cảnh báo: Vật tư này đã hết tồn trong kho ({selected.quantity} {selected.unit}).</p>}
+                                    {selected && !own && selected.quantity > 2 && totalRequested > selected.quantity && <p role="alert" className="text-xs text-red-600">Số lượng sử dụng vượt quá số lượng tồn hiện tại ({selected.quantity} {selected.unit}).</p>}
                                 </div>;
                             })}
-                            <div>
-                                <Button type="button" variant="outline" size="sm" className="rounded-xl border-dashed" onClick={() => setMaterials(previous => [...previous, { supplyId: "", quantity: 1, content: "" }])}>+ Thêm vật tư sử dụng</Button>
                             </div>
+                            <Button type="button" variant="outline" className="w-full rounded-full border-brand-500 text-brand-600" onClick={() => setMaterials(previous => [...previous, { supplyId: "", quantity: 1, content: "" }])}>+ Thêm vật tư</Button>
+                            <div className="border-t border-slate-200 pt-4"><Label htmlFor="material-content">Mục đích sử dụng chung *</Label><Textarea id="material-content" required value={materialContent} onChange={e => setMaterialContent(e.target.value)} placeholder="Ví dụ: Bón lót, bổ sung dinh dưỡng cho cây trước khi ra hoa..." /></div>
                             {isProhibited && <p className="text-sm text-red-600">Vật tư có tên hoặc hoạt chất thuộc danh mục cấm. Cần kiểm tra trước khi sử dụng.</p>}
-                        </div>}
+                        </section>}
 
                         <div>
                             <Label htmlFor="pestsDetected">Sinh vật gây hại phát hiện</Label>

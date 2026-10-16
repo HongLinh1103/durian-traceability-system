@@ -29,7 +29,6 @@ async function seedFarmerStatsDemo() {
         { name: "Phân bón NPK Đầu Trâu 16-16-8+TE", type: "FERTILIZER" as const, brand: "Đầu Trâu", unit: "bao 50kg", unitPrice: 650000 },
         { name: "Phân NPK 20-20-15 Ba Con Cò", type: "FERTILIZER" as const, brand: "Ba Con Cò", unit: "bao 50kg", unitPrice: 720000 },
         { name: "Phân hữu cơ vi sinh Humic King", type: "FERTILIZER" as const, brand: "Humic King", unit: "bao 25kg", unitPrice: 380000 },
-        { name: "Phân chuồng ủ hoai mục", type: "FERTILIZER" as const, brand: "Nông hộ tự ủ", unit: "bao 25kg", unitPrice: 120000 },
         { name: "Phân Kali Sunfat K2SO4", type: "FERTILIZER" as const, brand: "Israel", unit: "bao 25kg", unitPrice: 580000 },
         { name: "Phân bón lá Canxi Bo Sữa", type: "FERTILIZER" as const, brand: "EuroChem", unit: "chai 1L", unitPrice: 160000 },
     ];
@@ -125,8 +124,7 @@ async function seedFarmerStatsDemo() {
             { name: "Phân NPK 20-20-15 Ba Con Cò", date: new Date("2026-06-12"), qty: 4, purpose: "Bón nuôi cơm vàng", stage: "FRUIT_GROWING" },
 
             // Hữu cơ (~720 kg = ~29 bao 25kg)
-            { name: "Phân hữu cơ vi sinh Humic King", date: new Date("2026-01-10"), qty: 8, purpose: "Bón gốc phục hồi đất đầu năm", stage: "POST_HARVEST_RECOVERY" },
-            { name: "Phân chuồng ủ hoai mục", date: new Date("2026-01-20"), qty: 9, purpose: "Bón rãnh quanh tán cải tạo đất", stage: "POST_HARVEST_RECOVERY" },
+            { name: "Phân hữu cơ vi sinh Humic King", date: new Date("2026-01-10"), qty: 12, purpose: "Bón gốc phục hồi đất đầu năm", stage: "POST_HARVEST_RECOVERY" },
             { name: "Phân hữu cơ vi sinh Humic King", date: new Date("2026-04-18"), qty: 6, purpose: "Bón kích rễ nuôi trái mùa nắng", stage: "FRUIT_SETTING" },
             { name: "Phân hữu cơ vi sinh Humic King", date: new Date("2026-06-25"), qty: 6, purpose: "Bón bổ sung hữu cơ xốp đất", stage: "FRUIT_GROWING" },
 

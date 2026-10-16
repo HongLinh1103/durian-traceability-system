@@ -1532,6 +1532,7 @@ model FarmerSupply {
   type              SupplyType
   brand             String?
   unit              String
+  packaging         String?
   quantity          Float            @default(0)
   unitPrice         Decimal          @default(0) @db.Decimal(14, 2)
   phiDays           Int?
@@ -1606,6 +1607,8 @@ model FarmingLogMaterial {
   transactionId String?
   content       String?
   phiDays       Int?
+  appliedArea   Float?
+  dosage        String?
   createdAt     DateTime   @default(now())
 
   farmingLog FarmingLog    @relation(fields: [farmingLogId], references: [id], onDelete: Cascade)

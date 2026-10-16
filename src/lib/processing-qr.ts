@@ -1,6 +1,7 @@
+import { syncProcessingHarvests } from './processing-harvest-sync';
 import { randomBytes } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
-import { createDemoState, GmpState } from '@/lib/processing-gmp';
+import { GmpState } from '@/lib/processing-gmp';
 import { Prisma } from '@prisma/client';
 
 export type ProcessingTrace = {
@@ -98,14 +99,7 @@ export async function publicProcessingTrace(token: string): Promise<Publication 
 }
 
 export async function processingQrRows(ownerId: string) {
-  let workspace = await prisma.processingGmpWorkspace.findUnique({ where: { ownerId } });
-  if (!workspace) {
-    workspace = await prisma.processingGmpWorkspace.upsert({
-      where: { ownerId },
-      update: {},
-      create: { ownerId, data: createDemoState() as unknown as Prisma.InputJsonValue },
-    });
-  }
+  const workspace = await syncProcessingHarvests(ownerId);
 
   const [facility, user, issuedList, regions] = await Promise.all([
     prisma.partnerFacility.findUnique({ where: { ownerId }, select: { name: true, code: true, address: true } }),
@@ -177,7 +171,7 @@ export async function processingQrRows(ownerId: string) {
     const publication = issued.find(item => item.saleId === record.id);
     const receiving = state.records.receiving.find(item => item.lotCode === record.lotCode);
     const purchase = state.records.purchases.find(item => item.id === receiving?.sourceId);
-    const harvestId = String(record.values.harvestRecordId || purchase?.values.harvestRecordId || '');
+    const harvestId = String(record.values.harvestRecordId || receiving?.values.harvestRecordId || purchase?.values.harvestRecordId || '');
     const harvest = harvestId ? await prisma.harvestRecord.findFirst({
       where: { id: harvestId, buyerUserId: ownerId },
       include: { farm: { include: { region: true } } },

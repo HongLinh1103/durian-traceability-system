@@ -1,3 +1,4 @@
+import { isValidLogMaterial } from "@/lib/farming-log-stock";
 import { selfOwnedMaterial, allowsSelfOwnedMaterials } from "@/lib/self-owned-materials";
 import { removeLogStock, createLogMaterials, materialSummary } from "@/lib/farming-log-stock";
 import { lockFarmerStock } from "@/lib/farmer-material-fifo";
@@ -141,12 +142,11 @@ export async function POST(request: Request) {
             chemicalName = selectedSupply.name;
         }
         const materials = formData.get("materials") ? JSON.parse(String(formData.get("materials"))) : supplyId ? [{ supplyId, quantity: supplyQuantity, content: notes }] : [];
-        if (!Array.isArray(materials) || materials.length > 50 || materials.some((m: any) => !m || typeof m.supplyId !== "string" || !Number.isFinite(m.quantity) || m.quantity <= 0 || typeof m.content !== "string" || !m.content.trim() || (m.phiDays != null && (!Number.isInteger(m.phiDays) || m.phiDays < 0)))) return NextResponse.json({ ok: false, error: "Vật tư, số lượng hoặc nội dung sử dụng không hợp lệ" }, { status: 400 });
+        if (!Array.isArray(materials) || materials.length > 50 || materials.some((m: any) => !isValidLogMaterial(m))) return NextResponse.json({ ok: false, error: "Vật tư, số lượng hoặc nội dung sử dụng không hợp lệ" }, { status: 400 });
         const selectedSupplies = await prisma.farmerSupply.findMany({ where: { farmerId: session.user.id, id: { in: materials.map((m: any) => m.supplyId) } } });
         if (materials.some((m: any) => !(selfOwnedMaterial(m.supplyId) && allowsSelfOwnedMaterials(normalizedActivityType)) && !selectedSupplies.some(s => s.id === m.supplyId))) return NextResponse.json({ ok: false, error: "Vật tư không thuộc kho của bạn" }, { status: 400 });
         if (materials.length) {
-            const summary = materialSummary(materials.map((m: any) => { const s = selfOwnedMaterial(m.supplyId) || selectedSupplies.find(s => s.id === m.supplyId)!; return { supplyName: s.name, quantity: m.quantity, unit: s.unit }; }));
-            chemicalName = summary.chemicalName; dosage = summary.dosage;
+            chemicalName = materials.map((m: any) => (selfOwnedMaterial(m.supplyId) || selectedSupplies.find(s => s.id === m.supplyId)!).name).join(" + ");
         }
         const requiresChemicalName = ["SPRAY_PESTICIDE", "FERTILIZE", "BASE_FERTILIZING", "FOLIAR_FERTILIZING"].includes(normalizedActivityType);
         const allowsMaterials = ["SPRAY_PESTICIDE", "FERTILIZE", "BASE_FERTILIZING", "FOLIAR_FERTILIZING", "PEST_INSPECTION"].includes(normalizedActivityType);
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
             (activityType === "Khác" && !otherActivity) ||
             !actionDate ||
             (requiresChemicalName && !chemicalName) ||
-            (requiresDosage && !dosage)
+            (requiresDosage && !materials.length && !dosage)
         ) {
             return NextResponse.json({ ok: false, error: "Thiếu dữ liệu nhật ký" }, { status: 400 });
         }
@@ -182,9 +182,10 @@ export async function POST(request: Request) {
             );
         }
         const activeSeason = ownedFarm.cropSeasons[0];
+        if (materials.some((m: any) => (m.appliedArea ?? ownedFarm.areaSize) <= 0 || (m.appliedArea ?? ownedFarm.areaSize) > ownedFarm.areaSize)) return NextResponse.json({ ok: false, error: "Diện tích áp dụng phải lớn hơn 0 và không vượt diện tích vườn" }, { status: 400 });
         if (materials.length) dosage = materialSummary(materials.map((m: any) => {
             const s = selfOwnedMaterial(m.supplyId) || selectedSupplies.find(s => s.id === m.supplyId)!;
-            return { supplyName: s.name, quantity: m.quantity, unit: s.unit };
+            return { supplyName: s.name, quantity: m.quantity, unit: s.unit, appliedArea: m.appliedArea, selfOwned: !!selfOwnedMaterial(m.supplyId) };
         }), ownedFarm).dosage;
         if (!activeSeason) {
             return NextResponse.json(
@@ -239,7 +240,8 @@ export async function POST(request: Request) {
 
             if (plan) await tx.farmingPlan.update({ where: { id: plan.id }, data: { status: "COMPLETED", completedAt: new Date() } });
 
-            await createLogMaterials(tx, { logId: log.id, farmerId: session.user.id, farmId, cropSeasonId: activeSeason.id, actionDate: parsedActionDate, stage: logStage, activityType: normalizedActivityType, materials });
+            const materialResult = await createLogMaterials(tx, { logId: log.id, farmerId: session.user.id, farmId, cropSeasonId: activeSeason.id, actionDate: parsedActionDate, stage: logStage, activityType: normalizedActivityType, materials });
+            if (materials.length) return tx.farmingLog.update({ where: { id: log.id }, data: { chemicalName: materialResult.chemicalName, dosage: materialResult.dosage } });
             return log;
         }, { timeout: 30000 });
 

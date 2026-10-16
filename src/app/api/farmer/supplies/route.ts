@@ -1,5 +1,5 @@
 import { supplyPackaging } from "@/lib/supply-packaging";
-import { groupMaterials } from "@/lib/material-fifo";
+import { groupMaterials, materialKey } from "@/lib/material-fifo";
 import { lockFarmerStock, rebuildMaterialFifo } from "@/lib/farmer-material-fifo";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -15,6 +15,7 @@ const createSupplySchema = z.object({
     name: z.string().trim().min(2, "Tên vật tư quá ngắn").max(200),
     type: z.enum(["FERTILIZER", "PESTICIDE", "EQUIPMENT", "OTHER"]),
     brand: z.string().trim().max(150).optional().nullable(),
+    packaging: z.string().trim().max(150).optional().nullable(),
     unit: z.string().trim().min(1, "Đơn vị tính không được trống").max(50),
     quantity: z.coerce.number().finite().min(0, "Số lượng không hợp lệ"),
     unitPrice: z.coerce.number().finite().min(0, "Đơn giá không hợp lệ"),
@@ -190,7 +191,12 @@ export async function GET(request: Request) {
             }
         }
 
-        const whereClause: any = { farmerId };
+        const whereClause: any = {
+            farmerId,
+            NOT: [
+                { name: { contains: "chuồng", mode: "insensitive" } },
+            ],
+        };
 
         if (type && ["FERTILIZER", "PESTICIDE", "EQUIPMENT", "OTHER"].includes(type)) {
             whereClause.type = type;
@@ -211,7 +217,7 @@ export async function GET(request: Request) {
         });
 
         const groupedSupplies = groupMaterials(supplies.map(s => {
-            const info = supplyPackaging(s.unit, s.orderItem?.product?.packaging || null, s.quantity);
+            const info = supplyPackaging(s.unit, s.packaging || s.orderItem?.product?.packaging || null, s.quantity);
             return { ...s, unit: info.unit, packaging: info.packaging };
         }));
         const summary = {
@@ -243,6 +249,18 @@ export async function GET(request: Request) {
             take: 100,
         });
 
+        const previousLogs = await prisma.farmingLog.findMany({
+            where: {
+                farm: { farmerId },
+                chemicalName: { not: null },
+            },
+            select: {
+                chemicalName: true,
+            },
+            orderBy: { actionDate: "desc" },
+            take: 100,
+        });
+
         const seenSelfOwned = new Set<string>();
         const selfOwnedSupplies: Array<{ id: string; name: string; unit: string; quantity: number; type: "FERTILIZER"; source: "SELF_OWNED" }> = [];
         for (const item of previousSelfOwnedMaterials) {
@@ -253,6 +271,23 @@ export async function GET(request: Request) {
                     id: `self-owned:${encodeURIComponent(trimmed)}`,
                     name: trimmed,
                     unit: item.unit || "kg",
+                    quantity: 0,
+                    type: "FERTILIZER",
+                    source: "SELF_OWNED",
+                });
+            }
+        }
+
+        const hasChuong = previousLogs.some(l => l.chemicalName?.toLowerCase().includes("chuồng")) ||
+                          previousSelfOwnedMaterials.some(m => m.supplyName.toLowerCase().includes("chuồng"));
+
+        if (hasChuong || !seenSelfOwned.has("phân chuồng ủ hoai mục")) {
+            if (!seenSelfOwned.has("phân chuồng ủ hoai mục")) {
+                seenSelfOwned.add("phân chuồng ủ hoai mục");
+                selfOwnedSupplies.unshift({
+                    id: "self-owned:composted-manure",
+                    name: "Phân chuồng ủ hoai mục",
+                    unit: "kg",
                     quantity: 0,
                     type: "FERTILIZER",
                     source: "SELF_OWNED",
@@ -291,48 +326,14 @@ export async function POST(request: Request) {
             );
         }
 
-        const { name, type, brand, unit, quantity, unitPrice, phiDays, activeIngredients, notes, actionDate, expiryDate } =
+        const { name, type, brand, unit, packaging, quantity, unitPrice, phiDays, activeIngredients, notes, actionDate, expiryDate } =
             parsed.data;
 
         const result = await prisma.$transaction(async (tx) => {
             await lockFarmerStock(tx, farmerId);
-            let supply = await tx.farmerSupply.findFirst({
-                where: {
-                    farmerId,
-                    name: { equals: name, mode: "insensitive" },
-                    unit: { equals: unit, mode: "insensitive" },
-                },
-            });
-
-            if (supply) {
-                const newQty = supply.quantity + quantity;
-                supply = await tx.farmerSupply.update({
-                    where: { id: supply.id },
-                    data: {
-                        quantity: newQty,
-                        unitPrice,
-                        brand: brand || supply.brand,
-                        phiDays: phiDays !== undefined ? phiDays : supply.phiDays,
-                        activeIngredients: activeIngredients || supply.activeIngredients,
-                        notes: notes || supply.notes,
-                    },
-                });
-            } else {
-                supply = await tx.farmerSupply.create({
-                    data: {
-                        farmerId,
-                        name,
-                        type,
-                        brand,
-                        unit,
-                        quantity,
-                        unitPrice,
-                        phiDays,
-                        activeIngredients,
-                        notes,
-                    },
-                });
-            }
+            const candidates = await tx.farmerSupply.findMany({ where: { farmerId, name: { equals: name, mode: "insensitive" }, type }, include: { orderItem: { select: { product: { select: { packaging: true } } } } } });
+            const existing = candidates.find(s => materialKey(s) === materialKey({ name, type, unit, packaging }));
+            const supply = existing ? await tx.farmerSupply.update({ where: { id: existing.id }, data: { quantity: existing.quantity + quantity, unitPrice, brand: brand || existing.brand, phiDays: phiDays !== undefined ? phiDays : existing.phiDays, activeIngredients: activeIngredients || existing.activeIngredients, notes: notes || existing.notes } }) : await tx.farmerSupply.create({ data: { farmerId, name, type, brand, unit, packaging, quantity, unitPrice, phiDays, activeIngredients, notes } });
 
             if (quantity > 0) {
                 await tx.farmerSupplyTransaction.create({

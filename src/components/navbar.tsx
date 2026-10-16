@@ -65,7 +65,6 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/partner/finance", label: "Tài chính", roles: ["COLLECTOR"] },
     { href: "/dashboard/processing", label: "Tổng quan", roles: ["PROCESSING_FACILITY"] },
     { href: "/china-port", label: "China Port", roles: ["PROCESSING_FACILITY"] },
-    { href: "/dashboard/processing/purchases", label: "Hồ sơ thu mua", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/grading", label: "Nhập hàng", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/preprocessing", label: "Tiếp nhận & Sơ chế", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/processing", label: "Đóng gói & Nhập kho", roles: ["PROCESSING_FACILITY"] },

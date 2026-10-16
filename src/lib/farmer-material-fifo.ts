@@ -25,8 +25,9 @@ export async function rebuildMaterialFifo(tx: Prisma.TransactionClient, farmerId
             const saved = movement.fifoAllocations;
             const sameAllocations = Array.isArray(saved) && saved.length === value.allocations.length && saved.every((allocation, index) =>
                 allocation && typeof allocation === "object" && !Array.isArray(allocation) && Object.entries(value.allocations[index]).every(([key, entry]) => allocation[key] === entry));
-            if (Number(movement.totalAmount) === value.totalAmount && sameAllocations) continue;
-            await tx.farmerSupplyTransaction.update({ where: { id }, data: { totalAmount: value.totalAmount, unitPrice, fifoAllocations: value.allocations } });
+            if (Number(movement.totalAmount) !== value.totalAmount || !sameAllocations) {
+                await tx.farmerSupplyTransaction.update({ where: { id }, data: { totalAmount: value.totalAmount, unitPrice, fifoAllocations: value.allocations } });
+            }
             await tx.farmingLogMaterial.updateMany({ where: { transactionId: id }, data: { quantity: movement.quantity, totalCost: value.totalAmount, unitPrice } });
         }
     }

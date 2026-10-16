@@ -8,12 +8,6 @@ import { cn } from '@/lib/utils';
 
 const groups = [
     {
-        label: 'Thu mua', items: [
-            { label: 'Sổ thu mua', href: '/dashboard/processing/purchases' },
-            { label: 'Sổ nhập hàng', href: '/dashboard/processing/grading' },
-        ]
-    },
-    {
         label: 'Sản xuất', items: [
             { label: 'Sổ Tiếp nhận & Sơ chế', href: '/dashboard/processing/preprocessing' },
             { label: 'Sổ Đóng gói & Nhập kho', href: '/dashboard/processing/processing' },
@@ -58,6 +52,7 @@ export function ProcessingNavbarLinks() {
     }}>
         <Link href="/dashboard/processing" aria-current={active('/dashboard/processing') ? 'page' : undefined} className={cn(linkClass, colors(active('/dashboard/processing')))}>Tổng quan</Link>
         <Link href="/china-port" aria-current={active('/china-port') ? 'page' : undefined} className={cn(linkClass, colors(active('/china-port')))}>China Port</Link>
+        <Link href="/dashboard/processing/grading" aria-current={active('/dashboard/processing/grading') ? 'page' : undefined} className={cn(linkClass, colors(active('/dashboard/processing/grading')))}>Nhập hàng</Link>
         {groups.map((group, index) => <div key={group.label} className="relative">
             <button ref={element => { triggers.current[group.label] = element; }} type="button" aria-expanded={open === group.label} aria-controls={`processing-nav-group-${index}`} onClick={() => setOpen(open === group.label ? null : group.label)} className={cn(linkClass, colors(open === group.label || group.items.some(item => active(item.href))))}>
                 {group.label}<ChevronDown className={cn('h-4 w-4 transition-transform', open === group.label && 'rotate-180')} />

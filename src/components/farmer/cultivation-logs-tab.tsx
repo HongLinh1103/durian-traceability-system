@@ -137,7 +137,7 @@ export interface FarmingLogItem {
     activityType: string;
     otherActivity?: string | null;
     chemicalName?: string | null;
-    materialsUsed?: Array<{ id: string; transactionId: string | null; supplyName: string; quantity: number; unit: string }>;
+    materialsUsed?: Array<{ id: string; transactionId: string | null; supplyName: string; quantity: number; unit: string; dosage?: string | null }>;
     dosage?: string | null;
     phiDays?: number | null;
     pestsDetected?: string | null;
@@ -581,11 +581,11 @@ export function CultivationLogsTab({
                                                 <td className="border border-slate-200 break-words px-2.5 py-2.5 font-semibold text-slate-900 leading-snug">
                                                     {(log.materialsUsed?.length || 0) > 1 ? <details className="group">
                                                         <summary className="cursor-pointer">{log.materialsUsed![0].supplyName} <span className="text-slate-500">+{log.materialsUsed!.length - 1}</span></summary>
-                                                        <div className="mt-2 space-y-1">{log.materialsUsed!.map(m => <div key={m.id}>{m.supplyName}</div>)}</div>
+                                                        <div className="mt-2 space-y-2">{log.materialsUsed!.map(m => <div key={m.id}>{m.supplyName}{m.dosage && <span className="block text-xs font-normal text-slate-500">Liều lượng: {m.dosage}</span>}</div>)}</div>
                                                     </details> : log.materialsUsed?.[0]?.supplyName || log.chemicalName || "—"}
                                                 </td>
                                                 <td className="border border-slate-200 break-words px-2.5 py-2.5 font-medium text-slate-700 leading-snug">
-                                                    {log.dosage || "—"}
+                                                    {log.materialsUsed?.some(m => m.dosage) ? <div className="space-y-2">{log.materialsUsed.map(m => <div key={m.id}>{log.materialsUsed!.length > 1 && <span className="block text-xs font-semibold">{m.supplyName}</span>}{m.dosage || "—"}</div>)}</div> : log.dosage || "—"}
                                                 </td>
                                                 <td className="border border-slate-200 px-1 py-2.5 text-center">
                                                     {log.phiDays != null && log.phiDays > 0 ? (

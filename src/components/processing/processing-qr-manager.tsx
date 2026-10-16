@@ -279,7 +279,7 @@ export default function ProcessingQrManager() {
             <thead className="border-b border-slate-200 bg-slate-100/90 text-xs font-bold uppercase tracking-wider text-slate-700">
               <tr>
                 <th scope="col" className="border-r border-slate-200 px-4 py-3.5 text-center">STT</th>
-                <th scope="col" className="border-r border-slate-200 px-4 py-3.5">Mã số lô hàng</th>
+                <th scope="col" className="border-r border-slate-200 px-3 py-3.5 text-center w-[135px] whitespace-nowrap">Mã số lô hàng</th>
                 <th scope="col" className="border-r border-slate-200 px-4 py-3.5">Chủng loại</th>
                 <th scope="col" className="border-r border-slate-200 px-4 py-3.5 text-center">Ngày xuất bán</th>
                 <th scope="col" className="border-r border-slate-200 px-4 py-3.5">Khách hàng</th>
@@ -318,7 +318,7 @@ export default function ProcessingQrManager() {
                       </td>
 
                       {/* Mã số lô hàng */}
-                      <td className="border-r border-slate-200 px-4 py-3.5 font-mono font-bold text-slate-900">
+                      <td className="border-r border-slate-200 px-3 py-3.5 font-mono font-bold text-slate-900 text-center w-[135px] whitespace-nowrap">
                         {row.lot}
                       </td>
 

@@ -41,7 +41,6 @@ export const ACCOUNT_PERMISSIONS_BY_ROLE: Record<string, AccountPermission[]> = 
     PROCESSING_FACILITY: [
         { key: "PROCESSING_DASHBOARD", label: "Tổng quan", path: "/dashboard/processing" },
         { key: "CHINA_PORT", label: "China Port", path: "/china-port" },
-        { key: "PROCESSING_PURCHASES", label: "Hồ sơ thu mua", path: "/dashboard/processing/purchases" },
         { key: "PROCESSING_GRADING", label: "Nhập hàng", path: "/dashboard/processing/grading" },
         { key: "PROCESSING_PREPROCESSING", label: "Tiếp nhận & Sơ chế", path: "/dashboard/processing/preprocessing" },
         { key: "PROCESSING_BATCHES", label: "Đóng gói & Nhập kho", path: "/dashboard/processing/processing" },

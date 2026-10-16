@@ -15,6 +15,7 @@ const createTransactionSchema = z.object({
     unitPrice: z.coerce.number().finite().nonnegative().optional(),
     expiryDate: z.string().datetime({ offset: true }).optional().nullable(),
     quantity: z.coerce.number().finite().positive("Số lượng phải lớn hơn 0"),
+    packaging: z.string().trim().max(150).optional().nullable(),
     farmId: z.string().optional().nullable(),
     cropSeasonId: z.string().optional().nullable(),
     stage: z.string().optional().nullable(),
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const { supplyId, type, quantity, farmId, cropSeasonId, stage, activityType, purpose, actionDate, notes, exportPurpose, unitPrice, expiryDate } =
+        const { supplyId, type, quantity, farmId, cropSeasonId, stage, activityType, purpose, actionDate, notes, exportPurpose, unitPrice, expiryDate, packaging } =
             parsed.data;
 
         if (type === "OUT" && (!exportPurpose || !notes?.trim())) return NextResponse.json({ success: false, message: "Chọn mục đích xuất và nhập nội dung" }, { status: 400 });
@@ -144,6 +145,13 @@ export async function POST(request: Request) {
 
         const result = await prisma.$transaction(async (tx) => {
             const currentSupply = await prepareStockMovement(tx, { farmerId, supplyId, type, quantity, actionDate: txDate, disposal: exportPurpose === "DISPOSAL" });
+
+            if (type === "IN" && packaging !== undefined) {
+                await tx.farmerSupply.update({
+                    where: { id: supply.id },
+                    data: { packaging: packaging?.trim() || null },
+                });
+            }
 
             const transaction = await tx.farmerSupplyTransaction.create({
                 data: {

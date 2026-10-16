@@ -15,7 +15,7 @@ function paragraph(text:unknown,bold=false,size=18) {
 }
 function cell(text:unknown,width:number,span=1,merge?:'restart'|'continue',bold=false,size=18,noWrap=false) { return `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/>${span>1?`<w:gridSpan w:val="${span}"/>`:''}${merge?`<w:vMerge w:val="${merge}"/>`:''}${noWrap?'<w:noWrap/>':''}<w:vAlign w:val="center"/></w:tcPr>${paragraph(text,bold,size)}</w:tc>`; }
 function row(cells:string,header=false) {return `<w:tr><w:trPr>${header?'<w:tblHeader/>':''}<w:cantSplit/></w:trPr>${cells}</w:tr>`;}
-const exportGroups:Partial<Record<Stage,string[]>>={receiving:['Số lượng tiếp nhận (kg)'],preprocessing:['Đánh giá công đoạn vệ sinh tạp chất (Đ/K)','Đánh giá công đoạn phơi khô sản phẩm (Đ/K)'],packaging:['Đánh giá công đoạn đóng gói - đóng thùng (Đ/K)','Nhập kho thành phẩm'],inspection:['Số lượng/khối lượng tiếp nhận kiểm tra','Số lượng kiểm tra 2% (thùng)','Kết quả kiểm tra phát hiện/không đạt','Số lượng/khối lượng đưa qua xuất bán'],sales:['Thông tin lô hàng'],aftersales:['Thông tin lô hàng','Kết quả hậu kiểm lô hàng có phát hiện (Đ/K)']};
+const exportGroups = Object.fromEntries(Object.entries(REGISTERS).map(([stage, config]) => [stage, Array.from(new Set(config.fields.filter(f => !f.internal && f.group).map(f => f.group!)))])) as Partial<Record<Stage, string[]>>;
 
 export function cleanText(val?: unknown): string {
  if (!val) return '';
@@ -101,6 +101,8 @@ export function getRecordFieldValue(
  regions: { code: string; name: string; address: string | null }[] = [],
  receivingRecords: GmpRecord[] = []
 ): unknown {
+ if (f.key === 'receivingStatus') return r.draft ? 'Chưa nhập hàng' : 'Đã nhập hàng';
+ if (f.key === 'rejected' && r.values.harvestRecordId && r.draft) return 'Chưa phân loại';
  if (f.key === 'purchaseCode') {
   return r.lotCode;
  }
@@ -162,8 +164,8 @@ export async function buildRegisterDocx(
  const weights=fields.map(f=>(isPurchase ? purchaseColumnLayout[f.key]?.weight : columnLayout[f.key]?.weight) ?? (f.type==='check'||f.type==='finding'?0.8:1.1));
  const sideMargin=425; // 0.75 cm on each side.
  const horizontalMargins=sideMargin*2;
- const pageWidth=16838;
- const pageHeight=11906;
+ const pageWidth=['inspection', 'receiving'].includes(stage) ? 23811 : 16838;
+ const pageHeight=['inspection', 'receiving'].includes(stage) ? 16838 : 11906;
  const width=pageWidth-horizontalMargins;
  const wordMinimums=(size:number)=>fields.map(field=>records.reduce((minimum,record)=>Math.max(minimum,minimumTextWidth(displayValue(field,getRecordFieldValue(record,field,regions,receivingRecords)),size,isPurchase && ['purchaseCode','date'].includes(field.key))),minimumTextWidth(label(field),size,isPurchase && ['purchaseCode','date'].includes(field.key))));
  let fontSize=18;

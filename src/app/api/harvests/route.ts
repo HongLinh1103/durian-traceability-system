@@ -1,3 +1,4 @@
+import { syncHarvestToProcessing } from '@/lib/processing-harvest-sync';
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
@@ -193,6 +194,7 @@ export async function POST(request: Request) {
                 console.warn("Could not auto-create farming log for harvest:", logErr);
             }
 
+            await syncHarvestToProcessing(created.id);
             return NextResponse.json({
                 success: true,
                 data: created,
@@ -333,6 +335,7 @@ export async function POST(request: Request) {
             }).catch(() => {});
         }
 
+        await syncHarvestToProcessing(created.id);
         return NextResponse.json({ success: true, data: created }, { status: 201 });
     } catch (error) {
         console.error("POST /api/harvests error:", error);

@@ -1,3 +1,4 @@
+import { syncHarvestToProcessing } from '@/lib/processing-harvest-sync';
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -383,6 +384,7 @@ export async function POST(
             },
         }).catch(() => undefined);
 
+        await syncHarvestToProcessing(record.id);
         return NextResponse.json({
             success: true,
             message: `Xác nhận nhận hàng thành công (${receivedWeight.toLocaleString("vi-VN")} kg).`,

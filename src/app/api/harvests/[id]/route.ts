@@ -1,3 +1,4 @@
+import { syncHarvestToProcessing } from '@/lib/processing-harvest-sync';
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import type { HarvestStatus } from "@prisma/client";
@@ -150,6 +151,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     const notifyId = session.user.role === "FARMER" ? record.buyerUserId : record.farmerId;
     if (notifyId) await prisma.notification.create({ data: { userId: notifyId, type: "HARVEST_STATUS", title: `Phiếu ${record.code} đã cập nhật`, message: `Trạng thái mới: ${target}` } }).catch(() => undefined);
+    await syncHarvestToProcessing(record.id);
     return NextResponse.json({ success: true, data: updated });
 }
 
@@ -290,6 +292,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
             return updatedHarvest;
         });
 
+        await syncHarvestToProcessing(record.id);
         return NextResponse.json({
             success: true,
             data: updated,
@@ -328,6 +331,11 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
         }
 
         // Check if downstream supply chain entities rely on this harvest record
+        if (record.buyerType === 'PROCESSING_FACILITY' && record.buyerUserId) {
+            const workspace = await prisma.processingGmpWorkspace.findUnique({ where: { ownerId: record.buyerUserId } });
+            const data = workspace?.data as unknown as { records?: { receiving?: { draft?: boolean; values: { harvestRecordId?: string } }[] } } | undefined;
+            if (data?.records?.receiving?.some(r => r.values.harvestRecordId === record.id && !r.draft)) return NextResponse.json({ success: false, message: 'Hồ sơ đã được cơ sở xác nhận tiếp nhận, không thể xóa liên kết truy xuất.' }, { status: 409 });
+        }
         if (record.harvestLot) {
             const hasDownstream =
                 record.harvestLot.procurementOrders.length > 0 ||

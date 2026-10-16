@@ -1,9 +1,13 @@
 'use client';
+import { HarvestReceivingTable, HarvestReceivingForm, NewHarvestReceivingForm } from './harvest-receiving';
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { ModalPortal } from '@/components/ui/modal-portal';
+import { GMP_REGISTER_COLUMN_WIDTHS } from '@/components/processing/processing-gmp-column-widths';
+import { ProcessingGmpRegisterTable } from '@/components/processing/processing-gmp-register-table';
 import { BarChart3, Receipt, ShoppingCart, TrendingUp, Wallet, ArrowRight, CheckCircle2, ClipboardList, Download, Loader2, Plus, RefreshCw, Search, X } from 'lucide-react';
-import { addPayment, EXPENSE_CATEGORIES, Expense, formatPurchaseLotCode, formatProductionLotCode, GmpRecord, GmpState, inherit, isFailed, latestRecords, REGISTERS, sources, Stage, STAGES, Values } from '@/lib/processing-gmp';
+import { addPayment, EXPENSE_CATEGORIES, Expense, formatPurchaseLotCode, formatProductionLotCode, GmpRecord, GmpState, GMP_GRADES, gradeTotal, inherit, isFailed, latestRecords, REGISTERS, sources, Stage, STAGES, Values } from '@/lib/processing-gmp';
 import { buildRegisterDocx, downloadFile, registerExportPeriod } from '@/lib/processing-gmp-export';
 import { normalizeUnitCode } from '@/lib/puc-phc';
 import { ProcessingFinanceCharts } from '@/components/processing/processing-finance-charts';
@@ -23,6 +27,7 @@ type Filter = { season: string; from: string; to: string; query: string };
 type RegionSource = { code: string; name: string; address: string | null };
 function matches(r: GmpRecord, filter: Filter) { return (!filter.season || r.season === filter.season) && (!filter.from || String(r.values.date) >= filter.from) && (!filter.to || String(r.values.date) <= filter.to) && (!filter.query || `${r.lotCode} ${Object.values(r.values).join(' ')}`.toLocaleLowerCase('vi').includes(filter.query.toLocaleLowerCase('vi'))); }
 function status(state: GmpState, stage: Stage, r: GmpRecord) {
+  if (stage === 'receiving') return r.draft ? 'Chưa nhập hàng' : 'Đã nhập hàng';
   if (r.draft) return 'Chờ bổ sung dữ liệu';
   if (isFailed(stage, r.values)) return 'Không đạt · Cần khắc phục';
   if (stage === 'aftersales') return isFailed(stage, r.values) ? 'Không đạt · Cần xử lý' : 'Đã thông quan';
@@ -65,7 +70,7 @@ function compareGmpRecordsNewestFirst(a: GmpRecord, b: GmpRecord): number {
 function getStageHeaders(stage: Stage): string[] {
   switch (stage) {
     case 'purchases':
-      return ['Ngày thu mua', 'Mã hồ sơ thu mua', 'Người bán', 'Liên hệ', 'Mã số vùng trồng', 'Tên vùng trồng và địa chỉ', 'Khối lượng (kg)', 'Giá mua (đ/kg)', 'Thành tiền (đ)', 'Trạng thái', 'Thao tác'];
+      return ['Ngày thu mua', 'Mã hồ sơ thu mua', 'Người bán', 'Liên hệ', 'Mã số vùng trồng', 'Tên vùng trồng và địa chỉ', 'Chủng loại', 'Khối lượng (kg)', 'Giá mua (đ/kg)', 'Thành tiền (đ)', 'Trạng thái', 'Thao tác'];
     case 'receiving':
       return ['Ngày tiếp nhận', 'Mã số lô hàng', 'Chủng loại & Nguồn', 'Tiếp nhận L1/L2/L3 (kg)', 'Từ chối (kg)', 'Người nhận', 'Trạng thái', 'Thao tác'];
     case 'preprocessing':
@@ -116,6 +121,44 @@ function formatSellerPhone(seller?: unknown, phone?: unknown): string {
   return p || '—';
 }
 
+function renderPurchaseOriginDisplay(r: GmpRecord, receivingRecord?: GmpRecord, regions: RegionSource[] = []) {
+  const purchasePuc = String(r.values?.puc || receivingRecord?.values?.puc || '').trim();
+  const matchedRegion = purchasePuc
+    ? regions.find(region => normalizeUnitCode(region.code) === normalizeUnitCode(purchasePuc))
+    : undefined;
+  if (matchedRegion) {
+    return (
+      <>
+        <div className="font-semibold text-slate-900">{matchedRegion.name}</div>
+        <div className="mt-1 text-slate-500">{matchedRegion.address || 'Chưa có địa chỉ'}</div>
+      </>
+    );
+  }
+  const text = cleanText(r.values?.origin || receivingRecord?.values?.origin);
+  if (!text) return '—';
+  if (text.includes(' - ')) {
+    const [name, ...rest] = text.split(' - ');
+    return (
+      <>
+        <div className="font-semibold text-slate-900">{name.trim()}</div>
+        <div className="mt-1 text-slate-500">{rest.join(' - ').trim()}</div>
+      </>
+    );
+  }
+  const commaIdx = text.indexOf(', ');
+  if (commaIdx > 5) {
+    const name = text.slice(0, commaIdx).trim();
+    const addr = text.slice(commaIdx + 2).trim();
+    return (
+      <>
+        <div className="font-semibold text-slate-900">{name}</div>
+        <div className="mt-1 text-slate-500">{addr}</div>
+      </>
+    );
+  }
+  return <div className="font-semibold text-slate-900">{text}</div>;
+}
+
 export function ProcessingGmpView({ screen }: { screen: Screen }) {
   const [state, setState] = useState<GmpState | null>(null);
   const [revision, setRevision] = useState(0);
@@ -135,6 +178,7 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
     catch (e) { setError(e instanceof Error ? e.message : 'Không tải được dữ liệu.'); }
   }, []);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (editing || busy) return; const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void load(); }, 30000); return () => window.clearInterval(timer); }, [load, editing, busy]);
   async function mutate(payload: object): Promise<{ ok: boolean; error?: string }> {
     setBusy(true); setError(''); setNotice('');
     try {
@@ -293,30 +337,51 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
     {state && <>
 
       {screen === 'overview' && <Overview state={state} filter={filter} />}
-      {screen === 'finance' && <Finance company={company} month={month} state={state} filter={filter} busy={busy} mutate={mutate} exporting={financeExporting} setExporting={setFinanceExporting} />}
+      {screen === 'finance' && <Finance company={company} month={month} state={state} filter={filter} busy={busy} mutate={mutate} exporting={financeExporting} setExporting={setFinanceExporting} regions={regions} />}
       {stage && config && <>
         <section className="overflow-hidden rounded-2xl border bg-white">
-          <div className="overflow-x-auto">
-            <table className={`w-full border-collapse border border-slate-300 text-left text-sm ${stage === 'purchases' ? 'min-w-[1100px]' : stage === 'receiving' ? 'min-w-[1250px]' : stage === 'preprocessing' ? 'min-w-[1450px]' : stage === 'packaging' ? 'min-w-[1350px]' : stage === 'inspection' ? 'min-w-[1550px]' : stage === 'sales' ? 'min-w-[1780px]' : stage === 'aftersales' ? 'min-w-[1600px]' : 'min-w-[850px]'}`}>
+          {(["receiving"] as Stage[]).includes(stage) ? <HarvestReceivingTable rows={rows} onDetail={setDetail} onEdit={setEditing} /> : <div className="overflow-x-auto">
+            <table style={GMP_REGISTER_COLUMN_WIDTHS[stage] ? { width: GMP_REGISTER_COLUMN_WIDTHS[stage]!.reduce((sum, width) => sum + width, 0) } : undefined} className={`border-collapse border border-slate-300 text-left text-sm ${GMP_REGISTER_COLUMN_WIDTHS[stage] ? 'table-fixed' : 'w-full'} ${stage === 'purchases' ? 'min-w-[1450px] table-fixed' : stage === 'inspection' ? '' : stage === 'receiving' ? 'min-w-[1520px]' : stage === 'preprocessing' ? '' : stage === 'packaging' ? '' : stage === 'sales' ? '' : stage === 'aftersales' ? '' : 'min-w-[850px]'}`}>
+              {stage === 'purchases' && (
+                <colgroup>
+                  <col style={{ width: 120 }} />
+                  <col style={{ width: 135 }} />
+                  <col style={{ width: 135 }} />
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 130 }} />
+                  <col style={{ width: 260 }} />
+                  <col style={{ width: 105 }} />
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 105 }} />
+                  <col style={{ width: 120 }} />
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 110 }} />
+                </colgroup>
+              )}
+              {GMP_REGISTER_COLUMN_WIDTHS[stage] && (
+                <colgroup>
+                  {GMP_REGISTER_COLUMN_WIDTHS[stage]!.map((width, index) => <col key={index} style={{ width }} />)}
+                </colgroup>
+              )}
               <thead className="bg-slate-100/90 text-xs text-slate-700">
                 {stage === 'receiving' ? (
                   <>
                     <tr>
-                      <th rowSpan={2} className="border border-slate-300 px-4 py-3 font-semibold whitespace-nowrap text-center align-middle">Ngày tiếp nhận</th>
-                      <th rowSpan={2} className="border border-slate-300 px-4 py-3 font-semibold whitespace-nowrap text-center align-middle">Người bán</th>
-                      <th rowSpan={2} className="border border-slate-300 px-4 py-3 font-semibold whitespace-nowrap text-center align-middle">Mã số vùng trồng</th>
-                      <th rowSpan={2} className="border border-slate-300 px-4 py-3 font-semibold min-w-[240px] text-center align-middle">Tên vùng trồng và địa chỉ</th>
-                      <th rowSpan={2} className="border border-slate-300 px-4 py-3 font-semibold whitespace-nowrap text-center align-middle">Chủng loại</th>
-                      <th colSpan={3} className="border border-slate-300 px-4 py-2 font-semibold whitespace-nowrap text-center bg-slate-200/80">Số lượng tiếp nhận (kg)</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle w-20 sm:w-24 leading-snug">Số lượng<br />từ chối</th>
-                      <th rowSpan={2} className="border border-slate-300 px-4 py-3 font-semibold whitespace-nowrap text-center align-middle">Tên người tiếp nhận</th>
-                      <th rowSpan={2} className="border border-slate-300 px-4 py-2.5 font-semibold text-center align-middle leading-snug">Chuyển sang sản xuất<br />(Mã số lô hàng)</th>
-                      <th rowSpan={2} className="border border-slate-300 px-4 py-3 font-semibold whitespace-nowrap text-center align-middle">Thao tác</th>
+                      <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Ngày tiếp nhận</th>
+                      <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Người bán</th>
+                      <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Mã số vùng trồng</th>
+                      <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold min-w-[240px] text-center align-middle">Tên vùng trồng và địa chỉ</th>
+                      <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Chủng loại</th>
+                      <th colSpan={GMP_GRADES.length} className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center bg-slate-200/80">Khối lượng tiếp nhận (kg)</th>
+                      <th rowSpan={2} className="border border-slate-300 px-1 py-2 font-semibold text-center align-middle leading-snug">Khối lượng<br />từ chối (kg)</th>
+                      <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Tên người tiếp nhận</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2 py-2.5 font-semibold text-center align-middle leading-snug w-[135px]">Chuyển sang sản xuất<br />(mã số lô hàng)</th>
+                      <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Thao tác</th>
                     </tr>
                     <tr>
-                      <th className="border border-slate-300 px-3 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">Loại 1</th>
-                      <th className="border border-slate-300 px-3 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">Loại 2</th>
-                      <th className="border border-slate-300 px-3 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">Loại 3</th>
+                      {GMP_GRADES.map(g => (
+                        <th key={g.key} className="border border-slate-300 px-1 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">{g.label}</th>
+                      ))}
                     </tr>
                   </>
                 ) : stage === 'preprocessing' ? (
@@ -324,103 +389,112 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
                     <tr>
                       <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Ngày</th>
                       <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Mã số lô hàng</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle max-w-[85px] leading-snug">KL tiếp nhận<br />(kg)</th>
+                      <th colSpan={GMP_GRADES.length} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">KL tiếp nhận (kg)</th>
                       <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle max-w-[85px] leading-snug">Nhà cung cấp<br />(Đ/K)</th>
                       <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle max-w-[85px] leading-snug">Vận chuyển<br />sạch (Đ/K)</th>
                       <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold text-center align-middle max-w-[130px] leading-snug">Chủng loại, cảm quan, chất lượng nguyên liệu (Đ/K)</th>
                       <th colSpan={2} className="border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Đánh giá công đoạn vệ sinh tạp chất (Đ/K)</th>
                       <th colSpan={3} className="border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Đánh giá công đoạn phơi khô sản phẩm (Đ/K)</th>
                       <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle max-w-[85px] leading-snug">CL sau sơ chế<br />(Đ/K)</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle max-w-[85px] leading-snug">KL sau sơ chế<br />(kg)</th>
+                      <th colSpan={GMP_GRADES.length} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">KL sau sơ chế (kg)</th>
                       <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold text-center align-middle max-w-[120px] leading-snug">Hành động<br />khắc phục</th>
                       <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Người giám sát</th>
                       <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Thao tác</th>
                     </tr>
                     <tr>
+                      {GMP_GRADES.map(g => <th key={'inputWeight' + g.key} className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">{g.label}</th>)}
                       <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[100px]">Vệ sinh bằng<br />bàn chà (Đ/K)</th>
                       <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[100px]">Thổi sạch bằng<br />xịt cao áp</th>
                       <th className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Thời gian<br />bắt đầu</th>
                       <th className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Thời gian<br />kết thúc</th>
                       <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[100px]">Tình trạng<br />sản phẩm (Đ/K)</th>
+                    {GMP_GRADES.map(g => <th key={'outputWeight' + g.key} className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">{g.label}</th>)}
                     </tr>
                   </>
                 ) : stage === 'packaging' ? (
                   <>
                     <tr>
-                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Ngày</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Chủng loại và mã số lô</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle max-w-[100px] leading-snug">Khối lượng thực tế tiếp nhận đóng gói (kg)</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle max-w-[110px] leading-snug">Dụng cụ đóng gói đảm bảo sạch (Đ/K)</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle max-w-[140px] leading-snug">Tình trạng vệ sinh bao bì, tem nhãn trước khi đóng gói (Đ/K)</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Ngày</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2 py-2.5 font-semibold text-center align-middle leading-snug">Chủng loại và<br />mã số lô</th>
+                      <th rowSpan={2} colSpan={GMP_GRADES.length} className="border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Khối lượng thực tế tiếp nhận đóng gói (kg)</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle max-w-[110px] leading-snug">Dụng cụ đóng gói đảm bảo sạch (Đ/K)</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle max-w-[140px] leading-snug">Tình trạng vệ sinh bao bì, tem nhãn trước khi đóng gói (Đ/K)</th>
                       <th colSpan={3} className="border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Đánh giá công đoạn đóng gói- đóng thùng (Đ/K)</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle max-w-[120px] leading-snug">Chất lượng, quy cách sản phẩm sau đóng gói (Đ/K)</th>
-                      <th colSpan={2} className="border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Nhập kho thành phẩm</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold text-center align-middle max-w-[120px] leading-snug">Hành động khắc phục</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Người giám sát</th>
-                      <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Thao tác</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle max-w-[120px] leading-snug">Chất lượng, quy cách sản phẩm sau đóng gói (Đ/K)</th>
+                      <th colSpan={GMP_GRADES.length * 2} className="border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Nhập kho thành phẩm</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold text-center align-middle max-w-[120px] leading-snug">Hành động khắc phục</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Người giám sát</th>
+                      <th rowSpan={3} className="border border-slate-300 px-3 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Thao tác</th>
                     </tr>
                     <tr>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Cân</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Dán tem, nhãn</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Đóng gói</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[100px]">Số lượng nhập kho (thùng)</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[100px]">Khối lượng nhập kho (kg)</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Cân</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Dán tem, nhãn</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Đóng gói</th>
+                      <th colSpan={GMP_GRADES.length} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[100px]">Số lượng nhập kho (thùng)</th>
+                      <th colSpan={GMP_GRADES.length} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[100px]">Khối lượng nhập kho (kg)</th>
                     </tr>
+                    <tr>{GMP_GRADES.map(g => <th key={'inputWeight' + g.key} className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">{g.label}</th>)}
+                      {GMP_GRADES.map(g => <th key={'quantity_boxes' + g.key} className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">{g.label}</th>)}
+                      {GMP_GRADES.map(g => <th key={'weight_kg' + g.key} className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">{g.label}</th>)}</tr>
                   </>
                 ) : stage === 'inspection' ? (
                   <>
                     <tr>
-                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Ngày kiểm tra</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Chủng loại - Mã số lô hàng</th>
-                      <th colSpan={2} className="border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Số lượng/ khối lượng tiếp nhận kiểm tra</th>
-                      <th colSpan={3} className="border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Số lượng kiểm tra 2% (thùng)</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Ngày kiểm tra</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2 py-2.5 font-semibold text-center align-middle leading-snug">Chủng loại -<br />Mã số lô hàng</th>
+                      <th colSpan={GMP_GRADES.length * 2} className="whitespace-nowrap border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Số lượng/ khối lượng tiếp nhận kiểm tra</th>
+                      <th colSpan={GMP_GRADES.length} className="whitespace-nowrap border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Số lượng kiểm tra 2% (thùng)</th>
                       <th colSpan={6} className="border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Kết quả kiểm tra phát hiện/ không đạt</th>
-                      <th colSpan={2} className="border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Số lượng/ khối lượng đưa qua xuất bán</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold text-center align-middle max-w-[120px] leading-snug">Biện pháp khắc phục (nếu có)</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Người kiểm tra</th>
-                      <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Thao tác</th>
+                      <th colSpan={GMP_GRADES.length * 2} className="whitespace-nowrap border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Số lượng/ khối lượng đưa qua xuất bán</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold text-center align-middle max-w-[120px] leading-snug">Biện pháp khắc phục (nếu có)</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Người kiểm tra</th>
+                      <th rowSpan={3} className="border border-slate-300 px-3 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Thao tác</th>
                     </tr>
                     <tr>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[85px]">Số lượng<br />(thùng)</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[85px]">Khối lượng<br />(kg)</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Loại 1</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Loại 2</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Loại 3</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Rệp sáp</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[85px]">Ấu trùng ruồi<br />đục quả</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Đất</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Lá cây</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[85px]">Côn trùng<br />khác</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Khác</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[85px]">Số lượng<br />(thùng)</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[85px]">Khối lượng<br />(kg)</th>
+                      <th colSpan={GMP_GRADES.length} className="whitespace-nowrap border border-slate-300 px-1 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug">Số lượng (thùng)</th>
+                      <th colSpan={GMP_GRADES.length} className="whitespace-nowrap border border-slate-300 px-1 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug">Khối lượng (kg)</th>
+                      {GMP_GRADES.map(g => <th key={'sample' + g.key} rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">{g.label}</th>)}
+                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Rệp sáp</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[85px]">Ấu trùng ruồi<br />đục quả</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Đất</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Lá cây</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[85px]">Côn trùng<br />khác</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 whitespace-nowrap">Khác</th>
+                      <th colSpan={GMP_GRADES.length} className="whitespace-nowrap border border-slate-300 px-1 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug">Số lượng (thùng)</th>
+                      <th colSpan={GMP_GRADES.length} className="whitespace-nowrap border border-slate-300 px-1 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug">Khối lượng (kg)</th>
                     </tr>
+                    <tr>{GMP_GRADES.map(g => <th key={'inputBoxes' + g.key} className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">{g.label}</th>)}
+                      {GMP_GRADES.map(g => <th key={'inputWeight' + g.key} className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">{g.label}</th>)}
+                      {GMP_GRADES.map(g => <th key={'quantity_boxes' + g.key} className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">{g.label}</th>)}
+                      {GMP_GRADES.map(g => <th key={'weight_kg' + g.key} className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">{g.label}</th>)}</tr>
                   </>
                 ) : stage === 'sales' ? (
                   <>
                     <tr>
-                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Ngày</th>
-                      <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold min-w-[130px] text-center align-middle">Khách hàng</th>
-                      <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold min-w-[150px] text-center align-middle">Thông tin khách hàng</th>
-                      <th colSpan={9} className="border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Thông tin lô hàng</th>
-                      <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold min-w-[130px] text-center align-middle">Đơn vị xuất khẩu</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Cảng/Cửa khẩu đi</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Cảng/Cửa khẩu đến</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Nước nhập khẩu</th>
-                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2.5 text-center align-middle max-w-[140px] leading-snug">Ghi chú</th>
-                      <th rowSpan={2} className="border border-slate-300 px-3 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Thao tác</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Ngày</th>
+                      <th rowSpan={3} className="border border-slate-300 px-3 py-2.5 font-semibold min-w-[130px] text-center align-middle">Khách hàng</th>
+                      <th rowSpan={3} className="border border-slate-300 px-3 py-2.5 font-semibold min-w-[150px] text-center align-middle">Thông tin khách hàng</th>
+                      <th colSpan={7 + GMP_GRADES.length * 2} className="border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Thông tin lô hàng</th>
+                      <th rowSpan={3} className="border border-slate-300 px-3 py-2.5 font-semibold min-w-[130px] text-center align-middle">Đơn vị xuất khẩu</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Cảng/Cửa khẩu đi</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Cảng/Cửa khẩu đến</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Nước nhập khẩu</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 text-center align-middle max-w-[140px] leading-snug">Ghi chú</th>
+                      <th rowSpan={3} className="border border-slate-300 px-3 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Thao tác</th>
                     </tr>
                     <tr>
-                      <th className="border border-slate-300 px-2.5 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Mã số lô hàng</th>
-                      <th className="border border-slate-300 px-2.5 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Chủng loại</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[110px]">Điều kiện phương tiện<br />vận chuyển (Đ/K)</th>
-                      <th className="border border-slate-300 px-2.5 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Biển số xe</th>
-                      <th className="border border-slate-300 px-2.5 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Số container</th>
-                      <th className="border border-slate-300 px-2.5 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Số Seal</th>
-                      <th className="border border-slate-300 px-2.5 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[85px]">Số lượng<br />(thùng)</th>
-                      <th className="border border-slate-300 px-2.5 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[85px]">Khối lượng<br />(kg)</th>
-                      <th className="border border-slate-300 px-2.5 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug whitespace-nowrap min-w-[105px]">Giá trị<br />(đ)</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Mã số lô hàng</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Chủng loại</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug max-w-[110px]">Điều kiện phương tiện<br />vận chuyển (Đ/K)</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Biển số xe</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Số container</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Số Seal</th>
+                      <th colSpan={GMP_GRADES.length} className="border border-slate-300 px-2.5 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Số lượng (thùng)</th>
+                      <th colSpan={GMP_GRADES.length} className="border border-slate-300 px-2.5 py-2 font-semibold whitespace-nowrap text-center align-middle bg-slate-100">Khối lượng (kg)</th>
+                      <th rowSpan={2} className="border border-slate-300 px-2.5 py-2 font-semibold text-center align-middle bg-slate-100 leading-snug whitespace-nowrap min-w-[105px]">Giá trị<br />(đ)</th>
                     </tr>
+                    <tr>{GMP_GRADES.map(g => <th key={'quantity_boxes' + g.key} className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">{g.label}</th>)}
+                      {GMP_GRADES.map(g => <th key={'weight_kg' + g.key} className="border border-slate-300 px-2 py-2 font-semibold whitespace-nowrap text-center bg-slate-100">{g.label}</th>)}</tr>
                   </>
                 ) : stage === 'aftersales' ? (
                   <>
@@ -449,7 +523,7 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
                 ) : (
                   <tr>
                     {getStageHeaders(stage).map(h => (
-                      <th key={h} className="border border-slate-300 px-4 py-3 font-semibold whitespace-nowrap text-center text-slate-700">{h}</th>
+                      <th key={h} className={`border border-slate-300 ${stage === 'purchases' ? 'px-3 py-2.5' : 'px-4 py-3'} font-semibold whitespace-nowrap text-center text-slate-700`}>{h}</th>
                     ))}
                   </tr>
                 )}
@@ -470,39 +544,7 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
                   const matchedRegion = purchasePuc
                     ? regions.find(region => normalizeUnitCode(region.code) === normalizeUnitCode(purchasePuc))
                     : undefined;
-                  const originDisplay = (() => {
-                    if (matchedRegion) {
-                      return (
-                        <>
-                          <div className="font-semibold text-slate-900">{matchedRegion.name}</div>
-                          <div className="mt-1 text-slate-500">{matchedRegion.address || 'Chưa có địa chỉ'}</div>
-                        </>
-                      );
-                    }
-                    const text = cleanText(r.values?.origin || receivingRecord?.values?.origin);
-                    if (!text) return '—';
-                    if (text.includes(' - ')) {
-                      const [name, ...rest] = text.split(' - ');
-                      return (
-                        <>
-                          <div className="font-semibold text-slate-900">{name.trim()}</div>
-                          <div className="mt-1 text-slate-500">{rest.join(' - ').trim()}</div>
-                        </>
-                      );
-                    }
-                    const commaIdx = text.indexOf(', ');
-                    if (commaIdx > 5) {
-                      const name = text.slice(0, commaIdx).trim();
-                      const addr = text.slice(commaIdx + 2).trim();
-                      return (
-                        <>
-                          <div className="font-semibold text-slate-900">{name}</div>
-                          <div className="mt-1 text-slate-500">{addr}</div>
-                        </>
-                      );
-                    }
-                    return <div className="font-semibold text-slate-900">{text}</div>;
-                  })();
+                  const originDisplay = renderPurchaseOriginDisplay(r, receivingRecord, regions);
                   const dateFormatted = String(r.values?.date || '').split('-').reverse().join('/');
                   const statusBadge = (
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap ${isFailed(stage, r.values)
@@ -534,32 +576,34 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
                   if (stage === 'receiving') {
                     return (
                       <tr key={r.id} className="hover:bg-slate-50/70 transition">
-                        <td className="border border-slate-200 whitespace-nowrap px-4 py-3 text-slate-600 font-medium">{dateFormatted}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-4 py-3 font-bold text-slate-900">{String(r.values?.seller || '—')}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-4 py-3 font-mono text-slate-700 font-medium">{String(r.values?.puc || '—')}</td>
-                        <td className="border border-slate-200 px-4 py-3 text-xs text-slate-700 min-w-[240px] max-w-sm">{originDisplay}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-4 py-3 font-semibold text-slate-900">{String(r.values?.variety || '—')}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-3 py-3 font-mono text-right font-semibold text-slate-800">{fmt(r.values?.grade1)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-3 py-3 font-mono text-right text-slate-700">{fmt(r.values?.grade2)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-3 py-3 font-mono text-right text-slate-700">{fmt(r.values?.grade3)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2.5 py-3 font-mono text-center">
+                        <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 text-slate-600 font-medium text-center">{dateFormatted}</td>
+                        <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 font-bold text-slate-900">{String(r.values?.seller || '—')}</td>
+                        <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 font-mono text-slate-700 font-medium text-center">{String(r.values?.puc || '—')}</td>
+                        <td className="border border-slate-200 px-3 py-2.5 text-xs text-slate-700 min-w-[240px] max-w-sm">{originDisplay}</td>
+                        <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 font-semibold text-slate-900">{String(r.values?.variety || '—')}</td>
+                        {GMP_GRADES.map(g => (
+                          <td key={g.key} className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 font-mono text-right font-semibold text-slate-800">
+                            {fmt(r.values?.['grade' + g.key])}
+                          </td>
+                        ))}
+                        <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 font-mono text-center">
                           {Number(r.values?.rejected || 0) > 0 ? (
                             <span className="text-rose-700 font-bold">{fmt(r.values?.rejected)}</span>
                           ) : (
                             <span className="text-slate-400">0</span>
                           )}
                         </td>
-                        <td className="border border-slate-200 whitespace-nowrap px-4 py-3 text-slate-700 font-medium">{formatReceiver(r.values?.receiver)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-4 py-3">
+                        <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 text-slate-700 font-medium">{formatReceiver(r.values?.receiver)}</td>
+                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 text-center w-[135px]">
                           <button
                             type="button"
-                            className="text-left font-bold font-mono text-emerald-700 hover:underline block"
+                            className="inline-block font-bold font-mono text-emerald-700 hover:underline"
                             onClick={() => setDetail({ ...r, lotCode: code })}
                           >
                             {code}
                           </button>
                         </td>
-                        <td className="border border-slate-200 whitespace-nowrap px-4 py-3 text-center">{actions}</td>
+                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 text-center">{actions}</td>
                       </tr>
                     );
                   }
@@ -578,16 +622,16 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
                     return (
                       <tr key={r.id} className="hover:bg-slate-50/70 transition">
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center text-slate-600 font-medium">{dateFormatted}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5">
+                        <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center">
                           <button
                             type="button"
-                            className="text-left font-bold font-mono text-emerald-700 hover:underline block"
+                            className="inline-block font-bold font-mono text-emerald-700 hover:underline"
                             onClick={() => setDetail({ ...r, lotCode: code })}
                           >
                             {code}
                           </button>
                         </td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.inputWeight)}</td>
+                        {GMP_GRADES.map(g => <td key={'inputWeight' + g.key} className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.['inputWeight' + g.key])}</td>)}
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{badge(r.values?.supplierOk)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{badge(r.values?.transportOk)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{badge(r.values?.materialOk)}</td>
@@ -597,7 +641,7 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
                         <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-center text-slate-700">{String(r.values?.dryEnd || '—')}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{badge(r.values?.dryOk)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{badge(r.values?.qualityOk)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right font-bold text-emerald-800">{fmt(r.values?.outputWeight)}</td>
+                        {GMP_GRADES.map(g => <td key={'outputWeight' + g.key} className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right font-bold text-emerald-800">{fmt(r.values?.['outputWeight' + g.key])}</td>)}
                         <td className="border border-slate-200 px-2.5 py-2.5 text-xs text-slate-600 max-w-[120px] truncate text-center" title={String(r.values?.correction || '')}>{String(r.values?.correction || '—')}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-slate-700 font-medium text-center">{formatSupervisor(r.values?.supervisor, idx)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center">{actions}</td>
@@ -619,25 +663,27 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
                     return (
                       <tr key={r.id} className="hover:bg-slate-50/70 transition">
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center text-slate-600 font-medium">{dateFormatted}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5">
-                          <button
-                            type="button"
-                            className="text-left font-bold font-mono text-emerald-700 hover:underline block"
-                            onClick={() => setDetail({ ...r, lotCode: code })}
-                          >
-                            {code}
-                          </button>
-                          {variety && <span className="text-[11px] text-slate-500 block">{variety}</span>}
+                        <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center">
+                          <div className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
+                            <button
+                              type="button"
+                              className="font-bold font-mono text-emerald-700 hover:underline"
+                              onClick={() => setDetail({ ...r, lotCode: code })}
+                            >
+                              {code}
+                            </button>
+                            {variety && <span className="text-xs text-slate-500 font-normal">({variety})</span>}
+                          </div>
                         </td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.inputWeight)}</td>
+                        {GMP_GRADES.map(g => <td key={'inputWeight' + g.key} className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.['inputWeight' + g.key])}</td>)}
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{badge(r.values?.toolsOk)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{badge(r.values?.labelsOk)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{badge(r.values?.weighOk)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{badge(r.values?.stickerOk)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{badge(r.values?.packOk)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{badge(r.values?.qualityOk)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.quantity_boxes)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right font-bold text-emerald-800">{fmt(r.values?.weight_kg)}</td>
+                        {GMP_GRADES.map(g => <td key={'quantity_boxes' + g.key} className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.['quantity_boxes' + g.key])}</td>)}
+                        {GMP_GRADES.map(g => <td key={'weight_kg' + g.key} className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right font-bold text-emerald-800">{fmt(r.values?.['weight_kg' + g.key])}</td>)}
                         <td className="border border-slate-200 px-2.5 py-2.5 text-xs text-slate-600 max-w-[120px] truncate text-center" title={String(r.values?.correction || '')}>{String(r.values?.correction || '—')}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-slate-700 font-medium text-center">{formatSupervisor(r.values?.supervisor, idx)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center">{actions}</td>
@@ -660,29 +706,29 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
                     return (
                       <tr key={r.id} className="hover:bg-slate-50/70 transition">
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center text-slate-600 font-medium">{dateFormatted}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5">
-                          <button
-                            type="button"
-                            className="text-left font-bold font-mono text-emerald-700 hover:underline block"
-                            onClick={() => setDetail({ ...r, lotCode: code })}
-                          >
-                            {code}
-                          </button>
-                          {variety && <span className="text-[11px] text-slate-500 block">{variety}</span>}
+                        <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center">
+                          <div className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
+                            <button
+                              type="button"
+                              className="font-bold font-mono text-emerald-700 hover:underline"
+                              onClick={() => setDetail({ ...r, lotCode: code })}
+                            >
+                              {code}
+                            </button>
+                            {variety && <span className="text-xs text-slate-500 font-normal">({variety})</span>}
+                          </div>
                         </td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.inputBoxes)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.inputWeight)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-700">{fmt(r.values?.sample1)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-700">{fmt(r.values?.sample2)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-700">{fmt(r.values?.sample3)}</td>
+                        {GMP_GRADES.map(g => <td key={'inputBoxes' + g.key} className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.['inputBoxes' + g.key])}</td>)}
+                        {GMP_GRADES.map(g => <td key={'inputWeight' + g.key} className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.['inputWeight' + g.key])}</td>)}
+                        {GMP_GRADES.map(g => <td key={'sample' + g.key} className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-700">{fmt(r.values?.['sample' + g.key])}</td>)}
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{findingBadge(r.values?.mealybug)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{findingBadge(r.values?.fly)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{findingBadge(r.values?.soil)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{findingBadge(r.values?.leaves)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{findingBadge(r.values?.insects)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 text-center">{findingBadge(r.values?.other)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.quantity_boxes)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right font-bold text-emerald-800">{fmt(r.values?.weight_kg)}</td>
+                        {GMP_GRADES.map(g => <td key={'quantity_boxes' + g.key} className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.['quantity_boxes' + g.key])}</td>)}
+                        {GMP_GRADES.map(g => <td key={'weight_kg' + g.key} className="border border-slate-200 whitespace-nowrap px-1.5 py-2.5 font-mono text-right font-bold text-emerald-800">{fmt(r.values?.['weight_kg' + g.key])}</td>)}
                         <td className="border border-slate-200 px-2.5 py-2.5 text-xs text-slate-600 max-w-[120px] truncate text-center" title={String(r.values?.correction || '')}>{String(r.values?.correction || '—')}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-slate-700 font-medium text-center">{formatInspector(r.values?.inspector, idx)}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center">{actions}</td>
@@ -700,16 +746,17 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
                         </span>
                       );
                     };
+                    const inspectionRecord = state.records.inspection.find(item => item.id === r.sourceId);
                     const variety = String(r.values?.variety || '').trim();
                     return (
                       <tr key={r.id} className="hover:bg-slate-50/70 transition">
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center text-slate-600 font-medium">{dateFormatted}</td>
                         <td className="border border-slate-200 px-3 py-2.5 font-bold text-slate-900">{String(r.values?.customer || '—')}</td>
                         <td className="border border-slate-200 px-3 py-2.5 text-xs text-slate-600 max-w-[180px]">{String(r.values?.customerInfo || '—')}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5">
+                        <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center">
                           <button
                             type="button"
-                            className="text-left font-bold font-mono text-emerald-700 hover:underline block"
+                            className="inline-block font-bold font-mono text-emerald-700 hover:underline"
                             onClick={() => setDetail({ ...r, lotCode: code })}
                           >
                             {code}
@@ -720,8 +767,8 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 font-mono text-center text-slate-800">{String(r.values?.truck || '—')}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 font-mono text-center text-slate-800">{String(r.values?.container || '—')}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 font-mono text-center text-slate-800">{String(r.values?.seal || '—')}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.quantity_boxes)}</td>
-                        <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right font-bold text-emerald-800">{fmt(r.values?.weight_kg)}</td>
+                        {GMP_GRADES.map(g => <td key={'quantity_boxes' + g.key} className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.['quantity_boxes' + g.key] ?? inspectionRecord?.values['quantity_boxes' + g.key])}</td>)}
+                        {GMP_GRADES.map(g => <td key={'weight_kg' + g.key} className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right font-bold text-emerald-800">{fmt(r.values?.['weight_kg' + g.key] ?? inspectionRecord?.values['weight_kg' + g.key])}</td>)}
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 font-mono text-right font-bold text-emerald-800">{fmt(Number(r.values?.total ?? (Number(r.values?.weight_kg || 0) * Number(r.values?.price || 0))))}</td>
                         <td className="border border-slate-200 px-3 py-2.5 text-xs text-slate-700 min-w-[120px]">{String(r.values?.exporter || '—')}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center text-slate-700">{String(r.values?.departurePort || '—')}</td>
@@ -755,7 +802,7 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center">
                           <button
                             type="button"
-                            className="font-bold font-mono text-emerald-700 hover:underline inline-block"
+                            className="inline-block font-bold font-mono text-emerald-700 hover:underline"
                             onClick={() => setDetail({ ...r, lotCode: code })}
                           >
                             {code}
@@ -804,35 +851,36 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
 
                   return (
                     <tr key={r.id} className="hover:bg-slate-50/70 transition">
-                      <td className="border border-slate-200 whitespace-nowrap px-4 py-3 text-slate-600 font-medium">{dateFormatted}</td>
-                      <td className="border border-slate-200 whitespace-nowrap px-4 py-3">
-                        <button className="text-left font-bold font-mono text-emerald-700 hover:underline" onClick={() => setDetail({ ...r, lotCode: code })}>
+                      <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 text-slate-600 font-medium text-center">{dateFormatted}</td>
+                      <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center w-[135px]">
+                        <button className="text-center font-bold font-mono text-emerald-700 hover:underline" onClick={() => setDetail({ ...r, lotCode: code })}>
                           {code}
                         </button>
                       </td>
 
                       {stage === 'purchases' && (
                         <>
-                          <td className="border border-slate-200 px-4 py-3 font-bold text-slate-900 whitespace-nowrap">
+                          <td className="border border-slate-200 px-3 py-2.5 font-normal text-slate-900 whitespace-nowrap">
                             {String(r.values?.seller || '—')}
                           </td>
-                          <td className="border border-slate-200 px-3 py-3 font-mono text-xs text-slate-600 whitespace-nowrap text-center">
+                          <td className="border border-slate-200 px-2 py-2.5 font-mono text-xs text-slate-600 whitespace-nowrap text-center">
                             {formatSellerPhone(r.values?.seller, r.values?.phone)}
                           </td>
-                          <td className="border border-slate-200 px-3 py-3 font-mono text-xs font-medium text-slate-700 whitespace-nowrap text-center">
+                          <td className="border border-slate-200 px-2 py-2.5 font-mono text-xs font-medium text-slate-700 whitespace-nowrap text-center">
                             {purchasePuc || '—'}
                           </td>
-                          <td className="border border-slate-200 px-4 py-3 text-xs text-slate-700 min-w-[240px] max-w-sm">
+                          <td className="border border-slate-200 px-3 py-2.5 text-xs text-slate-700 min-w-[240px] max-w-sm">
                             {originDisplay}
                           </td>
-                          <td className="border border-slate-200 whitespace-nowrap px-4 py-3 font-mono font-bold text-slate-900 text-right">{fmt(r.values?.weight)}</td>
-                          <td className="border border-slate-200 whitespace-nowrap px-4 py-3 font-mono text-slate-700 text-right">{fmt(r.values?.price)}</td>
-                          <td className="border border-slate-200 whitespace-nowrap px-4 py-3 font-mono font-black text-emerald-800 text-right">{fmt(r.values?.total)}</td>
+                          <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 text-slate-700 text-center">{String(r.values?.variety || receivingRecord?.values.variety || '—')}</td>
+                          <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 font-mono font-normal text-slate-900 text-right">{fmt(r.values?.weight)}</td>
+                          <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 font-mono text-slate-700 text-right">{fmt(r.values?.price)}</td>
+                          <td className="border border-slate-200 whitespace-nowrap px-3 py-2.5 font-mono font-black text-emerald-800 text-right">{fmt(r.values?.total)}</td>
                         </>
                       )}
 
-                      <td className="border border-slate-200 whitespace-nowrap px-4 py-3">{statusBadge}</td>
-                      <td className="border border-slate-200 whitespace-nowrap px-4 py-3 text-center">{actions}</td>
+                      <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 text-center"><div className="flex justify-center">{statusBadge}</div></td>
+                      <td className="border border-slate-200 whitespace-nowrap px-2 py-2.5 text-center">{actions}</td>
                     </tr>
                   );
                 })}
@@ -844,10 +892,12 @@ export function ProcessingGmpView({ screen }: { screen: Screen }) {
                 Chưa có bản ghi phù hợp. Điều chỉnh bộ lọc hoặc thêm bản ghi mới.
               </div>
             )}
-          </div>
+          </div>}
         </section>
       </>}
-      {stage && editing && <RecordForm state={state} regions={regions} stage={stage} record={editing === 'new' ? undefined : editing} busy={busy} error={error} onClose={() => setEditing(null)} onSave={async (record) => { const res = await mutate({ action: 'record', stage, record }); if (res.ok) setEditing(null); }} />}
+      {stage === 'receiving' && editing === 'new' && <NewHarvestReceivingForm records={state.records.receiving} busy={busy} error={error} onClose={() => setEditing(null)} onSave={async (id, values, confirm) => { const res = await mutate({ action: 'receiving', record: { id, values }, confirm }); if (res.ok) setEditing(null); }} />}
+      {stage === 'receiving' && editing && editing !== 'new' && <HarvestReceivingForm record={editing} busy={busy} error={error} onClose={() => setEditing(null)} onSave={async (values, confirm) => { const res = await mutate({ action: 'receiving', record: { id: editing.id, values }, confirm }); if (res.ok) setEditing(null); }} />}
+      {stage && stage !== 'receiving' && editing && <RecordForm state={state} regions={regions} stage={stage} record={editing === 'new' ? undefined : editing} busy={busy} error={error} onClose={() => setEditing(null)} onSave={async (record) => { const res = await mutate({ action: 'record', stage, record }); if (res.ok) setEditing(null); }} />}
       {stage && detail && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/50 p-4"><section role="dialog" aria-modal="true" aria-label="Chi tiết bản ghi" className="max-h-[90vh] w-full max-w-4xl overflow-auto rounded-2xl bg-white p-6"><div className="mb-5 flex justify-between gap-4"><div><p className="text-xs font-bold text-emerald-600">{REGISTERS[stage].code}</p><h2 className="text-xl font-bold">{detail.lotCode}</h2></div><button aria-label="Đóng chi tiết" onClick={() => setDetail(null)}><X /></button></div><div className="grid gap-4 sm:grid-cols-2">{REGISTERS[stage].fields.map(f => <div key={f.key} className="rounded-xl bg-slate-50 p-3"><dt className="text-xs text-slate-500">{f.group && `${f.group} · `}{f.label}</dt><dd className="mt-1 break-words text-sm font-semibold">{f.type === 'number' ? fmt(detail.values[f.key]) : String(detail.values[f.key] || 'Chưa ghi nhận')}</dd></div>)}</div><h3 className="mb-2 mt-6 font-bold">Lịch sử theo mã lô</h3>{STAGES.filter(s => s !== 'purchases').flatMap(s => state.records[s].filter(r => r.lotCode === detail.lotCode).map(r => <p key={r.id} className="border-l-2 border-emerald-200 py-2 pl-4 text-sm">{r.values.date} · {REGISTERS[s].title} · {status(state, s, r)}</p>))}</section></div>}
     </>}
   </div>;
@@ -857,7 +907,7 @@ function Overview({ state, filter }: { state: GmpState; filter: Filter }) {
   const filtered = (s: Stage) => state.records[s].filter(r => !r.draft && matches(r, filter));
   const pending = (s: Stage) => sources(state, s).filter(r => matches(r, filter));
   const warehouse = filtered('packaging').filter(r => !state.records.sales.some(x => x.lotCode === r.lotCode && !x.draft));
-  const metrics = [['Tổng thu mua (kg)', filtered('purchases').reduce((s, r) => s + Number(r.values.weight), 0)], ['Chờ nhập hàng (lô)', pending('receiving').length], ['Đang sơ chế (lô)', pending('preprocessing').length], ['Đang đóng gói (lô)', pending('packaging').length], ['Thành phẩm trong kho (kg)', warehouse.reduce((s, r) => s + Number(r.values.weight_kg), 0)], ['Sẵn sàng xuất (lô)', pending('sales').length], ['Đã xuất (kg)', filtered('sales').reduce((s, r) => s + Number(r.values.weight_kg), 0)]] as const;
+  const metrics = [['Tổng nguyên liệu thu hoạch (kg)', filtered('receiving').reduce((s, r) => s + Number(r.values.initialWeight || 0), 0)], ['Chờ tiếp nhận (lô)', filtered('receiving').filter(r => r.draft).length], ['Đang sơ chế (lô)', pending('preprocessing').length], ['Đang đóng gói (lô)', pending('packaging').length], ['Thành phẩm trong kho (kg)', warehouse.reduce((s, r) => s + Number(r.values.weight_kg), 0)], ['Sẵn sàng xuất (lô)', pending('sales').length], ['Đã xuất (kg)', filtered('sales').reduce((s, r) => s + Number(r.values.weight_kg), 0)]] as const;
   return <><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{metrics.map(([label, value]) => <Metric key={label} label={label} value={fmt(value)} />)}</div><section className="rounded-2xl border bg-white p-6"><h2 className="text-lg font-bold">Tiến độ xử lý lô hàng</h2><p className="mt-1 text-sm text-slate-500">Mở công đoạn để tiếp tục xử lý các lô đang chờ.</p><div className="mt-5 grid gap-3 md:grid-cols-2">{STAGES.slice(1).map((s, i) => { const count = s === 'inspection' ? filtered('packaging').filter(r => !state.records.inspection.some(x => x.sourceId === r.id)).length : s === 'aftersales' ? filtered('sales').filter(r => !state.records.aftersales.some(x => x.sourceId === r.id && !isFailed('aftersales', x.values))).length : pending(s).length; return <Link key={s} href={`/dashboard/processing/${REGISTERS[s].path}`} className="flex items-center gap-4 rounded-xl border border-slate-100 p-4 hover:border-emerald-300 hover:bg-emerald-50"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 font-bold text-emerald-700">0{i + 1}</span><div className="flex-1"><p className="font-semibold text-slate-800">{REGISTERS[s].title}</p><p className="text-xs text-slate-500">{REGISTERS[s].code}</p></div><b>{count} lô</b><ArrowRight size={16} className="text-slate-400" /></Link>; })}</div><p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{latestRecords(state, 'inspection').filter(r => matches(r, filter) && isFailed('inspection', r.values)).length} lô kiểm tra không đạt đang chờ khắc phục và kiểm tra lại.</p></section></>;
 }
 function RecordForm({ state, regions, stage, record, busy, error, onClose, onSave }: { state: GmpState; regions: RegionSource[]; stage: Stage; record?: GmpRecord; busy: boolean; error: string; onClose: () => void; onSave: (r: { id?: string; sourceId: string; season: string; values: Values }) => Promise<void> }) {
@@ -875,21 +925,27 @@ function RecordForm({ state, regions, stage, record, busy, error, onClose, onSav
   const merged: Values = { ...values, ...inherited, ...regionValues, ...(record ? { lotCode: record.lotCode } : {}) };
   const set = (key: string, value: string) => setValues(v => ({ ...v, [key]: value }));
   const needsCorrection = isFailed(stage, merged);
-  const fields = REGISTERS[stage].fields.map(field => (field.key === 'correction' || field.key === 'treatmentPlan') ? { ...field, required: needsCorrection } : field);
+  const fields = REGISTERS[stage].fields.filter(field => !(field.internal && field.inherited)).map(field => stage === 'preprocessing' && field.key.startsWith('qualityOk') ? { ...field, required: Number(merged['inputWeight' + field.key.slice(9)] || 0) > 0 } : (field.key === 'correction' || field.key === 'treatmentPlan') ? { ...field, required: needsCorrection } : field);
   const groups = Array.from(new Set(fields.map(f => f.internal ? 'Informations' : f.group || 'Thông tin chung')));
+  useEffect(() => {
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = overflow; };
+  }, []);
   useEffect(() => { const handle = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy) onClose(); }; window.addEventListener('keydown', handle); return () => window.removeEventListener('keydown', handle); }, [busy, onClose]);
   async function submit(e: FormEvent) { e.preventDefault(); await onSave({ id: record?.id, sourceId, season, values: stage === 'receiving' ? { ...values, puc: merged.puc, origin: merged.origin } : values }); }
-  return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-3 sm:p-6"><form role="dialog" aria-modal="true" aria-label={`${record ? 'Sửa' : 'Thêm'} ${REGISTERS[stage].title}`} onSubmit={submit} className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"><div className="flex items-start justify-between border-b p-5"><div><p className="text-xs font-bold text-emerald-700">{REGISTERS[stage].code}</p><h2 className="mt-1 text-xl font-bold">{record ? 'Sửa bản ghi' : 'Thêm bản ghi'} · {REGISTERS[stage].title}</h2></div><button type="button" aria-label="Đóng biểu mẫu" onClick={onClose} disabled={busy}><X /></button></div><div className="space-y-5 overflow-y-auto p-5">
+  const formTitle = ({ purchases: "GHI NHẬN THU MUA", receiving: "GHI NHẬN NHẬP HÀNG", preprocessing: "GHI NHẬN TIẾP NHẬN & SƠ CHẾ" } as Partial<Record<Stage, string>>)[stage] || `${record ? "Sửa bản ghi" : "Thêm bản ghi"} · ${REGISTERS[stage].title}`;
+  return <ModalPortal><div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-3 sm:p-6"><form role="dialog" aria-modal="true" aria-label={formTitle} onSubmit={submit} className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"><div className="flex items-start justify-between border-b p-5"><div><h2 className="text-xl font-bold">{formTitle}</h2></div><button type="button" aria-label="Đóng biểu mẫu" onClick={onClose} disabled={busy}><X /></button></div><div className="space-y-5 overflow-y-auto p-5">
     {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     {stage === 'purchases' ? <label className="block text-sm font-semibold">Niên vụ *<input className={`${control} mt-1`} required pattern="\d{4}-\d{4}" value={season} onChange={e => setSeason(e.target.value)} /><p className="mt-2 text-xs font-normal text-slate-500">Mã hồ sơ thu mua được tự sinh theo định dạng TM-năm-ngaythang khi lưu.</p></label> : <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4"><label className="block text-sm font-bold text-emerald-900">{stage === 'receiving' ? 'Hồ sơ thu mua' : 'Lô hàng từ công đoạn trước'} *<select required disabled={!!record} className={`${control} mt-2`} value={sourceId} onChange={e => { setSourceId(e.target.value); setValues({ date: today() }); }}><option value="">Chọn lô đủ điều kiện...</option>{(record && source ? [source] : available).map(r => <option key={r.id} value={r.id}>{r.lotCode} · {r.values.seller || r.values.productLot || r.values.customer || ''}</option>)}</select></label>{!record && !available.length && <p className="mt-2 text-sm text-amber-800">Chưa có lô đủ điều kiện. Hoàn thành công đoạn trước để tiếp tục.</p>}{source && <p className="mt-3 text-sm text-emerald-800">Nguồn: {source.values.date} · Niên vụ {source.season} {stage === 'receiving' && `· Khối lượng mua: ${fmt(source.values.weight)} kg`} · Thông tin nguồn được tự động kế thừa.</p>}</div>}
     {stage === 'preprocessing' && source && <div className="rounded-xl bg-slate-50 p-4 text-sm"><p>Chủng loại: <b>{inherited.variety}</b> · Mã số lô: <b>{source.lotCode}</b></p><p className="mt-2">Nhà cung cấp: <b>{inherited.supplier}</b></p><p className="mt-2 text-slate-500">Thông tin kế thừa từ Nhập hàng / Hồ sơ thu mua. Đ = Đạt; K = Không đạt. Chọn K phải nhập Hành động khắc phục.</p></div>}
-    {stage === 'inspection' && source && <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-800">Kiểm tra tối thiểu {Math.ceil(Number(source.values.quantity_boxes) * 0.02)} thùng (2% × {fmt(source.values.quantity_boxes)}, làm tròn lên). Khi phát hiện lỗi, ghi lượng đưa qua xuất bán bằng 0; sau khắc phục hãy thêm lần kiểm tra mới để giữ lịch sử.</p>}
+    {stage === 'inspection' && source && <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-800">Mẫu kiểm tra bằng 2% số thùng của từng phân loại, làm tròn lên: {GMP_GRADES.map(g => `${g.label}: ${Math.ceil(Number(source.values['quantity_boxes' + g.key] || 0) * 0.02)} thùng`).join(' · ')}. Khi phát hiện lỗi, ghi lượng đưa qua xuất bán bằng 0; sau khắc phục hãy thêm lần kiểm tra mới để giữ lịch sử.</p>}
     {stage === 'aftersales' && <p className="text-sm text-slate-500">Ghi nhận thông tin thông quan và kết quả hậu kiểm sau xuất bán. Xác nhận kết quả: Đ = Đạt; K = Không đạt.</p>}
     {groups.map(group => <fieldset key={group} className="rounded-xl border border-slate-200 p-4"><legend className="px-2 text-sm font-bold text-slate-700">{group === 'Informations' ? 'Thông tin bổ sung (không đưa vào sổ GMP)' : group}</legend><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{fields.filter(f => (f.internal ? 'Informations' : f.group || 'Thông tin chung') === group).map(f => <label key={f.key} className="block text-xs font-semibold leading-5 text-slate-600">{f.label}{f.required ? ' *' : ''}{stage === 'purchases' && f.key === 'puc' ? <select className={`${control} mt-1`} required value={String(merged[f.key] ?? '')} onChange={e => set(f.key, e.target.value)}><option value="">Chọn vùng trồng...</option>{regions.map(region => <option key={region.code} value={region.code}>{region.code} · {region.name} · {region.address}</option>)}</select> : f.type === 'check' || f.type === 'finding' ? <select className={`${control} mt-1`} required={f.required} value={String(merged[f.key] ?? '')} onChange={e => set(f.key, e.target.value)}><option value="">Chưa ghi nhận</option>{(f.type === 'check' ? [['Đ', 'Đ — Đạt'], ['K', 'K — Không đạt']] : [['Không', 'Không phát hiện'], ['Có', 'Có phát hiện']]).map(([v, label]) => <option key={v} value={v}>{label}</option>)}</select> : <input className={`${control} mt-1`} type={f.type || 'text'} min={f.type === 'number' ? 0 : undefined} step={f.type === 'number' ? (f.key.startsWith('quantity_') || f.key.startsWith('sample') ? 1 : 'any') : undefined} required={f.required} disabled={f.inherited} value={f.key === 'total' ? (stage === 'sales' ? Number(merged.total ?? (Number(merged.weight_kg || values.weight_kg || 0) * Number(merged.price || values.price || 85000))) : Number(values.weight || 0) * Number(values.price || 0)) : String(merged[f.key] ?? '')} placeholder={f.key === 'receiver' ? 'Nhập tên người tiếp nhận...' : f.key === 'supervisor' ? 'Nhập tên người giám sát...' : f.key === 'inspector' ? 'Nhập tên người kiểm tra...' : f.key === 'phone' ? 'Số điện thoại liên hệ...' : f.inherited ? 'Tự động khi lưu / chọn lô' : ''} onChange={e => set(f.key, e.target.value)} />}</label>)}</div></fieldset>)}
-    {stage === 'receiving' && source && <p className="rounded-xl bg-slate-50 p-3 text-sm">Đối soát: {fmt(Number(values.grade1 || 0) + Number(values.grade2 || 0) + Number(values.grade3 || 0) + Number(values.rejected || 0))} / {fmt(source.values.weight)} kg (tiếp nhận + từ chối / thu mua)</p>}
-  </div><div className="flex justify-end gap-3 border-t bg-slate-50 p-4"><button type="button" className={button} onClick={onClose} disabled={busy}>Hủy</button><button className={primary} disabled={busy || (stage !== 'purchases' && !sourceId)}>{busy ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}Lưu bản ghi</button></div></form></div>;
+    {stage === 'receiving' && source && <p className="rounded-xl bg-slate-50 p-3 text-sm">Đối soát: {fmt(gradeTotal(values, 'grade') + Number(values.rejected || 0))} / {fmt(source.values.weight)} kg (tiếp nhận + từ chối / thu mua)</p>}
+  </div><div className="flex justify-end gap-3 border-t bg-slate-50 p-4"><button type="button" className={button} onClick={onClose} disabled={busy}>Hủy</button><button className={primary} disabled={busy || (stage !== 'purchases' && !sourceId)}>{busy ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}Lưu bản ghi</button></div></form></div></ModalPortal>;
 }
-function Finance({ company, month, state, filter, busy, mutate, exporting, setExporting }: { company: string; month: string; state: GmpState; filter: Filter; busy: boolean; mutate: (p: object) => Promise<{ ok: boolean; error?: string }>; exporting: boolean; setExporting: (value: boolean) => void }) {
+function Finance({ company, month, state, filter, busy, mutate, exporting, setExporting, regions = [] }: { company: string; month: string; state: GmpState; filter: Filter; busy: boolean; mutate: (p: object) => Promise<{ ok: boolean; error?: string }>; exporting: boolean; setExporting: (value: boolean) => void; regions?: RegionSource[] }) {
   const tabs = ['XUẤT BÁN', 'THU MUA', 'CHI PHÍ', 'NHẬT KÝ DÒNG TIỀN', 'BIỂU ĐỒ THỐNG KÊ'];
   const [tab, setTab] = useState(0);
   const [pay, setPay] = useState<{ record: GmpRecord; direction: 'IN' | 'OUT' } | null>(null);
@@ -1008,15 +1064,38 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
     setExporting(true); setExportError('');
     try {
       const { buildFinanceWorkbook, financeExcelDate } = await import('@/lib/processing-finance-export');
-      const documentHeaders = ['Ngày', 'Mã số lô hàng', 'Đối tác', 'Giá trị (đ)', 'Đã thanh toán (đ)', 'Còn lại (đ)', 'Trạng thái'];
-      const documentRows = (records: GmpRecord[], isSales: boolean) => records.map(r => [
-        financeExcelDate(r.values.date), r.lotCode, String(isSales ? r.values.customer || '' : r.values.seller || ''),
+      const salesHeaders = ['Ngày', 'Mã số lô hàng', 'Đối tác', 'Giá trị (đ)', 'Đã thanh toán (đ)', 'Còn lại (đ)', 'Trạng thái'];
+      const salesRows = sales.map(r => [
+        financeExcelDate(r.values.date), r.lotCode, String(r.values.customer || ''),
         total(r), paid(r), Math.max(0, total(r) - paid(r)),
-        total(r) <= paid(r) ? (isSales ? 'Đã thu đủ' : 'Đã thanh toán') : paid(r) > 0 ? 'Thanh toán một phần' : 'Chưa thanh toán',
+        total(r) <= paid(r) ? 'Đã thu đủ' : paid(r) > 0 ? 'Thanh toán một phần' : 'Chưa thanh toán',
       ]);
+      const purchaseHeaders = ['Ngày', 'Mã số lô hàng', 'Đối tác', 'Liên hệ', 'Mã số vùng trồng', 'Tên vùng trồng và địa chỉ', 'Giá trị (đ)', 'Đã thanh toán (đ)', 'Còn lại (đ)', 'Trạng thái'];
+      const purchaseRows = purchases.map(r => {
+        const receivingRecord = state.records.receiving.find(rec => rec.sourceId === r.id || rec.lotCode === r.lotCode);
+        const purchasePuc = String(r.values?.puc || receivingRecord?.values?.puc || '').trim();
+        const matchedRegion = purchasePuc
+          ? regions.find(region => normalizeUnitCode(region.code) === normalizeUnitCode(purchasePuc))
+          : undefined;
+        const originText = matchedRegion
+          ? (matchedRegion.name + (matchedRegion.address ? ` - ${matchedRegion.address}` : ''))
+          : cleanText(r.values?.origin || receivingRecord?.values?.origin) || '—';
+        return [
+          financeExcelDate(r.values.date),
+          r.lotCode,
+          String(r.values.seller || ''),
+          formatSellerPhone(r.values?.seller, r.values?.phone),
+          purchasePuc || '—',
+          originText,
+          total(r),
+          paid(r),
+          Math.max(0, total(r) - paid(r)),
+          total(r) <= paid(r) ? 'Đã thanh toán' : paid(r) > 0 ? 'Thanh toán một phần' : 'Chưa thanh toán',
+        ];
+      });
       const bytes = await buildFinanceWorkbook([
-        { name: tabs[0], headers: documentHeaders, rows: documentRows(sales, true), moneyColumns: [4, 5, 6] },
-        { name: tabs[1], headers: documentHeaders, rows: documentRows(purchases, false), moneyColumns: [4, 5, 6] },
+        { name: tabs[0], headers: salesHeaders, rows: salesRows, moneyColumns: [4, 5, 6] },
+        { name: tabs[1], headers: purchaseHeaders, rows: purchaseRows, moneyColumns: [7, 8, 9] },
         {
           name: tabs[2], headers: ['Ngày', 'Mã chi phí', 'Nhóm chi phí', 'Nội dung', 'Lô hàng liên quan', 'Phương thức', 'Số tiền (đ)'],
           rows: expenses.map((e, index) => [financeExcelDate(e.date), e.code || 'CP-' + (e.date || '2026').slice(0, 4) + '-' + String(index + 1).padStart(3, '0'), e.category, e.content, e.lotCode || '', e.method || 'Chuyển khoản', e.amount]), moneyColumns: [7]
@@ -1038,54 +1117,94 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
         return <button type="button" key={name} aria-pressed={tab === i} onClick={() => setTab(i)} className={"flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-center text-xs font-bold leading-tight transition sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm " + (tab === i ? "bg-brand-600 text-white shadow-soft" : "text-slate-600 hover:bg-brand-50 hover:text-brand-700")}><Icon aria-hidden="true" className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" /><span>{name}</span></button>;
       })}
     </nav><section className="overflow-hidden rounded-2xl border bg-white">
-    {tab < 2 && <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm border-collapse border border-slate-300"><thead className="bg-slate-100/90 text-xs text-slate-700"><tr>{[tab === 0 ? 'Ngày xuất bán' : 'Ngày thu mua', 'Mã số lô hàng', 'Đối tác', 'Giá trị (đ)', 'Đã thanh toán (đ)', 'Còn lại (đ)', 'Ngày thanh toán', 'Trạng thái', 'Thao tác'].map(h => <th className="border border-slate-300 px-4 py-3 font-semibold text-center" key={h}>{h}</th>)}</tr></thead><tbody>{(tab === 0 ? sales : purchases).map(r => {
-      const isPaidFull = total(r) <= paid(r);
-      const isPartiallyPaid = paid(r) > 0 && !isPaidFull;
-      const remaining = Math.max(0, total(r) - paid(r));
-      return (
-        <tr key={r.id} className="hover:bg-slate-50/70 transition">
-          <td className="border border-slate-200 px-4 py-3 text-center whitespace-nowrap font-medium text-slate-700">{formatDateVN(r.values.date)}</td>
-          <td className="border border-slate-200 px-4 py-3 font-semibold text-emerald-700 whitespace-nowrap">{r.lotCode}</td>
-          <td className="border border-slate-200 px-4 py-3">{r.values.customer || r.values.seller}</td>
-          <td className="border border-slate-200 px-4 py-3 font-mono">{fmt(total(r))}</td>
-          <td className="border border-slate-200 px-4 py-3 font-mono text-emerald-700">{fmt(paid(r))}</td>
-          <td className="border border-slate-200 px-4 py-3 font-mono font-bold">{fmt(remaining)}</td>
-          <td className="border border-slate-200 px-4 py-3 text-center whitespace-nowrap">{[...new Set(state.payments.filter(p => p.recordId === r.id && p.direction === (tab === 0 ? 'IN' : 'OUT') && p.amount > 0).map(p => p.date))].sort().map(d => <div key={d}>{formatDateVN(d)}</div>)}{!state.payments.some(p => p.recordId === r.id && p.direction === (tab === 0 ? 'IN' : 'OUT') && p.amount > 0) && '—'}</td>
-          <td className="border border-slate-200 px-4 py-3 text-xs text-center align-middle">
-            {isPaidFull ? (
-              <span className="inline-flex items-center justify-center gap-1 font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                <CheckCircle2 size={13} className="text-emerald-600" />
-                {tab === 0 ? 'Đã thu đủ' : 'Đã thanh toán'}
-              </span>
-            ) : isPartiallyPaid ? (
-              <span className="inline-flex items-center justify-center gap-1 font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-                Thanh toán một phần
-              </span>
-            ) : (
-              <span className="inline-flex items-center justify-center gap-1 font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
-                Chưa thanh toán
-              </span>
+    {tab < 2 && <div className="overflow-x-auto"><table className={`w-full ${tab === 1 ? 'min-w-[1300px]' : 'min-w-[850px]'} text-left text-sm border-collapse border border-slate-300`}><thead className="bg-slate-100/90 text-xs text-slate-700">
+      <tr>
+        {tab === 0 ? (
+          ['Ngày xuất bán', 'Mã số lô hàng', 'Đối tác', 'Giá trị (đ)', 'Đã thanh toán (đ)', 'Còn lại (đ)', 'Ngày thanh toán', 'Trạng thái', 'Thao tác'].map(h => (
+            <th className={`border border-slate-300 px-4 py-3 font-semibold text-center ${h === 'Mã số lô hàng' ? 'w-[135px] whitespace-nowrap' : ''}`} key={h}>{h}</th>
+          ))
+        ) : (
+          ['Ngày thu mua', 'Mã số lô hàng', 'Đối tác', 'Liên hệ', 'Mã số vùng trồng', 'Tên vùng trồng và địa chỉ', 'Giá trị (đ)', 'Đã thanh toán (đ)', 'Còn lại (đ)', 'Ngày thanh toán', 'Trạng thái', 'Thao tác'].map(h => (
+            <th className={`border border-slate-300 ${h === 'Tên vùng trồng và địa chỉ' ? 'px-3 py-3 min-w-[240px]' : 'px-3 py-3'} font-semibold text-center ${h === 'Mã số lô hàng' ? 'w-[135px] whitespace-nowrap' : ['Liên hệ', 'Mã số vùng trồng', 'Ngày thu mua', 'Đối tác'].includes(h) ? 'whitespace-nowrap' : ''}`} key={h}>{h}</th>
+          ))
+        )}
+      </tr>
+    </thead>
+    <tbody>
+      {(tab === 0 ? sales : purchases).map(r => {
+        const isPaidFull = total(r) <= paid(r);
+        const isPartiallyPaid = paid(r) > 0 && !isPaidFull;
+        const remaining = Math.max(0, total(r) - paid(r));
+        const receivingRecord = tab === 1
+          ? state.records.receiving.find(rec => rec.sourceId === r.id || rec.lotCode === r.lotCode)
+          : undefined;
+        const purchasePuc = tab === 1
+          ? String(r.values?.puc || receivingRecord?.values?.puc || '').trim()
+          : '';
+        const originDisplay = tab === 1
+          ? renderPurchaseOriginDisplay(r, receivingRecord, regions)
+          : null;
+
+        return (
+          <tr key={r.id} className="hover:bg-slate-50/70 transition">
+            <td className="border border-slate-200 px-4 py-3 text-center whitespace-nowrap font-medium text-slate-700">{formatDateVN(r.values.date)}</td>
+            <td className="border border-slate-200 px-3 py-3 font-semibold text-emerald-700 whitespace-nowrap text-center font-mono w-[135px]">{r.lotCode}</td>
+            <td className={`border border-slate-200 ${tab === 1 ? 'px-3 py-3 font-normal text-slate-900 whitespace-nowrap' : 'px-4 py-3'}`}>
+              {tab === 0 ? String(r.values.customer || '—') : String(r.values.seller || '—')}
+            </td>
+            {tab === 1 && (
+              <>
+                <td className="border border-slate-200 px-2 py-3 font-mono text-xs text-slate-600 whitespace-nowrap text-center">
+                  {formatSellerPhone(r.values?.seller, r.values?.phone)}
+                </td>
+                <td className="border border-slate-200 px-2 py-3 font-mono text-xs font-medium text-slate-700 whitespace-nowrap text-center">
+                  {purchasePuc || '—'}
+                </td>
+                <td className="border border-slate-200 px-3 py-3 text-xs text-slate-700 min-w-[240px] max-w-sm">
+                  {originDisplay}
+                </td>
+              </>
             )}
-          </td>
-          <td className="border border-slate-200 px-4 py-3 text-center align-middle whitespace-nowrap">
-            {isPaidFull ? (
-              <span className="text-sm font-medium text-slate-400 select-none">
-                {tab === 0 ? 'Thu tiền' : 'Thanh toán'}
-              </span>
-            ) : (
-              <button
-                type="button"
-                className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer disabled:opacity-50"
-                disabled={busy}
-                onClick={() => openPay(r, tab === 0 ? 'IN' : 'OUT')}
-              >
-                {tab === 0 ? (isPartiallyPaid ? 'Thu tiếp' : 'Thu tiền') : (isPartiallyPaid ? 'Thanh toán tiếp' : 'Thanh toán')}
-              </button>
-            )}
-          </td>
-        </tr>
-      );
-    })}</tbody></table>{!(tab === 0 ? sales : purchases).length && <p className="p-10 text-center text-slate-500">Chưa có chứng từ trong kỳ.</p>}</div>}
+            <td className="border border-slate-200 px-4 py-3 font-mono">{fmt(total(r))}</td>
+            <td className="border border-slate-200 px-4 py-3 font-mono text-emerald-700">{fmt(paid(r))}</td>
+            <td className="border border-slate-200 px-4 py-3 font-mono font-bold">{fmt(remaining)}</td>
+            <td className="border border-slate-200 px-4 py-3 text-center whitespace-nowrap">{[...new Set(state.payments.filter(p => p.recordId === r.id && p.direction === (tab === 0 ? 'IN' : 'OUT') && p.amount > 0).map(p => p.date))].sort().map(d => <div key={d}>{formatDateVN(d)}</div>)}{!state.payments.some(p => p.recordId === r.id && p.direction === (tab === 0 ? 'IN' : 'OUT') && p.amount > 0) && '—'}</td>
+            <td className="border border-slate-200 px-4 py-3 text-xs text-center align-middle">
+              {isPaidFull ? (
+                <span className="inline-flex items-center justify-center gap-1 font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                  <CheckCircle2 size={13} className="text-emerald-600" />
+                  {tab === 0 ? 'Đã thu đủ' : 'Đã thanh toán'}
+                </span>
+              ) : isPartiallyPaid ? (
+                <span className="inline-flex items-center justify-center gap-1 font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                  Thanh toán một phần
+                </span>
+              ) : (
+                <span className="inline-flex items-center justify-center gap-1 font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+                  Chưa thanh toán
+                </span>
+              )}
+            </td>
+            <td className="border border-slate-200 px-4 py-3 text-center align-middle whitespace-nowrap">
+              {isPaidFull ? (
+                <span className="text-sm font-medium text-slate-400 select-none">
+                  {tab === 0 ? 'Thu tiền' : 'Thanh toán'}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer disabled:opacity-50"
+                  disabled={busy}
+                  onClick={() => openPay(r, tab === 0 ? 'IN' : 'OUT')}
+                >
+                  {tab === 0 ? (isPartiallyPaid ? 'Thu tiếp' : 'Thu tiền') : (isPartiallyPaid ? 'Thanh toán tiếp' : 'Thanh toán')}
+                </button>
+              )}
+            </td>
+          </tr>
+        );
+      })}
+    </tbody></table>{!(tab === 0 ? sales : purchases).length && <p className="p-10 text-center text-slate-500">Chưa có chứng từ trong kỳ.</p>}</div>}
     {tab === 2 && (
       <div className="space-y-4 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
@@ -1129,7 +1248,7 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
             <thead className="bg-slate-100/90 text-xs text-slate-700">
               <tr>
                 {['Ngày', 'Nhóm chi phí', 'Nội dung', 'Lô hàng liên quan', 'Số tiền (đ)', 'Thao tác'].map(h => (
-                  <th className="border border-slate-300 px-4 py-3 font-semibold text-center" key={h}>
+                  <th className={`border border-slate-300 px-4 py-3 font-semibold text-center ${h === 'Lô hàng liên quan' ? 'w-[135px] whitespace-nowrap' : ''}`} key={h}>
                     {h}
                   </th>
                 ))}
@@ -1147,7 +1266,7 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
                   <td className="border border-slate-200 px-4 py-3 font-medium text-slate-900">
                     {exp.content}
                   </td>
-                  <td className="border border-slate-200 px-4 py-3 text-center whitespace-nowrap font-mono">
+                  <td className="border border-slate-200 px-3 py-3 text-center whitespace-nowrap font-mono w-[135px]">
                     {exp.lotCode ? (
                       <span className="font-semibold text-emerald-700">{exp.lotCode}</span>
                     ) : (
@@ -1242,7 +1361,7 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
             <thead className="bg-slate-100/90 text-xs text-slate-700">
               <tr>
                 {['Ngày', 'Loại giao dịch', 'Nhóm/ Nghiệp vụ', 'Nội dung', 'Lô hàng liên quan', 'Phương thức', 'Số tiền (đ)'].map(h => (
-                  <th className="border border-slate-300 px-4 py-3 font-semibold text-center" key={h}>
+                  <th className={`border border-slate-300 px-4 py-3 font-semibold text-center ${h === 'Lô hàng liên quan' ? 'w-[135px] whitespace-nowrap' : ''}`} key={h}>
                     {h}
                   </th>
                 ))}
@@ -1261,7 +1380,7 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
                     </td>
                     <td className="border border-slate-200 px-4 py-3 font-medium text-slate-900">{item.content}</td>
                     <td className="border border-slate-200 px-4 py-3 text-slate-700">{item.subContent || ''}</td>
-                    <td className="border border-slate-200 px-4 py-3 text-center whitespace-nowrap font-mono">
+                    <td className="border border-slate-200 px-3 py-3 text-center whitespace-nowrap font-mono w-[135px]">
                       <span className="font-semibold text-slate-800">{item.refCode}</span>
                     </td>
                     <td className="border border-slate-200 px-4 py-3 text-center whitespace-nowrap text-slate-700">
