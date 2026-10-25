@@ -10,6 +10,7 @@ import { actualOtherRegisterRows, filterOtherRegisterRows, OTHER_REGISTERS, Othe
 import { otherMaterialSources, OtherRegisterRow } from '@/lib/other-register-data';
 import { OtherRegisterForm } from './other-register-form';
 import type { OtherRegisterInput } from '@/lib/other-register-write';
+import { otherRegisterColumnLayout } from '@/lib/other-register-layout';
 
 const control = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100';
 const button = 'inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50';
@@ -48,6 +49,7 @@ export function OtherRegisterView({ book, initialState, initialRevision = 0 }: {
  const allRows = actualRows;
  const rows = useMemo(() => filterOtherRegisterRows(allRows, book, filter).filter(r => !materialCode || r.lotCode.split(' / ').includes(materialCode)), [allRows, book, filter, materialCode]);
  const months = useMemo(() => [...new Set(allRows.map(r => otherRegisterDate(r, book).slice(0, 7)).filter(Boolean))].sort().reverse(), [allRows, book]);
+ const columnLayout = useMemo(() => otherRegisterColumnLayout(book, allRows), [book, allRows]);
 
  async function exportFile() {
   if (!rows.length) return;
@@ -78,27 +80,22 @@ export function OtherRegisterView({ book, initialState, initialRevision = 0 }: {
    <button type="button" className={button} disabled={loading || exporting || !rows.length} onClick={() => void exportFile()}>{exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}Xuất file</button>
    <button type="button" className={primary} disabled={loading || saving || !state || !sources.length} onClick={() => { setError(''); setNotice(''); setEditing('new'); }}><Plus size={16} />Thêm bản ghi</button>
   </div>
-  <section aria-label="Nguồn dữ liệu sổ" className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4">
-   <p className="text-sm font-bold">Bản ghi được lưu trong cơ sở dữ liệu</p>
-   <p className="text-sm text-slate-600">Mã lô NL và lượng nguyên liệu được kế thừa từ Sổ Nhập hàng. Lô chưa sơ chế được hiển thị ở trạng thái chờ ghi nhận. <Link href="/dashboard/processing/grading" className="font-semibold text-emerald-700 underline">Xem Sổ Nhập hàng</Link></p>
-   {!loading && !sources.length && <p className="text-sm text-amber-800">Chưa có mã CB hợp lệ. Cần xác nhận phân loại và gán mã CB tại Sổ Nhập hàng trước.</p>}
-  </section>
   {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error} <button className="ml-2 underline" onClick={() => void load()}>Tải lại</button></div>}
   {notice && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{notice}</p>}
-  <section aria-label="Bộ lọc sổ" className="grid gap-3 rounded-2xl border bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
+  <section aria-label="Bộ lọc sổ" className="grid gap-3 rounded-2xl border bg-white p-4 sm:grid-cols-2 xl:grid-cols-5">
    <label className="text-xs font-semibold text-slate-600">Tháng<select className={`${control} mt-1`} value={filter.month} onChange={e => setFilter(f => ({ ...f, month: e.target.value }))}><option value="">Tất cả các tháng</option>{months.map(month => <option key={month} value={month}>{month.slice(5)}/{month.slice(0, 4)}</option>)}</select></label>
    <label className="text-xs font-semibold text-slate-600">Từ ngày<input type="date" className={`${control} mt-1`} value={filter.from} onChange={e => setFilter(f => ({ ...f, month: '', from: e.target.value }))} /></label>
    <label className="text-xs font-semibold text-slate-600">Đến ngày<input type="date" className={`${control} mt-1`} value={filter.to} onChange={e => setFilter(f => ({ ...f, month: '', to: e.target.value }))} /></label>
    <label className="text-xs font-semibold text-slate-600">Tìm kiếm<div className="relative mt-1"><Search size={16} className="absolute left-3 top-3 text-slate-400" /><input className={`${control} pl-9`} placeholder="Mã lô hoặc thông tin liên quan…" value={filter.query} onChange={e => setFilter(f => ({ ...f, query: e.target.value }))} /></div></label>
+   <label className="text-xs font-semibold text-slate-600">Mã lô NL từ Sổ Nhập hàng<select className={`${control} mt-1`} value={materialCode} onChange={e => setMaterialCode(e.target.value)}><option value="">Tất cả mã lô CB</option>{sources.map(source => <option key={source.code} value={source.code}>{source.code}</option>)}</select></label>
   </section>
-  <label className="block max-w-lg text-xs font-semibold text-slate-600">Mã lô NL từ Sổ Nhập hàng<select className={`${control} mt-1`} value={materialCode} onChange={e => setMaterialCode(e.target.value)}><option value="">Tất cả mã lô CB</option>{sources.map(source => <option key={source.code} value={source.code}>{source.code}</option>)}</select></label>
   <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white" aria-busy={loading}>
    <div className="flex items-center justify-between border-b px-5 py-3 text-sm text-slate-500"><span role="status">{loading ? 'Đang tải dữ liệu…' : `${rows.length} bản ghi`}</span><button type="button" className={button} aria-label="Tải lại dữ liệu" disabled={loading} onClick={() => void load()}><RefreshCw size={16} /></button></div>
-   <ProcessingGmpRegisterTable stage="preprocessing" rows={loading ? [] : rows} onEdit={record => { setError(''); setNotice(''); setEditing(record); }} presentation={{ ...config, emptyMessage: loading ? 'Đang tải dữ liệu…' : error ? 'Chưa tải được dữ liệu.' : 'Chưa có bản ghi phù hợp. Điều chỉnh bộ lọc hoặc thêm bản ghi.', renderValue: (field, record, index) => {
+   <ProcessingGmpRegisterTable stage="preprocessing" rows={loading ? [] : rows} onEdit={record => { setError(''); setNotice(''); setEditing(record); }} presentation={{ ...config, ...columnLayout, emptyMessage: loading ? 'Đang tải dữ liệu…' : error ? 'Chưa tải được dữ liệu.' : 'Chưa có bản ghi phù hợp. Điều chỉnh bộ lọc hoặc thêm bản ghi.', renderValue: (field, record, index) => {
     const value = otherRegisterValue(field as OtherRegisterColumn, record, index);
     const row = record as OtherRegisterRow;
-    if (field.key === 'lotCode') return <div className="space-y-1"><Link href="/dashboard/processing/grading" className="break-all font-mono font-bold text-emerald-700 hover:underline" title="Đối chiếu mã CB tại Sổ Nhập hàng">{value}</Link>{record.values.dataOrigin === 'IMPORTED_PREVIEW' && <span className="block text-xs text-slate-500" title="Được lưu theo yêu cầu từ bộ dữ liệu minh họa trước đây; nguồn được giữ trong lịch sử">Bản ghi khởi tạo</span>}{row.sourceOnly && <span className="block text-xs text-slate-500">Đã tiếp nhận · Chưa ghi nhận sơ chế</span>}</div>;
-    if (field.key === 'product') return <div className="space-y-1"><span>{value}</span><span className="block break-all font-mono text-xs text-emerald-700">Mã lô NL: {record.lotCode}</span>{row.sample && <span className="block text-xs font-semibold text-amber-800">Dữ liệu mẫu</span>}</div>;
+    if (field.key === 'lotCode') return <div className="space-y-1"><Link href="/dashboard/processing/grading" className="font-mono font-bold text-emerald-700 hover:underline" title="Đối chiếu mã CB tại Sổ Nhập hàng">{value}</Link>{row.sourceOnly && <span className="block text-xs text-slate-500">Đã tiếp nhận · Chưa ghi nhận sơ chế</span>}</div>;
+    if (field.key === 'product') return <div className="space-y-1"><span>{value}</span><span className="block font-mono text-xs text-emerald-700">Mã lô NL: {record.lotCode}</span></div>;
     if (value === 'Đ' || value === 'K') return <span title={value === 'Đ' ? 'Đạt' : 'Không đạt'} className={`inline-flex h-7 min-w-7 items-center justify-center rounded-md border px-2 font-bold ${value === 'Đ' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>{value}</span>;
     return <span className={field.key === 'lotCode' ? 'font-mono font-bold text-emerald-700' : value === '—' ? 'text-slate-400' : ''}>{typeof value === 'number' ? value.toLocaleString('vi-VN') : value}</span>;
    } }} />

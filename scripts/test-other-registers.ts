@@ -104,8 +104,8 @@ async function main() {
   assert(bytes.byteLength > 0);
   if (key === 'quick-freezing') {
    const sheet = workbook.worksheets[0];
-   assert.equal(sheet.getCell(5, 6).value, -18.5, 'Excel keeps negative temperatures numeric');
-   assert.equal(sheet.getCell(5, 4).value, '25/10/2026 01:00');
+   assert.equal(sheet.getCell(5, 5).value, -18.5, 'Excel keeps negative temperatures numeric');
+   assert.equal(sheet.getCell(5, 3).value, '25/10/2026 01:00');
   }
  }
  assert.equal(JSON.stringify(state), before, 'Displaying/filtering/exporting cannot modify source state');

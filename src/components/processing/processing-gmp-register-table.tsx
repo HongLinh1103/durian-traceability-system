@@ -9,7 +9,7 @@ type RegisterStage = 'receiving' | 'preprocessing' | 'packaging' | 'inspection';
 const layout: Record<RegisterStage, { title?: string; groups: string[]; width: number }> = {
     receiving: { groups: ['Số lượng tiếp nhận (kg)', 'Khối lượng tiếp nhận (kg)'], width: 1520 },
     preprocessing: {
-        groups: ['Đánh giá công đoạn vệ sinh tạp chất (Đ/K)', 'Đánh giá công đoạn phơi khô sản phẩm (Đ/K)'],
+        groups: ['Đánh giá công đoạn vệ sinh tạp chất (Đ/K)', 'Đánh giá công đoạn hong khô sản phẩm (Đ/K)'],
         width: 1450,
     },
     inspection: { groups: [], width: 1440 },
@@ -83,9 +83,6 @@ function getColumnWidth(field: Field, stage: RegisterStage): number {
         if (field.key === 'otherProcessing') return 110;
         if (field.key === 'rejected') return 120;
         if (field.key === 'receiver') return 150;
-        if (field.key === 'dgLotCodes') return 160;
-        if (field.key === 'cbLotCodes') return 160;
-        if (field.key === 'notes') return 160;
         if (field.key === 'lotCode') return 135;
     }
     if (stage === 'inspection') {
@@ -121,16 +118,6 @@ function RecordValue({ field, record, regions, onDetail }: {
     const value = field.key === 'lotCode' ? record.lotCode : record.values[field.key];
     if (field.key === 'origin') {
         return renderOriginContent(record, regions);
-    }
-    if (field.key === 'dgLotCodes') {
-        const str = String(record.values.dgLotCodes || '');
-        const normalized = str ? str.replace(/\bLH-/g, 'DG-') : '';
-        return <span className="whitespace-nowrap font-mono font-semibold">{normalized || '—'}</span>;
-    }
-    if (field.key === 'cbLotCodes') {
-        const str = String(record.values.cbLotCodes || '');
-        const normalized = str ? str.replace(/\bLH-/g, 'CB-') : '';
-        return <span className="whitespace-nowrap font-mono font-semibold">{normalized || '—'}</span>;
     }
     if (field.key === 'lotCode' || field.key === 'productLot') {
         const variety = String(record.values.variety || record.values.productLot || '').split(' · ')[0];
@@ -171,13 +158,7 @@ export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], region
     regions?: RegionSource[];
     onDetail?: (record: GmpRecord) => void;
     onEdit?: (record: GmpRecord) => void;
-    presentation?: {
-        title: string;
-        code: string;
-        fields: Field[];
-        emptyMessage: string;
-        renderValue: (field: Field, record: GmpRecord, index: number) => ReactNode;
-    };
+    presentation?: { title: string; code: string; fields: Field[]; widths?: number[]; actionWidth?: number; emptyMessage: string; renderValue: (field: Field, record: GmpRecord, index: number) => ReactNode };
 }) {
     const config = presentation || REGISTERS[stage];
     const { width } = layout[stage];
@@ -185,19 +166,11 @@ export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], region
     const actions = Boolean(onDetail || onEdit);
     const groups = Array.from(new Set(config.fields.filter(f => !f.internal && f.group).map(f => f.group!)));
     const fields: Field[] = config.fields.filter(field => !field.internal);
-    const columnWidth = (field: Field) => {
-        if (!presentation) return getColumnWidth(field, stage);
-        if (/^(inputWeight|outputWeight)(1|2|3|Other)$/.test(field.key)) return GMP_GRADE_COLUMN_WIDTH;
-        if (field.type === 'datetime-local') return 210;
-        if (field.key === 'serial') return 65;
-        if (field.key === 'correction' || field.key === 'customer') return 230;
-        if (field.key === 'lotCode') return 180;
-        if (field.type === 'number') return 115;
-        if (field.type === 'check') return field.label.length > 45 ? 230 : field.group ? 165 : 140;
-        return 180;
-    };
-    const activeHeaderClass = `${headerClass}${presentation ? ' !whitespace-normal break-words [overflow-wrap:anywhere]' : ''}`;
     if (stage === 'receiving') fields.splice(1, 0, { key: 'purchaseCode', label: 'Mã hồ sơ thu mua' });
+    const columnWidth = (field: Field, index: number) => presentation?.widths?.[index] ?? getColumnWidth(field, stage);
+    const actionWidth = presentation?.actionWidth ?? (stage === 'receiving' ? 110 : 120);
+    const activeHeaderClass = `${headerClass}${presentation ? ' !whitespace-normal break-words !px-1.5 [overflow-wrap:anywhere]' : ''}`;
+    const tableWidth = fields.reduce((sum, field, index) => sum + columnWidth(field, index), actions ? actionWidth : 0);
     // The first two columns span the master heading in BM-GMP-02 and 03.
     const headingFields = title ? fields.slice(2) : fields;
     const headings: { label: string; fields: Field[]; grouped: boolean }[] = [];
@@ -209,14 +182,14 @@ export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], region
     }
     return <>
         <p className="px-5 py-3 text-xs text-slate-500">{config.code} · Kéo ngang để xem đầy đủ các cột trong sổ.{stage !== 'receiving' && ' Đ = Đạt; K = Không đạt.'}</p>
-        <div role="region" aria-label={`Bảng ${config.code}`} tabIndex={0} className="w-full min-w-0 max-w-full overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500">
-            <table className="w-full table-fixed border-collapse text-sm" style={presentation ? { minWidth: '100%', width: fields.reduce((sum, field) => sum + columnWidth(field), actions ? 120 : 0) } : { width: stage === 'receiving' ? fields.reduce((sum, field) => sum + getColumnWidth(field, stage), 110) : undefined, minWidth: stage === 'receiving' ? undefined : Math.max(width, fields.length * 100) }}>
+        <div role="region" aria-label={`Bảng ${config.code}`} tabIndex={0} className="min-w-0 max-w-full overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500">
+            <table className={`${presentation ? '' : 'w-full '}table-fixed border-collapse text-sm`} style={presentation ? { width: tableWidth } : { width: stage === 'receiving' ? fields.reduce((sum, field) => sum + getColumnWidth(field, stage), 110) : undefined, minWidth: stage === 'receiving' ? undefined : Math.max(width, fields.length * 100) }}>
                 <caption className="sr-only">{config.title} — {config.code}</caption>
                 <colgroup>
-                    {fields.map(field => (
-                        <col key={field.key} style={{ width: columnWidth(field) }} />
+                    {fields.map((field, index) => (
+                        <col key={field.key} style={{ width: columnWidth(field, index) }} />
                     ))}
-                    {actions && <col style={{ width: stage === 'receiving' ? 110 : 120 }} />}
+                    {actions && <col style={{ width: actionWidth }} />}
                 </colgroup>
                 <thead className="bg-slate-50">
                     {title && <tr>
@@ -226,7 +199,7 @@ export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], region
                     </tr>}
                     <tr>
                         {headings.map(heading => <th key={heading.fields[0].key} scope={heading.grouped ? 'colgroup' : 'col'} colSpan={heading.fields.length} rowSpan={heading.grouped || !groups.length ? 1 : 2} className={`${activeHeaderClass} ${['lotCode', 'rejected'].includes(heading.fields[0].key) ? '!whitespace-normal' : ''} ${heading.fields[0].key === 'rejected' ? '!px-1' : ''}`}>{heading.label}</th>)}
-                        {!title && actions && <th scope="col" rowSpan={groups.length ? 2 : 1} className={headerClass}>Thao tác</th>}
+                        {!title && actions && <th scope="col" rowSpan={groups.length ? 2 : 1} className={activeHeaderClass}>Thao tác</th>}
                     </tr>
                     {groups.length > 0 && <tr>{headings.filter(heading => heading.grouped).flatMap(heading => heading.fields).map(field => <th key={field.key} scope="col" className={`${activeHeaderClass} font-semibold ${(field.group === 'Khối lượng tiếp nhận (kg)' || field.key.startsWith('grade')) ? '!px-1' : ''}`}>{field.label}</th>)}</tr>}
                 </thead>
@@ -240,11 +213,10 @@ export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], region
                             return (
                                 <td
                                     key={field.key}
-                                    className={`border border-slate-200 ${isCompact ? 'px-1.5 py-2.5' : 'px-3 py-2.5'} align-middle leading-snug ${
-                                        isOrigin
-                                            ? 'text-left min-w-[240px] max-w-sm whitespace-normal'
-                                            : `${presentation ? 'whitespace-normal break-words' : 'whitespace-nowrap'} ${isRight ? 'text-right' : isCenter ? 'text-center' : 'text-left'}`
-                                    }`}
+                                    className={`border border-slate-200 ${presentation || isCompact ? 'px-1.5 py-2.5' : 'px-3 py-2.5'} align-middle leading-snug ${isOrigin
+                                        ? 'text-left min-w-[240px] max-w-sm whitespace-normal'
+                                        : `${presentation ? 'whitespace-normal break-words [overflow-wrap:anywhere]' : 'whitespace-nowrap'} ${isRight ? 'text-right' : isCenter ? 'text-center' : 'text-left'}`
+                                        }`}
                                 >
                                     {presentation ? presentation.renderValue(field, record, index) : field.key === 'purchaseCode' ? (() => {
                                         const purchase = purchases.find(item => item.id === record.sourceId);
