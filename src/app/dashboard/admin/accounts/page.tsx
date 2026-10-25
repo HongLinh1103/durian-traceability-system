@@ -103,6 +103,7 @@ type RoleOption = {
 };
 
 const roleLabels: Record<string, { label: string; className: string }> = {
+    EXPORTER: {label:"Đơn vị xuất khẩu",className:"bg-cyan-50 text-cyan-700 border-cyan-200"},
     ADMIN: { label: "Quản trị viên", className: "bg-rose-50 text-rose-700 border-rose-200" },
     FARMER: { label: "Nông dân", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
     AREA_MANAGER: { label: "Trưởng ban vùng", className: "bg-blue-50 text-blue-700 border-blue-200" },
@@ -112,6 +113,7 @@ const roleLabels: Record<string, { label: string; className: string }> = {
 };
 
 const userTypeLabels: Record<string, string> = {
+    EXPORTER: "Đơn vị xuất khẩu",
     FARMER: "Nông dân",
     AREA_MANAGER: "Trưởng ban QL vùng",
     STORE_OWNER: "Cửa hàng vật tư",

@@ -1,6 +1,7 @@
 export type AccountPermission = { key: string; label: string; path: string };
 
 export const ROLE_LABELS: Record<string, string> = {
+    EXPORTER: "Đơn vị xuất khẩu",
     AREA_MANAGER: "Trưởng ban", FARMER: "Nông dân", COLLECTOR: "Vựa thu mua",
     PROCESSING_FACILITY: "Cơ sở chế biến", STORE_OWNER: "Cửa hàng vật tư",
 };
@@ -8,6 +9,7 @@ export const ROLE_LABELS: Record<string, string> = {
 const shared: AccountPermission[] = [{ key: "ACCOUNT_PROFILE", label: "Thông tin tài khoản", path: "/account" }];
 
 export const ACCOUNT_PERMISSIONS_BY_ROLE: Record<string, AccountPermission[]> = {
+    EXPORTER: [{key:"EXPORTER_DASHBOARD",label:"Quản lý xuất khẩu",path:"/dashboard/exporter"}, ...shared],
     FARMER: [
         { key: "FARMER_DASHBOARD", label: "Tổng quan nông hộ", path: "/dashboard/farmer" },
         { key: "FARMER_JOURNAL", label: "Nhật ký canh tác", path: "/dashboard/farmer/journal/cultivation" },

@@ -44,6 +44,7 @@ const roleLabels: Record<string, string> = {
     AREA_MANAGER: "Trưởng ban quản lý vùng trồng",
     STORE_OWNER: "Chủ cửa hàng vật tư / Trại giống",
     COLLECTOR: "Vựa / Đơn vị thu mua",
+    EXPORTER: "Đơn vị xuất khẩu",
     PROCESSING_FACILITY: "Cơ sở chế biến",
 };
 
@@ -53,6 +54,7 @@ const roleSubtitles: Record<string, string> = {
     AREA_MANAGER: "Hồ sơ ban quản lý vùng trồng",
     STORE_OWNER: "Hồ sơ chủ cửa hàng cung ứng vật tư & cây giống",
     COLLECTOR: "Hồ sơ đơn vị / vựa thu mua nông sản",
+    EXPORTER: "Hồ sơ đơn vị xuất khẩu",
     PROCESSING_FACILITY: "Hồ sơ doanh nghiệp / cơ sở chế biến",
 };
 

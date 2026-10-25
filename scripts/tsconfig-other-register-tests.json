@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "incremental": false,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "target": "ES2022",
+    "outDir": "../scratch/other-register-tests",
+    "rootDir": "..",
+    "jsx": "react-jsx"
+  },
+  "include": ["test-other-registers.ts", "test-other-register-write.ts", "../src/types/**/*.d.ts"],
+  "exclude": ["../node_modules"]
+}

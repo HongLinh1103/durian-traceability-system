@@ -1,4 +1,7 @@
+import { isCertificateLink } from './processing-certificate';
+import { dryingTimestamp } from './drying-time';
 /** The six GMP registers share a lot identity; purchases remain commercial records. */
+import { productionSources } from './production-lots';
 export type Stage = 'purchases' | 'receiving' | 'preprocessing' | 'packaging' | 'inspection' | 'sales' | 'aftersales';
 export type Values = Record<string, string | number>;
 export interface GmpRecord { id: string; sourceId: string; lotCode: string; season: string; values: Values; draft?: boolean }
@@ -59,8 +62,8 @@ export const EXPENSE_CATEGORIES: readonly ExpenseCategory[] = [
 ] as const;
 
 export interface Payment { id: string; recordId: string; direction: 'IN' | 'OUT'; date: string; amount: number; method: string }
-export interface GmpState { records: Record<Stage, GmpRecord[]>; payments: Payment[]; expenses?: Expense[]; demo: boolean }
-export interface Field { key: string; label: string; type?: 'number' | 'date' | 'time' | 'check' | 'finding'; required?: boolean; group?: string; inherited?: boolean; internal?: boolean }
+export interface GmpState { productionLots?: import('./production-lots').ProductionLot[]; records: Record<Stage, GmpRecord[]>; payments: Payment[]; expenses?: Expense[]; demo: boolean }
+export interface Field { key: string; label: string; type?: 'number' | 'date' | 'datetime-local' | 'image' | 'time' | 'check' | 'finding'; required?: boolean; group?: string; inherited?: boolean; internal?: boolean }
 const f = (key: string, label: string, type: Field['type'] = undefined, extra: Partial<Field> = {}): Field => ({ key, label, type, ...extra });
 const n = (key: string, label: string, extra: Partial<Field> = {}) => f(key, label, 'number', extra);
 const c = (key: string, label: string, group?: string) => f(key, label, 'check', { ...(group ? { group } : {}), required: true });
@@ -76,11 +79,11 @@ export function hasGradeBreakdown(v: Values, prefix: string) { return GMP_GRADES
 export const STAGES: Stage[] = ['purchases', 'receiving', 'preprocessing', 'packaging', 'inspection', 'sales', 'aftersales'];
 export const REGISTERS: Record<Stage, { title: string; code: string; path: string; fields: Field[] }> = {
     purchases: { title: 'SỔ THU MUA', code: 'THU MUA', path: 'purchases', fields: [day, f('seller', 'Người bán', undefined, { required: true }), f('phone', 'Liên hệ'), f('puc', 'Mã số vùng trồng'), n('weight', 'Khối lượng mua (kg)', { required: true }), n('price', 'Giá mua (đ/kg)'), n('total', 'Thành tiền (đ)', { inherited: true }), f('origin', 'Tên vùng trồng và địa chỉ'), f('variety', 'Chủng loại'), f('notes', 'Ghi chú')] },
-    receiving: { title: 'SỔ NHẬP HÀNG', code: 'NHẬP HÀNG', path: 'grading', fields: [f('date', 'Ngày tiếp nhận', 'date', { inherited: true }), f('purchaseLotCode', 'Mã lô thu mua', undefined, { inherited: true }), f('seller', 'Người bán', undefined, { inherited: true }), f('puc', 'Mã số vùng trồng', undefined, { inherited: true }), f('origin', 'Tên vùng trồng và địa chỉ', undefined, { inherited: true }), f('variety', 'Chủng loại', undefined, { inherited: true }), n('initialWeight', 'Khối lượng ban đầu (kg)', { inherited: true }), n('acceptedWeight', 'Khối lượng tiếp nhận (kg)', { inherited: true }), ...gradeFields('grade', 'Đóng gói trái tươi (kg)'), n('otherProcessing', 'Chế biến khác (kg)'), n('rejected', 'Khối lượng từ chối (kg)', { inherited: true }), f('receiver', 'Người tiếp nhận'), f('lotCode', 'Chuyển sang sản xuất (Mã lô hàng)', undefined, { inherited: true }), f('receivingStatus', 'Trạng thái', undefined, { inherited: true })] },
-    preprocessing: { title: 'SỔ TIẾP NHẬN & SƠ CHẾ', code: 'SẢN XUẤT', path: 'preprocessing', fields: [day, lot, ...gradeFields('inputWeight', 'Khối lượng tiếp nhận (kg)', true), aggregate('inputWeight'), c('supplierOk', 'Thông tin về nhà cung cấp nguyên liệu (Đ/K)', 'Kiểm tra đầu vào'), c('transportOk', 'Phương tiện, điều kiện vận chuyển nguyên liệu đảm bảo sạch (Đ/K)', 'Kiểm tra đầu vào'), c('materialOk', 'Chủng loại, cảm quan, chất lượng nguyên liệu (Đ/K)', 'Kiểm tra đầu vào'), c('brushOk', 'Vệ sinh bằng bàn chà (Đ/K)', 'Đánh giá công đoạn vệ sinh tạp chất (Đ/K)'), c('airOk', 'Thổi sạch bằng xịt cao áp (Đ/K)', 'Đánh giá công đoạn vệ sinh tạp chất (Đ/K)'), f('dryStart', 'Thời gian bắt đầu', 'time', { required: true, group: 'Đánh giá công đoạn hong khô sản phẩm (Đ/K)' }), f('dryEnd', 'Thời gian kết thúc', 'time', { required: true, group: 'Đánh giá công đoạn hong khô sản phẩm (Đ/K)' }), c('dryOk', 'Tình trạng sản phẩm (Đ/K)', 'Đánh giá công đoạn hong khô sản phẩm (Đ/K)'), ...GMP_GRADES.map(g => c('qualityOk' + g.key, g.label, 'CL sau sơ chế (Đ/K)')), f('qualityOk', 'qualityOk', undefined, { internal: true, inherited: true }), ...gradeFields('outputWeight', 'KL sau sơ chế (kg)'), aggregate('outputWeight'), correction, supervisor] },
+    receiving: { title: 'SỔ NHẬP HÀNG', code: 'NHẬP HÀNG', path: 'grading', fields: [f('date', 'Ngày tiếp nhận', 'date', { inherited: true }), f('purchaseLotCode', 'Mã lô thu mua', undefined, { inherited: true }), f('seller', 'Người bán', undefined, { inherited: true }), f('puc', 'Mã số vùng trồng', undefined, { inherited: true }), f('origin', 'Tên vùng trồng và địa chỉ', undefined, { inherited: true }), f('variety', 'Chủng loại', undefined, { inherited: true }), n('initialWeight', 'Khối lượng ban đầu (kg)', { inherited: true }), n('acceptedWeight', 'Khối lượng tiếp nhận (kg)', { inherited: true }), ...gradeFields('grade', 'Đóng gói trái tươi (kg)'), n('otherProcessing', 'Chế biến khác (kg)'), n('rejected', 'Khối lượng từ chối (kg)', { inherited: true }), f('receiver', 'Người tiếp nhận'), f('dgLotCodes', 'Đóng gói trái tươi (DG)', undefined, {inherited:true,group:'Chuyển sang sản xuất (Mã lô hàng)'}), f('cbLotCodes', 'Chế biến khác (CB)', undefined, {inherited:true,group:'Chuyển sang sản xuất (Mã lô hàng)'}), f('notes', 'Ghi chú'), f('receivingStatus', 'Trạng thái', undefined, { inherited: true })] },
+    preprocessing: { title: 'SỔ TIẾP NHẬN & SƠ CHẾ', code: 'SẢN XUẤT', path: 'preprocessing', fields: [day, lot, ...gradeFields('inputWeight', 'Khối lượng tiếp nhận (kg)', true), aggregate('inputWeight'), c('supplierOk', 'Thông tin về nhà cung cấp nguyên liệu (Đ/K)', 'Kiểm tra đầu vào'), c('transportOk', 'Phương tiện, điều kiện vận chuyển nguyên liệu đảm bảo sạch (Đ/K)', 'Kiểm tra đầu vào'), c('materialOk', 'Chủng loại, cảm quan, chất lượng nguyên liệu (Đ/K)', 'Kiểm tra đầu vào'), c('brushOk', 'Vệ sinh bằng bàn chà (Đ/K)', 'Đánh giá công đoạn vệ sinh tạp chất (Đ/K)'), c('airOk', 'Thổi sạch bằng xịt cao áp (Đ/K)', 'Đánh giá công đoạn vệ sinh tạp chất (Đ/K)'), f('dryStart', 'Ngày giờ bắt đầu', 'datetime-local', { required: true, group: 'Đánh giá công đoạn hong khô sản phẩm (Đ/K)' }), f('dryEnd', 'Ngày giờ kết thúc', 'datetime-local', { required: false, group: 'Đánh giá công đoạn hong khô sản phẩm (Đ/K)' }), c('dryOk', 'Tình trạng sản phẩm (Đ/K)', 'Đánh giá công đoạn hong khô sản phẩm (Đ/K)'), ...GMP_GRADES.map(g => c('qualityOk' + g.key, g.label, 'CL sau sơ chế (Đ/K)')), f('qualityOk', 'qualityOk', undefined, { internal: true, inherited: true }), ...gradeFields('outputWeight', 'KL sau sơ chế (kg)'), aggregate('outputWeight'), correction, supervisor] },
     packaging: { title: 'SỔ ĐÓNG GÓI & NHẬP KHO', code: 'SẢN XUẤT', path: 'processing', fields: [day, lot, ...gradeFields('inputWeight', 'Khối lượng thực tế tiếp nhận đóng gói (kg)', true), aggregate('inputWeight'), c('toolsOk', 'Dụng cụ đóng gói đảm bảo sạch (Đ/K)', 'Vệ sinh'), c('labelsOk', 'Tình trạng vệ sinh bao bì, tem nhãn trước khi đóng gói (Đ/K)', 'Vệ sinh'), c('weighOk', 'Cân', 'Đánh giá công đoạn đóng gói - đóng thùng (Đ/K)'), c('stickerOk', 'Dán tem, nhãn', 'Đánh giá công đoạn đóng gói - đóng thùng (Đ/K)'), c('packOk', 'Đóng gói', 'Đánh giá công đoạn đóng gói - đóng thùng (Đ/K)'), c('qualityOk', 'Chất lượng, quy cách sản phẩm sau đóng gói (Đ/K)', 'Kết quả'), ...gradeFields('quantity_boxes', 'Số lượng nhập kho (thùng)'), ...gradeFields('weight_kg', 'Khối lượng nhập kho (kg)'), aggregate('quantity_boxes'), aggregate('weight_kg'), correction, supervisor] },
     inspection: { title: 'SỔ KIỂM TRA TRƯỚC XUẤT BÁN', code: 'SẢN XUẤT', path: 'inspection', fields: [f('date', 'Ngày kiểm tra', 'date', { required: true }), lot, ...GMP_GRADES.flatMap(g => [n('inputBoxes' + g.key, g.label + ' (thùng)', { inherited: true, group: 'Số lượng/khối lượng tiếp nhận kiểm tra' }), n('inputWeight' + g.key, g.label + ' (kg)', { inherited: true, group: 'Số lượng/khối lượng tiếp nhận kiểm tra' })]), aggregate('inputBoxes'), aggregate('inputWeight'), ...gradeFields('sample', 'Số lượng kiểm tra 2% (thùng)', true), ...[['mealybug', 'Rệp sáp'], ['fly', 'Ấu trùng ruồi đục quả'], ['soil', 'Đất'], ['leaves', 'Lá cây'], ['insects', 'Côn trùng khác'], ['other', 'Khác']].map(([key, label]) => f(key, label, 'finding', { group: 'Kết quả kiểm tra phát hiện/không đạt', required: true })), ...gradeFields('quantity_boxes', 'Số lượng đưa qua xuất bán (thùng)'), ...gradeFields('weight_kg', 'Khối lượng đưa qua xuất bán (kg)'), aggregate('quantity_boxes'), aggregate('weight_kg'), f('correction', 'Biện pháp khắc phục (nếu có)'), f('inspector', 'Người kiểm tra', undefined, { required: true })] },
-    sales: { title: 'SỔ THEO DÕI XUẤT BÁN', code: 'XUẤT BÁN', path: 'shipments', fields: [day, f('customer', 'Khách hàng', undefined, { required: true }), f('customerInfo', 'Thông tin khách hàng', undefined, { required: true }), f('lotCode', 'Mã số lô hàng', undefined, { inherited: true, group: 'Thông tin lô hàng' }), f('variety', 'Chủng loại', undefined, { inherited: true, group: 'Thông tin lô hàng' }), c('transportOk', 'Điều kiện phương tiện vận chuyển (Đ/K)', 'Thông tin lô hàng'), f('truck', 'Biển số xe', undefined, { group: 'Thông tin lô hàng' }), f('container', 'Số container', undefined, { required: true, group: 'Thông tin lô hàng' }), f('seal', 'Số Seal', undefined, { group: 'Thông tin lô hàng' }), n('quantity_boxes', 'Số lượng (thùng)', { inherited: true, group: 'Thông tin lô hàng' }), n('weight_kg', 'Khối lượng (kg)', { inherited: true, group: 'Thông tin lô hàng' }), n('total', 'Giá trị (đ)', { inherited: true, group: 'Thông tin lô hàng' }), f('exporter', 'Đơn vị xuất khẩu', undefined, { required: true }), f('departurePort', 'Cảng/Cửa khẩu đi'), f('destinationPort', 'Cảng/Cửa khẩu đến'), f('country', 'Nước nhập khẩu', undefined, { required: true }), f('notes', 'Ghi chú'), n('price', 'Giá bán (đ/kg)', { internal: true })] },
+    sales: { title: 'SỔ THEO DÕI XUẤT BÁN', code: 'XUẤT BÁN', path: 'shipments', fields: [f('date', 'Ngày xuất bán/bàn giao', 'date', {required:true,group:'Thông tin giao dịch'}), f('saleReceiptCode', 'Mã phiếu xuất bán', undefined, {inherited:true,group:'Thông tin giao dịch'}), f('customer', 'Khách hàng (cá nhân liên hệ)', undefined, { required: true, group: 'Thông tin giao dịch' }), f('customerInfo', 'Số điện thoại liên hệ', undefined, { required: true, group: 'Thông tin giao dịch' }), f('lotCode', 'Mã số lô hàng', undefined, { inherited: true, group: 'Thông tin lô hàng' }), f('variety', 'Chủng loại', undefined, { inherited: true, group: 'Thông tin lô hàng' }), c('transportOk', 'Điều kiện phương tiện vận chuyển (Đ/K)', 'Thông tin lô hàng'), f('container', 'Số container (nếu đã biết)', undefined, { group: 'Thông tin giao dịch' }), ...gradeFields('quantity_boxes', 'Số lượng theo loại (thùng)', true), ...gradeFields('weight_kg', 'Khối lượng theo loại (kg)', true), n('quantity_boxes', 'Tổng số lượng (thùng)', { inherited: true, group: 'Thông tin lô hàng' }), n('weight_kg', 'Tổng khối lượng (kg)', { inherited: true, group: 'Thông tin lô hàng' }), n('total', 'Giá trị (đ)', { group: 'Thông tin lô hàng' }), f('exporterId', 'Đơn vị xuất khẩu', undefined, { required: true, group: 'Thông tin giao dịch' }), f('country', 'Nước nhập khẩu dự kiến', undefined, { required: true, group: 'Thông tin giao dịch' }), f('testCertificate', 'Giấy kiểm nghiệm', 'image', {group:'Thông tin lô hàng'}), f('notes', 'Ghi chú', undefined, {group:'Thông tin lô hàng'}), n('price', 'Giá bán (đ/kg, nếu có)', {group:'Thông tin giao dịch'})] },
     aftersales: {
         title: 'SỔ THEO DÕI SAU XUẤT BÁN',
         code: 'XUẤT BÁN',
@@ -124,7 +127,9 @@ export function latestRecords(state: GmpState, stage: Stage) {
 export function sources(state: GmpState, stage: Stage) {
     const previous = STAGES[STAGES.indexOf(stage) - 1];
     if (!previous) return [];
-    return latestRecords(state, previous).filter(r => {
+    return (previous === 'receiving' ? productionSources(state, 'DG') : latestRecords(state, previous)).filter(r => {
+        if (r.values.productionLotId && !productionSources(state,'DG').some(origin=>origin.id===r.values.productionLotId)) return false;
+        if (previous === 'preprocessing' && (!dryingTimestamp(r.values.dryStart) || !dryingTimestamp(r.values.dryEnd))) return false;
         if (r.draft || r.values.sourceConflict === '1' || r.values.sourceEligible === '0') return false;
         if (state.records[stage].some(x => x.sourceId === r.id) && stage !== 'inspection') return false;
         if (stage === 'inspection' && state.records.sales.some(x => x.lotCode === r.lotCode)) return false;
@@ -144,15 +149,15 @@ export function addDaysStr(dateStr: string, days: number): string {
 export function inherit(state: GmpState, stage: Stage, source?: GmpRecord): Values {
     if (!source) return {};
     const v = source.values;
-    const origin = state.records.receiving.find(r => r.lotCode === source.lotCode);
-    const base: Values = { ...(source.values.harvestRecordId ? { harvestRecordId: source.values.harvestRecordId, harvestCode: source.values.harvestCode || '' } : {}), lotCode: source.lotCode, variety: origin?.values.variety || '', productLot: `${origin?.values.variety || ''} · ${source.lotCode}` };
+    const origin = productionSources(state, 'DG').find(r => r.lotCode === source.lotCode);
+    const base: Values = { ...(source.values.finishedLotCode?{finishedLotCode:source.values.finishedLotCode}:{}), ...(source.values.productionOrigins ? {productionOrigins:source.values.productionOrigins,productionLotId:source.values.productionLotId||''} : {}), ...(source.values.harvestRecordId ? { harvestRecordId: source.values.harvestRecordId, harvestCode: source.values.harvestCode || '' } : {}), lotCode: source.lotCode, variety: origin?.values.variety || '', productLot: `${origin?.values.variety || ''} · ${source.lotCode}` };
     if (stage === 'receiving') return { seller: v.seller, puc: v.puc || '', lotCode: '' };
     if (stage === 'preprocessing') return { ...base, supplier: v.seller || state.records.purchases.find(r => r.id === source.sourceId)?.values.seller || '', inputWeight: gradeTotal(v, 'grade'), ...Object.fromEntries(GMP_GRADES.map(g => ['inputWeight' + g.key, v['grade' + g.key] ?? 0])) };
     if (stage === 'packaging') return { ...base, inputWeight: v.outputWeight, ...Object.fromEntries(GMP_GRADES.map(g => ['inputWeight' + g.key, v['outputWeight' + g.key] ?? ''])) };
     if (stage === 'inspection') return { ...base, inputBoxes: v.quantity_boxes, inputWeight: v.weight_kg, ...Object.fromEntries(GMP_GRADES.flatMap(g => [['inputBoxes' + g.key, v['quantity_boxes' + g.key] ?? ''], ['inputWeight' + g.key, v['weight_kg' + g.key] ?? ''], ['sample' + g.key, v['quantity_boxes' + g.key] == null ? '' : Math.ceil(Number(v['quantity_boxes' + g.key]) * 0.02)]])) };
     if (stage === 'sales') {
         const w = Number(v.weight_kg || 0);
-        const p = Number(v.price || 85000);
+        const p = Number(v.price || 0);
         return { ...base, ...Object.fromEntries(GMP_GRADES.flatMap(g => [['quantity_boxes' + g.key, v['quantity_boxes' + g.key] ?? ''], ['weight_kg' + g.key, v['weight_kg' + g.key] ?? '']])), quantity_boxes: v.quantity_boxes, weight_kg: v.weight_kg, price: p, total: w * p };
     }
     if (stage === 'aftersales') {
@@ -185,7 +190,7 @@ export function inherit(state: GmpState, stage: Stage, source?: GmpRecord): Valu
     return { ...base, container: v.container, weight_kg: v.weight_kg };
 }
 
-export function formatGmpCode(prefix: 'TM' | 'LH', dateStr?: string | number, existingCodes: string[] = []): string {
+export function formatGmpCode(prefix: 'TM' | 'LH' | 'DG' | 'CB' | string, dateStr?: string | number, existingCodes: string[] = []): string {
     const clean = String(dateStr || '').trim();
     let year = '';
     let month = '';
@@ -232,6 +237,14 @@ export function formatPurchaseLotCode(dateStr?: string | number, existingCodes: 
 
 export function formatProductionLotCode(dateStr?: string | number, existingCodes: string[] = []): string {
     return formatGmpCode('LH', dateStr, existingCodes);
+}
+
+export function formatCbLotCode(dateStr?: string | number, existingCodes: string[] = []): string {
+    return formatGmpCode('CB', dateStr, existingCodes);
+}
+
+export function formatDgLotCode(dateStr?: string | number, existingCodes: string[] = []): string {
+    return formatGmpCode('DG', dateStr, existingCodes);
 }
 
 export function getGmpRecordDate(r: GmpRecord): string {
@@ -1002,12 +1015,32 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
     if (!STAGES.includes(stage)) throw new Error('Công đoạn không hợp lệ.');
     const old = input.id ? state.records[stage].find(r => r.id === input.id) : undefined;
     if (input.id && !old) throw new Error('Không tìm thấy bản ghi.');
+    // A test report is supporting documentation. Updating it does not alter
+    // quantities, accounting, source data, or any downstream record.
+    if (stage === 'sales' && old && Object.entries(input.values).every(([key, value]) => key === 'testCertificate' || String(value) === String(old.values[key] ?? ''))) {
+        const certificate = String(input.values.testCertificate ?? old.values.testCertificate ?? '').trim();
+        if (certificate && !isCertificateLink(certificate)) throw new Error('Liên kết giấy kiểm nghiệm không hợp lệ.');
+        const updated = { ...old, values: { ...old.values, testCertificate: certificate } };
+        return { ...state, records: { ...state.records, sales: state.records.sales.map(r => r.id === old.id ? updated : r) } };
+    }
+    // Explicitly enroll a historical sale into the new exporter handover flow
+    // without reopening its settled quantities, value or source record.
+    const enrollmentKeys = ['exporterId','customer','customerInfo','testCertificate','notes'];
+    if (stage === 'sales' && old && !old.values.exporterId && input.values.exporterId && Object.entries(input.values).every(([key,value]) => enrollmentKeys.includes(key) || String(value) === String(old.values[key] ?? ''))) {
+        const values: Values = { ...old.values, legacyExportContact: JSON.stringify({exporter:old.values.exporter || '',customer:old.values.customer || '',customerInfo:old.values.customerInfo || ''}) };
+        for (const key of enrollmentKeys) if(input.values[key] !== undefined) values[key] = String(input.values[key]).trim();
+        if(values.testCertificate && !isCertificateLink(values.testCertificate)) throw new Error('Liên kết giấy kiểm nghiệm không hợp lệ.');
+        const updated = { ...old, values };
+        return { ...state, records: { ...state.records, sales: state.records.sales.map(r => r.id === old.id ? updated : r) } };
+    }
     const nextStage = STAGES[STAGES.indexOf(stage) + 1];
     if (old && ((nextStage && state.records[nextStage].some(r => r.sourceId === old.id && !r.draft)) || state.payments.some(p => p.recordId === old.id))) throw new Error('Bản ghi đã chuyển công đoạn hoặc phát sinh thanh toán. Không thể sửa dữ liệu nguồn.');
     const sourceId = old?.sourceId || input.sourceId || id;
     const previous = STAGES[STAGES.indexOf(stage) - 1];
-    const source = previous ? state.records[previous].find(r => r.id === sourceId) : undefined;
+    const source = previous ? (previous === 'receiving' ? productionSources(state, 'DG') : state.records[previous]).find(r => r.id === sourceId) : undefined;
+    if (stage === 'packaging' && source && (!dryingTimestamp(source.values.dryStart) || !dryingTimestamp(source.values.dryEnd))) throw new Error('Cần hoàn tất ngày giờ hong khô trước khi chuyển công đoạn.');
     if (source?.draft) throw new Error('Vui lòng hoàn tất dữ liệu công đoạn nguồn trước.');
+    if (source?.values.productionLotId && !productionSources(state,'DG').some(origin=>origin.id===source.values.productionLotId)) throw new Error('Nguồn của lô sản xuất không còn hợp lệ.');
     if (source && ['packaging', 'inspection', 'sales'].includes(stage) && isFailed(previous, source.values)) throw new Error('Lô nguồn chưa đủ điều kiện.');
     if (stage !== 'purchases' && (!source || (!old && !sources(state, stage).some(r => r.id === sourceId)))) throw new Error('Lô nguồn chưa đủ điều kiện hoặc đã chuyển công đoạn.');
     const season = source?.season || input.season || '2025-2026';
@@ -1016,9 +1049,10 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
     for (const field of REGISTERS[stage].fields) {
         const raw = input.values[field.key] ?? '';
         if (typeof raw !== 'string' && typeof raw !== 'number') throw new Error('Giá trị không hợp lệ.');
-        if (field.required && !field.inherited && !(stage === 'preprocessing' && field.key.startsWith('qualityOk') && Number(v['inputWeight' + field.key.slice(9)] || 0) === 0) && String(raw).trim() === '') throw new Error(`Vui lòng nhập ${field.label}.`);
+        if (field.required && !(state.demo && stage === 'sales' && field.key === 'exporterId') && !field.inherited && !(stage === 'preprocessing' && field.key.startsWith('qualityOk') && Number(v['inputWeight' + field.key.slice(9)] || 0) === 0) && String(raw).trim() === '') throw new Error(`Vui lòng nhập ${field.label}.`);
         v[field.key] = field.type === 'number' ? Number(raw) : String(raw).trim();
     }
+    if (stage === 'sales' && v.testCertificate && !isCertificateLink(v.testCertificate)) throw new Error('Liên kết giấy kiểm nghiệm không hợp lệ.');
     if (stage === 'purchases') {
         if (!v.origin && v.address) v.origin = v.address;
         if (!v.address && v.origin) v.address = v.origin;
@@ -1039,7 +1073,7 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
         !/^LH-\d{4}-\d{4}(?:-\d{2})?$/.test(old.lotCode) ||
         (old.values?.date && String(old.values.date) !== String(v.date))
     );
-    const explicitCode = (input.values?.lotCode && typeof input.values.lotCode === 'string' && input.values.lotCode.startsWith('LH-')) ? String(input.values.lotCode) : '';
+    const explicitCode = (input.values?.lotCode && typeof input.values.lotCode === 'string' && input.values.lotCode.startsWith('LH-') && !source?.values.productionLotId) ? String(input.values.lotCode) : '';
     const code = explicitCode
         ? explicitCode
         : (stage === 'purchases' && !shouldRegeneratePurchaseCode && old?.lotCode)
@@ -1058,13 +1092,13 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
     if (stage === 'purchases') v.purchaseCode = code;
     if (stage === 'sales') {
         const w = Number(v.weight_kg || 0);
-        const p = Number(v.price || 85000);
+        const p = Number(v.price || 0);
         v.total = Number(v.total ?? (w * p));
     }
     for (const field of REGISTERS[stage].fields) {
         const value = v[field.key];
         if (stage === 'preprocessing' && field.key.startsWith('qualityOk') && field.key !== 'qualityOk' && Number(v['inputWeight' + field.key.slice(9)] || 0) === 0 && !value) continue;
-        if (field.required && (value === '' || value === undefined)) throw new Error(`Vui lòng nhập ${field.label}.`);
+        if (field.required && !(state.demo && stage === 'sales' && field.key === 'exporterId') && (value === '' || value === undefined)) throw new Error(`Vui lòng nhập ${field.label}.`);
         if (field.type === 'number' && (!Number.isFinite(Number(value)) || Number(value) < 0)) throw new Error(`${field.label} phải là số không âm.`);
         if (field.type === 'number' && (field.key.includes('Boxes') || field.key.startsWith('quantity_') || field.key.startsWith('sample')) && !Number.isInteger(Number(value))) throw new Error(`${field.label} phải là số nguyên.`);
         if (field.type === 'check' && !['Đ', 'K'].includes(String(value))) throw new Error(`Vui lòng đánh giá ${field.label}.`);
@@ -1080,7 +1114,13 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
         if ((Number(v['quantity_boxes' + g.key]) > 0) !== (Number(v['weight_kg' + g.key]) > 0)) throw new Error(g.label + ': số thùng và khối lượng phải cùng bằng 0 hoặc cùng lớn hơn 0.');
     }
     if (stage === 'preprocessing' && (Number(v.outputWeight) > Number(v.inputWeight) || Number(v.outputWeight) <= 0)) throw new Error('Khối lượng sau sơ chế phải lớn hơn 0 và không vượt đầu vào.');
-    if (stage === 'preprocessing' && (!/^\d{2}:\d{2}$/.test(String(v.dryStart)) || !/^\d{2}:\d{2}$/.test(String(v.dryEnd)) || String(v.dryEnd) < String(v.dryStart))) throw new Error('Thời gian hong khô kết thúc phải sau bắt đầu trong cùng ngày.');
+    if (stage === 'preprocessing') {
+        const start = dryingTimestamp(v.dryStart), end = dryingTimestamp(v.dryEnd);
+        if (!start) throw new Error('Vui lòng bổ sung ngày giờ bắt đầu hong khô hợp lệ.');
+        if (v.dryEnd && !end) throw new Error('Ngày giờ kết thúc hong khô không hợp lệ.');
+        if (end && Date.parse(end) <= Date.parse(start)) throw new Error('Ngày giờ kết thúc phải lớn hơn ngày giờ bắt đầu.');
+        v.dryStart = start; v.dryEnd = end;
+    }
     if (['packaging', 'inspection'].includes(stage) && (Number(v.weight_kg) > Number(v.inputWeight) || Number(v.quantity_boxes) > Number(v.inputBoxes ?? Infinity))) throw new Error('Lượng đầu ra không được vượt lượng tiếp nhận.');
     if (stage === 'packaging' && (Number(v.weight_kg) <= 0 || Number(v.quantity_boxes) <= 0)) throw new Error('Số thùng và khối lượng nhập kho phải lớn hơn 0.');
     if (stage === 'inspection') {
@@ -1094,6 +1134,7 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
         if (isFailed(stage, v) && (Number(v.quantity_boxes) !== 0 || Number(v.weight_kg) !== 0)) throw new Error('Lô không đạt phải có lượng đưa qua xuất bán bằng 0. Ghi nhận kiểm tra lại sau khắc phục.');
         if (!isFailed(stage, v) && (Number(v.quantity_boxes) <= 0 || Number(v.weight_kg) <= 0)) throw new Error('Lô đạt phải có lượng xuất bán lớn hơn 0.');
     }
+    if (stage === 'sales') { v.price = Number(input.values.price || 0); v.total = input.values.total !== undefined && input.values.total !== '' ? Number(input.values.total) : Number(v.weight_kg) * Number(v.price); if (!Number.isFinite(v.price) || !Number.isFinite(v.total) || v.price < 0 || v.total < 0) throw new Error('Giá bán và giá trị lô hàng phải là số không âm.'); v.saleReceiptCode = old?.values.saleReceiptCode || `XB-${String(v.date).slice(0,4)}-${id.slice(0,8).toUpperCase()}`; }
     if (isFailed(stage, v) && !String(v.correction || v.treatmentPlan || '').trim()) throw new Error('Vui lòng ghi biện pháp khắc phục/phương án xử lý khi không đạt.');
     if (stage === 'sales' && v.transportOk !== 'Đ') throw new Error('Phương tiện vận chuyển phải đạt trước khi xuất bán.');
     if (stage === 'aftersales') {
@@ -1102,6 +1143,8 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
         if (v.clearanceDate && v.borderDate && String(v.clearanceDate) < String(v.borderDate)) throw new Error('Ngày thông quan không được trước ngày đến cửa khẩu.');
         if (v.date && v.clearanceDate && String(v.date) < String(v.clearanceDate)) throw new Error('Ngày ghi nhận không được trước ngày thông quan.');
     }
+    if (source?.values.productionLotId && stage === 'packaging') v.finishedLotCode = old?.values.finishedLotCode || 'TP-'+String(v.date).slice(0,4)+'-'+id;
+    if (source?.values.productionLotId && stage === 'sales') v.exportLotCode = old?.values.exportLotCode || 'XK-'+String(v.date).slice(0,4)+'-'+id;
     const record: GmpRecord = { id: old?.id || id, sourceId, lotCode: code, season, values: v };
     const nextList = old ? state.records[stage].map(r => r.id === old.id ? record : r) : [record, ...state.records[stage]];
     return { ...state, records: { ...state.records, [stage]: nextList.sort(compareGmpRecordsNewestFirst) } };
@@ -1315,8 +1358,8 @@ export function createDemoState(): GmpState {
                 weight_kg1: 792, weight_kg2: 198, weight_kg3: 54, weight_kgOther: 0,
                 rejected: 40,
                 receiver: ['Nguyễn Thị Lan', 'Trần Văn Hưng', 'Lê Văn Hùng'][i % 3],
-                dryStart: '08:00',
-                dryEnd: '10:00',
+                dryStart: `${date}T08:00:00+07:00`,
+                dryEnd: `${date}T10:00:00+07:00`,
                 outputWeight: i % 2 === 0 ? 1100 : 1098,
                 supervisor: ['Lê Văn Hùng', 'Trần Minh Đức', 'Phạm Quốc Bảo'][i % 3],
                 quantity_boxes: 58,

@@ -127,14 +127,16 @@ const navigationByRole: Record<string, RoleNavigation> = {
             { label: "Tài chính", description: "Báo cáo doanh thu và chi phí thu mua", href: "/dashboard/partner/finance", icon: CircleDollarSign },
         ],
     },
+    EXPORTER: { items: [{label: "Exporter", href: "/dashboard/exporter", icon: Home}, {label: "Nhận hàng", href: "/dashboard/exporter?tab=receiving", icon: Boxes}, {label: "Xuất khẩu", href: "/dashboard/exporter?tab=shipments", icon: Globe2}, {label: "Cá nhân", href: "/account", icon: UserRound}], actions: [] },
     PROCESSING_FACILITY: {
         items: [
             { label: "Tổng quan", href: "/dashboard/processing", icon: Home },
             { label: "Nhập hàng", href: "/dashboard/processing/grading", icon: Boxes, matches: ["/dashboard/processing/grading"] },
-            { label: "Đóng gói", href: "/dashboard/processing/processing", icon: Factory, matches: ["/dashboard/processing/processing"] },
+            { label: "Trái tươi", href: "/dashboard/processing/fresh/preprocessing", icon: Factory, matches: ["/dashboard/processing/fresh"] },
             { label: "Cá nhân", href: "/account", icon: UserRound, matches: ["/account"] },
         ],
         actions: [
+ { label: "Chế biến khác", description: "Tám sổ chế biến và giám sát thành phẩm", href: "/dashboard/processing/other/preprocessing", icon: Factory },
             { label: "Tiếp nhận & Sơ chế", description: "Sổ BM-GMP-02", href: "/dashboard/processing/preprocessing", icon: ClipboardList },
             { label: "Kiểm tra trước xuất bán", description: "Sổ BM-GMP-04", href: "/dashboard/processing/inspection", icon: ClipboardList },
             { label: "Xuất bán", description: "Sổ BM-GMP-05", href: "/dashboard/processing/shipments", icon: Package },

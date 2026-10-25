@@ -3,6 +3,7 @@ import { emptyProcessingState, syncHarvestReceiving, saveHarvestReceiving, recei
 import { sources, saveRecord } from '../src/lib/processing-gmp';
 import { buildRegisterDocx } from '../src/lib/processing-gmp-export';
 import { populateReceivingSamples } from '../src/lib/processing-receiving-samples';
+import { getReceivingRouteCodes } from '../src/components/processing/harvest-receiving';
 
 async function main() {
     const harvest: HarvestReceivingSource = { id: 'h1', code: 'TH-2627-1510', ownerId: 'owner', facilityId: 'facility', status: 'WAITING_CONFIRMATION', date: '2026-10-15', season: '2026-2027', weight: 1000, seller: 'Nông dân A', phone: '0900000000', puc: 'VN-DNOR-001', origin: 'Vùng trồng A - Đồng Nai', variety: 'Ri6' };
@@ -37,6 +38,13 @@ async function main() {
     assert.equal(received.values.date, '2026-10-15');
     assert.equal(received.values.rejected, 40);
     assert.equal(received.draft, false);
+    assert.match(String(received.values.dgLotCodes), /^DG-/);
+    assert.match(String(received.values.cbLotCodes), /^CB-/);
+    assert.deepEqual(getReceivingRouteCodes(received, 'DG'), [String(received.values.dgLotCodes)]);
+    assert.deepEqual(getReceivingRouteCodes(received, 'CB'), [String(received.values.cbLotCodes)]);
+    const legacyRec = { ...received, values: { ...received.values, dgLotCodes: 'LH-2026-1510', cbLotCodes: 'LH-2026-1510' } };
+    assert.deepEqual(getReceivingRouteCodes(legacyRec, 'DG'), ['DG-2026-1510']);
+    assert.deepEqual(getReceivingRouteCodes(legacyRec, 'CB'), ['CB-2026-1510']);
     assert.equal(sources(state, 'preprocessing').length, 1);
     assert.deepEqual(receivingProductionIntakes(state).map(i => [i.route, i.weight]), [['fresh', 1000], ['other', 60]]);
     assert.throws(() => saveHarvestReceiving(state, id, input, true, '2026-10-15'), /đã xác nhận/);

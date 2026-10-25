@@ -44,6 +44,7 @@ export interface SystemRoleDef {
 }
 
 export const ROLE_TARGET_GROUPS = [
+    "Đơn vị xuất khẩu",
     "Cơ sở chế biến",
     "Vùng trồng & Nông hộ",
     "Vựa thu mua",
@@ -55,6 +56,7 @@ export type RoleTargetGroup = typeof ROLE_TARGET_GROUPS[number];
 
 // Danh sách các vai trò chính thức trong hệ thống TriViet
 export const SYSTEM_ROLES: SystemRoleDef[] = [
+    {key:"EXPORTER",name:"Exporter – Đơn vị xuất khẩu",description:"Tiếp nhận lô được giao và quản lý chuyến xuất khẩu của đơn vị",targetGroup:"Đơn vị xuất khẩu",badgeColor:"bg-cyan-100 text-cyan-800 border-cyan-200"},
     {
         key: "ADMIN",
         name: "Administrator",
@@ -176,6 +178,21 @@ export function generateRoleKeyFromName(name: string): string {
 // - Module 2 tầng (isSingleEntity = true): không cần tạo cấp con thừa (Tài khoản, Tài liệu, Tin tức)
 // - Module 3 tầng: có cấp Feature khi module có nhiều đối tượng
 export const PERMISSION_MODULES: ModuleDef[] = [
+    {
+        id: "EXPORT_MANAGEMENT", name: "QUẢN LÝ XUẤT KHẨU", title: "Bàn giao và chuyến xuất khẩu",
+        description: "Tiếp nhận lô được giao và quản lý xuất khẩu trong phạm vi doanh nghiệp", iconName: "Globe2",
+        features: [
+            { id: "exporter_receiving", name: "Tiếp nhận bàn giao", menuPath: "/dashboard/exporter", actions: {
+                view: { key: "EXPORTER_HANDOVER_VIEW", label: "Xem lô được giao", action: "view", routes: [{kind:"api",path:"/api/exporter",method:"GET",source:"src/app/api/exporter/route.ts"}] },
+                approve: { key: "EXPORTER_HANDOVER_ACCEPT", label: "Xác nhận tiếp nhận", action: "approve", routes: [{kind:"api",path:"/api/exporter",method:"POST",operation:"accept",source:"src/app/api/exporter/route.ts"}] },
+            } },
+            { id: "exporter_shipments", name: "Chuyến xuất khẩu", menuPath: "/dashboard/exporter", actions: {
+                view: { key: "EXPORTER_SHIPMENT_VIEW", label: "Xem chuyến", action: "view" },
+                create: { key: "EXPORTER_SHIPMENT_CREATE", label: "Tạo chuyến", action: "create" },
+                edit: { key: "EXPORTER_SHIPMENT_EDIT", label: "Sửa nháp và xác nhận chuyến", action: "edit", routes: [{kind:"api",path:"/api/exporter",method:"POST",operation:"shipment",source:"src/app/api/exporter/route.ts"}] },
+            } },
+        ],
+    },
     // 1. QUẢN LÝ TÀI KHOẢN (2 tầng: Module -> Action)
     {
         id: "ACCOUNT_MANAGEMENT",
@@ -890,8 +907,10 @@ export function normalizeCatalogPermissions(permissions: string[]): string[] {
 
 // Quyền mặc định chuẩn hóa cho từng vai trò người dùng trong hệ thống TriViet
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, { moduleEnabled: Record<string, boolean>; permissions: string[] }> = {
+    EXPORTER: { moduleEnabled: {EXPORT_MANAGEMENT:true,TRACEABILITY_MANAGEMENT:true}, permissions: ["EXPORTER_HANDOVER_VIEW","EXPORTER_HANDOVER_ACCEPT","EXPORTER_SHIPMENT_VIEW","EXPORTER_SHIPMENT_CREATE","EXPORTER_SHIPMENT_EDIT","QR_TRACE_VIEW","TRACE_CHAIN_VIEW"] },
     ADMIN: {
         moduleEnabled: {
+            EXPORT_MANAGEMENT: true,
             ACCOUNT_MANAGEMENT: true,
             JOURNAL_MANAGEMENT: true,
             CULTIVATION_MANAGEMENT: true,

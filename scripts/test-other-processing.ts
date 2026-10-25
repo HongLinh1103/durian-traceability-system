@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import { FIELDS, TECHNICAL, METHODS, OtherBook, OtherState, saveOther, eligibleSources, inventory } from '../src/lib/other-processing';
+import { Values } from '../src/lib/processing-gmp';
+let state: OtherState = { records: { purchases: [], receiving: [{ id: 'raw', sourceId: 'harvest', lotCode: 'RAW-1', season: '2026', draft: false, values: { date: '2026-10-16', classificationComplete: '1', sourceEligible: '1', processingEligible: '1', otherProcessing: 100, harvestRecordId: 'harvest', harvestCode: 'TH-1', puc: 'VN-1', origin: 'Farm' } }], preprocessing: [], packaging: [], inspection: [], sales: [], aftersales: [] }, payments: [], demo: false };
+let sequence = 0;
+function values(book: OtherBook, extra: Values = {}): Values { return { ...Object.fromEntries([...FIELDS[book], ...(book === 'processing' ? TECHNICAL[METHODS[0]] : [])].map(([k, , t]) => [k, t === 'number' ? 0 : t === 'check' ? 'Đ' : t === 'date' ? '2026-10-16' : t === 'time' ? '08:00' : 'Test'])), ...extra }; }
+function save(book: OtherBook, sourceId: string, v: Values, confirmed = true) { state = saveOther(state, book, { sourceId, values: v, confirmed }, 'id-' + (++sequence), 'actor'); return state.otherProcessing!.at(-1)!; }
+assert.equal(eligibleSources(state, 'preprocessing').length, 1);
+assert.throws(() => save('preprocessing', 'invented', values('preprocessing')));
+assert.throws(() => save('preprocessing', 'raw', values('preprocessing', { output: 101 })));
+const pre = save('preprocessing', 'raw', values('preprocessing', { output: 80, removed: 20 }));
+assert.throws(() => save('preprocessing', 'raw', values('preprocessing', { output: 80, removed: 20 })));
+const processValues = values('processing', { method: METHODS[0], product: 'Frozen durian', output: 60, byproduct: 10, loss: 10 });
+const process = save('processing', pre.id, processValues);
+assert.equal(process.values.recovery, 75);
+assert.throws(() => save('processing', pre.id, processValues));
+const pack = save('packaging', process.id, values('packaging', { net: 1, quantity: 60, output: 60, expiry: '2027-10-16' }));
+assert.equal(pack.values.product, 'Frozen durian');
+assert.deepEqual(inventory(state, pack.id), { stock: 60, available: 0 });
+assert.equal(eligibleSources(state, 'sales').length, 0);
+assert.throws(() => save('inspection', pack.id, values('inspection', { quantity: 70, passed: 70 })));
+const inspection = save('inspection', pack.id, values('inspection', { quantity: 60, passed: 60 }));
+assert.deepEqual(inventory(state, pack.id), { stock: 60, available: 60 });
+assert.throws(() => save('sales', inspection.id, values('sales', { quantity: 61, price: 100 })));
+const sale = save('sales', inspection.id, values('sales', { quantity: 20, price: 100 }));
+assert.equal(sale.values.total, 2000);
+assert.equal(sale.values.totalWeight, 20);
+assert.equal(sale.values.harvestCode, 'TH-1');
+assert.deepEqual(inventory(state, pack.id), { stock: 40, available: 40 });
+assert.throws(() => save('sales', inspection.id, values('sales', { quantity: 41, price: 100 })));
+assert.throws(() => saveOther(state, 'sales', { id: sale.id, sourceId: inspection.id, values: sale.values, confirmed: true }, 'unused', 'actor'));
+const freshBefore = JSON.stringify(state.records);
+save('sales', inspection.id, values('sales', { quantity: 40, price: 100 }));
+assert.equal(JSON.stringify(state.records), freshBefore);
+assert.equal(inventory(state, pack.id).stock, 0);
+const failedState = structuredClone(state);
+failedState.records.receiving[0].values.sourceConflict = '1';
+assert.equal(eligibleSources(failedState, 'sales').length, 0);
+// Multiple sources preserve contributions and enforce total consumption.
+const multi = structuredClone(state);
+multi.otherProcessing = multi.otherProcessing!.filter(r => r.book === 'preprocessing');
+multi.otherProcessing.push({ ...pre, id: 'pre-2', lotCode: 'PRE-2' });
+const pooled = saveOther(multi, 'processing', { sourceId: pre.id, inputs: [{ sourceId: pre.id, weight: 30 }, { sourceId: 'pre-2', weight: 50 }], values: processValues, confirmed: true }, 'pooled', 'actor');
+assert.equal(pooled.otherProcessing!.at(-1)!.values.input, 80);
+assert.equal(pooled.otherProcessing!.at(-1)!.inputs!.length, 2);
+assert.throws(() => saveOther(pooled, 'processing', { sourceId: pre.id, inputs: [{ sourceId: pre.id, weight: 51 }], values: processValues, confirmed: true }, 'overlap', 'actor'));
+console.log('PASS: origin, mass balance, duplicate prevention, yield, stock, partial sales, traceability, source conflicts and multi-lot allocation');

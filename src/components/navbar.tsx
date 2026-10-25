@@ -63,6 +63,8 @@ const dashboardLinks: DashboardLink[] = [
     { href: "/dashboard/partner/lots", label: "Lô hàng", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/traceability", label: "Xuất bán", roles: ["COLLECTOR"] },
     { href: "/dashboard/partner/finance", label: "Tài chính", roles: ["COLLECTOR"] },
+    { href: "/dashboard/exporter", label: "Quản lý xuất khẩu", roles: ["EXPORTER"] },
+    { href: "/dashboard/admin/exporters", label: "Đơn vị xuất khẩu", roles: ["ADMIN"] },
     { href: "/dashboard/processing", label: "Tổng quan", roles: ["PROCESSING_FACILITY"] },
     { href: "/china-port", label: "China Port", roles: ["PROCESSING_FACILITY"] },
     { href: "/dashboard/processing/grading", label: "Nhập hàng", roles: ["PROCESSING_FACILITY"] },
@@ -264,6 +266,8 @@ export function Navbar({ initialSession }: { initialSession: Session | null }) {
 
     const getLogoHref = () => {
         switch (userRole) {
+            case "EXPORTER":
+                return "/dashboard/exporter";
             case "ADMIN":
                 return "/dashboard/admin";
             case "AREA_MANAGER":

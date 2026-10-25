@@ -35,6 +35,8 @@
         "seed:partner-finance": "npx tsx scripts/seed-partner-finance-data.ts",
         "test:traceability": "tsx scripts/test-traceability.ts",
         "test:processing-gmp": "tsc scripts/test-processing-gmp.ts --outDir scratch/gmp-test --module commonjs --target ES2022 --esModuleInterop --skipLibCheck && node scratch/gmp-test/scripts/test-processing-gmp.js",
+        "test:other-processing": "tsc scripts/test-other-processing.ts --outDir scratch/other-processing-test --module commonjs --target ES2022 --esModuleInterop --skipLibCheck && node scratch/other-processing-test/scripts/test-other-processing.js",
+        "test:production-lots": "tsc scripts/test-production-lots.ts --outDir scratch/production-lots-test --module commonjs --target ES2022 --esModuleInterop --skipLibCheck && node scratch/production-lots-test/scripts/test-production-lots.js",
         "seed:processing-gmp": "tsc scripts/seed-processing-gmp.ts --outDir scratch/gmp-test --module commonjs --target ES2022 --esModuleInterop --skipLibCheck && node scratch/gmp-test/scripts/seed-processing-gmp.js",
         "test:material-fifo": "tsx scripts/test-material-fifo.ts",
         "materials:reconcile": "tsx scripts/reconcile-material-fifo.ts"

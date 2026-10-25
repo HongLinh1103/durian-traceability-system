@@ -50,10 +50,16 @@ export default async function TracePackingPage({ params }: { params: { token: st
   if (!publication) notFound();
 
   const { sale, seller, region, harvest } = publication.snapshot;
+  const managed=!!publication.snapshot.exporterManaged;
 
   return (
     <main className="min-h-screen bg-slate-50/70 pb-16 pt-6 sm:pt-10">
       <div className="mx-auto max-w-4xl space-y-8 px-4 sm:px-6">
+        {publication.snapshot.productionSources?.length ? <section className="rounded-2xl border bg-white p-5"><h2 className="font-bold">Nguồn nhập của lô sản xuất</h2>{publication.snapshot.productionSources.map((source,index)=><p key={index} className="mt-2 text-sm">{source.harvestCode} · {source.puc} · {source.variety} · {source.weight.toLocaleString('vi-VN')} kg · Ngày nhập {source.receivedAt}</p>)}</section> : null}
+        <section className="space-y-4"><h2 className="text-xl font-bold">Thông tin xuất khẩu đã xác nhận</h2>{publication.snapshot.exportShipments?.length ? publication.snapshot.exportShipments.map((trip,index)=><article key={trip.code+'-'+index} className="rounded-2xl border bg-white p-5"><h3 className="mb-3 font-bold">{trip.code} · {trip.exporter}</h3><KeyValueGrid items={[
+ ['Số lượng phân bổ',trip.boxes.toLocaleString('vi-VN')+' thùng'],['Khối lượng phân bổ',trip.weight.toLocaleString('vi-VN')+' kg'],['Container',trip.container],['Seal',trip.seal],['Đơn vị vận chuyển',trip.carrier],['Biển số xe',trip.truck],['Cảng/cửa khẩu đi',trip.departurePort],['Cảng/cửa khẩu đến',trip.destinationPort],['Ngày dự kiến xuất',formatDate(trip.expectedDate)],['Ngày xuất thực tế',formatDate(trip.actualDate)],['Ngày đến dự kiến',formatDate(trip.arrivalDate)],['Nước nhập khẩu',trip.country],['Đơn vị nhập khẩu',trip.importer]
+ ]}/></article>):<p className="rounded-xl border bg-white p-4 text-sm text-slate-500">Chưa có thông tin chuyến xuất khẩu được xác nhận và công khai.</p>}</section>
+        {publication.snapshot.production?.length ? <section className="rounded-2xl border bg-white p-5"><h2 className="font-bold">Sơ chế, đóng gói và kiểm tra</h2>{publication.snapshot.production.map((r,i)=><p className="mt-3 text-sm" key={i}>{({preprocessing:'Sơ chế',packaging:'Đóng gói',inspection:'Kiểm tra'} as Record<string,string>)[r.stage]} · {formatDate(r.date)} · {r.lotCode} · {r.quality==='Đ'?'Đạt':r.quality==='K'?'Không đạt':'Chưa đánh giá'}</p>)}</section>:null}
         {/* Verification Banner */}
         <div className="rounded-3xl bg-gradient-to-r from-emerald-800 to-teal-900 p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
           <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-white/5 pointer-events-none" />
@@ -146,7 +152,7 @@ export default async function TracePackingPage({ params }: { params: { token: st
                       ['Tên cơ sở đóng gói', seller.name || 'Cơ sở chế biến & đóng gói Trí Việt'],
                       ['Mã cơ sở đóng gói', seller.code || 'VN-CTPH-014'],
                       ['Địa chỉ', seller.address || 'Thới Nguyên B, Phước Thới, Cần Thơ'],
-                      ['Cửa khẩu/Cảng đi', sale.departurePort || 'Hữu Nghị — Lạng Sơn'],
+                      ...(!managed ? [['Cửa khẩu/Cảng đi', sale.departurePort || 'Chưa cập nhật'] as [string,string]] : []),
                     ]}
                   />
                 </div>
@@ -155,13 +161,13 @@ export default async function TracePackingPage({ params }: { params: { token: st
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">
                     <Globe2 className="h-5 w-5 text-blue-600" />
-                    <h4 className="font-bold text-sm uppercase tracking-wider text-blue-800">BÊN MUA</h4>
+                    <h4 className="font-bold text-sm uppercase tracking-wider text-blue-800">ĐẦU MỐI LIÊN HỆ BÀN GIAO</h4>
                   </div>
                   <KeyValueGrid
                     items={[
-                      ['Khách hàng', sale.customer || 'Công ty Phân phối Hoa quả Quảng Tây'],
-                      ['Thông tin khách hàng', sale.customerInfo || 'Quảng Tây, Trung Quốc'],
-                      ['Cửa khẩu/Cảng đến', sale.destinationPort || 'Hữu Nghị Quan — Quảng Tây'],
+                      ['Khách hàng', sale.customer || 'Chưa cập nhật'],
+                      ['Thông tin khách hàng', sale.customerInfo || 'Chưa cập nhật'],
+                      ...(!managed ? [['Cửa khẩu/Cảng đến', sale.destinationPort || 'Chưa cập nhật'] as [string,string]] : []),
                     ]}
                   />
                 </div>
@@ -177,9 +183,7 @@ export default async function TracePackingPage({ params }: { params: { token: st
                       ['Mã số lô hàng', sale.lot],
                       ['Khối lượng', `${formatNumber(sale.weight)} kg`],
                       ['Số lượng', `${formatNumber(sale.boxes)} thùng`],
-                      ['Biển số xe', sale.truck || '51C-123.45'],
-                      ['Số container', sale.container || 'TEMU1234567'],
-                      ['Số Seal', sale.seal || 'SL987654'],
+                      ...(!managed ? [['Biển số xe',sale.truck||'Chưa cập nhật'],['Số container',sale.container||'Chưa cập nhật'],['Số Seal',sale.seal||'Chưa cập nhật']] as [string,string][] : []),
                     ]}
                   />
                 </div>

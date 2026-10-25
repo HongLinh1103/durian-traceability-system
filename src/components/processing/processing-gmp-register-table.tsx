@@ -1,6 +1,7 @@
 import { GMP_GRADE_COLUMN_WIDTH } from './processing-gmp-column-widths';
 import { Field, GmpRecord, REGISTERS, formatPurchaseLotCode } from '@/lib/processing-gmp';
 import { normalizeUnitCode } from '@/lib/puc-phc';
+import type { ReactNode } from 'react';
 
 export type RegionSource = { code: string; name: string; address: string | null };
 
@@ -82,6 +83,9 @@ function getColumnWidth(field: Field, stage: RegisterStage): number {
         if (field.key === 'otherProcessing') return 110;
         if (field.key === 'rejected') return 120;
         if (field.key === 'receiver') return 150;
+        if (field.key === 'dgLotCodes') return 160;
+        if (field.key === 'cbLotCodes') return 160;
+        if (field.key === 'notes') return 160;
         if (field.key === 'lotCode') return 135;
     }
     if (stage === 'inspection') {
@@ -118,6 +122,16 @@ function RecordValue({ field, record, regions, onDetail }: {
     if (field.key === 'origin') {
         return renderOriginContent(record, regions);
     }
+    if (field.key === 'dgLotCodes') {
+        const str = String(record.values.dgLotCodes || '');
+        const normalized = str ? str.replace(/\bLH-/g, 'DG-') : '';
+        return <span className="whitespace-nowrap font-mono font-semibold">{normalized || '—'}</span>;
+    }
+    if (field.key === 'cbLotCodes') {
+        const str = String(record.values.cbLotCodes || '');
+        const normalized = str ? str.replace(/\bLH-/g, 'CB-') : '';
+        return <span className="whitespace-nowrap font-mono font-semibold">{normalized || '—'}</span>;
+    }
     if (field.key === 'lotCode' || field.key === 'productLot') {
         const variety = String(record.values.variety || record.values.productLot || '').split(' · ')[0];
         return (
@@ -150,18 +164,39 @@ function RecordValue({ field, record, regions, onDetail }: {
     return <span className="whitespace-nowrap">{String(value)}</span>;
 }
 
-export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], regions = [], onDetail, onEdit }: {
+export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], regions = [], onDetail, onEdit, presentation }: {
     stage: RegisterStage;
     rows: GmpRecord[];
     purchases?: GmpRecord[];
     regions?: RegionSource[];
-    onDetail: (record: GmpRecord) => void;
-    onEdit: (record: GmpRecord) => void;
+    onDetail?: (record: GmpRecord) => void;
+    onEdit?: (record: GmpRecord) => void;
+    presentation?: {
+        title: string;
+        code: string;
+        fields: Field[];
+        emptyMessage: string;
+        renderValue: (field: Field, record: GmpRecord, index: number) => ReactNode;
+    };
 }) {
-    const config = REGISTERS[stage];
-    const { title, width } = layout[stage];
+    const config = presentation || REGISTERS[stage];
+    const { width } = layout[stage];
+    const title = presentation ? undefined : layout[stage].title;
+    const actions = Boolean(onDetail || onEdit);
     const groups = Array.from(new Set(config.fields.filter(f => !f.internal && f.group).map(f => f.group!)));
     const fields: Field[] = config.fields.filter(field => !field.internal);
+    const columnWidth = (field: Field) => {
+        if (!presentation) return getColumnWidth(field, stage);
+        if (/^(inputWeight|outputWeight)(1|2|3|Other)$/.test(field.key)) return GMP_GRADE_COLUMN_WIDTH;
+        if (field.type === 'datetime-local') return 210;
+        if (field.key === 'serial') return 65;
+        if (field.key === 'correction' || field.key === 'customer') return 230;
+        if (field.key === 'lotCode') return 180;
+        if (field.type === 'number') return 115;
+        if (field.type === 'check') return field.label.length > 45 ? 230 : field.group ? 165 : 140;
+        return 180;
+    };
+    const activeHeaderClass = `${headerClass}${presentation ? ' !whitespace-normal break-words [overflow-wrap:anywhere]' : ''}`;
     if (stage === 'receiving') fields.splice(1, 0, { key: 'purchaseCode', label: 'Mã hồ sơ thu mua' });
     // The first two columns span the master heading in BM-GMP-02 and 03.
     const headingFields = title ? fields.slice(2) : fields;
@@ -174,28 +209,28 @@ export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], region
     }
     return <>
         <p className="px-5 py-3 text-xs text-slate-500">{config.code} · Kéo ngang để xem đầy đủ các cột trong sổ.{stage !== 'receiving' && ' Đ = Đạt; K = Không đạt.'}</p>
-        <div role="region" aria-label={`Bảng ${config.code}`} tabIndex={0} className="max-w-full overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500">
-            <table className="w-full table-fixed border-collapse text-sm" style={{ width: stage === 'receiving' ? fields.reduce((sum, field) => sum + getColumnWidth(field, stage), 110) : undefined, minWidth: stage === 'receiving' ? undefined : Math.max(width, fields.length * 100) }}>
+        <div role="region" aria-label={`Bảng ${config.code}`} tabIndex={0} className="w-full min-w-0 max-w-full overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500">
+            <table className="w-full table-fixed border-collapse text-sm" style={presentation ? { minWidth: '100%', width: fields.reduce((sum, field) => sum + columnWidth(field), actions ? 120 : 0) } : { width: stage === 'receiving' ? fields.reduce((sum, field) => sum + getColumnWidth(field, stage), 110) : undefined, minWidth: stage === 'receiving' ? undefined : Math.max(width, fields.length * 100) }}>
                 <caption className="sr-only">{config.title} — {config.code}</caption>
                 <colgroup>
                     {fields.map(field => (
-                        <col key={field.key} style={{ width: getColumnWidth(field, stage) }} />
+                        <col key={field.key} style={{ width: columnWidth(field) }} />
                     ))}
-                    <col style={{ width: stage === 'receiving' ? 110 : 120 }} />
+                    {actions && <col style={{ width: stage === 'receiving' ? 110 : 120 }} />}
                 </colgroup>
                 <thead className="bg-slate-50">
                     {title && <tr>
                         {fields.slice(0, 2).map(field => <th key={field.key} scope="col" rowSpan={3} className={headerClass}>{field.label}</th>)}
                         <th scope="colgroup" colSpan={fields.length - 2} className={`${headerClass} bg-emerald-50 !text-sm !text-emerald-900`}>{title}</th>
-                        <th scope="col" rowSpan={3} className={headerClass}>Thao tác</th>
+                        {actions && <th scope="col" rowSpan={3} className={headerClass}>Thao tác</th>}
                     </tr>}
                     <tr>
-                        {headings.map(heading => <th key={heading.fields[0].key} scope={heading.grouped ? 'colgroup' : 'col'} colSpan={heading.fields.length} rowSpan={heading.grouped || !groups.length ? 1 : 2} className={`${headerClass} ${['lotCode', 'rejected'].includes(heading.fields[0].key) ? '!whitespace-normal' : ''} ${heading.fields[0].key === 'rejected' ? '!px-1' : ''}`}>{heading.label}</th>)}
-                        {!title && <th scope="col" rowSpan={groups.length ? 2 : 1} className={headerClass}>Thao tác</th>}
+                        {headings.map(heading => <th key={heading.fields[0].key} scope={heading.grouped ? 'colgroup' : 'col'} colSpan={heading.fields.length} rowSpan={heading.grouped || !groups.length ? 1 : 2} className={`${activeHeaderClass} ${['lotCode', 'rejected'].includes(heading.fields[0].key) ? '!whitespace-normal' : ''} ${heading.fields[0].key === 'rejected' ? '!px-1' : ''}`}>{heading.label}</th>)}
+                        {!title && actions && <th scope="col" rowSpan={groups.length ? 2 : 1} className={headerClass}>Thao tác</th>}
                     </tr>
-                    {groups.length > 0 && <tr>{headings.filter(heading => heading.grouped).flatMap(heading => heading.fields).map(field => <th key={field.key} scope="col" className={`${headerClass} font-semibold ${(field.group === 'Khối lượng tiếp nhận (kg)' || field.key.startsWith('grade')) ? '!px-1' : ''}`}>{field.label}</th>)}</tr>}
+                    {groups.length > 0 && <tr>{headings.filter(heading => heading.grouped).flatMap(heading => heading.fields).map(field => <th key={field.key} scope="col" className={`${activeHeaderClass} font-semibold ${(field.group === 'Khối lượng tiếp nhận (kg)' || field.key.startsWith('grade')) ? '!px-1' : ''}`}>{field.label}</th>)}</tr>}
                 </thead>
-                <tbody>{rows.map(record => (
+                <tbody>{rows.map((record, index) => (
                     <tr key={record.id} className="hover:bg-emerald-50/30">
                         {fields.map(field => {
                             const isOrigin = field.key === 'origin';
@@ -208,27 +243,27 @@ export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], region
                                     className={`border border-slate-200 ${isCompact ? 'px-1.5 py-2.5' : 'px-3 py-2.5'} align-middle leading-snug ${
                                         isOrigin
                                             ? 'text-left min-w-[240px] max-w-sm whitespace-normal'
-                                            : `whitespace-nowrap ${isRight ? 'text-right' : isCenter ? 'text-center' : 'text-left'}`
+                                            : `${presentation ? 'whitespace-normal break-words' : 'whitespace-nowrap'} ${isRight ? 'text-right' : isCenter ? 'text-center' : 'text-left'}`
                                     }`}
                                 >
-                                    {field.key === 'purchaseCode' ? (() => {
+                                    {presentation ? presentation.renderValue(field, record, index) : field.key === 'purchaseCode' ? (() => {
                                         const purchase = purchases.find(item => item.id === record.sourceId);
                                         const code = purchase
                                             ? (/^TM-\d{4}-\d{4}(?:-\d{2})?$/.test(purchase.lotCode) ? purchase.lotCode : formatPurchaseLotCode(purchase.values.date || purchase.lotCode))
                                             : '?';
                                         return <span className="font-mono font-semibold text-slate-700">{code}</span>;
-                                    })() : <RecordValue field={field} record={record} regions={regions} onDetail={onDetail} />}
+                                    })() : <RecordValue field={field} record={record} regions={regions} onDetail={onDetail || (() => {})} />}
                                 </td>
                             );
                         })}
-                        <td className="border border-slate-200 px-3 py-2.5 text-center whitespace-nowrap">
+                        {actions && <td className="border border-slate-200 px-3 py-2.5 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-2 whitespace-nowrap">
-                                <button type="button" className="font-semibold text-emerald-700 hover:underline" onClick={() => onDetail(record)}>Chi tiết</button>
-                                <button type="button" className="font-semibold text-slate-500 hover:underline" onClick={() => onEdit(record)}>Sửa</button>
+                                {onDetail && <button type="button" className="font-semibold text-emerald-700 hover:underline" onClick={() => onDetail(record)}>Chi tiết</button>}
+                                {onEdit && <button type="button" className="font-semibold text-slate-500 hover:underline" onClick={() => onEdit(record)}>Sửa</button>}
                             </div>
-                        </td>
+                        </td>}
                     </tr>
-                ))}{!rows.length && <tr><td colSpan={fields.length + 1} className="border border-slate-200 p-10 text-center text-slate-500">Chưa có bản ghi phù hợp. Điều chỉnh bộ lọc hoặc thêm bản ghi mới.</td></tr>}</tbody>
+                ))}{!rows.length && <tr><td colSpan={fields.length + Number(actions)} className="border border-slate-200 p-10 text-center text-slate-500">{presentation?.emptyMessage || 'Chưa có bản ghi phù hợp. Điều chỉnh bộ lọc hoặc thêm bản ghi mới.'}</td></tr>}</tbody>
             </table>
         </div>
     </>;

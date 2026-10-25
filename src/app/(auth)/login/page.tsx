@@ -23,6 +23,8 @@ import { PasswordInput } from "@/components/auth/PasswordInput";
 
 function getDashboardPath(role?: string): string {
     switch (role) {
+        case "EXPORTER":
+            return "/dashboard/exporter";
         case "ADMIN":
             return "/dashboard/admin";
         case "AREA_MANAGER":

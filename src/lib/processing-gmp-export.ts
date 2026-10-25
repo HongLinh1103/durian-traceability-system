@@ -1,3 +1,4 @@
+import { formatDryingTime, dryingDuration } from './drying-time';
 import JSZip from 'jszip';
 import { Field, GmpRecord, REGISTERS, Stage } from './processing-gmp';
 import { normalizeUnitCode } from './puc-phc';
@@ -31,6 +32,7 @@ export function formatSellerPhone(seller?: unknown, phone?: unknown): string {
 }
 
 export function displayValue(field:Field,value:unknown) {
+ if(field.type==='datetime-local') return value ? formatDryingTime(value) : 'Đang thực hiện';
  if(field.type==='date' && value) return String(value).split('-').reverse().join('/');
  if(typeof value==='number') return value.toLocaleString('vi-VN');
  if(field.type==='finding') return value==='Có'?'X':'—';
@@ -66,6 +68,7 @@ const columnLayout:Record<string,{minimum:number;weight:number}>={
  customerInfo:{minimum:1150,weight:1.8},productLot:{minimum:1100,weight:1.5},
  transportOk:{minimum:1100,weight:1.4},quantity_boxes:{minimum:850,weight:1.1},
  fruitCount:{minimum:800,weight:1},weight_kg:{minimum:850,weight:1.1},
+ dryStart:{minimum:1700,weight:2},dryEnd:{minimum:1700,weight:2},
  total:{minimum:1150,weight:1.2},
  cadmiumOk:{minimum:850,weight:1},correction:{minimum:1000,weight:1.6},
  treatmentPlan:{minimum:1100,weight:1.8},notes:{minimum:850,weight:1.4},
@@ -101,6 +104,7 @@ export function getRecordFieldValue(
  regions: { code: string; name: string; address: string | null }[] = [],
  receivingRecords: GmpRecord[] = []
 ): unknown {
+ if (f.key === 'exporterId') return r.values.exporter || 'Chưa liên kết đơn vị xuất khẩu';
  if (f.key === 'receivingStatus') return r.draft ? 'Chưa nhập hàng' : 'Đã nhập hàng';
  if (f.key === 'rejected' && r.values.harvestRecordId && r.draft) return 'Chưa phân loại';
  if (f.key === 'purchaseCode') {
@@ -137,6 +141,14 @@ export function getRecordFieldValue(
    return Number(totalVal);
   }
   return w * p;
+ }
+ if (f.key === 'dgLotCodes') {
+  const val = r.values?.dgLotCodes;
+  return val ? String(val).replace(/\bLH-/g, 'DG-') : '—';
+ }
+ if (f.key === 'cbLotCodes') {
+  const val = r.values?.cbLotCodes;
+  return val ? String(val).replace(/\bLH-/g, 'CB-') : '—';
  }
  return r.values?.[f.key];
 }
@@ -197,8 +209,9 @@ export async function buildRegisterDocx(
   return cell(displayValue(f,getRecordFieldValue(r,f,regions,receivingRecords)),widths[i],1,undefined,false,fontSize,noWrap);
  }).join(''))).join('');
  const empty=records.length? '':row(fields.map((_,i)=>cell('',widths[i])).join(''));
+ const dryingSummary = stage === 'preprocessing' ? records.map(r => paragraph(`${r.lotCode} · Thời lượng hong khô: ${dryingDuration(r.values.dryStart, r.values.dryEnd)} · Giờ Việt Nam (UTC+7)`, false, 18)).join('') : '';
  const title=stage==='preprocessing'?'TIẾP NHẬN NGUYÊN LIỆU - SƠ CHẾ TRƯỚC KHI ĐÓNG GÓI':stage==='packaging'?'THEO DÕI ĐÓNG GÓI/ĐÓNG THÙNG - NHẬP KHO THÀNH PHẨM':config.title.toLocaleUpperCase('vi');
- const doc=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${paragraph(company.toLocaleUpperCase('vi'),true,30)}${paragraph('',false,24)}${paragraph(title,true,24)}${period ? paragraph(period,true,20) : ''}${stage==='preprocessing'||stage==='packaging' ? paragraph('Đ = Đạt; K = Không đạt.',false,18) : ''}<w:tbl><w:tblPr><w:tblW w:w="${width}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>${['top','left','bottom','right','insideH','insideV'].map(s=>`<w:${s} w:val="single" w:sz="4" w:color="000000"/>`).join('')}</w:tblBorders><w:tblCellMar><w:top w:w="70" w:type="dxa"/><w:left w:w="45" w:type="dxa"/><w:bottom w:w="70" w:type="dxa"/><w:right w:w="45" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${widths.map(w=>`<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${row(first,true)}${row(second,true)}${body}${empty}</w:tbl>${['purchases','receiving','inspection','preprocessing','packaging'].includes(stage) ? '' : paragraph('Đ = Đạt; K = Không đạt.',false,18)}<w:sectPr><w:pgSz w:w="${pageWidth}" w:h="${pageHeight}" w:orient="landscape"/><w:pgMar w:top="${sideMargin}" w:right="${sideMargin}" w:bottom="${sideMargin}" w:left="${sideMargin}" w:header="283" w:footer="283"/></w:sectPr></w:body></w:document>`;
+ const doc=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${paragraph(company.toLocaleUpperCase('vi'),true,30)}${paragraph('',false,24)}${paragraph(title,true,24)}${period ? paragraph(period,true,20) : ''}${stage==='preprocessing'||stage==='packaging' ? paragraph('Đ = Đạt; K = Không đạt.',false,18) : ''}<w:tbl><w:tblPr><w:tblW w:w="${width}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>${['top','left','bottom','right','insideH','insideV'].map(s=>`<w:${s} w:val="single" w:sz="4" w:color="000000"/>`).join('')}</w:tblBorders><w:tblCellMar><w:top w:w="70" w:type="dxa"/><w:left w:w="45" w:type="dxa"/><w:bottom w:w="70" w:type="dxa"/><w:right w:w="45" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${widths.map(w=>`<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${row(first,true)}${row(second,true)}${body}${empty}</w:tbl>${dryingSummary}${['purchases','receiving','inspection','preprocessing','packaging'].includes(stage) ? '' : paragraph('Đ = Đạt; K = Không đạt.',false,18)}<w:sectPr><w:pgSz w:w="${pageWidth}" w:h="${pageHeight}" w:orient="landscape"/><w:pgMar w:top="${sideMargin}" w:right="${sideMargin}" w:bottom="${sideMargin}" w:left="${sideMargin}" w:header="283" w:footer="283"/></w:sectPr></w:body></w:document>`;
  const zip=new JSZip();
  zip.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>');
  zip.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');

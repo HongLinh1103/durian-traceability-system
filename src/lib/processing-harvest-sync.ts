@@ -1,4 +1,8 @@
+import { clearLegacyReceivingNotes } from './processing-receiving-edit';
+import { sameStoredJson } from './processing-gmp-concurrency';
+import { upgradeReceivingGrades } from './receiving-reclassification';
 import { Prisma } from '@prisma/client';
+import { upgradeLegacyDryingDates } from './processing-drying-upgrade';
 import { prisma } from './prisma';
 import { GmpState } from './processing-gmp';
 import { emptyProcessingState, RECEIVING_HARVEST_STATUSES, syncHarvestReceiving } from './processing-receiving';
@@ -13,14 +17,15 @@ export async function syncProcessingHarvests(ownerId: string) {
                 where: { buyerFacilityId: facility.id, buyerType: 'PROCESSING_FACILITY', weightUnit: 'kg', status: { in: RECEIVING_HARVEST_STATUSES as Prisma.EnumHarvestStatusFilter['in'] } },
                 include: { farmer: { select: { fullName: true, phone: true } }, farm: { include: { region: true } }, cropSeason: true },
             });
-            const state = syncHarvestReceiving(row.data as unknown as GmpState, harvests.map(h => {
+            let state = upgradeLegacyDryingDates(syncHarvestReceiving(row.data as unknown as GmpState, harvests.map(h => {
                 const year = h.cropSeason?.year || h.expectedHarvestDate.getFullYear();
                 return { id: h.id, code: h.code, status: h.status, facilityId: facility.id, ownerId,
                     date: h.expectedHarvestDate.toISOString().slice(0, 10), season: `${year}-${year + 1}`,
                     weight: Number(h.actualWeight ?? h.deliveredWeight ?? h.expectedWeight), seller: h.farmer.fullName || '', phone: h.farmer.phone || '',
                     puc: h.farm.region?.code || h.farm.growingRegion || '', origin: [h.farm.region?.name || h.farm.farmName, h.farm.region?.address || h.farm.address].filter(Boolean).join(' - '), variety: h.durianVariety };
-            }), ownerId, facility.id);
-            if (JSON.stringify(state) === JSON.stringify(row.data)) return { ...row, data: state };
+            }), ownerId, facility.id));
+            state = clearLegacyReceivingNotes(upgradeReceivingGrades(state, ownerId, facility.code === 'VN-DNPH-131'));
+            if (sameStoredJson(state, row.data)) return { ...row, data: state };
             const saved = await tx.processingGmpWorkspace.updateMany({ where: { ownerId, revision: row.revision }, data: { data: state as unknown as Prisma.InputJsonValue, revision: { increment: 1 } } });
             return saved.count ? { ...row, revision: row.revision + 1, data: state } : null;
         }, { maxWait: 10000, timeout: 30000 });

@@ -12,6 +12,8 @@ const responseSchema = loginSchema.extend({
 
 function getDashboardPath(role: string): string {
     switch (role) {
+        case "EXPORTER":
+            return "/dashboard/exporter";
         case "ADMIN":
             return "/dashboard/admin";
         case "AREA_MANAGER":

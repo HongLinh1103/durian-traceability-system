@@ -1,3 +1,5 @@
+import { publishedExportTrips, PublicExportTrip } from './exporter-trace';
+import {productionSources,productionOrigins,LotAllocation} from './production-lots';
 import { syncProcessingHarvests } from './processing-harvest-sync';
 import { randomBytes } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
@@ -6,6 +8,10 @@ import { Prisma } from '@prisma/client';
 
 export type ProcessingTrace = {
   demo: boolean;
+  exporterManaged?: boolean;
+  exportShipments?: PublicExportTrip[];
+  production?: {stage:string;date:string;lotCode:string;quality:string;dryStart:string;dryEnd:string}[];
+  productionSources?: Pick<LotAllocation,'receivingId'|'harvestId'|'harvestCode'|'puc'|'variety'|'weight'|'receivedAt'>[];
   region: { name: string; code: string; address: string; date: string | null } | null;
   harvest: { date: string; weight: number } | null;
   sale: {
@@ -27,7 +33,7 @@ export type ProcessingTrace = {
   logs: { date: string; activity: string; chemical: string; dosage: string }[];
 };
 
-type Publication = { token: string; saleId: string; snapshot: ProcessingTrace; createdAt: Date };
+type Publication = { ownerId?:string; token: string; saleId: string; snapshot: ProcessingTrace; createdAt: Date };
 
 export async function publications(ownerId: string): Promise<Publication[]> {
   try {
@@ -40,8 +46,13 @@ export async function publications(ownerId: string): Promise<Publication[]> {
 
 export async function publicProcessingTrace(token: string): Promise<Publication | null> {
   try {
-    const rows = await prisma.$queryRaw<Publication[]>`SELECT "token", "saleId", "snapshot", "createdAt" FROM "processing_qr_publications" WHERE "token" = ${token}`;
-    if (rows[0]) return rows[0];
+    const rows = await prisma.$queryRaw<Publication[]>`SELECT "ownerId", "token", "saleId", "snapshot", "createdAt" FROM "processing_qr_publications" WHERE "token" = ${token}`;
+    if (rows[0]) {
+      const row=rows[0];
+      let exported={exporterManaged:false,exportShipments:[] as PublicExportTrip[]};
+      try { if(row.ownerId) exported=await publishedExportTrips(row.ownerId,row.saleId,row.snapshot.sale.lot); } catch(error) {console.error('Exporter trace temporarily unavailable',error);}
+      return {...row,snapshot:{...row.snapshot,exporterManaged:row.snapshot.exporterManaged||exported.exporterManaged,exportShipments:exported.exportShipments}};
+    }
   } catch {}
 
   // Fallback demo preview for demo tokens or testing
@@ -116,7 +127,9 @@ export async function processingQrRows(ownerId: string) {
   };
 
   const normalize = (s: string) => s.replace(/\s/g, '').toUpperCase();
-  const salesRecords = (state.records?.sales || []).filter(s => !s.draft);
+  const handedOver=(state.records?.sales || []).filter(s=>!s.draft);
+  const finished=(state.records.packaging || []).filter(r=>!r.draft && Number(r.values.quantity_boxes)>0 && !handedOver.some(s=>s.lotCode===r.lotCode)).map(r=>({...r,id:'finished:'+r.id}));
+  const salesRecords=[...handedOver,...finished];
 
   // If there are no publications yet and multiple sales exist in demo mode, auto-publish one secondary lot
   // so the user immediately sees both "Đã tạo QR" and "Chưa tạo QR" in the table.
@@ -168,16 +181,17 @@ export async function processingQrRows(ownerId: string) {
   }
 
   const rows = await Promise.all(salesRecords.map(async (record, index) => {
-    const publication = issued.find(item => item.saleId === record.id);
-    const receiving = state.records.receiving.find(item => item.lotCode === record.lotCode);
+    const publication = issued.find(item => item.saleId === record.id) || issued.find(item=>item.snapshot.sale.lot===record.lotCode);
+    const receiving = productionSources(state,'DG').find(item => item.lotCode === record.lotCode);
     const purchase = state.records.purchases.find(item => item.id === receiving?.sourceId);
-    const harvestId = String(record.values.harvestRecordId || receiving?.values.harvestRecordId || purchase?.values.harvestRecordId || '');
+    const origins=productionOrigins(record.values);
+    const harvestId = origins[0]?.harvestId || String(record.values.harvestRecordId || receiving?.values.harvestRecordId || purchase?.values.harvestRecordId || '');
     const harvest = harvestId ? await prisma.harvestRecord.findFirst({
       where: { id: harvestId, buyerUserId: ownerId },
       include: { farm: { include: { region: true } } },
     }) : null;
 
-    const matchedRegion = harvest?.farm.region || regions.find(item => normalize(item.code) === normalize(String(purchase?.values.puc || record.values.puc || '')));
+    const matchedRegion = harvest?.farm.region || regions.find(item => normalize(item.code) === normalize(String(receiving?.values.puc || purchase?.values.puc || record.values.puc || '')));
     const logs = harvest ? await prisma.farmingLog.findMany({
       where: { farmId: harvest.farmId, ...(harvest.cropSeasonId ? { cropSeasonId: harvest.cropSeasonId } : {}), actionDate: { lte: harvest.actualHarvestedAt || harvest.expectedHarvestDate } },
       orderBy: { actionDate: 'desc' }, select: { actionDate: true, activityType: true, chemicalName: true, dosage: true },
@@ -190,21 +204,21 @@ export async function processingQrRows(ownerId: string) {
       name: matchedRegion.name,
       code: matchedRegion.code,
       address: matchedRegion.address || [matchedRegion.ward, matchedRegion.district, matchedRegion.province].filter(Boolean).join(', '),
-      date: (matchedRegion.approvalIssuedAt || matchedRegion.approvedAt)?.toISOString() || '2024-05-15T00:00:00.000Z',
-    } : {
+      date: (matchedRegion.approvalIssuedAt || matchedRegion.approvedAt)?.toISOString() || null,
+    } : state.demo ? {
       name: String(purchase?.values.origin || (purchase?.values.seller ? `Vùng trồng sầu riêng ${purchase.values.seller}` : 'Vùng trồng sầu riêng Nguyễn Văn Nam')),
       code: String(purchase?.values.puc || 'VN-TGOR-9001'),
       address: String(purchase?.values.gardenInfo || purchase?.values.address || 'Cai Lậy, Tiền Giang'),
       date: '2024-05-15T00:00:00.000Z',
-    };
+    } : null;
 
     const harvestInfo = (harvest?.actualHarvestedAt && harvest.actualWeight) ? {
       date: harvest.actualHarvestedAt.toISOString(),
       weight: Number(harvest.actualWeight),
-    } : {
+    } : state.demo ? {
       date: purchase?.values.date ? `${String(purchase.values.date)}T06:30:00.000Z` : '2026-09-24T06:30:00.000Z',
       weight: Number(purchase?.values.weight || 6200),
-    };
+    } : null;
 
     const defaultLogs = [
       { date: '2026-09-24T06:00:00.000Z', activity: 'HARVEST', chemical: '', dosage: 'Thu hoạch đạt độ chín 85%, cuống xanh' },
@@ -221,29 +235,32 @@ export async function processingQrRows(ownerId: string) {
       activity: log.activityType,
       chemical: log.chemicalName || '',
       dosage: log.dosage || '',
-    })) : defaultLogs;
+    })) : state.demo ? defaultLogs : [];
 
     const lotCode = record.lotCode;
 
     const snapshot: ProcessingTrace = {
       demo: state.demo,
+      exporterManaged:true,
+      production: (['preprocessing','packaging','inspection'] as const).flatMap(stage=>state.records[stage].filter(r=>r.lotCode===record.lotCode).map(r=>({stage,date:String(r.values.date||''),lotCode:r.lotCode,quality:String(r.values.qualityOk||''),dryStart:String(r.values.dryStart||''),dryEnd:String(r.values.dryEnd||'')}))),
+      productionSources: origins.map(({receivingId,harvestId,harvestCode,puc,variety,weight,receivedAt})=>({receivingId,harvestId,harvestCode,puc,variety,weight,receivedAt})),
       region: regionInfo,
       harvest: harvestInfo,
       seller: facilityData,
       sale: {
         id: record.id,
         lot: lotCode,
-        variety: String(v.variety || (index % 2 === 0 ? 'Sầu riêng Ri6' : 'Sầu riêng Monthong')),
-        date: String(v.date || '2026-09-26'),
-        weight: Number(v.weight_kg || (index === 0 ? 5240 : 4800)),
-        boxes: Number(v.quantity_boxes || (index === 0 ? 320 : 280)),
-        customer: String(v.customer || 'Công ty Phân phối Hoa quả Quảng Tây'),
-        customerInfo: String(v.customerInfo || 'Số 88 đường Đại Sa, TP. Nam Ninh, Quảng Tây, Trung Quốc'),
-        departurePort: String(v.departurePort || 'Hữu Nghị — Lạng Sơn'),
-        destinationPort: String(v.destinationPort || 'Hữu Nghị Quan — Quảng Tây'),
-        truck: String(v.truck || '51C-123.45'),
-        container: String(v.container || 'TEMU1234567'),
-        seal: String(v.seal || 'SL987654'),
+        variety: String(v.variety || ''),
+        date: String(v.date || ''),
+        weight: Number(v.weight_kg || 0),
+        boxes: Number(v.quantity_boxes || 0),
+        customer: String(v.customer || ''),
+        customerInfo: String(v.customerInfo || ''),
+        departurePort: String(v.departurePort || ''),
+        destinationPort: String(v.destinationPort || ''),
+        truck: String(v.truck || ''),
+        container: String(v.container || ''),
+        seal: String(v.seal || ''),
       },
       logs: logList,
     };
@@ -251,7 +268,7 @@ export async function processingQrRows(ownerId: string) {
     const missing = [
       !snapshot.region && 'Vùng trồng',
       !snapshot.harvest && 'Thu hoạch',
-      (!snapshot.sale.date || !snapshot.sale.customer || snapshot.sale.weight <= 0) && 'Xuất bán',
+      (!snapshot.sale.date || snapshot.sale.weight <= 0) && 'Thành phẩm',
     ].filter(Boolean) as string[];
 
     return {
@@ -275,6 +292,7 @@ export async function issueProcessingQr(ownerId: string, saleId: string, revisio
 
   const row = source.rows.find(item => item.id === saleId);
   if (!row) throw new Error('Không tìm thấy lô xuất bán.');
+  if (row.token) return row.token;
   if (row.missing.length) throw new Error('Chưa đủ dữ liệu: ' + row.missing.join(', '));
 
   const token = randomBytes(24).toString('hex');

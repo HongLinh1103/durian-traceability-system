@@ -15,6 +15,7 @@ enum UserRole {
   STORE_OWNER
   COLLECTOR
   PROCESSING_FACILITY
+  EXPORTER @map("exporter")
 }
 
 enum PartnerStatus {
@@ -656,9 +657,79 @@ model User {
   farmerShipments          Shipment[]                    @relation("FarmerShipmentSender")
   ProcurementOrder         ProcurementOrder[]
   permissionConfig         UserPermissionConfig?
+  exporterOrganizationId String?
+  exporterOrganization ExporterOrganization? @relation(fields: [exporterOrganizationId], references: [id])
 
   @@index([role])
   @@index([role, accountStatus, deletedAt])
+}
+
+model ExporterOrganization {
+  id String @id @default(cuid())
+  code String @unique
+  name String
+  taxCode String? @unique
+  contactName String
+  phone String
+  address String
+  isActive Boolean @default(true)
+  canReceive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members User[]
+  handovers ExporterHandover[]
+  shipments ExporterShipment[]
+}
+
+model ExporterHandover {
+  id String @id @default(cuid())
+  ownerId String
+  saleId String
+  exporterId String
+  exporter ExporterOrganization @relation(fields: [exporterId], references: [id])
+  snapshot Json
+  status String @default("PENDING")
+  acceptedBoxes Int?
+  acceptedWeight Decimal? @db.Decimal(14, 3)
+  receivedAt DateTime?
+  receiptNote String?
+  receivedBy String?
+  revision Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  allocations ExporterShipmentAllocation[]
+  audit Json @default("[]")
+  @@unique([ownerId, saleId])
+  @@index([exporterId, status])
+}
+
+model ExporterShipment {
+  id String @id @default(cuid())
+  exporterId String
+  exporter ExporterOrganization @relation(fields: [exporterId], references: [id])
+  code String
+  status String @default("DRAFT")
+  isPublic Boolean @default(false)
+  data Json
+  audit Json @default("[]")
+  revision Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  allocations ExporterShipmentAllocation[]
+  @@unique([exporterId, code])
+  @@index([exporterId, status])
+}
+
+model ExporterShipmentAllocation {
+  id String @id @default(cuid())
+  shipmentId String
+  shipment ExporterShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  handoverId String
+  handover ExporterHandover @relation(fields: [handoverId], references: [id])
+  boxes Int
+  weight Decimal @db.Decimal(14, 3)
+  @@unique([shipmentId, handoverId])
+  @@index([handoverId])
 }
 
 model UserPermissionConfig {
@@ -2500,8 +2571,21 @@ model ProcessingGmpWorkspace {
   revision  Int      @default(0)
   data      Json
   updatedAt DateTime @updatedAt
+  dryingTimes ProcessingDryingTime[]
 
   @@map("processing_gmp_workspaces")
+}
+
+model ProcessingDryingTime {
+  ownerId String
+  recordId String
+  startedAt DateTime? @db.Timestamptz(3)
+  endedAt DateTime? @db.Timestamptz(3)
+  needsDateReview Boolean @default(false)
+  workspace ProcessingGmpWorkspace @relation(fields: [ownerId], references: [ownerId], onDelete: Cascade)
+
+  @@id([ownerId, recordId])
+  @@map("processing_drying_times")
 }
 
 model ProcessingQrPublication {
