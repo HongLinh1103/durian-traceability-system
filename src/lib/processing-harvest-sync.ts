@@ -1,3 +1,4 @@
+import { normalizeLegacySalesContacts } from './sales-contact';
 import { clearLegacyReceivingNotes } from './processing-receiving-edit';
 import { sameStoredJson } from './processing-gmp-concurrency';
 import { upgradeReceivingGrades } from './receiving-reclassification';
@@ -25,6 +26,7 @@ export async function syncProcessingHarvests(ownerId: string) {
                     puc: h.farm.region?.code || h.farm.growingRegion || '', origin: [h.farm.region?.name || h.farm.farmName, h.farm.region?.address || h.farm.address].filter(Boolean).join(' - '), variety: h.durianVariety };
             }), ownerId, facility.id));
             state = clearLegacyReceivingNotes(upgradeReceivingGrades(state, ownerId, facility.code === 'VN-DNPH-131'));
+            state = normalizeLegacySalesContacts(state);
             if (sameStoredJson(state, row.data)) return { ...row, data: state };
             const saved = await tx.processingGmpWorkspace.updateMany({ where: { ownerId, revision: row.revision }, data: { data: state as unknown as Prisma.InputJsonValue, revision: { increment: 1 } } });
             return saved.count ? { ...row, revision: row.revision + 1, data: state } : null;

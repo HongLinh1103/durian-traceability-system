@@ -1,3 +1,4 @@
+import { parseSalesContact } from './sales-contact';
 import { isCertificateLink } from './processing-certificate';
 import { dryingTimestamp } from './drying-time';
 /** The six GMP registers share a lot identity; purchases remain commercial records. */
@@ -63,7 +64,7 @@ export const EXPENSE_CATEGORIES: readonly ExpenseCategory[] = [
 
 export interface Payment { id: string; recordId: string; direction: 'IN' | 'OUT'; date: string; amount: number; method: string }
 export interface GmpState { productionLots?: import('./production-lots').ProductionLot[]; records: Record<Stage, GmpRecord[]>; payments: Payment[]; expenses?: Expense[]; demo: boolean }
-export interface Field { key: string; label: string; type?: 'number' | 'date' | 'datetime-local' | 'image' | 'time' | 'check' | 'finding'; required?: boolean; group?: string; inherited?: boolean; internal?: boolean }
+export interface Field { key: string; label: string; type?: 'number' | 'date' | 'datetime-local' | 'tel' | 'image' | 'time' | 'check' | 'finding'; required?: boolean; group?: string; inherited?: boolean; internal?: boolean }
 const f = (key: string, label: string, type: Field['type'] = undefined, extra: Partial<Field> = {}): Field => ({ key, label, type, ...extra });
 const n = (key: string, label: string, extra: Partial<Field> = {}) => f(key, label, 'number', extra);
 const c = (key: string, label: string, group?: string) => f(key, label, 'check', { ...(group ? { group } : {}), required: true });
@@ -83,7 +84,7 @@ export const REGISTERS: Record<Stage, { title: string; code: string; path: strin
     preprocessing: { title: 'SỔ TIẾP NHẬN & SƠ CHẾ', code: 'SẢN XUẤT', path: 'preprocessing', fields: [day, lot, ...gradeFields('inputWeight', 'Khối lượng tiếp nhận (kg)', true), aggregate('inputWeight'), c('supplierOk', 'Thông tin về nhà cung cấp nguyên liệu (Đ/K)', 'Kiểm tra đầu vào'), c('transportOk', 'Phương tiện, điều kiện vận chuyển nguyên liệu đảm bảo sạch (Đ/K)', 'Kiểm tra đầu vào'), c('materialOk', 'Chủng loại, cảm quan, chất lượng nguyên liệu (Đ/K)', 'Kiểm tra đầu vào'), c('brushOk', 'Vệ sinh bằng bàn chà (Đ/K)', 'Đánh giá công đoạn vệ sinh tạp chất (Đ/K)'), c('airOk', 'Thổi sạch bằng xịt cao áp (Đ/K)', 'Đánh giá công đoạn vệ sinh tạp chất (Đ/K)'), f('dryStart', 'Ngày giờ bắt đầu', 'datetime-local', { required: true, group: 'Đánh giá công đoạn hong khô sản phẩm (Đ/K)' }), f('dryEnd', 'Ngày giờ kết thúc', 'datetime-local', { required: false, group: 'Đánh giá công đoạn hong khô sản phẩm (Đ/K)' }), c('dryOk', 'Tình trạng sản phẩm (Đ/K)', 'Đánh giá công đoạn hong khô sản phẩm (Đ/K)'), ...GMP_GRADES.map(g => c('qualityOk' + g.key, g.label, 'CL sau sơ chế (Đ/K)')), f('qualityOk', 'qualityOk', undefined, { internal: true, inherited: true }), ...gradeFields('outputWeight', 'KL sau sơ chế (kg)'), aggregate('outputWeight'), correction, supervisor] },
     packaging: { title: 'SỔ ĐÓNG GÓI & NHẬP KHO', code: 'SẢN XUẤT', path: 'processing', fields: [day, lot, ...gradeFields('inputWeight', 'Khối lượng thực tế tiếp nhận đóng gói (kg)', true), aggregate('inputWeight'), c('toolsOk', 'Dụng cụ đóng gói đảm bảo sạch (Đ/K)', 'Vệ sinh'), c('labelsOk', 'Tình trạng vệ sinh bao bì, tem nhãn trước khi đóng gói (Đ/K)', 'Vệ sinh'), c('weighOk', 'Cân', 'Đánh giá công đoạn đóng gói - đóng thùng (Đ/K)'), c('stickerOk', 'Dán tem, nhãn', 'Đánh giá công đoạn đóng gói - đóng thùng (Đ/K)'), c('packOk', 'Đóng gói', 'Đánh giá công đoạn đóng gói - đóng thùng (Đ/K)'), c('qualityOk', 'Chất lượng, quy cách sản phẩm sau đóng gói (Đ/K)', 'Kết quả'), ...gradeFields('quantity_boxes', 'Số lượng nhập kho (thùng)'), ...gradeFields('weight_kg', 'Khối lượng nhập kho (kg)'), aggregate('quantity_boxes'), aggregate('weight_kg'), correction, supervisor] },
     inspection: { title: 'SỔ KIỂM TRA TRƯỚC XUẤT BÁN', code: 'SẢN XUẤT', path: 'inspection', fields: [f('date', 'Ngày kiểm tra', 'date', { required: true }), lot, ...GMP_GRADES.flatMap(g => [n('inputBoxes' + g.key, g.label + ' (thùng)', { inherited: true, group: 'Số lượng/khối lượng tiếp nhận kiểm tra' }), n('inputWeight' + g.key, g.label + ' (kg)', { inherited: true, group: 'Số lượng/khối lượng tiếp nhận kiểm tra' })]), aggregate('inputBoxes'), aggregate('inputWeight'), ...gradeFields('sample', 'Số lượng kiểm tra 2% (thùng)', true), ...[['mealybug', 'Rệp sáp'], ['fly', 'Ấu trùng ruồi đục quả'], ['soil', 'Đất'], ['leaves', 'Lá cây'], ['insects', 'Côn trùng khác'], ['other', 'Khác']].map(([key, label]) => f(key, label, 'finding', { group: 'Kết quả kiểm tra phát hiện/không đạt', required: true })), ...gradeFields('quantity_boxes', 'Số lượng đưa qua xuất bán (thùng)'), ...gradeFields('weight_kg', 'Khối lượng đưa qua xuất bán (kg)'), aggregate('quantity_boxes'), aggregate('weight_kg'), f('correction', 'Biện pháp khắc phục (nếu có)'), f('inspector', 'Người kiểm tra', undefined, { required: true })] },
-    sales: { title: 'SỔ THEO DÕI XUẤT BÁN', code: 'XUẤT BÁN', path: 'shipments', fields: [f('date', 'Ngày xuất bán/bàn giao', 'date', {required:true,group:'Thông tin giao dịch'}), f('saleReceiptCode', 'Mã phiếu xuất bán', undefined, {inherited:true,group:'Thông tin giao dịch'}), f('customer', 'Khách hàng (cá nhân liên hệ)', undefined, { required: true, group: 'Thông tin giao dịch' }), f('customerInfo', 'Số điện thoại liên hệ', undefined, { required: true, group: 'Thông tin giao dịch' }), f('lotCode', 'Mã số lô hàng', undefined, { inherited: true, group: 'Thông tin lô hàng' }), f('variety', 'Chủng loại', undefined, { inherited: true, group: 'Thông tin lô hàng' }), c('transportOk', 'Điều kiện phương tiện vận chuyển (Đ/K)', 'Thông tin lô hàng'), f('container', 'Số container (nếu đã biết)', undefined, { group: 'Thông tin giao dịch' }), ...gradeFields('quantity_boxes', 'Số lượng theo loại (thùng)', true), ...gradeFields('weight_kg', 'Khối lượng theo loại (kg)', true), n('quantity_boxes', 'Tổng số lượng (thùng)', { inherited: true, group: 'Thông tin lô hàng' }), n('weight_kg', 'Tổng khối lượng (kg)', { inherited: true, group: 'Thông tin lô hàng' }), n('total', 'Giá trị (đ)', { group: 'Thông tin lô hàng' }), f('exporterId', 'Đơn vị xuất khẩu', undefined, { required: true, group: 'Thông tin giao dịch' }), f('country', 'Nước nhập khẩu dự kiến', undefined, { required: true, group: 'Thông tin giao dịch' }), f('testCertificate', 'Giấy kiểm nghiệm', 'image', {group:'Thông tin lô hàng'}), f('notes', 'Ghi chú', undefined, {group:'Thông tin lô hàng'}), n('price', 'Giá bán (đ/kg, nếu có)', {group:'Thông tin giao dịch'})] },
+    sales: { title: 'SỔ THEO DÕI XUẤT BÁN', code: 'XUẤT BÁN', path: 'shipments', fields: [f('date', 'Ngày xuất bán/bàn giao', 'date', {required:true,group:'Thông tin giao dịch'}), f('saleReceiptCode', 'Mã phiếu xuất bán', undefined, {inherited:true,group:'Thông tin giao dịch'}), f('customer', 'Khách hàng', undefined, { required: true, group: 'Thông tin giao dịch' }), f('customerInfo', 'Thông tin khách hàng', 'tel', { required: true, group: 'Thông tin giao dịch' }), f('lotCode', 'Mã số lô hàng', undefined, { inherited: true, group: 'Thông tin lô hàng' }), f('variety', 'Chủng loại', undefined, { inherited: true, group: 'Thông tin lô hàng' }), c('transportOk', 'Điều kiện phương tiện vận chuyển (Đ/K)', 'Thông tin lô hàng'), f('container', 'Số container (nếu đã biết)', undefined, { group: 'Thông tin giao dịch' }), ...gradeFields('quantity_boxes', 'Số lượng theo loại (thùng)', true), ...gradeFields('weight_kg', 'Khối lượng theo loại (kg)', true), n('quantity_boxes', 'Tổng số lượng (thùng)', { inherited: true, group: 'Thông tin lô hàng' }), n('weight_kg', 'Tổng khối lượng (kg)', { inherited: true, group: 'Thông tin lô hàng' }), n('total', 'Giá trị (đ)', { group: 'Thông tin lô hàng' }), f('exporterId', 'Đơn vị xuất khẩu', undefined, { required: true, group: 'Thông tin giao dịch' }), f('country', 'Nước nhập khẩu dự kiến', undefined, { required: true, group: 'Thông tin giao dịch' }), f('testCertificate', 'Giấy kiểm nghiệm', 'image', {group:'Thông tin lô hàng'}), f('notes', 'Ghi chú', undefined, {group:'Thông tin lô hàng'}), n('price', 'Giá bán (đ/kg, nếu có)', {group:'Thông tin giao dịch'})] },
     aftersales: {
         title: 'SỔ THEO DÕI SAU XUẤT BÁN',
         code: 'XUẤT BÁN',
@@ -1023,6 +1024,12 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
         const updated = { ...old, values: { ...old.values, testCertificate: certificate } };
         return { ...state, records: { ...state.records, sales: state.records.sales.map(r => r.id === old.id ? updated : r) } };
     }
+    // Contact corrections do not reopen settled quantities or downstream records.
+    if (stage === 'sales' && old && Object.entries(input.values).every(([key, value]) => ['customer', 'customerInfo', 'testCertificate'].includes(key) || String(value) === String(old.values[key] ?? ''))) {
+        const values = parseSalesContact({ ...old.values, ...input.values });
+        if (values.testCertificate && !isCertificateLink(values.testCertificate)) throw new Error('Liên kết giấy kiểm nghiệm không hợp lệ.');
+        return { ...state, records: { ...state.records, sales: state.records.sales.map(r => r.id === old.id ? { ...old, values } : r) } };
+    }
     // Explicitly enroll a historical sale into the new exporter handover flow
     // without reopening its settled quantities, value or source record.
     const enrollmentKeys = ['exporterId','customer','customerInfo','testCertificate','notes'];
@@ -1030,6 +1037,7 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
         const values: Values = { ...old.values, legacyExportContact: JSON.stringify({exporter:old.values.exporter || '',customer:old.values.customer || '',customerInfo:old.values.customerInfo || ''}) };
         for (const key of enrollmentKeys) if(input.values[key] !== undefined) values[key] = String(input.values[key]).trim();
         if(values.testCertificate && !isCertificateLink(values.testCertificate)) throw new Error('Liên kết giấy kiểm nghiệm không hợp lệ.');
+        Object.assign(values, parseSalesContact(values));
         const updated = { ...old, values };
         return { ...state, records: { ...state.records, sales: state.records.sales.map(r => r.id === old.id ? updated : r) } };
     }
@@ -1052,6 +1060,7 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
         if (field.required && !(state.demo && stage === 'sales' && field.key === 'exporterId') && !field.inherited && !(stage === 'preprocessing' && field.key.startsWith('qualityOk') && Number(v['inputWeight' + field.key.slice(9)] || 0) === 0) && String(raw).trim() === '') throw new Error(`Vui lòng nhập ${field.label}.`);
         v[field.key] = field.type === 'number' ? Number(raw) : String(raw).trim();
     }
+    if (stage === 'sales') Object.assign(v, parseSalesContact(v));
     if (stage === 'sales' && v.testCertificate && !isCertificateLink(v.testCertificate)) throw new Error('Liên kết giấy kiểm nghiệm không hợp lệ.');
     if (stage === 'purchases') {
         if (!v.origin && v.address) v.origin = v.address;
@@ -1368,8 +1377,8 @@ export function createDemoState(): GmpState {
                 sample2: 1,
                 sample3: 0,
                 inspector: ['Phạm Thị Hương', 'Trần Đình Trọng', 'Vũ Hoàng Mai'][i % 3],
-                customer: 'Công ty Hoa Nam',
-                customerInfo: 'Nam Ninh, Quảng Tây, Trung Quốc',
+                customer: 'Nguyễn Văn A',
+                customerInfo: '0912345678',
                 container: `TGHU123456${i}`,
                 exporter: 'CN 1 - Công ty Thiên Sơn Hải',
                 country: 'Trung Quốc',

@@ -28,6 +28,8 @@ export async function prepareSale(tx:Prisma.TransactionClient,record:GmpRecord,c
  const v=record.values;
  v.customer=contactName.parse(v.customer);
  v.customerInfo=contactPhone.parse(v.customerInfo);
+ // Existing historical sales may correct a contact before exporter enrollment.
+ if(!v.exporterId) return;
  const org=await tx.exporterOrganization.findFirst({where:{id:String(v.exporterId || ''),isActive:true,canReceive:true,members:{some:{role:'EXPORTER',isApproved:true,isLocked:false,deletedAt:null}}}});
  if(!org) throw Error('Chọn đơn vị xuất khẩu đang hoạt động trong danh sách.');
  v.exporter=org.name;

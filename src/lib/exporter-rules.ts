@@ -1,6 +1,5 @@
 import { z } from 'zod';
-export const contactPhone = z.string().trim().transform(s => s.replace(/[\s().-]/g, '')).refine(s => /^\+?[0-9]{8,15}$/.test(s), 'Số điện thoại liên hệ không hợp lệ (8–15 chữ số, có thể có mã quốc gia).');
-export const contactName = z.string().trim().min(2, 'Nhập họ tên cá nhân liên hệ.').max(120).regex(/^[\p{L}\p{M} .'’\-]+$/u, 'Nhập họ tên cá nhân, không nhập số điện thoại hoặc địa chỉ.').refine(s => /\p{L}/u.test(s) && !/công ty|company|limited|\bltd\b|\bco\.|corporation|doanh nghiệp/i.test(s), 'Khách hàng phải là họ tên cá nhân liên hệ.');
+export { contactName, contactPhone } from './sales-contact';
 const text = z.string().trim().max(2000).default('');
 const day = z.string().default('').refine(s => !s || (/^\d{4}-\d{2}-\d{2}$/.test(s) && Number.isFinite(Date.parse(s)) && new Date(s).toISOString().slice(0,10) === s), 'Ngày không hợp lệ.');
 export const shipmentSchema = z.object({

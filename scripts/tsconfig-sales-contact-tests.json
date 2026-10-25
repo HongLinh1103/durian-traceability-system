@@ -1,0 +1,6 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "noEmit": false, "incremental": false, "module": "CommonJS", "moduleResolution": "Node", "target": "ES2022", "outDir": "../scratch/sales-contact-tests", "rootDir": "..", "jsx": "react-jsx" },
+  "include": ["test-sales-contact.tsx", "../src/types/**/*.d.ts"],
+  "exclude": ["../node_modules"]
+}

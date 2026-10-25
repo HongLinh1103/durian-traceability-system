@@ -20,7 +20,10 @@ assert.equal(state.records.sales[0].values.testCertificate, base.values.testCert
 const removed = saveRecord(next, 'sales', {id: sale.id, values: {...saved.values, testCertificate: ''}}, sale.id);
 assert.equal(removed.records.sales.find(r => r.id === sale.id)!.values.testCertificate, '');
 assert.throws(() => saveRecord(state, 'sales', {id: sale.id, values: {...sale.values, testCertificate: 'javascript:alert(1)'}}, sale.id), /kiểm nghiệm/);
-assert.throws(() => saveRecord(state, 'sales', {id: sale.id, values: {...sale.values, testCertificate: url, customer: 'Đổi khách hàng'}}, sale.id), /thanh toán/);
+const contactCorrected = saveRecord(state, 'sales', {id: sale.id, values: {...sale.values, testCertificate: url, customer: 'Nguyễn Văn B', customerInfo: '+84 912 345 678'}}, sale.id);
+assert.equal(contactCorrected.records.sales[0].values.customerInfo, '+84912345678');
+assert.deepEqual(contactCorrected.payments, state.payments);
+assert.throws(() => saveRecord(state, 'sales', {id: sale.id, values: {...sale.values, testCertificate: url, weight_kg: Number(sale.values.weight_kg) + 1}}, sale.id), /thanh toán/);
 
 // Simulate JSONB returning objects with a different key order.
 function reorder(value: unknown): unknown {
