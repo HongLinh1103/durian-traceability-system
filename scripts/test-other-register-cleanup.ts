@@ -31,6 +31,11 @@ for (const record of [...cleaned.state.otherProcessing!, ...cleaned.state.otherM
 }
 assert.equal(cleaned.state.otherMonitoring!.find(r => r.book === 'quick-freezing')!.values.warehouse, 'IQF-01');
 assert(!OTHER_REGISTERS['quick-freezing'].fields.some(f => f.key === 'serial'));
+assert(!OTHER_REGISTERS.deseeding.fields.some(f => f.key === 'serial'));
+for (const book of ['warehouse', 'sales-monitoring'] as const) {
+ const fields = OTHER_REGISTERS[book].fields;
+ assert.equal(fields[fields.findIndex(f => f.key === 'recordedAt') + 1].key, 'lotCode', 'Material lot follows time');
+}
 const freshWidths = GMP_REGISTER_COLUMN_WIDTHS.preprocessing!;
 const preLayout = otherRegisterColumnLayout('preprocessing', actualOtherRegisterRows(cleaned.state, 'preprocessing'));
 assert.deepEqual([...preLayout.widths, preLayout.actionWidth], freshWidths);
@@ -40,6 +45,17 @@ for (const book of OTHER_REGISTER_KEYS) {
  assert.equal(layout.widths.length, OTHER_REGISTERS[book].fields.length);
  assert(layout.widths.every(w => w >= 45 && w <= 240));
  const html = renderToStaticMarkup(createElement(OtherRegisterView, { book, initialState: cleaned.state }));
+ const fitDesktop = !['preprocessing', 'packing'].includes(book);
+ assert.equal(layout.fitDesktop, fitDesktop);
+ const table = html.match(/<table\b[\s\S]*?<\/table>/)![0];
+ if (fitDesktop) {
+  assert(table.includes('lg:!w-full'));
+  assert(html.includes('lg:overflow-x-visible'));
+  const percentages = [...table.matchAll(/<col\b[^>]*style="width:([\d.]+)%/g)].map(m => Number(m[1]));
+  assert.equal(percentages.length, OTHER_REGISTERS[book].fields.length + 1);
+  assert(Math.abs(percentages.reduce((n, v) => n + v, 0) - 100) < 0.00001, 'Desktop columns occupy exactly the available width');
+ } else assert(!table.includes('lg:!w-full'), 'Unrequested registers retain fixed widths');
+ assert(!table.includes('Mã lô NL:'), 'No material code under a product name');
  assert(!html.includes('Bản ghi được lưu trong cơ sở dữ liệu'));
  assert(!html.includes('Bản ghi khởi tạo'));
  assert(!html.includes('Không phát sinh (mẫu)'));
@@ -50,5 +66,7 @@ for (const book of OTHER_REGISTER_KEYS) {
  const output = otherRegisterExport(book, rows, false);
  assert(!output.rows.flat().some(v => String(v).includes('(mẫu)')));
  assert.equal(output.filename, OTHER_REGISTERS[book].title);
+ const productColumn = output.columns.findIndex(c => c.key === 'product');
+ if (productColumn >= 0) assert.equal(output.rows[0][productColumn], rows[0].values.product, 'Export product cells only contain product names');
 }
-console.log('PASS: matched receiving/fresh staff, placeholder cleanup, immutable provenance/quantities, exact fresh preprocessing widths, compact tables, one filter row and matching export');
+console.log('PASS: staff cleanup, preserved data, fresh preprocessing widths, full-width desktop tables, dedicated material codes, no deseeding STT and matching product exports');

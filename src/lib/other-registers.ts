@@ -12,7 +12,6 @@ const field = (key: string, label: string, type?: Field['type'], extra: Partial<
 const lot = field('lotCode', 'Mã lô NL');
 const correction = field('correction', 'Hành động sửa chữa');
 const people = [field('receiver', 'Người tiếp nhận'), field('supervisor', 'Người giám sát')];
-const serial = field('serial', 'STT', 'number');
 const quality = field('productOk', 'Tình trạng sản phẩm (Đ/K)', 'check');
 const monitoringFields = [lot, field('monitoredAt', 'Thời gian giám sát', 'datetime-local'), field('equipmentOk', 'Tình trạng vệ sinh thiết bị'), quality, correction, ...people];
 
@@ -33,10 +32,10 @@ export const OTHER_REGISTERS: Record<OtherRegisterKey, Register> = {
  ripening: { title: 'SỔ THEO DÕI Ủ CHÍN', code: 'BM-GMP.04', dateKey: 'startDate', fields: [lot, field('startDate', 'Ngày bắt đầu', 'datetime-local'), field('endDate', 'Ngày kết thúc', 'datetime-local'), field('processOk', 'Đánh giá công đoạn (Đ/K)', 'check'), correction, ...people] },
  'quick-freezing': { title: 'SỔ THEO DÕI CẤP ĐÔNG NHANH', code: 'BM-GMP.05', dateKey: 'startAt', fields: [lot, field('warehouse', 'Kho/IQF'), field('startAt', 'Thời gian bắt đầu', 'datetime-local'), field('endAt', 'Thời gian kết thúc', 'datetime-local'), ...['1', '2', '3'].map(i => field('temperature' + i, 'Lần ' + i, 'number', { group: 'Nhiệt độ tâm sản phẩm (°C)' })), quality, correction, ...people] },
  peeling: { title: 'SỔ THEO DÕI TÁCH MÚI', code: 'BM-GMP.06', dateKey: 'monitoredAt', fields: monitoringFields },
- deseeding: { title: 'SỔ THEO DÕI BỎ HẠT', code: 'BM-GMP.07', dateKey: 'monitoredAt', fields: [serial, ...monitoringFields] },
+ deseeding: { title: 'SỔ THEO DÕI BỎ HẠT', code: 'BM-GMP.07', dateKey: 'monitoredAt', fields: monitoringFields },
  packing: { title: 'SỔ THEO DÕI ĐÓNG GÓI', code: 'Bộ cột tạm thời – chờ mẫu GMP chính thức', dateKey: 'packedAt', fields: [field('packedAt', 'Ngày giờ đóng gói', 'datetime-local'), lot, field('product', 'Tên sản phẩm'), field('packaging', 'Quy cách đóng gói'), field('quantity', 'Số lượng đóng gói', 'number'), field('weight', 'Khối lượng đóng gói (kg)', 'number'), field('toolsOk', 'Tình trạng vệ sinh dụng cụ, thiết bị (Đ/K)', 'check'), field('labelsOk', 'Tình trạng bao bì, tem nhãn (Đ/K)', 'check'), quality, correction, field('operator', 'Người thực hiện'), field('supervisor', 'Người giám sát')] },
- warehouse: { title: 'SỔ GIÁM SÁT NHẬP KHO TP', code: 'BM-GMP-09', dateKey: 'recordedAt', fields: [field('recordedAt', 'Thời gian', 'datetime-local'), field('product', 'Sản phẩm'), field('quantityWeight', 'Số lượng/khối lượng'), field('appearanceOk', 'Đánh giá cảm quan'), field('storageTemperature', 'Nhiệt độ kho lạnh', 'number', { unit: '°C' }), field('operator', 'Người thực hiện')] },
- 'sales-monitoring': { title: 'SỔ GIÁM SÁT XUẤT BÁN', code: 'Sổ Theo dõi Nhập xuất kho Thành phẩm', dateKey: 'recordedAt', fields: [field('date', 'Ngày, tháng, năm', 'date'), field('recordedAt', 'Thời gian', 'datetime-local'), field('product', 'Sản phẩm'), field('quantityWeight', 'Số lượng/khối lượng'), field('appearanceOk', 'Đánh giá cảm quan'), field('customer', 'Tên, địa chỉ KH'), field('transportOk', 'Đánh giá điều kiện vệ sinh phương tiện vận chuyển (Đ/K)', 'check'), field('operator', 'Người thực hiện')] },
+ warehouse: { title: 'SỔ GIÁM SÁT NHẬP KHO TP', code: 'BM-GMP-09', dateKey: 'recordedAt', fields: [field('recordedAt', 'Thời gian', 'datetime-local'), lot, field('product', 'Sản phẩm'), field('quantityWeight', 'Số lượng/khối lượng'), field('appearanceOk', 'Đánh giá cảm quan'), field('storageTemperature', 'Nhiệt độ kho lạnh', 'number', { unit: '°C' }), field('operator', 'Người thực hiện')] },
+ 'sales-monitoring': { title: 'SỔ GIÁM SÁT XUẤT BÁN', code: 'Sổ Theo dõi Nhập xuất kho Thành phẩm', dateKey: 'recordedAt', fields: [field('date', 'Ngày, tháng, năm', 'date'), field('recordedAt', 'Thời gian', 'datetime-local'), lot, field('product', 'Sản phẩm'), field('quantityWeight', 'Số lượng/khối lượng'), field('appearanceOk', 'Đánh giá cảm quan'), field('customer', 'Tên, địa chỉ KH'), field('transportOk', 'Đánh giá điều kiện vệ sinh phương tiện vận chuyển (Đ/K)', 'check'), field('operator', 'Người thực hiện')] },
 };
 
 export type OtherRegisterState = OtherState & MonitorState;
@@ -109,9 +108,6 @@ export function otherRegisterExport(book: OtherRegisterKey, rows: GmpRecord[], s
   code: sample ? `${config.code} · CHỈ MINH HỌA, KHÔNG PHẢI HỒ SƠ SẢN XUẤT THỰC TẾ` : config.code,
   filename: config.title,
   columns: config.fields,
-  rows: rows.map((record, index) => config.fields.map(column => {
-   const value = otherRegisterValue(column, record, index);
-   return column.key === 'product' ? `${value}\nMã lô NL: ${record.lotCode}` : value;
-  })),
+  rows: rows.map((record, index) => config.fields.map(column => otherRegisterValue(column, record, index))),
  };
 }

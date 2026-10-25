@@ -5,7 +5,7 @@ import { GMP_REGISTER_COLUMN_WIDTHS } from '@/components/processing/processing-g
 export function otherRegisterColumnLayout(book: OtherRegisterKey, rows: GmpRecord[]) {
  if (book === 'preprocessing') {
   const freshWidths = GMP_REGISTER_COLUMN_WIDTHS.preprocessing!;
-  return { widths: freshWidths.slice(0, -1), actionWidth: freshWidths[freshWidths.length - 1] };
+  return { widths: freshWidths.slice(0, -1), actionWidth: freshWidths[freshWidths.length - 1], fitDesktop: false };
  }
  const widths = OTHER_REGISTERS[book].fields.map(column => {
   if (column.key === 'serial') return 45;
@@ -23,5 +23,5 @@ export function otherRegisterColumnLayout(book: OtherRegisterKey, rows: GmpRecor
   if (column.key === 'equipmentOk') return 125;
   return Math.min(230, Math.max(column.key === 'product' ? 170 : 120, content * 6 + 16));
  });
- return { widths, actionWidth: 80 };
+ return { widths, actionWidth: 80, fitDesktop: book !== 'packing' };
 }

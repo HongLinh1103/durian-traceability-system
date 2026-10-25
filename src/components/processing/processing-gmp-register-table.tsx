@@ -158,7 +158,7 @@ export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], region
     regions?: RegionSource[];
     onDetail?: (record: GmpRecord) => void;
     onEdit?: (record: GmpRecord) => void;
-    presentation?: { title: string; code: string; fields: Field[]; widths?: number[]; actionWidth?: number; emptyMessage: string; renderValue: (field: Field, record: GmpRecord, index: number) => ReactNode };
+    presentation?: { title: string; code: string; fields: Field[]; widths?: number[]; actionWidth?: number; fitDesktop?: boolean; emptyMessage: string; renderValue: (field: Field, record: GmpRecord, index: number) => ReactNode };
 }) {
     const config = presentation || REGISTERS[stage];
     const { width } = layout[stage];
@@ -171,6 +171,8 @@ export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], region
     const actionWidth = presentation?.actionWidth ?? (stage === 'receiving' ? 110 : 120);
     const activeHeaderClass = `${headerClass}${presentation ? ' !whitespace-normal break-words !px-1.5 [overflow-wrap:anywhere]' : ''}`;
     const tableWidth = fields.reduce((sum, field, index) => sum + columnWidth(field, index), actions ? actionWidth : 0);
+    const fitDesktop = presentation?.fitDesktop === true;
+    const colSize = (pixels: number) => fitDesktop ? `${pixels / tableWidth * 100}%` : pixels;
     // The first two columns span the master heading in BM-GMP-02 and 03.
     const headingFields = title ? fields.slice(2) : fields;
     const headings: { label: string; fields: Field[]; grouped: boolean }[] = [];
@@ -181,15 +183,15 @@ export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], region
         else headings.push({ label: grouped ? field.group! : columnLabel(field), fields: [field], grouped });
     }
     return <>
-        <p className="px-5 py-3 text-xs text-slate-500">{config.code} · Kéo ngang để xem đầy đủ các cột trong sổ.{stage !== 'receiving' && ' Đ = Đạt; K = Không đạt.'}</p>
-        <div role="region" aria-label={`Bảng ${config.code}`} tabIndex={0} className="min-w-0 max-w-full overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500">
-            <table className={`${presentation ? '' : 'w-full '}table-fixed border-collapse text-sm`} style={presentation ? { width: tableWidth } : { width: stage === 'receiving' ? fields.reduce((sum, field) => sum + getColumnWidth(field, stage), 110) : undefined, minWidth: stage === 'receiving' ? undefined : Math.max(width, fields.length * 100) }}>
+        <p className="px-5 py-3 text-xs text-slate-500">{config.code} · <span className={fitDesktop ? 'lg:hidden' : undefined}>Kéo ngang để xem đầy đủ các cột trong sổ. </span>{stage !== 'receiving' && 'Đ = Đạt; K = Không đạt.'}</p>
+        <div role="region" aria-label={`Bảng ${config.code}`} tabIndex={0} className={`min-w-0 max-w-full overflow-x-auto ${fitDesktop ? 'lg:overflow-x-visible ' : ''}focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500`}>
+            <table className={`${presentation ? '' : 'w-full '}${fitDesktop ? 'lg:!w-full ' : ''}table-fixed border-collapse text-sm`} style={presentation ? { width: tableWidth } : { width: stage === 'receiving' ? fields.reduce((sum, field) => sum + getColumnWidth(field, stage), 110) : undefined, minWidth: stage === 'receiving' ? undefined : Math.max(width, fields.length * 100) }}>
                 <caption className="sr-only">{config.title} — {config.code}</caption>
                 <colgroup>
                     {fields.map((field, index) => (
-                        <col key={field.key} style={{ width: columnWidth(field, index) }} />
+                        <col key={field.key} style={{ width: colSize(columnWidth(field, index)) }} />
                     ))}
-                    {actions && <col style={{ width: actionWidth }} />}
+                    {actions && <col style={{ width: colSize(actionWidth) }} />}
                 </colgroup>
                 <thead className="bg-slate-50">
                     {title && <tr>

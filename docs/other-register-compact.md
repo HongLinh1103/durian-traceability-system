@@ -23,3 +23,14 @@
 ## Xác minh trước triển khai
 
 TypeScript và production build đạt. ESLint không có lỗi/cảnh báo. Kiểm thử chuẩn hóa/độ rộng/bộ lọc/file xuất và kiểm thử CB/DG, thời gian, 8 bảng, Excel đều đạt. Kiểm tra sau cập nhật DB xác nhận chuẩn hóa đã hoàn tất ở cả hai môi trường, không đổi các sổ trái tươi/nhập hàng.
+
+## Bổ sung: giãn bảng theo màn hình desktop
+
+Theo yêu cầu tiếp theo, các sổ Ủ chín, Cấp đông nhanh, Tách múi, Bỏ hạt, Nhập kho TP và Giám sát Xuất bán dùng bảng rộng 100% vùng nội dung từ breakpoint desktop 1024px. Các cột chia tỷ lệ phần trăm, tổng đúng 100%, tiêu đề và dữ liệu được xuống dòng nên không cần thanh cuộn ngang trên desktop. Trên màn hình nhỏ vẫn có thể cuộn để đọc đầy đủ.
+
+- Sổ Bỏ hạt bỏ cột STT.
+- Nhập kho TP và Giám sát Xuất bán có cột Mã lô NL riêng ngay sau Thời gian.
+- Đóng gói, Nhập kho TP và Giám sát Xuất bán chỉ hiển thị tên trong ô sản phẩm, bỏ mã lô bên dưới. File Excel dùng cùng cấu trúc: mã lô nằm ở cột riêng.
+- Sổ Tiếp nhận & Sơ chế giữ độ rộng khớp sổ trái tươi; sổ Đóng gói giữ bố cục cuộn ngang hiện có. Không đổi dữ liệu DB hoặc form nghiệp vụ.
+
+Kiểm thử kiểm tra tổng tỷ lệ độ rộng, chế độ desktop theo từng sổ, thứ tự cột, bỏ STT và nội dung xuất file đều đạt.

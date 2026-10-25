@@ -95,7 +95,7 @@ export function OtherRegisterView({ book, initialState, initialRevision = 0 }: {
     const value = otherRegisterValue(field as OtherRegisterColumn, record, index);
     const row = record as OtherRegisterRow;
     if (field.key === 'lotCode') return <div className="space-y-1"><Link href="/dashboard/processing/grading" className="font-mono font-bold text-emerald-700 hover:underline" title="Đối chiếu mã CB tại Sổ Nhập hàng">{value}</Link>{row.sourceOnly && <span className="block text-xs text-slate-500">Đã tiếp nhận · Chưa ghi nhận sơ chế</span>}</div>;
-    if (field.key === 'product') return <div className="space-y-1"><span>{value}</span><span className="block font-mono text-xs text-emerald-700">Mã lô NL: {record.lotCode}</span></div>;
+    if (field.key === 'product') return <span>{value}</span>;
     if (value === 'Đ' || value === 'K') return <span title={value === 'Đ' ? 'Đạt' : 'Không đạt'} className={`inline-flex h-7 min-w-7 items-center justify-center rounded-md border px-2 font-bold ${value === 'Đ' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>{value}</span>;
     return <span className={field.key === 'lotCode' ? 'font-mono font-bold text-emerald-700' : value === '—' ? 'text-slate-400' : ''}>{typeof value === 'number' ? value.toLocaleString('vi-VN') : value}</span>;
    } }} />
