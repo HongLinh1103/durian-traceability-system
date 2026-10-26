@@ -96,7 +96,7 @@ export function GardensManager({ regions, gardens }: { regions: Region[]; garden
     }
 
     return (
-        <main className="mx-auto min-h-screen max-w-[1500px] space-y-6 px-4 py-6 sm:px-6">
+        <main className="min-h-screen w-full max-w-none space-y-6 px-3 py-6 sm:px-5">
             <header className="flex flex-col gap-4 rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <p className="text-sm font-semibold text-emerald-700">Vùng đang phụ trách</p>

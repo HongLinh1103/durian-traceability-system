@@ -1,4 +1,7 @@
 "use client";
+import { FarmingLogDetail } from './farming-log-detail';
+import { DiaryVoiceInput, ImageFilePreviews } from './diary-media-input';
+import imageCompression from 'browser-image-compression';
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
@@ -143,13 +146,17 @@ export interface FarmingLogItem {
     pestsDetected?: string | null;
     notes?: string | null;
     images: string[];
+    voiceUrl?: string|null;
+    updatedAt?: string;
     isGACCCompliant: boolean;
     createdAt?: string;
-    farm?: { id?: string; farmCode: string; farmName: string };
+    farm?: { id?: string; farmCode: string; farmName: string; region?:{code:string}|null };
     cropSeason?: { id: string; name: string; year: number; status: string } | null;
 }
 
 interface CultivationLogsTabProps {
+    managed?: boolean;
+    regionCode?: string;
     farmId?: string;
     cropSeasonId?: string;
     isSeasonActive?: boolean;
@@ -161,6 +168,8 @@ interface CultivationLogsTabProps {
 }
 
 export function CultivationLogsTab({
+    managed=false,
+    regionCode,
     farmId,
     cropSeasonId,
     isSeasonActive = true,
@@ -171,8 +180,18 @@ export function CultivationLogsTab({
     onNavigateToPestBook,
 }: CultivationLogsTabProps) {
     const [logs, setLogs] = useState<FarmingLogItem[]>([]);
+    const [detailLog,setDetailLog] = useState<FarmingLogItem|null>(null);
+    const [filters,setFilters] = useState({query:'',stage:'',activity:'',from:'',to:''});
+    const visibleLogs = useMemo(()=>logs.filter(log=>{
+        const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(log.actionDate));
+        return (!filters.stage||log.stage===filters.stage)&&(!filters.activity||log.activityType===filters.activity)&&(!filters.from||day>=filters.from)&&(!filters.to||day<=filters.to)&&(!filters.query||[log.notes,log.chemicalName,log.pestsDetected,log.otherActivity].join(' ').toLocaleLowerCase('vi').includes(filters.query.toLocaleLowerCase('vi')));
+    }),[logs,filters]);
     const [loading, setLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [processingImages,setProcessingImages] = useState(0);
+    const [newImages,setNewImages] = useState<File[]>([]);
+    const [voiceFile,setVoiceFile] = useState<File|null>(null);
+    const [recordingVoice,setRecordingVoice] = useState(false);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
 
     const { toast } = useToast();
@@ -195,9 +214,11 @@ export function CultivationLogsTab({
         notes: "",
         isGACCCompliant: true,
         images: [] as string[],
+        voiceUrl: null as string|null,
     });
 
     const handleOpenEdit = (log: FarmingLogItem) => {
+        setNewImages([]);setVoiceFile(null);setRecordingVoice(false);
         setMaterialQuantities(Object.fromEntries((log.materialsUsed || []).filter(m => m.transactionId).map(m => [m.transactionId!, m.quantity])));
         const d = new Date(log.actionDate);
         const dateStr = !isNaN(d.getTime())
@@ -220,6 +241,7 @@ export function CultivationLogsTab({
             notes: log.notes || "",
             isGACCCompliant: log.isGACCCompliant,
             images: log.images || [],
+            voiceUrl: log.voiceUrl || null,
         });
         setEditingLog(log);
     };
@@ -228,23 +250,13 @@ export function CultivationLogsTab({
         setDeletingLog(log);
     };
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-
-        Array.from(files).forEach((file) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-                if (typeof reader.result === "string") {
-                    setEditForm((prev) => ({
-                        ...prev,
-                        images: [...prev.images, reader.result as string],
-                    }));
-                }
-            };
-            reader.readAsDataURL(file);
-        });
-        e.target.value = "";
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selected=Array.from(e.target.files || []);e.target.value='';setProcessingImages(count=>count+1);
+        try {
+            if (selected.length+newImages.length+editForm.images.length>12) throw Error('Tối đa 12 ảnh cho một nhật ký.');
+            const compressed=await Promise.all(selected.map(file=>imageCompression(file,{maxSizeMB:0.5,maxWidthOrHeight:1600,useWebWorker:true})));
+            setNewImages(files=>[...files,...compressed]);
+        } catch(error) {toast({title:'Không thể thêm ảnh',description:(error as Error).message,variant:'destructive'});} finally {setProcessingImages(count=>Math.max(0,count-1));}
     };
 
     const handleRemoveImage = (indexToRemove: number) => {
@@ -256,14 +268,12 @@ export function CultivationLogsTab({
 
     const handleSaveEdit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!editingLog) return;
+        if (!editingLog || recordingVoice || processingImages) return;
         setSubmittingAction(true);
         try {
             const fullDateTime = new Date(`${editForm.date}T${editForm.time || "00:00"}:00`).toISOString();
-            const res = await fetch(`/api/farming-logs/${editingLog.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+            const payload=new FormData();
+            payload.append('data',JSON.stringify({
                     actionDate: fullDateTime,
                     stage: editForm.stage,
                     activityType: editForm.activityType,
@@ -275,9 +285,13 @@ export function CultivationLogsTab({
                     notes: editForm.notes,
                     isGACCCompliant: editForm.isGACCCompliant,
                     images: editForm.images,
+                    voiceUrl: editForm.voiceUrl,
+                    updatedAt: editingLog.updatedAt,
                     materialQuantities: Object.entries(materialQuantities).map(([transactionId, quantity]) => ({ transactionId, quantity })),
-                }),
-            });
+                }));
+            for(const file of newImages)payload.append('newImages',file,file.name);
+            if(voiceFile)payload.append('voice',voiceFile,voiceFile.name);
+            const res = await fetch(`/api/farming-logs/${editingLog.id}`,{method:'PUT',body:payload});
 
             const data = await res.json();
             if (res.ok && data.ok) {
@@ -440,13 +454,12 @@ export function CultivationLogsTab({
                         setExporting(true);
                         try {
                             const { exportCultivationLogsDocx } = await import("@/lib/farmer-docx-export");
-                            const farmCode = logs[0]?.farm?.farmCode || "";
-                            const regionCode = farmCode ? farmCode.replace(/-F\d+$/, "") : "VN - DNOR - 0269";
+                            const exportRegionCode = regionCode || logs[0]?.farm?.region?.code || "";
                             await exportCultivationLogsDocx({
                                 farmName: farmName || logs[0]?.farm?.farmName || "Vườn sầu riêng",
-                                regionCode,
-                                seasonName: seasonName || logs[0]?.cropSeason?.name || "2025-2026",
-                                logs,
+                                regionCode:exportRegionCode,
+                                seasonName: seasonName || logs[0]?.cropSeason?.name || "Tất cả niên vụ",
+                                logs:visibleLogs,
                                 activityLabels,
                                 stageLabels,
                             });
@@ -467,7 +480,7 @@ export function CultivationLogsTab({
                     {exporting ? "Đang xuất..." : "Xuất file"}
                 </Button>
 
-                {!isSeasonActive ? (
+                {!managed && (!isSeasonActive ? (
                     <div className="flex flex-wrap items-center gap-2">
                         <div className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 border border-slate-200 shrink-0">
                             <span>🔒 Vụ mùa đã đóng (Chế độ chỉ xem)</span>
@@ -493,13 +506,20 @@ export function CultivationLogsTab({
                             Ghi nhật ký
                         </Link>
                     </Button>
-                )}
+                ))}
             </div>
 
+            <section aria-label="Bộ lọc nhật ký" className="grid gap-3 rounded-2xl border bg-white p-4 sm:grid-cols-2 xl:grid-cols-5">
+                <label className="text-xs font-semibold">Tìm kiếm<input className="mt-1 w-full rounded-lg border px-3 py-2" value={filters.query} onChange={e=>setFilters(f=>({...f,query:e.target.value}))} placeholder="Ghi chú, vật tư, sâu bệnh..."/></label>
+                <label className="text-xs font-semibold">Giai đoạn<select className="mt-1 w-full rounded-lg border px-3 py-2" value={filters.stage} onChange={e=>setFilters(f=>({...f,stage:e.target.value}))}><option value="">Tất cả</option>{Object.entries(stageLabels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
+                <label className="text-xs font-semibold">Hoạt động<select className="mt-1 w-full rounded-lg border px-3 py-2" value={filters.activity} onChange={e=>setFilters(f=>({...f,activity:e.target.value}))}><option value="">Tất cả</option>{Object.entries(activityLabels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
+                <label className="text-xs font-semibold">Từ ngày<input className="mt-1 w-full rounded-lg border px-3 py-2" type="date" value={filters.from} onChange={e=>setFilters(f=>({...f,from:e.target.value}))}/></label>
+                <label className="text-xs font-semibold">Đến ngày<input className="mt-1 w-full rounded-lg border px-3 py-2" type="date" value={filters.to} onChange={e=>setFilters(f=>({...f,to:e.target.value}))}/></label>
+            </section>
             {/* Danh sách nhật ký canh tác */}
             <Card className="overflow-hidden rounded-2xl border border-slate-300 shadow-sm bg-white">
                 <div aria-live="polite" className="flex justify-end border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-500">
-                    <span>Tổng cộng: <b>{logs.length}</b> hoạt động</span>
+                    <span>Tổng cộng: <b>{visibleLogs.length}</b> / {logs.length} hoạt động</span>
                 </div>
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 space-y-3">
@@ -521,7 +541,7 @@ export function CultivationLogsTab({
                             </Button>
                         </div>
                     </div>
-                ) : logs.length === 0 ? (
+                ) : visibleLogs.length === 0 ? (
                     <div className="py-16 text-center text-slate-500">
                         <Sprout className="mx-auto mb-3 h-10 w-10 text-slate-300" />
                         <b className="text-slate-800 text-base">
@@ -535,7 +555,7 @@ export function CultivationLogsTab({
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[1045px] table-fixed border-collapse border border-slate-300 text-left text-xs sm:text-sm">
+                        <table className="w-full min-w-[1110px] table-fixed border-collapse border border-slate-300 text-left text-xs sm:text-sm">
                                 <thead className="bg-slate-100/90 text-xs text-slate-700">
                                     <tr>
                                         <th className="w-[100px] border border-slate-300 px-2.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Ngày thực hiện</th>
@@ -546,11 +566,11 @@ export function CultivationLogsTab({
                                         <th className="w-[140px] border border-slate-300 px-2.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Liều lượng</th>
                                         <th className="w-[60px] border border-slate-300 px-1 py-3 font-semibold text-center align-middle whitespace-nowrap">PHI</th>
                                         <th className="w-[130px] border border-slate-300 px-2.5 py-3 font-semibold text-center align-middle whitespace-nowrap">Ghi chú & Ảnh</th>
-                                        <th className="w-[80px] border border-slate-300 px-1 py-3 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
+                                        <th className="w-[144px] border border-slate-300 px-1 py-3 font-semibold text-center align-middle whitespace-nowrap">Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody className="text-xs">
-                                    {logs.map((log) => {
+                                    {visibleLogs.map((log) => {
                                         const activityText =
                                             log.activityType === "OTHER"
                                                 ? log.otherActivity || "Khác"
@@ -605,6 +625,7 @@ export function CultivationLogsTab({
                                                         ) : (
                                                             <span className="text-slate-300">—</span>
                                                         )}
+                                                        {log.voiceUrl && <audio controls preload="none" src={log.voiceUrl} className="mt-1 h-8 w-full min-w-28" />}
                                                         {log.images && log.images.length > 0 && (
                                                             <div className="flex flex-wrap gap-1 pt-0.5">
                                                                 {log.images.map((img, idx) => (
@@ -628,16 +649,17 @@ export function CultivationLogsTab({
                                                 </td>
                                                 <td className="border border-slate-200 whitespace-nowrap px-1 py-2.5 text-center">
                                                     <div className="flex items-center justify-center gap-1">
+                                                        <button type="button" className="rounded-lg border px-2 py-1 text-xs font-semibold text-slate-700" onClick={()=>setDetailLog(log)}>Xem</button>
                                                         <button
                                                             type="button"
                                                             disabled={!isSeasonActive}
                                                             onClick={() => handleOpenEdit(log)}
-                                                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-brand-200 bg-brand-50/60 text-brand-700 hover:bg-brand-100 hover:text-brand-800 disabled:opacity-40 transition"
+                                                            className="flex h-7 items-center justify-center rounded-lg border px-1.5 border-brand-200 bg-brand-50/60 text-brand-700 hover:bg-brand-100 hover:text-brand-800 disabled:opacity-40 transition"
                                                             title={isSeasonActive ? "Sửa nhật ký" : "Vụ mùa đã đóng"}
                                                         >
-                                                            <Pencil className="h-3.5 w-3.5" />
+                                                            <Pencil className="h-3.5 w-3.5" /><span className="ml-1 text-xs">Sửa</span>
                                                         </button>
-                                                        <button
+                                                        {!managed && <button
                                                             type="button"
                                                             disabled={!isSeasonActive}
                                                             onClick={() => handleOpenDelete(log)}
@@ -645,7 +667,7 @@ export function CultivationLogsTab({
                                                             title={isSeasonActive ? "Xóa nhật ký" : "Vụ mùa đã đóng"}
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
-                                                        </button>
+                                                        </button>}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -657,6 +679,7 @@ export function CultivationLogsTab({
                 )}
             </Card>
 
+            {detailLog&&<FarmingLogDetail log={detailLog} onClose={()=>setDetailLog(null)} stageLabels={stageLabels} activityLabels={activityLabels}/>}
             {/* Modal chỉnh sửa nhật ký */}
             {editingLog && (
                 <ModalPortal>
@@ -866,6 +889,9 @@ export function CultivationLogsTab({
                                     </label>
                                 </div>
 
+                                <DiaryVoiceInput disabled={submittingAction} file={voiceFile} storedUrl={editForm.voiceUrl} onChange={setVoiceFile} onRemoveStored={()=>setEditForm(f=>({...f,voiceUrl:null}))} onRecordingChange={setRecordingVoice} />
+                                <ImageFilePreviews files={newImages} onRemove={index=>setNewImages(files=>files.filter((_,i)=>i!==index))}/>
+                                <label className="inline-flex cursor-pointer rounded-lg border px-3 py-2 text-sm">Chụp ảnh<input className="hidden" type="file" accept="image/*" capture="environment" onChange={handleImageUpload}/></label>
                                 {/* Ảnh đính kèm */}
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -913,7 +939,7 @@ export function CultivationLogsTab({
                                     </Button>
                                     <Button
                                         type="submit"
-                                        disabled={submittingAction}
+                                        disabled={submittingAction || recordingVoice || processingImages > 0}
                                         className="rounded-xl bg-brand-600 font-bold text-white hover:bg-brand-700"
                                     >
                                         {submittingAction ? (

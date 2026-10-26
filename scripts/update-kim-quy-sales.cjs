@@ -5,8 +5,8 @@ const prisma = new PrismaClient();
 const KIM_QUY_SALES_TABLE = {
     'LH-2026-0809': {
         date: '2026-09-11',
-        customer: 'Công ty Phân phối Hoa quả Quảng Tây',
-        customerInfo: 'Nam Ninh, Quảng Tây, Trung Quốc',
+        customer: 'Nguyễn Văn A',
+        customerInfo: '0912345678',
         lotCode: 'LH-2026-0809',
         variety: 'Monthong',
         productLot: 'Monthong · LH-2026-0809',
@@ -24,8 +24,8 @@ const KIM_QUY_SALES_TABLE = {
     },
     'LH-2026-0609': {
         date: '2026-09-10',
-        customer: 'Công ty Thương mại Nông sản Bằng Tường',
-        customerInfo: 'Bằng Tường, Quảng Tây, Trung Quốc',
+        customer: 'Trần Đình Trọng',
+        customerInfo: '+84983456789',
         lotCode: 'LH-2026-0609',
         variety: 'Ri6',
         productLot: 'Ri6 · LH-2026-0609',
@@ -43,8 +43,8 @@ const KIM_QUY_SALES_TABLE = {
     },
     'LH-2026-0509': {
         date: '2026-09-08',
-        customer: 'Công ty Hoa quả Tươi Nam Ninh',
-        customerInfo: 'Nam Ninh, Quảng Tây, Trung Quốc',
+        customer: 'Lê Hoàng Nam',
+        customerInfo: '0903123456',
         lotCode: 'LH-2026-0509',
         variety: 'Monthong',
         productLot: 'Monthong · LH-2026-0509',
@@ -62,8 +62,8 @@ const KIM_QUY_SALES_TABLE = {
     },
     'LH-2026-0309': {
         date: '2026-09-05',
-        customer: 'Công ty Phân phối Trái cây Quảng Tây',
-        customerInfo: 'Nam Ninh, Quảng Tây, Trung Quốc',
+        customer: 'Phạm Quốc Bảo',
+        customerInfo: '+8613800138000',
         lotCode: 'LH-2026-0309',
         variety: 'Ri6',
         productLot: 'Ri6 · LH-2026-0309',
@@ -81,8 +81,8 @@ const KIM_QUY_SALES_TABLE = {
     },
     'LH-2026-0209': {
         date: '2026-09-04',
-        customer: 'Công ty Nông sản Hữu nghị Quảng Tây',
-        customerInfo: 'Bằng Tường, Quảng Tây, Trung Quốc',
+        customer: 'Đỗ Minh Khang',
+        customerInfo: '0918234567',
         lotCode: 'LH-2026-0209',
         variety: 'Monthong',
         productLot: 'Monthong · LH-2026-0209',
@@ -100,8 +100,8 @@ const KIM_QUY_SALES_TABLE = {
     },
     'LH-2026-2908': {
         date: '2026-08-31',
-        customer: 'Công ty Thương mại Trái cây Bằng Tường',
-        customerInfo: 'Bằng Tường, Quảng Tây, Trung Quốc',
+        customer: 'Vũ Anh Dũng',
+        customerInfo: '+8613912345678',
         lotCode: 'LH-2026-2908',
         variety: 'Ri6',
         productLot: 'Ri6 · LH-2026-2908',
@@ -119,8 +119,8 @@ const KIM_QUY_SALES_TABLE = {
     },
     'LH-2026-2007': {
         date: '2026-07-22',
-        customer: 'Công ty Phân phối Hoa quả Nam Ninh',
-        customerInfo: 'Nam Ninh, Quảng Tây, Trung Quốc',
+        customer: 'Hoàng Văn Nam',
+        customerInfo: '+84934567890',
         lotCode: 'LH-2026-2007',
         variety: 'Ri6',
         productLot: 'Ri6 · LH-2026-2007',

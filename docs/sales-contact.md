@@ -20,6 +20,8 @@ Thêm `--apply` để ghi. Script sao lưu các workspace bị ảnh hưởng v�
 
 ## Kiểm tra
 
+Cập nhật tiếp theo ngày 26/10/2026: theo yêu cầu mới, đã đồng bộ 11 cặp họ tên/số điện thoại được người dùng lưu tại local sang production, trên 3 workspace. Script `sync-sales-contacts.ts` chỉ sao chép hai trường từ bản ghi cùng ID và mã lô, có sao lưu và kiểm tra revision; giữ mọi bản ghi riêng trên production. Không điền liên hệ mặc định khi tải sổ. Lệnh `populate-sales-contacts.ts` cũ chuyển sang cùng cơ chế đồng bộ có chủ đích, mặc định chỉ lập kế hoạch.
+
 ```
 node node_modules/typescript/bin/tsc -p scripts/tsconfig-sales-contact-tests.json
 node scratch/sales-contact-tests/scripts/test-sales-contact.js

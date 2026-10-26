@@ -1,3 +1,4 @@
+import { trapLocationFields, checkTrapLocation } from '@/lib/trap-location';
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSession } from "next-auth";
@@ -12,12 +13,11 @@ const trapSchema = z.object({
     trapType: z.string().trim().min(1, "Loại bẫy không được để trống").max(100),
     attractant: z.string().trim().max(200).optional().nullable(),
     locationName: z.string().trim().min(1, "Vị trí đặt không được để trống").max(200),
-    latitude: z.coerce.number().optional().nullable(),
-    longitude: z.coerce.number().optional().nullable(),
+    ...trapLocationFields,
     installedDate: z.string().optional().nullable(),
     status: z.enum(["ACTIVE", "INACTIVE", "DAMAGED"]).default("ACTIVE"),
     notes: z.string().trim().max(500).optional().nullable(),
-});
+}).superRefine(checkTrapLocation);
 
 async function resolveFarmerId(session: any): Promise<string | null> {
     if (session?.user?.id) {
@@ -75,7 +75,7 @@ export async function POST(
             );
         }
 
-        const { trapCode, trapType, attractant, locationName, latitude, longitude, installedDate, status, notes } =
+        const { trapCode, trapType, attractant, locationName, latitude, longitude, accuracyMeters, locationCapturedAt, installedDate, status, notes } =
             parsed.data;
 
         const trap = await prisma.pestTrap.create({
@@ -85,8 +85,10 @@ export async function POST(
                 trapType,
                 attractant: attractant || null,
                 locationName,
-                latitude: latitude || null,
-                longitude: longitude || null,
+                latitude: latitude ?? null,
+                longitude: longitude ?? null,
+                accuracyMeters:accuracyMeters ?? null,
+                locationCapturedAt:locationCapturedAt ? new Date(locationCapturedAt) : null,
                 installedDate: installedDate ? new Date(installedDate) : new Date(),
                 status,
                 notes: notes || null,
@@ -134,7 +136,7 @@ export async function PUT(
             );
         }
 
-        const { id: trapId, trapCode, trapType, attractant, locationName, latitude, longitude, installedDate, status, notes } =
+        const { id: trapId, trapCode, trapType, attractant, locationName, latitude, longitude, accuracyMeters, locationCapturedAt, installedDate, status, notes } =
             parsed.data;
 
         const updatedTrap = await prisma.pestTrap.update({
@@ -144,8 +146,10 @@ export async function PUT(
                 trapType,
                 attractant: attractant || null,
                 locationName,
-                latitude: latitude || null,
-                longitude: longitude || null,
+                latitude: latitude ?? null,
+                longitude: longitude ?? null,
+                accuracyMeters:accuracyMeters ?? null,
+                locationCapturedAt:locationCapturedAt ? new Date(locationCapturedAt) : null,
                 installedDate: installedDate ? new Date(installedDate) : undefined,
                 status,
                 notes: notes || null,

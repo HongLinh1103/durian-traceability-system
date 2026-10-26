@@ -1,3 +1,4 @@
+import { trapLocationFields, checkTrapLocation } from '@/lib/trap-location';
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSession } from "next-auth";
@@ -33,13 +34,12 @@ const createBookSchema = z.object({
                 trapType: z.string().trim().optional().default("Bẫy lồng"),
                 attractant: z.string().trim().optional().nullable(),
                 locationName: z.string().trim().min(1),
-                latitude: z.number().optional().nullable(),
-                longitude: z.number().optional().nullable(),
+                ...trapLocationFields,
                 notes: z.string().trim().optional().nullable(),
-            }),
-        )
+            }).superRefine(checkTrapLocation),
+        ).max(200)
         .optional(),
-    initialTraps: z.array(z.any()).optional(),
+    initialTraps: z.array(z.object({trapCode:z.string().trim().min(1),trapType:z.string().optional(),attractant:z.string().nullable().optional(),locationName:z.string().trim().min(1),notes:z.string().nullable().optional(),...trapLocationFields}).superRefine(checkTrapLocation)).max(200).optional(),
 });
 
 async function resolveFarmerId(session: any): Promise<string | null> {
@@ -134,6 +134,8 @@ export async function GET(request: Request) {
                         status: true,
                         latitude: true,
                         longitude: true,
+                        accuracyMeters:true,
+                        locationCapturedAt:true,
                     },
                 },
                 inspections: {
@@ -305,8 +307,10 @@ export async function POST(request: Request) {
                 trapType: t.trapType || trapType || "Bẫy lồng",
                 attractant: t.attractant || attractant || null,
                 locationName: t.locationName,
-                latitude: t.latitude || null,
-                longitude: t.longitude || null,
+                latitude: t.latitude ?? null,
+                longitude: t.longitude ?? null,
+                accuracyMeters:t.accuracyMeters ?? null,
+                locationCapturedAt:t.locationCapturedAt ?? null,
                 notes: t.notes || null,
             }))
             : [];
@@ -344,8 +348,10 @@ export async function POST(request: Request) {
                             trapType: t.trapType || "Bẫy lồng",
                             attractant: t.attractant || null,
                             locationName: t.locationName,
-                            latitude: t.latitude || null,
-                            longitude: t.longitude || null,
+                            latitude: t.latitude ?? null,
+                            longitude: t.longitude ?? null,
+                            accuracyMeters:t.accuracyMeters ?? null,
+                            locationCapturedAt:t.locationCapturedAt ? new Date(t.locationCapturedAt) : null,
                             notes: t.notes || null,
                         })),
                     }

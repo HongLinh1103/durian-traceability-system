@@ -1,4 +1,7 @@
 "use client";
+import { TrapLocationInput } from './trap-location-input';
+import { trapMapUrl } from '@/lib/trap-location';
+const trapRowKey=()=>globalThis.crypto?.randomUUID?.() || 'trap-row-'+Date.now()+'-'+Math.random();
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -148,6 +151,8 @@ interface TrapItem {
     locationName: string;
     latitude?: number | null;
     longitude?: number | null;
+    accuracyMeters?:number|null;
+    locationCapturedAt?:string|null;
     installedDate: string;
     status: "ACTIVE" | "INACTIVE" | "DAMAGED";
     notes?: string | null;
@@ -256,6 +261,7 @@ export function PestMonitoringTab({
 
     const [showCreateBookModal, setShowCreateBookModal] = useState(false);
     const [showAddTrapModal, setShowAddTrapModal] = useState(false);
+    const [editingTrapId,setEditingTrapId] = useState<string|null>(null);
     const [showAddInspectionModal, setShowAddInspectionModal] = useState(false);
     const [showAddTreatmentModal, setShowAddTreatmentModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -280,12 +286,15 @@ export function PestMonitoringTab({
         notes: "",
         traps: [
             {
+                clientId:trapRowKey(),
                 trapCode: "",
                 trapType: "Bẫy lồng",
                 locationName: "",
                 notes: "",
             },
         ] as Array<{
+            clientId:string;
+            latitude?:number|null;longitude?:number|null;accuracyMeters?:number|null;locationCapturedAt?:string|null;
             trapCode: string;
             trapType?: string;
             attractant?: string;
@@ -296,17 +305,25 @@ export function PestMonitoringTab({
 
     // Form: Add Trap in Detail View
     const [trapForm, setTrapForm] = useState({
+        clientId:trapRowKey(),
         trapCode: "",
         trapType: "Bẫy lồng",
         attractant: "Pheromone Methyl Eugenol",
         locationName: "",
         latitude: "",
         longitude: "",
+        accuracyMeters:null as number|null,
+        locationCapturedAt:null as string|null,
         installedDate: new Date().toISOString().split("T")[0],
         status: "ACTIVE",
         notes: "",
     });
 
+    function openTrapEditor(trap?: TrapItem) {
+        setEditingTrapId(trap?.id || null);
+        setTrapForm({clientId:trapRowKey(),trapCode:trap?.trapCode || '',trapType:trap?.trapType || bookDetail?.trapType || 'Bẫy lồng',attractant:trap?.attractant || bookDetail?.attractant || '',locationName:trap?.locationName || '',latitude:trap?.latitude!=null?String(trap.latitude):'',longitude:trap?.longitude!=null?String(trap.longitude):'',accuracyMeters:trap?.accuracyMeters ?? null,locationCapturedAt:trap?.locationCapturedAt ?? null,installedDate:trap?.installedDate?.slice(0,10)||new Date().toISOString().slice(0,10),status:trap?.status || 'ACTIVE',notes:trap?.notes || ''});
+        setShowAddTrapModal(true);
+    }
     // Form: Add Inspection
     const [inspectionForm, setInspectionForm] = useState({
         inspectionDate: new Date().toISOString().split("T")[0],
@@ -496,6 +513,7 @@ export function PestMonitoringTab({
             traps: [
                 ...prev.traps,
                 {
+                    clientId:trapRowKey(),
                     trapCode: "",
                     trapType: prev.trapType || "Bẫy lồng",
                     locationName: "",
@@ -513,6 +531,7 @@ export function PestMonitoringTab({
                     ...prev,
                     traps: [
                         {
+                            clientId:trapRowKey(),
                             trapCode: "",
                             trapType: "Bẫy lồng",
                             locationName: "",
@@ -534,6 +553,7 @@ export function PestMonitoringTab({
             ...prev,
             traps: [
                 {
+                    clientId:trapRowKey(),
                     trapCode: "",
                     trapType: "Bẫy lồng",
                     locationName: "",
@@ -590,6 +610,7 @@ export function PestMonitoringTab({
                         trapType: (createBookForm.trapType?.trim() || t.trapType || "Bẫy lồng"),
                         attractant: createBookForm.attractant.trim() || null,
                         locationName: t.locationName.trim(),
+                        latitude:t.latitude ?? null,longitude:t.longitude ?? null,accuracyMeters:t.accuracyMeters ?? null,locationCapturedAt:t.locationCapturedAt ?? null,
                         notes: t.notes?.trim() || null,
                     }))
                 : [];
@@ -642,6 +663,7 @@ export function PestMonitoringTab({
                     notes: "",
                     traps: [
                         {
+                            clientId:trapRowKey(),
                             trapCode: "",
                             trapType: "Bẫy lồng",
                             locationName: "",
@@ -699,10 +721,11 @@ export function PestMonitoringTab({
         setSubmitting(true);
         try {
             const res = await fetch(`/api/farmer/pest-monitoring/${selectedBookId}/traps`, {
-                method: "POST",
+                method: editingTrapId ? "PUT" : "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...trapForm,
+                    id:editingTrapId || undefined,
                     latitude: trapForm.latitude ? Number(trapForm.latitude) : null,
                     longitude: trapForm.longitude ? Number(trapForm.longitude) : null,
                 }),
@@ -710,12 +733,15 @@ export function PestMonitoringTab({
             if (res.ok) {
                 setShowAddTrapModal(false);
                 setTrapForm({
+                    clientId:trapRowKey(),
                     trapCode: "",
                     trapType: bookDetail?.trapType || "Bẫy lồng",
                     attractant: bookDetail?.attractant || "Pheromone Methyl Eugenol",
                     locationName: "",
                     latitude: "",
                     longitude: "",
+                    accuracyMeters:null as number|null,
+                    locationCapturedAt:null as string|null,
                     installedDate: new Date().toISOString().split("T")[0],
                     status: "ACTIVE",
                     notes: "",
@@ -1345,7 +1371,7 @@ export function PestMonitoringTab({
                                 <Button
                                     type="button"
                                     size="sm"
-                                    onClick={() => setShowAddTrapModal(true)}
+                                    onClick={() => openTrapEditor()}
                                     className="h-8 shrink-0 whitespace-nowrap rounded-xl bg-brand-600 px-3 text-xs font-bold text-white hover:bg-brand-700 shadow-soft"
                                 >
                                     <Plus className="mr-1 h-3.5 w-3.5 shrink-0" />
@@ -1367,7 +1393,7 @@ export function PestMonitoringTab({
                                     </thead>
                                     <tbody>
                                         {bookDetail.traps.map((trap, idx) => {
-                                            const locStr = trap.latitude && trap.longitude
+                                            const locStr = trap.latitude != null && trap.longitude != null
                                                 ? `${trap.locationName} (${trap.latitude.toFixed(7)}, ${trap.longitude.toFixed(7)})`
                                                 : trap.locationName || "-";
 
@@ -1383,7 +1409,7 @@ export function PestMonitoringTab({
                                                     <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-700 text-center whitespace-nowrap">
                                                         {trap.attractant || bookDetail.attractant || "-"}
                                                     </td>
-                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-xs text-slate-700 text-center whitespace-nowrap">{locStr}</td>
+                                                    <td className="border border-slate-200 px-3.5 py-2.5 font-mono text-xs text-slate-700 text-center"><p>{locStr}</p>{trap.accuracyMeters!=null&&<p className="text-slate-500">Sai số ~{Math.round(trap.accuracyMeters)} m</p>}{trap.locationCapturedAt&&<p className="text-slate-500">{new Date(trap.locationCapturedAt).toLocaleString('vi-VN')}</p>}{trap.latitude!=null&&trap.longitude!=null&&<a className="block text-emerald-700 underline" href={trapMapUrl(trap.latitude,trap.longitude)} target="_blank" rel="noopener noreferrer">Xem trên bản đồ</a>}<button type="button" className="mt-1 text-emerald-700 underline" onClick={()=>openTrapEditor(trap)}>Sửa vị trí / bẫy</button></td>
                                                     <td className="border border-slate-200 px-3.5 py-2.5 text-xs text-slate-500 text-center whitespace-nowrap">{trap.notes || "-"}</td>
                                                 </tr>
                                             );
@@ -1579,7 +1605,7 @@ export function PestMonitoringTab({
                     >
                         <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden flex flex-col border border-slate-100 my-auto">
                             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-white shrink-0">
-                                <h3 className="font-bold text-slate-900 text-lg">Thêm bẫy mới</h3>
+                                <h3 className="font-bold text-slate-900 text-lg">{editingTrapId ? "Sửa thông tin bẫy" : "Thêm bẫy mới"}</h3>
                                 <button
                                     type="button"
                                     onClick={() => setShowAddTrapModal(false)}
@@ -1636,30 +1662,7 @@ export function PestMonitoringTab({
                                         className="h-10 w-full rounded-2xl border border-slate-200 px-3 text-sm focus:border-brand-500 focus:outline-none"
                                     />
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-600 mb-1">Vĩ độ (Lat)</label>
-                                        <input
-                                            type="number"
-                                            step="any"
-                                            placeholder="10.945..."
-                                            value={trapForm.latitude}
-                                            onChange={(e) => setTrapForm({ ...trapForm, latitude: e.target.value })}
-                                            className="h-10 w-full rounded-2xl border border-slate-200 px-3 text-sm focus:border-brand-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-600 mb-1">Kinh độ (Lng)</label>
-                                        <input
-                                            type="number"
-                                            step="any"
-                                            placeholder="107.238..."
-                                            value={trapForm.longitude}
-                                            onChange={(e) => setTrapForm({ ...trapForm, longitude: e.target.value })}
-                                            className="h-10 w-full rounded-2xl border border-slate-200 px-3 text-sm focus:border-brand-500 focus:outline-none"
-                                        />
-                                    </div>
-                                </div>
+                                <TrapLocationInput value={{latitude:trapForm.latitude===''?null:Number(trapForm.latitude),longitude:trapForm.longitude===''?null:Number(trapForm.longitude),accuracyMeters:trapForm.accuracyMeters,locationCapturedAt:trapForm.locationCapturedAt}} onChange={location=>setTrapForm(previous=>({...previous,latitude:location.latitude==null?'':String(location.latitude),longitude:location.longitude==null?'':String(location.longitude),accuracyMeters:location.accuracyMeters??null,locationCapturedAt:location.locationCapturedAt??null,locationName:previous.locationName || (location.latitude!=null&&location.longitude!=null?location.latitude.toFixed(7)+', '+location.longitude.toFixed(7):'')}))}/>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-600 mb-1">Ghi chú</label>
                                     <input
@@ -2849,7 +2852,7 @@ export function PestMonitoringTab({
                                                             </thead>
                                                             <tbody>
                                                                 {createBookForm.traps.map((trap, idx) => (
-                                                                    <tr key={idx} className="hover:bg-slate-50/70 transition">
+                                                                    <tr key={trap.clientId} className="hover:bg-slate-50/70 transition">
                                                                         <td className="border border-slate-200 px-3 py-2 text-center font-bold text-slate-500">
                                                                             {idx + 1}
                                                                         </td>
@@ -2874,6 +2877,7 @@ export function PestMonitoringTab({
                                                                                 }
                                                                                 className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none bg-white"
                                                                             />
+                                                                            <TrapLocationInput value={trap} onChange={location=>setCreateBookForm(previous=>({...previous,traps:previous.traps.map(row=>row.clientId===trap.clientId?{...row,...location,locationName:row.locationName || (location.latitude!=null&&location.longitude!=null?location.latitude.toFixed(7)+', '+location.longitude.toFixed(7):'')}:row)}))}/>
                                                                         </td>
                                                                         <td className="border border-slate-200 p-1.5">
                                                                             <input

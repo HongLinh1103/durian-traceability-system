@@ -3,11 +3,11 @@ import type { GmpState, Values } from './processing-gmp';
 
 export const contactPhone = z.string().trim()
   .transform(value => value.replace(/[\s().-]/g, ''))
-  .refine(value => /^(?:\+[1-9][0-9]{7,14}|[0-9]{8,15})$/.test(value) && !/^0+$/.test(value), 'Nhập số điện thoại hợp lệ gồm 8–15 chữ số, có thể bắt đầu bằng + và mã quốc gia.');
+  .refine(value => /^(?:\+[1-9][0-9]{7,14}|[0-9]{8,15})$/.test(value) && !/^0+$/.test(value), 'Nhập số điện thoại liên hệ hợp lệ gồm 8–15 chữ số, cho phép mã quốc gia khi cần (VD: 0912345678 hoặc +84 912 345 678). Không sử dụng trường này để ghi tên doanh nghiệp hoặc địa chỉ.');
 
-export const contactName = z.string().trim().min(2, 'Nhập họ và tên cá nhân liên hệ.').max(120)
-  .regex(/^[\p{L}\p{M} .'’\-]+$/u, 'Nhập họ và tên cá nhân, không nhập số điện thoại hoặc địa chỉ.')
-  .refine(value => /\p{L}/u.test(value) && !/công ty|company|limited|\bltd\b|\bco\.|corporation|doanh nghiệp|\bTNHH\b|\bDNTN\b|\bCTCP\b|hợp tác xã|\bHTX\b|cửa hàng|địa chỉ/i.test(value), 'Khách hàng phải là họ và tên của một cá nhân liên hệ.');
+export const contactName = z.string().trim().min(2, 'Nhập họ và tên cá nhân liên hệ (Ví dụ: Nguyễn Văn A).').max(120)
+  .regex(/^[\p{L}\p{M} .'’\-]+$/u, 'Khách hàng phải là họ và tên cá nhân, không nhập số điện thoại, tên doanh nghiệp hoặc địa chỉ.')
+  .refine(value => /\p{L}/u.test(value) && !/công ty|company|limited|\bltd\b|\bco\.|corporation|doanh nghiệp|\bTNHH\b|\bDNTN\b|\bCTCP\b|hợp tác xã|\bHTX\b|cửa hàng|địa chỉ/i.test(value), 'Khách hàng phải là họ và tên của một cá nhân liên hệ (Ví dụ: Nguyễn Văn A). Không nhập tên doanh nghiệp hoặc địa chỉ.');
 
 export function parseSalesContact(values: Values): Values {
   return { ...values, customer: contactName.parse(values.customer), customerInfo: contactPhone.parse(values.customerInfo) };

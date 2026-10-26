@@ -1,4 +1,4 @@
-import { parseSalesContact } from './sales-contact';
+import { parseSalesContact, contactName, contactPhone } from './sales-contact';
 import { isCertificateLink } from './processing-certificate';
 import { dryingTimestamp } from './drying-time';
 /** The six GMP registers share a lot identity; purchases remain commercial records. */
@@ -268,8 +268,8 @@ export function compareGmpRecordsNewestFirst(a: GmpRecord, b: GmpRecord): number
 export const KIM_QUY_SALES_RECORDS: Record<string, Partial<Values>> = {
     'LH-2026-0809': {
         date: '2026-09-11',
-        customer: 'Công ty Phân phối Hoa quả Quảng Tây',
-        customerInfo: 'Nam Ninh, Quảng Tây, Trung Quốc',
+        customer: 'Nguyễn Văn A',
+        customerInfo: '0912345678',
         lotCode: 'LH-2026-0809',
         variety: 'Monthong',
         productLot: 'Monthong · LH-2026-0809',
@@ -287,8 +287,8 @@ export const KIM_QUY_SALES_RECORDS: Record<string, Partial<Values>> = {
     },
     'LH-2026-0609': {
         date: '2026-09-10',
-        customer: 'Công ty Thương mại Nông sản Bằng Tường',
-        customerInfo: 'Bằng Tường, Quảng Tây, Trung Quốc',
+        customer: 'Trần Đình Trọng',
+        customerInfo: '+84983456789',
         lotCode: 'LH-2026-0609',
         variety: 'Ri6',
         productLot: 'Ri6 · LH-2026-0609',
@@ -306,8 +306,8 @@ export const KIM_QUY_SALES_RECORDS: Record<string, Partial<Values>> = {
     },
     'LH-2026-0509': {
         date: '2026-09-08',
-        customer: 'Công ty Hoa quả Tươi Nam Ninh',
-        customerInfo: 'Nam Ninh, Quảng Tây, Trung Quốc',
+        customer: 'Lê Hoàng Nam',
+        customerInfo: '0903123456',
         lotCode: 'LH-2026-0509',
         variety: 'Monthong',
         productLot: 'Monthong · LH-2026-0509',
@@ -325,8 +325,8 @@ export const KIM_QUY_SALES_RECORDS: Record<string, Partial<Values>> = {
     },
     'LH-2026-0309': {
         date: '2026-09-05',
-        customer: 'Công ty Phân phối Trái cây Quảng Tây',
-        customerInfo: 'Nam Ninh, Quảng Tây, Trung Quốc',
+        customer: 'Phạm Quốc Bảo',
+        customerInfo: '+8613800138000',
         lotCode: 'LH-2026-0309',
         variety: 'Ri6',
         productLot: 'Ri6 · LH-2026-0309',
@@ -344,8 +344,8 @@ export const KIM_QUY_SALES_RECORDS: Record<string, Partial<Values>> = {
     },
     'LH-2026-0209': {
         date: '2026-09-04',
-        customer: 'Công ty Nông sản Hữu nghị Quảng Tây',
-        customerInfo: 'Bằng Tường, Quảng Tây, Trung Quốc',
+        customer: 'Đỗ Minh Khang',
+        customerInfo: '0918234567',
         lotCode: 'LH-2026-0209',
         variety: 'Monthong',
         productLot: 'Monthong · LH-2026-0209',
@@ -363,8 +363,8 @@ export const KIM_QUY_SALES_RECORDS: Record<string, Partial<Values>> = {
     },
     'LH-2026-2908': {
         date: '2026-08-31',
-        customer: 'Công ty Thương mại Trái cây Bằng Tường',
-        customerInfo: 'Bằng Tường, Quảng Tây, Trung Quốc',
+        customer: 'Vũ Anh Dũng',
+        customerInfo: '+8613912345678',
         lotCode: 'LH-2026-2908',
         variety: 'Ri6',
         productLot: 'Ri6 · LH-2026-2908',
@@ -382,8 +382,8 @@ export const KIM_QUY_SALES_RECORDS: Record<string, Partial<Values>> = {
     },
     'LH-2026-2007': {
         date: '2026-07-22',
-        customer: 'Công ty Phân phối Hoa quả Nam Ninh',
-        customerInfo: 'Nam Ninh, Quảng Tây, Trung Quốc',
+        customer: 'Hoàng Văn Nam',
+        customerInfo: '+84934567890',
         lotCode: 'LH-2026-2007',
         variety: 'Ri6',
         productLot: 'Ri6 · LH-2026-2007',
@@ -710,6 +710,7 @@ export function normalizeGmpState(state: GmpState): { state: GmpState; changed: 
                 const kimQuyStandard = KIM_QUY_SALES_RECORDS[lotCode];
                 if (kimQuyStandard) {
                     for (const [k, val] of Object.entries(kimQuyStandard)) {
+                        if (k === 'customer' || k === 'customerInfo') continue; // Contacts come from saved transactions, never defaults.
                         if (k === 'notes') {
                             if (nextValues.notes && (String(nextValues.notes).includes('minh họa') || String(nextValues.notes).includes('chưa xác nhận'))) {
                                 nextValues.notes = '';
@@ -718,7 +719,7 @@ export function normalizeGmpState(state: GmpState): { state: GmpState; changed: 
                             }
                         } else if (val !== undefined && nextValues[k] !== val) {
                             const cur = String(nextValues[k] ?? '').trim();
-                            if (!cur || cur.includes('(minh họa)') || cur.includes('minh họa') || cur.startsWith('XE-') || cur.startsWith('CONTAINER-') || cur.startsWith('SEAL-') || cur.includes('Trị An') || (k === 'country' && cur === 'Việt Nam') || cur.includes('bán nội địa') || (k === 'customer' && !cur.startsWith('Công ty')) || (k === 'truck' && !cur.startsWith('51D-')) || (k === 'exporter' && cur !== val)) {
+                            if (!cur || cur.includes('(minh họa)') || cur.includes('minh họa') || cur.startsWith('XE-') || cur.startsWith('CONTAINER-') || cur.startsWith('SEAL-') || cur.includes('Trị An') || (k === 'country' && cur === 'Việt Nam') || cur.includes('bán nội địa') || (k === 'customer' && (!cur || !contactName.safeParse(cur).success)) || (k === 'customerInfo' && (!cur || !contactPhone.safeParse(cur).success)) || (k === 'truck' && !cur.startsWith('51D-')) || (k === 'exporter' && cur !== val)) {
                                 nextValues[k] = val;
                                 recordChanged = true;
                                 changed = true;
@@ -1377,8 +1378,8 @@ export function createDemoState(): GmpState {
                 sample2: 1,
                 sample3: 0,
                 inspector: ['Phạm Thị Hương', 'Trần Đình Trọng', 'Vũ Hoàng Mai'][i % 3],
-                customer: 'Nguyễn Văn A',
-                customerInfo: '0912345678',
+                customer: ['Nguyễn Văn A', 'Trần Đình Trọng', 'Lê Hoàng Nam', 'Phạm Quốc Bảo', 'Đỗ Minh Khang', 'Vũ Anh Dũng', 'Hoàng Văn Nam', 'Trần Thị Mai'][i % 8],
+                customerInfo: ['0912345678', '+84983456789', '0903123456', '+8613800138000', '0918234567', '+8613912345678', '+84934567890', '0987654321'][i % 8],
                 container: `TGHU123456${i}`,
                 exporter: 'CN 1 - Công ty Thiên Sơn Hải',
                 country: 'Trung Quốc',

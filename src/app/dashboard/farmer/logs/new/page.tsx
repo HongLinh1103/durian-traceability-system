@@ -1,4 +1,5 @@
 "use client";
+import { DiaryVoiceInput, ImageFilePreviews } from '@/components/farmer/diary-media-input';
 import { selfOwnedMaterial } from "@/lib/self-owned-materials";
 import { formatMaterialDosage } from "@/lib/material-dosage";
 import { MaterialCombobox, type MaterialOption } from "@/components/farmer/material-combobox";
@@ -159,6 +160,9 @@ export default function NewFarmingLogPage() {
     const [isSyncing, setIsSyncing] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [voiceSupported, setVoiceSupported] = useState(false);
+    const [processingImages,setProcessingImages] = useState(0);
+    const [voiceFile, setVoiceFile] = useState<File|null>(null);
+    const [recordingVoice, setRecordingVoice] = useState(false);
     const [attachedImages, setAttachedImages] = useState<File[]>([]);
     const [imageStatus, setImageStatus] = useState<string>("Chưa có ảnh nào");
     const [cameraOpen, setCameraOpen] = useState(false);
@@ -463,6 +467,8 @@ export default function NewFarmingLogPage() {
             return;
         }
 
+        setProcessingImages(count=>count+1);
+        try {
         const compressor = imageCompression;
         const compressedFiles: File[] = [];
 
@@ -484,6 +490,8 @@ export default function NewFarmingLogPage() {
             description: "Ảnh được nén phía client để tiết kiệm dữ liệu 3G/4G.",
             variant: "success",
         });
+        } catch(error) { setImageStatus('Chưa thêm được ảnh');toast({title:'Không thể thêm ảnh',description:error instanceof Error?error.message:'Hãy thử lại ảnh JPG, PNG hoặc WebP.',variant:'destructive'}); }
+        finally {setProcessingImages(count=>Math.max(0,count-1));}
     };
 
     const stopCamera = useCallback(() => {
@@ -564,6 +572,7 @@ export default function NewFarmingLogPage() {
             form.setError("actionDate", { message: "Ngày thực hiện phải từ " + dateBounds.min + " đến " + dateBounds.max + "." });
             return;
         }
+        if (recordingVoice || processingImages) return;
         const isMaterialMandatory = isSpraying || isFertilizing;
         const hasSelectedSupply = materials.some(m => Boolean(m.supplyId));
         const logMaterials = (isMaterialMandatory || (isPestInspection && hasSelectedSupply)) ? materials.map(m => ({ ...m, quantity: selfOwnedMaterial(m.supplyId) ? 0 : m.quantity, content: materialContent.trim(), dosage: m.dosage ?? formatMaterialDosage(m.quantity, (selfOwnedMaterial(m.supplyId) || inventorySupplies.find(s => s.id === m.supplyId))?.unit || "", selectedFarm, !!selfOwnedMaterial(m.supplyId)) })) : [];
@@ -592,6 +601,7 @@ export default function NewFarmingLogPage() {
                     logMaterials,
                 );
                 if (planId) formData.append("planId", planId);
+                if (voiceFile) formData.append('voice', voiceFile, voiceFile.name);
                 const response = await fetch("/api/farming-logs", {
                     method: "POST",
                     body: formData,
@@ -629,6 +639,7 @@ export default function NewFarmingLogPage() {
                 const offlinePayload: OfflineFarmingLogPayload = {
                     ...values,
                     isGACCCompliant: payloadIsCompliant,
+                    voice: voiceFile,
                     images: attachedImages,
                     materials: logMaterials,
                 };
@@ -660,6 +671,7 @@ export default function NewFarmingLogPage() {
                 notes: "",
                 plannedHarvestDate: values.plannedHarvestDate,
             });
+            setVoiceFile(null);
             setAttachedImages([]);
             setImageStatus("Chưa có ảnh nào");
             router.push(backUrl);
@@ -677,7 +689,9 @@ export default function NewFarmingLogPage() {
                 const offlinePayload: OfflineFarmingLogPayload = {
                     ...values,
                     isGACCCompliant: !isProhibited,
+                    voice: voiceFile,
                     images: attachedImages,
+                    materials: logMaterials,
                 };
 
                 await queueOfflineFarmingLog(offlinePayload);
@@ -925,6 +939,7 @@ export default function NewFarmingLogPage() {
                             onChange={(event) => void compressAndAttachImages(event.target.files)}
                         />
 
+                        <DiaryVoiceInput disabled={form.formState.isSubmitting} file={voiceFile} onChange={setVoiceFile} onRecordingChange={setRecordingVoice} />
                         <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-4">
                             <div className="flex items-center justify-between gap-3">
                                 <div>
@@ -935,6 +950,7 @@ export default function NewFarmingLogPage() {
                                     Xóa ảnh
                                 </Button>
                             </div>
+                            <ImageFilePreviews files={attachedImages} onRemove={index=>setAttachedImages(files=>files.filter((_,i)=>i!==index))} />
                             {attachedImages.length > 0 ? (
                                 <div className="mt-3 space-y-2">
                                     {attachedImages.map((file) => (
@@ -960,7 +976,7 @@ export default function NewFarmingLogPage() {
                             </div>
                         ) : null}
 
-                        <Button type="submit" size="lg" className="w-full" disabled={form.formState.isSubmitting || farmsLoading || farms.length === 0}>
+                        <Button type="submit" size="lg" className="w-full" disabled={form.formState.isSubmitting || recordingVoice || processingImages > 0 || farmsLoading || farms.length === 0}>
                             {form.formState.isSubmitting ? "Đang lưu..." : "Lưu nhật ký"}
                         </Button>
 

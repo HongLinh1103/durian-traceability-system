@@ -23,6 +23,7 @@ export type ProcessingTrace = {
     boxes: number;
     customer: string;
     customerInfo: string;
+    country?: string;
     departurePort: string;
     destinationPort: string;
     truck: string;
@@ -122,7 +123,7 @@ export async function processingQrRows(ownerId: string) {
   const state = workspace.data as unknown as GmpState;
   const facilityData = {
     name: facility?.name || user?.fullName || 'Cơ sở chế biến & đóng gói Trí Việt',
-    code: facility?.code || 'VN-CTPH-014',
+    code: facility?.code || '',
     address: facility?.address || 'Thới Nguyên B, Phước Thới, Cần Thơ',
   };
 
@@ -256,6 +257,7 @@ export async function processingQrRows(ownerId: string) {
         boxes: Number(v.quantity_boxes || 0),
         customer: String(v.customer || ''),
         customerInfo: String(v.customerInfo || ''),
+        country: String(v.country || ''),
         departurePort: String(v.departurePort || ''),
         destinationPort: String(v.destinationPort || ''),
         truck: String(v.truck || ''),

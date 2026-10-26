@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { exportLabelSchema, validateLabelSource, productionTranslation } from '../src/lib/export-label';
+import { ExportLabelPreview } from '../src/components/processing/export-label-preview';
+const config = exportLabelSchema.parse({ orchardCode:'VN-LDOR-0173',productEn:'Fresh Durian',productZh:'鲜榴莲',productionEn:'Lam Dong Province, Vietnam',productionZh:'越南林同省',exportCountryEn:'Vietnam',exportCountryZh:'越南',importCountryEn:"the People's Republic of China",importCountryZh:'中华人民共和国' });
+const data = { token:'test',lotCode:'DG-2026-1026',packingHouseCode:'VN-LDPH-057',canEdit:true,orchards:[{code:'VN-LDOR-0173',name:'Test orchard',address:'',province:'Lâm Đồng'}],config,warnings:[] };
+validateLabelSource(config,data);
+assert.throws(() => validateLabelSource({...config,orchardCode:'DG-2026-1026'},data));
+assert.throws(() => validateLabelSource(config,{...data,packingHouseCode:''}));
+assert(!exportLabelSchema.safeParse({...config,productionEn:'Tỉnh Lâm Đồng'}).success);
+assert(!exportLabelSchema.safeParse({...config,orchardCode:''}).success);
+assert.deepEqual(productionTranslation('Unknown'),{});
+const html = renderToStaticMarkup(<ExportLabelPreview data={data} qrImage="data:image/png;base64,test" />);
+const label = html.slice(html.indexOf('class="export-carton-label mx-auto'));
+for (const text of ['水果名称','鲜榴莲','Fruit Name','Orchard Code','Packing House Code','输往中华人民共和国',"Exported to the People&#x27;s Republic of China",'VN-LDOR-0173','VN-LDPH-057']) assert(label.includes(text),text);
+assert(!label.includes('TEM TRUY XUẤT') && !label.includes('Mã số') && !label.includes('Lâm Đồng'));
+assert(html.includes('@page { size: 148mm 160mm;') && html.includes('page-break-inside:avoid'));
+console.log('PASS export label: bilingual table, source identity, missing/multiple orchard gating, print size and no Vietnamese on label');

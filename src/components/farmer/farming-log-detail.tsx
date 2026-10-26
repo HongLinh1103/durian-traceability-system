@@ -1,0 +1,15 @@
+'use client';
+/* Private media requires the browser session cookie, so use native image requests. */
+/* eslint-disable @next/next/no-img-element */
+import { useEffect } from 'react';
+import { ModalPortal } from '@/components/ui/modal-portal';
+import type { FarmingLogItem } from './cultivation-logs-tab';
+export function FarmingLogDetail({log,onClose,stageLabels,activityLabels}:{log:FarmingLogItem;onClose:()=>void;stageLabels:Record<string,string>;activityLabels:Record<string,string>}) {
+  useEffect(()=>{const close=(event:KeyboardEvent)=>{if(event.key==='Escape')onClose();};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close);},[onClose]);
+  const fields=[['Vườn',log.farm?.farmName],['Mã vườn',log.farm?.farmCode],['Niên vụ',log.cropSeason?.name],['Ngày thực hiện',new Date(log.actionDate).toLocaleString('vi-VN')],['Giai đoạn',stageLabels[log.stage]||log.stage],['Hoạt động',log.activityType==='OTHER'?log.otherActivity:activityLabels[log.activityType]||log.activityType],['Sinh vật gây hại',log.pestsDetected],['Vật tư',log.materialsUsed?.map(m=>m.supplyName).join(' + ')||log.chemicalName],['Liều lượng',log.dosage],['Thời gian cách ly',log.phiDays!=null?`${log.phiDays} ngày`:'—'],['Trạng thái GACC',log.isGACCCompliant?'Tuân thủ':'Cần kiểm tra'],['Ghi chú',log.notes],['Cập nhật gần nhất',log.updatedAt?new Date(log.updatedAt).toLocaleString('vi-VN'):'—']];
+  return <ModalPortal><div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/60 p-3" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}><section role="dialog" aria-modal="true" aria-label="Chi tiết nhật ký canh tác" className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-5"><header className="mb-4 flex items-center justify-between gap-3"><h2 className="text-xl font-bold">Chi tiết nhật ký canh tác</h2><button type="button" className="rounded-lg border px-3 py-2" onClick={onClose}>Đóng</button></header><dl className="grid gap-4 sm:grid-cols-2">{fields.map(([label,value])=><div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm font-medium">{value||'—'}</dd></div>)}</dl>
+    {!!log.materialsUsed?.length&&<ul className="my-4 space-y-2 rounded-xl bg-slate-50 p-3 text-sm">{log.materialsUsed.map(m=><li key={m.id}>{m.supplyName}: {m.quantity} {m.unit}{m.dosage?` · ${m.dosage}`:''}</li>)}</ul>}
+    {log.voiceUrl&&<div className="mt-5"><h3 className="mb-2 font-semibold">Ghi âm</h3><audio controls src={log.voiceUrl} preload="metadata" className="w-full"/></div>}
+    {!!log.images?.length&&<div className="mt-5"><h3 className="mb-2 font-semibold">Ảnh đính kèm</h3><div className="flex flex-wrap gap-3">{log.images.map((url,index)=><a key={url+index} href={url} target="_blank" rel="noopener noreferrer" title="Xem ảnh lớn">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={url} alt={`Ảnh nhật ký ${index+1}`} className="h-28 w-28 rounded-xl border object-cover"/></a>)}</div></div>}
+  </section></div></ModalPortal>;
+}

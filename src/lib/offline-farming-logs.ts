@@ -7,6 +7,7 @@ export type FarmingLogImage = File;
 export type OfflineFarmingLogPayload = FarmingLogInput & {
     isGACCCompliant: boolean;
     images: FarmingLogImage[];
+    voice?: File | null;
     materials?: Array<{ supplyId: string; quantity: number; content: string; dosage?: string; appliedArea?: number; phiDays?: number }>;
 };
 
@@ -79,6 +80,7 @@ async function submitQueuedLog(record: OfflineFarmingLogRecord) {
         formData.append("images", image, image.name);
     }
 
+    if (record.payload.voice) formData.append('voice',record.payload.voice,record.payload.voice.name);
     const response = await fetch("/api/farming-logs", {
         method: "POST",
         body: formData,

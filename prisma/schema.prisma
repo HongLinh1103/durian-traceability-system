@@ -1497,6 +1497,9 @@ model FarmingLog {
   isGACCCompliant Boolean      @default(true)
   notes           String?
   images          String[]     @default([])
+  voiceUrl        String?
+  createdById     String?
+  updatedById     String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   harvestRecordId String?      @unique
@@ -1510,11 +1513,28 @@ model FarmingLog {
   supplyTransactions FarmerSupplyTransaction[]
   pestTreatments     PestTreatment[]
   discoveryBooks     PestMonitoringBook[] @relation("FarmingLogDiscoveryBooks")
+  mediaFiles         FarmingLogMedia[]
 
   @@index([farmId, actionDate])
   @@index([cropSeasonId, actionDate])
   @@index([stage])
   @@index([activityType])
+}
+
+model FarmingLogMedia {
+  id         String   @id @default(uuid())
+  logId      String
+  uploaderId String
+  kind       String
+  fileName   String
+  mimeType   String
+  fileSize   Int
+  bytes      Bytes
+  createdAt  DateTime @default(now())
+  log        FarmingLog @relation(fields: [logId], references: [id], onDelete: Cascade)
+
+  @@index([logId])
+  @@map("farming_log_media")
 }
 
 model FarmingPlan {
@@ -1772,6 +1792,8 @@ model PestTrap {
   locationName     String
   latitude         Float?
   longitude        Float?
+  accuracyMeters   Float?
+  locationCapturedAt DateTime?
   installedDate    DateTime       @default(now())
   status           PestTrapStatus @default(ACTIVE)
   notes            String?
@@ -2593,6 +2615,7 @@ model ProcessingQrPublication {
   ownerId   String
   saleId    String
   snapshot  Json
+  labelConfig Json?
   createdAt DateTime @default(now())
 
   @@unique([ownerId, saleId])

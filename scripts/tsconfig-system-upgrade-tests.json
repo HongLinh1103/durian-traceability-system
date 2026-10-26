@@ -1,0 +1,5 @@
+{
+  "extends":"../tsconfig.json",
+  "compilerOptions":{"jsx":"react-jsx","incremental":false,"noEmit":false,"module":"CommonJS","moduleResolution":"Node","target":"ES2022","outDir":"../scratch/system-upgrade-tests","rootDir":".."},
+  "include":["test-export-label.tsx","test-diary-media.ts","test-trap-gps.ts","../src/types/**/*.d.ts"]
+}

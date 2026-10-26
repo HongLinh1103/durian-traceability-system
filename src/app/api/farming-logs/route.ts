@@ -1,3 +1,5 @@
+import { farmingFarmScope, canAccessFarmingFarm, canDeleteFarmingLog } from '@/lib/farming-log-access';
+import { DiaryMediaError, prepareDiaryFiles, saveDiaryMedia, DIARY_UPLOAD_LIMIT } from '@/lib/diary-media';
 import { isValidLogMaterial } from "@/lib/farming-log-stock";
 import { selfOwnedMaterial, allowsSelfOwnedMaterials } from "@/lib/self-owned-materials";
 import { removeLogStock, createLogMaterials, materialSummary } from "@/lib/farming-log-stock";
@@ -30,9 +32,10 @@ export async function GET(request: Request) {
     const activityType = searchParams.get("activityType");
     const search = searchParams.get("search");
 
-    const whereClause: any = {
-        farm: { farmerId: session.user.id, isActive: true },
-    };
+    if (session.user.role === 'AREA_MANAGER' && !farmId) return NextResponse.json({ok:false,error:'Chọn vườn cần xem nhật ký.'},{status:400});
+    if (farmId && !await canAccessFarmingFarm(session.user.id,session.user.role,farmId)) return NextResponse.json({ok:false,error:'Không có quyền xem nhật ký vườn này.'},{status:404});
+    const scope = await farmingFarmScope(session.user.id,session.user.role);
+    const whereClause: any = { farm: { AND: [scope, {isActive:true}] } };
 
     if (farmId) {
         whereClause.farmId = farmId;
@@ -59,8 +62,7 @@ export async function GET(request: Request) {
     const [farms, logs] = await Promise.all([
         prisma.farm.findMany({
             where: {
-                farmerId: session.user.id,
-                isActive: true,
+                AND: [scope, {isActive:true}, ...(farmId ? [{id:farmId}] : [])],
             },
             orderBy: { createdAt: "asc" },
             select: {
@@ -79,7 +81,7 @@ export async function GET(request: Request) {
         prisma.farmingLog.findMany({
             where: whereClause,
             orderBy: [{ actionDate: "desc" }, { createdAt: "desc" }],
-            take: cropSeasonId ? 500 : 100,
+            take: cropSeasonId || session.user.role === "AREA_MANAGER" ? 500 : 100,
             select: {
                 id: true,
                 farmId: true,
@@ -95,10 +97,13 @@ export async function GET(request: Request) {
                 pestsDetected: true,
                 notes: true,
                 images: true,
+                voiceUrl: true,
+                updatedAt: true,
+                updatedById: true,
                 isGACCCompliant: true,
                 createdAt: true,
                 cropSeason: { select: { id: true, name: true, year: true, status: true } },
-                farm: { select: { id: true, farmCode: true, farmName: true } },
+                farm: { select: { id: true, farmCode: true, farmName: true, region:{select:{code:true}} } },
             },
         }),
     ]);
@@ -111,6 +116,7 @@ export async function POST(request: Request) {
         if (!session?.user?.id) {
             return NextResponse.json({ ok: false, error: "Chưa đăng nhập." }, { status: 401 });
         }
+        if (Number(request.headers.get('content-length') || 0) > DIARY_UPLOAD_LIMIT + 100000) return NextResponse.json({ok:false,error:'Tổng file tải lên tối đa 3,5 MB.'},{status:413});
         const formData = await request.formData();
         const farmId = String(formData.get("farmId") ?? "");
         const stage = String(formData.get("stage") ?? "") as PrismaGrowthStageLabel;
@@ -206,12 +212,8 @@ export async function POST(request: Request) {
             })
             : [];
         const prohibitedMatch = matchProhibitedChemical(chemicalName, prohibitedEntries);
-        const images = await Promise.all(
-            uploadedImages.map(async (file) => {
-                const buffer = Buffer.from(await file.arrayBuffer());
-                return `data:${file.type};base64,${buffer.toString("base64")}`;
-            }),
-        );
+        const voice = formData.get('voice');
+        const mediaFiles = await prepareDiaryFiles(uploadedImages, voice instanceof File ? voice : null);
 
         const plan = planId ? await prisma.farmingPlan.findFirst({ where: { id: planId, farmerId: session.user.id, farmId, status: { not: "COMPLETED" } }, select: { id: true } }) : null;
         if (planId && !plan) return NextResponse.json({ ok: false, error: "Kế hoạch không hợp lệ hoặc đã hoàn thành." }, { status: 400 });
@@ -234,15 +236,19 @@ export async function POST(request: Request) {
                     normalizedActivityType !== "SPRAY_PESTICIDE" ||
                     (isGACCCompliant && prohibitedMatch.status === "none"),
                 notes: [notes, plannedHarvestDate ? `Ngày thu hoạch dự kiến: ${plannedHarvestDate}` : ""].filter(Boolean).join("\n"),
-                images,
+                images: [],
+                createdById: session.user.id,
+                updatedById: session.user.id,
                 planId: plan?.id ?? null,
             } });
 
+            const links = await saveDiaryMedia(tx,{logId:log.id,uploaderId:session.user.id,existingImages:[],existingVoice:null,files:mediaFiles});
+            const attachedLog = await tx.farmingLog.update({where:{id:log.id},data:links});
             if (plan) await tx.farmingPlan.update({ where: { id: plan.id }, data: { status: "COMPLETED", completedAt: new Date() } });
 
             const materialResult = await createLogMaterials(tx, { logId: log.id, farmerId: session.user.id, farmId, cropSeasonId: activeSeason.id, actionDate: parsedActionDate, stage: logStage, activityType: normalizedActivityType, materials });
             if (materials.length) return tx.farmingLog.update({ where: { id: log.id }, data: { chemicalName: materialResult.chemicalName, dosage: materialResult.dosage } });
-            return log;
+            return attachedLog;
         }, { timeout: 30000 });
 
         return NextResponse.json({ ok: true, id: created.id });
@@ -252,7 +258,7 @@ export async function POST(request: Request) {
                 ok: false,
                 error: error instanceof Error ? error.message : "Không thể lưu nhật ký",
             },
-            { status: 500 },
+            { status: error instanceof DiaryMediaError ? 400 : 500 },
         );
     }
 }
@@ -288,9 +294,8 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ ok: false, error: "Nhật ký không tồn tại." }, { status: 404 });
         }
 
-        const isOwner = log.farm.farmerId === session.user.id;
         const isAdminOrManager = session.user.role === "ADMIN" || session.user.role === "AREA_MANAGER";
-        if (!isOwner && !isAdminOrManager) {
+        if (!canDeleteFarmingLog(session.user.id,session.user.role,log.farm.farmerId)) {
             return NextResponse.json({ ok: false, error: "Bạn không có quyền xóa nhật ký này." }, { status: 403 });
         }
 
