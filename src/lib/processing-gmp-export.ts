@@ -2,6 +2,7 @@ import { formatDryingTime, dryingDuration } from './drying-time';
 import JSZip from 'jszip';
 import { Field, GmpRecord, REGISTERS, Stage } from './processing-gmp';
 import { normalizeUnitCode } from './puc-phc';
+import { vietnamPhone } from './sales-contact';
 
 const xml=(value:unknown)=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]!));
 // OOXML wordWrap=0 DISABLES word-level wrapping and permits character breaks.
@@ -105,6 +106,7 @@ export function getRecordFieldValue(
  receivingRecords: GmpRecord[] = []
 ): unknown {
  if (f.key === 'exporterId') return r.values.exporter || 'Chưa liên kết đơn vị xuất khẩu';
+ if (f.key === 'customerInfo') return vietnamPhone(r.values.customerInfo) || r.values.customerInfo || '—';
  if (f.key === 'receivingStatus') return r.draft ? 'Chưa nhập hàng' : 'Đã nhập hàng';
  if (f.key === 'rejected' && r.values.harvestRecordId && r.draft) return 'Chưa phân loại';
  if (f.key === 'purchaseCode') {

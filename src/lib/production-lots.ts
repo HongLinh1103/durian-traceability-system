@@ -1,4 +1,5 @@
 import { GmpRecord, GmpState, GMP_GRADES, Values, gradeTotal } from './processing-gmp';
+import { freshReceivingCode } from './fresh-lot-code';
 export type ProductionRoute = 'DG' | 'CB';
 export interface LotAllocation {
     id: string;
@@ -135,7 +136,7 @@ export function productionSources(state: GmpState, route: ProductionRoute): GmpR
     });
     // Historical production records retain their existing lot identities.
     const legacy = state.records.receiving.filter(r => !lots(state).some(l => l.route === route && l.allocations.some(a => a.receivingId === r.id)));
-    return [...legacy, ...grouped];
+    return [...legacy.map(r=>route==='DG' ? {...r,lotCode:freshReceivingCode(state,r) || r.lotCode} : r), ...grouped];
 }
 export function productionOrigins(values: Values): LotAllocation[] { try {
     return JSON.parse(String(values.productionOrigins || '[]'));

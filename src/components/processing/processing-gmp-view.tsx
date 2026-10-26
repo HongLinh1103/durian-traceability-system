@@ -6,7 +6,9 @@ import { parseSalesContact } from '@/lib/sales-contact';
 import { dryingInput, dryingDuration, formatDryingTime } from '@/lib/drying-time';
 import { ReceivingRecordForm } from './receiving-record-form';
 import { CertificateLink, CertificateUpload } from './certificate-upload';
-import { RegisterDetail, preprocessingCode } from './register-detail';
+import { RegisterDetail } from './register-detail';
+import { freshLotCode } from '@/lib/fresh-lot-code';
+import { vietnamPhone } from '@/lib/sales-contact';
 import { ProductionLotDetail } from './production-allocation';
 import { ProductionLot, productionSources, lots } from '@/lib/production-lots';
 
@@ -18,7 +20,7 @@ import { ModalPortal } from '@/components/ui/modal-portal';
 import { GMP_REGISTER_COLUMN_WIDTHS } from '@/components/processing/processing-gmp-column-widths';
 import { ProcessingGmpRegisterTable } from '@/components/processing/processing-gmp-register-table';
 import { BarChart3, Receipt, ShoppingCart, TrendingUp, Wallet, ArrowRight, CheckCircle2, ClipboardList, Download, Loader2, Plus, RefreshCw, Search, X } from 'lucide-react';
-import { addPayment, EXPENSE_CATEGORIES, Expense, formatPurchaseLotCode, formatProductionLotCode, GmpRecord, GmpState, GMP_GRADES, gradeTotal, inherit, isFailed, latestRecords, REGISTERS, sources, Stage, STAGES, Values } from '@/lib/processing-gmp';
+import { addPayment, EXPENSE_CATEGORIES, Expense, formatPurchaseLotCode, GmpRecord, GmpState, GMP_GRADES, gradeTotal, inherit, isFailed, latestRecords, REGISTERS, sources, Stage, STAGES, Values } from '@/lib/processing-gmp';
 import { buildRegisterDocx, downloadFile, registerExportPeriod } from '@/lib/processing-gmp-export';
 import { normalizeUnitCode } from '@/lib/puc-phc';
 import { ProcessingFinanceCharts } from '@/components/processing/processing-finance-charts';
@@ -185,12 +187,11 @@ export function ProcessingGmpView({ screen, embedded = false }: { screen: Screen
   const [company, setCompany] = useState('CN 1 - CÔNG TY TNHH MTV TM THIÊN SƠN HẢI');
   const [regions, setRegions] = useState<RegionSource[]>([]);
   const [exporters, setExporters] = useState<{id:string;code:string;name:string}[]>([]);
-  const [handovers, setHandovers] = useState<{saleId:string;status:string;receivedAt:string|null;exporter:{name:string}}[]>([]);
   const [editing, setEditing] = useState<GmpRecord | 'new' | null>(null);
   const [detail, setDetail] = useState<GmpRecord | null>(null);
   const load = useCallback(async () => {
     setError('');
-    try { const res = await fetch('/api/processing/gmp', { cache: 'no-store' }); const data = await res.json(); if (!res.ok) throw new Error(data.error); setState(data.state); setExporters(data.exporters || []); setHandovers(data.handovers || []); setRevision(data.revision); setRegions(Array.isArray(data.regions) ? data.regions : []); if (data.company) setCompany(data.company); }
+    try { const res = await fetch('/api/processing/gmp', { cache: 'no-store' }); const data = await res.json(); if (!res.ok) throw new Error(data.error); setState(data.state); setExporters(data.exporters || []); setRevision(data.revision); setRegions(Array.isArray(data.regions) ? data.regions : []); if (data.company) setCompany(data.company); }
     catch (e) { setError(e instanceof Error ? e.message : 'Không tải được dữ liệu.'); }
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -494,8 +495,8 @@ export function ProcessingGmpView({ screen, embedded = false }: { screen: Screen
                   <>
                     <tr>
                       <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Ngày</th>
-                      <th rowSpan={3} className="border border-slate-300 px-3 py-2.5 font-semibold min-w-[130px] text-center align-middle">Khách hàng</th>
-                      <th rowSpan={3} className="border border-slate-300 px-3 py-2.5 font-semibold min-w-[150px] text-center align-middle">Thông tin khách hàng</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold text-center align-middle">Khách hàng</th>
+                      <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold text-center align-middle">Thông tin khách hàng</th>
                       <th colSpan={5 + GMP_GRADES.length * 2} className="border border-slate-300 px-3 py-2 font-semibold text-center align-middle bg-slate-200/80 leading-snug">Thông tin lô hàng</th>
                       <th rowSpan={3} className="border border-slate-300 px-3 py-2.5 font-semibold min-w-[130px] text-center align-middle">Đơn vị xuất khẩu</th>
                       <th rowSpan={3} className="border border-slate-300 px-2.5 py-2.5 font-semibold whitespace-nowrap text-center align-middle">Nước nhập khẩu</th>
@@ -549,13 +550,11 @@ export function ProcessingGmpView({ screen, embedded = false }: { screen: Screen
               </thead>
               <tbody>
                 {rows.map((r, idx) => {
-                  const code = stage === 'preprocessing' ? preprocessingCode(state, r) : stage === 'purchases'
+                  const code = stage === 'purchases'
                     ? ((r.lotCode.includes('demo') || !/^TM-\d{4}-\d{4}(?:-\d{2})?$/.test(r.lotCode))
                       ? formatPurchaseLotCode(r.values?.date || r.lotCode)
                       : r.lotCode)
-                    : ((r.lotCode.includes('demo') || !(/^(DG|CB)-/.test(r.lotCode) || /^LH-\d{4}-\d{4}(?:-\d{2})?$/.test(r.lotCode)))
-                      ? formatProductionLotCode(r.values?.date || r.lotCode)
-                      : r.lotCode);
+                    : freshLotCode(state, stage, r);
                   const receivingRecord = stage === 'purchases'
                     ? state.records.receiving.find(rec => rec.sourceId === r.id || rec.lotCode === r.lotCode)
                     : undefined;
@@ -771,8 +770,8 @@ export function ProcessingGmpView({ screen, embedded = false }: { screen: Screen
                     return (
                       <tr key={r.id} className="hover:bg-slate-50/70 transition">
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center text-slate-600 font-medium">{dateFormatted}</td>
-                        <td className="border border-slate-200 px-3 py-2.5 font-bold text-slate-900">{String(r.values?.customer || '—')}</td>
-                        <td className="border border-slate-200 px-3 py-2.5 text-xs text-slate-600 max-w-[180px]">{String(r.values?.customerInfo || '—')}</td>
+                        <td className="border border-slate-200 px-2.5 py-2.5 font-bold text-slate-900">{String(r.values?.customer || '—')}</td>
+                        <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center text-xs tabular-nums text-slate-600">{vietnamPhone(r.values?.customerInfo) || String(r.values?.customerInfo || '—')}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center">
                           <button
                             type="button"
@@ -788,7 +787,7 @@ export function ProcessingGmpView({ screen, embedded = false }: { screen: Screen
                         {GMP_GRADES.map(g => <td key={'quantity_boxes' + g.key} className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right text-slate-800">{fmt(r.values?.['quantity_boxes' + g.key] ?? inspectionRecord?.values['quantity_boxes' + g.key])}</td>)}
                         {GMP_GRADES.map(g => <td key={'weight_kg' + g.key} className="border border-slate-200 whitespace-nowrap px-2 py-2.5 font-mono text-right font-bold text-emerald-800">{fmt(r.values?.['weight_kg' + g.key] ?? inspectionRecord?.values['weight_kg' + g.key])}</td>)}
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 font-mono text-right font-bold text-emerald-800">{fmt(Number(r.values?.total ?? (Number(r.values?.weight_kg || 0) * Number(r.values?.price || 0))))}</td>
-                        <td className="border border-slate-200 px-3 py-2.5 text-xs text-slate-700 min-w-[120px]">{String(r.values?.exporter || '—')}<p className="mt-1 text-xs text-slate-500">{handovers.find(h=>h.saleId===r.id)?.status === 'ACCEPTED' ? 'Đã tiếp nhận' : r.values.exporterId ? 'Chờ tiếp nhận' : 'Chưa liên kết tài khoản'}</p></td>
+                        <td className="border border-slate-200 px-3 py-2.5 text-xs text-slate-700 min-w-[120px]">{String(r.values?.exporter || '—')}</td>
                         <td className="border border-slate-200 whitespace-nowrap px-2.5 py-2.5 text-center font-bold text-slate-900">{String(r.values?.country || '—')}</td>
                         <td className="border border-slate-200 px-3 py-2.5 text-center"><CertificateLink value={r.values.testCertificate} /></td>
                         <td className="border border-slate-200 px-2.5 py-2.5 text-xs text-slate-600 max-w-[140px] truncate text-center" title={String(r.values?.notes || '')}>{String(r.values?.notes || '—')}</td>

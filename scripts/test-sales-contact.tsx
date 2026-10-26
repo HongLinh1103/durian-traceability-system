@@ -31,7 +31,7 @@ async function main() {
   // Contact corrections must work even after settlement/downstream processing.
   const updated = saveRecord(normalized, 'sales', { id: sale.id, values: { ...sale.values, customer: 'Nguyễn Văn A', customerInfo: '+84 912 345 678' } }, sale.id);
   const corrected = updated.records.sales[0];
-  assert.equal(corrected.values.customerInfo, '+84912345678');
+  assert.equal(corrected.values.customerInfo, '0912345678');
   assert.deepEqual({ ...corrected.values, customer: sale.values.customer, customerInfo: sale.values.customerInfo }, sale.values, 'Contact-only edit cannot alter business values');
   assert.deepEqual(updated.records.aftersales, original.records.aftersales);
   assert.deepEqual(updated.payments, original.payments);
@@ -59,7 +59,7 @@ async function main() {
   assert(phoneInput.includes('type="tel"') && phoneInput.includes('inputMode="tel"') && phoneInput.includes('Thông tin khách hàng'));
   const docx = await buildRegisterDocx('sales', [corrected], 'Cơ sở kiểm thử');
   const document = await (await JSZip.loadAsync(docx)).file('word/document.xml')!.async('string');
-  assert(document.includes('Thông tin khách hàng') && document.includes('Nguyễn Văn A') && document.includes('+84912345678'));
+  assert(document.includes('Thông tin khách hàng') && document.includes('Nguyễn Văn A') && document.includes('0912345678'));
   assert(!document.includes('Công ty Hoa Nam') && !document.includes('Nam Ninh, Quảng Tây'));
   console.log('PASS sales contact: validation, safe legacy normalization, settled contact correction, form controls and export');
 }

@@ -5,12 +5,19 @@ export const contactPhone = z.string().trim()
   .transform(value => value.replace(/[\s().-]/g, ''))
   .refine(value => /^(?:\+[1-9][0-9]{7,14}|[0-9]{8,15})$/.test(value) && !/^0+$/.test(value), 'Nhập số điện thoại liên hệ hợp lệ gồm 8–15 chữ số, cho phép mã quốc gia khi cần (VD: 0912345678 hoặc +84 912 345 678). Không sử dụng trường này để ghi tên doanh nghiệp hoặc địa chỉ.');
 
+export function vietnamPhone(value: unknown): string {
+  const compact=String(value || '').trim().replace(/[\s().-]/g,'');
+  const local=compact.replace(/^(?:\+84|0084|84)([35789]\d{8})$/, '0$1');
+  return /^0[35789]\d{8}$/.test(local) ? local : '';
+}
+export const vietnamContactPhone=z.string().transform(vietnamPhone).refine(Boolean,'Nhập số điện thoại Việt Nam gồm 10 chữ số dạng 0xxxxxxxxx (VD: 0912345678).');
+
 export const contactName = z.string().trim().min(2, 'Nhập họ và tên cá nhân liên hệ (Ví dụ: Nguyễn Văn A).').max(120)
   .regex(/^[\p{L}\p{M} .'’\-]+$/u, 'Khách hàng phải là họ và tên cá nhân, không nhập số điện thoại, tên doanh nghiệp hoặc địa chỉ.')
   .refine(value => /\p{L}/u.test(value) && !/công ty|company|limited|\bltd\b|\bco\.|corporation|doanh nghiệp|\bTNHH\b|\bDNTN\b|\bCTCP\b|hợp tác xã|\bHTX\b|cửa hàng|địa chỉ/i.test(value), 'Khách hàng phải là họ và tên của một cá nhân liên hệ (Ví dụ: Nguyễn Văn A). Không nhập tên doanh nghiệp hoặc địa chỉ.');
 
 export function parseSalesContact(values: Values): Values {
-  return { ...values, customer: contactName.parse(values.customer), customerInfo: contactPhone.parse(values.customerInfo) };
+  return { ...values, customer: contactName.parse(values.customer), customerInfo: vietnamContactPhone.parse(values.customerInfo) };
 }
 
 /** Preserve historical company/address text without presenting it as a contact. */

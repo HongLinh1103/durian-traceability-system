@@ -4,6 +4,7 @@ import { isCertificateLink } from './processing-certificate';
 import { dryingTimestamp } from './drying-time';
 /** The six GMP registers share a lot identity; purchases remain commercial records. */
 import { productionSources } from './production-lots';
+import { freshLotCode, freshReceivingCode } from './fresh-lot-code';
 export type Stage = 'purchases' | 'receiving' | 'preprocessing' | 'packaging' | 'inspection' | 'sales' | 'aftersales';
 export type Values = Record<string, string | number>;
 export interface GmpRecord { id: string; sourceId: string; lotCode: string; season: string; values: Values; draft?: boolean }
@@ -151,8 +152,10 @@ export function addDaysStr(dateStr: string, days: number): string {
 export function inherit(state: GmpState, stage: Stage, source?: GmpRecord): Values {
     if (!source) return {};
     const v = source.values;
-    const origin = productionSources(state, 'DG').find(r => r.lotCode === source.lotCode);
-    const base: Values = { ...(source.values.finishedLotCode?{finishedLotCode:source.values.finishedLotCode}:{}), ...(source.values.productionOrigins ? {productionOrigins:source.values.productionOrigins,productionLotId:source.values.productionLotId||''} : {}), ...(source.values.harvestRecordId ? { harvestRecordId: source.values.harvestRecordId, harvestCode: source.values.harvestCode || '' } : {}), lotCode: source.lotCode, variety: origin?.values.variety || '', productLot: `${origin?.values.variety || ''} · ${source.lotCode}` };
+    const previous=STAGES[STAGES.indexOf(stage)-1];
+    const code=previous==='receiving' ? freshReceivingCode(state,source) || source.lotCode : previous ? freshLotCode(state,previous,source) : source.lotCode;
+    const origin = productionSources(state, 'DG').find(r => r.lotCode === code);
+    const base: Values = { ...(source.values.finishedLotCode?{finishedLotCode:source.values.finishedLotCode}:{}), ...(source.values.productionOrigins ? {productionOrigins:source.values.productionOrigins,productionLotId:source.values.productionLotId||''} : {}), ...(source.values.harvestRecordId ? { harvestRecordId: source.values.harvestRecordId, harvestCode: source.values.harvestCode || '' } : {}), lotCode: code, variety: origin?.values.variety || '', productLot: `${origin?.values.variety || ''} · ${code}` };
     if (stage === 'receiving') return { seller: v.seller, puc: v.puc || '', lotCode: '' };
     if (stage === 'preprocessing') return { ...base, supplier: v.seller || state.records.purchases.find(r => r.id === source.sourceId)?.values.seller || '', inputWeight: gradeTotal(v, 'grade'), ...Object.fromEntries(GMP_GRADES.map(g => ['inputWeight' + g.key, v['grade' + g.key] ?? 0])) };
     if (stage === 'packaging') return { ...base, inputWeight: v.outputWeight, ...Object.fromEntries(GMP_GRADES.map(g => ['inputWeight' + g.key, v['outputWeight' + g.key] ?? ''])) };
@@ -174,7 +177,7 @@ export function inherit(state: GmpState, stage: Stage, source?: GmpRecord): Valu
         return {
             ...base,
             date: checkDate || saleDate,
-            lotCode: source.lotCode,
+            lotCode: code,
             container: String(v.container || ''),
             fruitCount,
             weight_kg: weight,
@@ -566,7 +569,7 @@ export function normalizeGmpState(state: GmpState): { state: GmpState; changed: 
                 lotCode = lotCodeMap.get(lotCode)!;
                 recordChanged = true;
                 changed = true;
-            } else if (lotCode.includes('demo') || !/^LH-\d{4}-\d{4}(?:-\d{2})?$/.test(lotCode)) {
+            } else if (lotCode.includes('demo') || !/^(?:LH|DG)-/.test(lotCode)) {
                 const sourceRec = updatedRecords[STAGES[STAGES.indexOf(s) - 1]]?.find(x => x.id === r.sourceId);
                 if (sourceRec?.lotCode) {
                     lotCode = sourceRec.lotCode;
@@ -1084,7 +1087,7 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
         !/^LH-\d{4}-\d{4}(?:-\d{2})?$/.test(old.lotCode) ||
         (old.values?.date && String(old.values.date) !== String(v.date))
     );
-    const explicitCode = (input.values?.lotCode && typeof input.values.lotCode === 'string' && input.values.lotCode.startsWith('LH-') && !source?.values.productionLotId) ? String(input.values.lotCode) : '';
+    const explicitCode = (stage === 'receiving' && input.values?.lotCode && typeof input.values.lotCode === 'string' && input.values.lotCode.startsWith('LH-') && !source?.values.productionLotId) ? String(input.values.lotCode) : '';
     const code = explicitCode
         ? explicitCode
         : (stage === 'purchases' && !shouldRegeneratePurchaseCode && old?.lotCode)
@@ -1097,7 +1100,7 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
                     ? (source?.lotCode && /^TM-\d{4}-\d{4}(?:-\d{2})?$/.test(source.lotCode) && !state.records.receiving.some(r => r.id !== (input.id || old?.id) && r.lotCode === source.lotCode.replace(/^TM-/, 'LH-'))
                         ? source.lotCode.replace(/^TM-/, 'LH-')
                         : formatProductionLotCode(v.date || source?.values?.date, state.records.receiving.filter(r => r.id !== (input.id || old?.id)).map(r => r.lotCode)))
-                    : source!.lotCode);
+                    : String(v.lotCode || source!.lotCode));
     if (stage !== 'purchases') v.lotCode = code;
     if (stage === 'purchases') v.total = Number(v.weight) * Number(v.price);
     if (stage === 'purchases') v.purchaseCode = code;
