@@ -1,3 +1,4 @@
+import { otherSaleCustomer } from './processing-finance-sales';
 import { Field, GmpRecord, GMP_GRADES, REGISTERS, Values } from './processing-gmp';
 import type { OtherState } from './other-processing';
 import type { MonitorState } from './other-monitoring';
@@ -10,6 +11,7 @@ export type OtherRegisterColumn = Field & { unit?: string };
 type Register = { title: string; code: string; fields: OtherRegisterColumn[]; dateKey: string };
 const field = (key: string, label: string, type?: Field['type'], extra: Partial<OtherRegisterColumn> = {}): OtherRegisterColumn => ({ key, label, type, ...extra });
 const lot = field('lotCode', 'Mã lô NL');
+const quantities = [field('quantity','Số lượng (thùng)','number',{group:'Số lượng/khối lượng'}),field('weight','Khối lượng (kg)','number',{group:'Số lượng/khối lượng'})];
 const correction = field('correction', 'Hành động sửa chữa');
 const people = [field('receiver', 'Người tiếp nhận'), field('supervisor', 'Người giám sát')];
 const quality = field('productOk', 'Tình trạng sản phẩm (Đ/K)', 'check');
@@ -34,8 +36,8 @@ export const OTHER_REGISTERS: Record<OtherRegisterKey, Register> = {
  peeling: { title: 'SỔ THEO DÕI TÁCH MÚI', code: 'BM-GMP.06', dateKey: 'monitoredAt', fields: monitoringFields },
  deseeding: { title: 'SỔ THEO DÕI BỎ HẠT', code: 'BM-GMP.07', dateKey: 'monitoredAt', fields: monitoringFields },
  packing: { title: 'SỔ THEO DÕI ĐÓNG GÓI', code: 'Bộ cột tạm thời – chờ mẫu GMP chính thức', dateKey: 'packedAt', fields: [field('packedAt', 'Ngày giờ đóng gói', 'datetime-local'), lot, field('product', 'Tên sản phẩm'), field('packaging', 'Quy cách đóng gói'), field('quantity', 'Số lượng đóng gói', 'number'), field('weight', 'Khối lượng đóng gói (kg)', 'number'), field('toolsOk', 'Tình trạng vệ sinh dụng cụ, thiết bị (Đ/K)', 'check'), field('labelsOk', 'Tình trạng bao bì, tem nhãn (Đ/K)', 'check'), quality, correction, field('operator', 'Người thực hiện'), field('supervisor', 'Người giám sát')] },
- warehouse: { title: 'SỔ GIÁM SÁT NHẬP KHO TP', code: 'BM-GMP-09', dateKey: 'recordedAt', fields: [field('recordedAt', 'Thời gian', 'datetime-local'), lot, field('product', 'Sản phẩm'), field('quantityWeight', 'Số lượng/khối lượng'), field('appearanceOk', 'Đánh giá cảm quan'), field('storageTemperature', 'Nhiệt độ kho lạnh', 'number', { unit: '°C' }), field('operator', 'Người thực hiện')] },
- 'sales-monitoring': { title: 'SỔ GIÁM SÁT XUẤT BÁN', code: 'Sổ Theo dõi Nhập xuất kho Thành phẩm', dateKey: 'recordedAt', fields: [field('date', 'Ngày, tháng, năm', 'date'), field('recordedAt', 'Thời gian', 'datetime-local'), lot, field('product', 'Sản phẩm'), field('quantityWeight', 'Số lượng/khối lượng'), field('appearanceOk', 'Đánh giá cảm quan'), field('customer', 'Tên, địa chỉ KH'), field('transportOk', 'Đánh giá điều kiện vệ sinh phương tiện vận chuyển (Đ/K)', 'check'), field('operator', 'Người thực hiện')] },
+ warehouse: { title: 'SỔ GIÁM SÁT NHẬP KHO TP', code: 'BM-GMP-09', dateKey: 'recordedAt', fields: [field('recordedAt', 'Thời gian', 'datetime-local'), lot, field('product', 'Sản phẩm'), ...quantities, field('appearanceOk', 'Đánh giá cảm quan'), field('storageTemperature', 'Nhiệt độ kho lạnh', 'number', { unit: '°C' }), field('operator', 'Người thực hiện')] },
+ 'sales-monitoring': { title: 'SỔ GIÁM SÁT XUẤT BÁN', code: 'Sổ Theo dõi Nhập xuất kho Thành phẩm', dateKey: 'recordedAt', fields: [field('date', 'Ngày, tháng, năm', 'date'), field('recordedAt', 'Thời gian', 'datetime-local'), lot, field('product', 'Sản phẩm'), ...quantities, field('total','Giá trị (đ)','number'), field('appearanceOk', 'Đánh giá cảm quan'), field('customer', 'Tên, địa chỉ KH'), field('transportOk', 'Đánh giá điều kiện vệ sinh phương tiện vận chuyển (Đ/K)', 'check'), field('operator', 'Người thực hiện')] },
 };
 
 export type OtherRegisterState = OtherState & MonitorState;
@@ -55,15 +57,15 @@ export function otherRegisterRows(state: OtherRegisterState, book: OtherRegister
    values.dryStart = values.dryStart || (dryingInput(values.start) ? values.start : '');
    values.dryEnd = values.dryEnd || (dryingInput(values.end) ? values.end : '');
   }
-  return { id: r.id, sourceId: r.sourceId, lotCode, season: '', values, draft: !r.confirmed, sample: 'sample' in r && r.sample === true };
+  return { id: r.id, sourceId: r.sourceId, lotCode, season: '', values, draft: !r.confirmed, sourceBlocked:materialSources.some(s=>s.blocked), sample: 'sample' in r && r.sample === true };
  });
 }
 
 export function actualOtherRegisterRows(state: OtherRegisterState, book: OtherRegisterKey): OtherRegisterRow[] {
  const saved = otherRegisterRows(state, book).filter(r => !r.sample);
- if (book !== 'preprocessing') return saved;
  const usedCodes = new Set(saved.flatMap(r => r.lotCode.split(' / ')));
- return [...saved, ...receivingPreprocessingRows(state).filter(r => !usedCodes.has(r.lotCode))];
+ const pending=receivingPreprocessingRows(state).filter(r=>!usedCodes.has(r.lotCode)).map(r=>book==='preprocessing'?r:{...r,id:`receiving:${book}:${r.lotCode}`,values:{}});
+ return [...saved,...pending];
 }
 
 const hasValue = (v: unknown) => v !== undefined && v !== null && v !== '';
@@ -82,6 +84,7 @@ export function filterOtherRegisterRows(rows: GmpRecord[], book: OtherRegisterKe
 export function otherRegisterValue(column: OtherRegisterColumn, record: GmpRecord, index: number): string | number {
  if (column.key === 'serial') return index + 1;
  if (column.key === 'lotCode') return record.lotCode;
+ if (column.key === 'customer') { const customer=otherSaleCustomer(record.values); return [customer.name,customer.address].filter(Boolean).join('\n') || '—'; }
  if (column.key === 'quantityWeight') {
   if (hasValue(record.values.quantityWeight)) return String(record.values.quantityWeight);
   return [hasValue(record.values.quantity) ? Number(record.values.quantity).toLocaleString('vi-VN') : '', hasValue(record.values.weight) ? `${Number(record.values.weight).toLocaleString('vi-VN')} kg` : ''].filter(Boolean).join(' / ') || '—';

@@ -42,6 +42,7 @@ export function OtherRegisterForm({ book, sources, record, selectedCode, busy, e
   if (busy) return;
   const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
   const confirmed = submitter?.value !== 'draft';
+  if (confirmed && source?.blocked) return;
   const submitted = { ...values };
   if (book === 'preprocessing' && source) Object.assign(submitted, source.grades);
   await onSave({ book, materialCode, id: record?.sourceOnly ? undefined : record?.id, confirmed, values: submitted });
@@ -73,14 +74,15 @@ export function OtherRegisterForm({ book, sources, record, selectedCode, busy, e
        const label = field.unit ? `${field.label} (${field.unit})` : field.label;
        const textValue = field.type === 'datetime-local' ? dryingInput(value) : String(value);
        return <label key={field.key} className={`flex min-w-0 flex-col justify-end text-xs font-semibold leading-5 text-slate-600 ${field.key === 'correction' ? 'sm:col-span-2 lg:col-span-4' : ''}`}><span>{label}{required && <span className="text-rose-600"> *</span>}{inherited && ' · Từ Sổ Nhập hàng'}</span>
-        {field.type === 'check' ? <select className={control} required={required} value={String(value)} onChange={e => setValues(v => ({ ...v, [field.key]: e.target.value }))}><option value="">Chưa ghi nhận</option><option value="Đ">Đ — Đạt</option><option value="K">K — Không đạt</option></select> : field.key === 'correction' ? <textarea rows={3} className={control} value={String(value)} onChange={e => setValues(v => ({ ...v, [field.key]: e.target.value }))} /> : <input className={control} required={required} disabled={inherited} type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : field.type === 'datetime-local' ? 'datetime-local' : 'text'} min={field.type === 'number' && !field.key.startsWith('temperature') && field.key !== 'storageTemperature' ? 0 : undefined} step={field.type === 'number' ? field.key === 'quantity' ? 1 : '0.001' : undefined} value={textValue} onChange={e => setValues(v => ({ ...v, [field.key]: e.target.value }))} />}
+        {field.type === 'check' ? <select className={control} required={required} value={String(value)} onChange={e => setValues(v => ({ ...v, [field.key]: e.target.value }))}><option value="">Chưa ghi nhận</option><option value="Đ">Đ — Đạt</option><option value="K">K — Không đạt</option></select> : field.key === 'correction' ? <textarea rows={3} className={control} value={String(value)} onChange={e => setValues(v => ({ ...v, [field.key]: e.target.value }))} /> : <input className={control} required={required} disabled={inherited} type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : field.type === 'datetime-local' ? 'datetime-local' : 'text'} min={field.type === 'number' && !field.key.startsWith('temperature') && field.key !== 'storageTemperature' ? 0 : undefined} step={field.type === 'number' ? field.key === 'quantity' || field.key === 'total' ? 1 : '0.001' : undefined} value={textValue} onChange={e => setValues(v => ({ ...v, [field.key]: e.target.value }))} />}
        </label>;
       })}
      </div></fieldset>)}
     </fieldset>
+    {source?.blocked && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Nguồn nguyên liệu đang có sai khác với hồ sơ thu hoạch. Đối chiếu tại Sổ Nhập hàng trước khi xác nhận công đoạn; có thể lưu nháp.</p>}
     <p className="text-xs text-slate-500">Ngày giờ theo giờ Việt Nam. Lưu nháp khi chưa đủ thông tin; xác nhận khi đã hoàn tất kiểm tra.</p>
    </div>
-   <footer className="flex flex-wrap justify-end gap-2 border-t bg-slate-50 p-4"><button type="button" disabled={busy} className={button} onClick={onClose}>Hủy</button><button type="button" disabled={busy} className={button} onClick={onReload}>Tải lại sổ</button>{!record || record.sourceOnly || record.draft ? <button type="submit" value="draft" formNoValidate disabled={busy || !source} className={button}>Lưu nháp</button> : null}<button type="submit" value="confirm" disabled={busy || !source} className={`${button} border-emerald-600 bg-emerald-600 text-white`}>{busy ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}{record && !record.sourceOnly && !record.draft ? 'Lưu thay đổi' : 'Lưu & xác nhận'}</button></footer>
+   <footer className="flex flex-wrap justify-end gap-2 border-t bg-slate-50 p-4"><button type="button" disabled={busy} className={button} onClick={onClose}>Hủy</button><button type="button" disabled={busy} className={button} onClick={onReload}>Tải lại sổ</button>{!record || record.sourceOnly || record.draft ? <button type="submit" value="draft" formNoValidate disabled={busy || !source} className={button}>Lưu nháp</button> : null}<button type="submit" value="confirm" disabled={busy || !source || source.blocked} className={`${button} border-emerald-600 bg-emerald-600 text-white`}>{busy ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}{record && !record.sourceOnly && !record.draft ? 'Lưu thay đổi' : 'Lưu & xác nhận'}</button></footer>
   </form>
  </div></ModalPortal>;
 }

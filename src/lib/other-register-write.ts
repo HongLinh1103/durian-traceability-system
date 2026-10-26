@@ -1,3 +1,4 @@
+import { otherSaleFinanceId } from './processing-finance-sales';
 import { z } from 'zod';
 import { GMP_GRADES, Values } from './processing-gmp';
 import { dryingInput, dryingTimestamp } from './drying-time';
@@ -14,6 +15,7 @@ export function otherRegisterFormFields(book: OtherRegisterKey): OtherRegisterCo
  return OTHER_REGISTERS[book].fields.flatMap(field => {
   if (field.key === 'serial' || field.key === 'lotCode') return [];
   if (field.key === 'quantityWeight') return [{ key: 'quantity', label: 'Số lượng', type: 'number' as const }, { key: 'weight', label: 'Khối lượng (kg)', type: 'number' as const }];
+  if (book === 'sales-monitoring' && field.key === 'customer') return [{key:'customerName',label:'Tên doanh nghiệp'},{key:'customerAddress',label:'Địa chỉ khách hàng'}];
   if (field.key === 'appearanceOk') return [{ ...field, type: 'check' as const }];
   return [field];
  });
@@ -32,6 +34,7 @@ export function saveOtherRegister(state: OtherRegisterState, raw: unknown, id: s
  const input = otherRegisterInput.parse(raw);
  const source = otherMaterialSources(state).find(s => s.code === input.materialCode);
  if (!source) throw Error('Chọn mã CB đã được xác nhận tại Sổ Nhập hàng của cơ sở.');
+ if (input.confirmed && source.blocked) throw Error('Nguồn nguyên liệu đang có sai khác với hồ sơ thu hoạch. Cần đối chiếu tại Sổ Nhập hàng trước khi xác nhận công đoạn.');
  const existing = input.book === 'preprocessing' ? state.otherProcessing || [] : state.otherMonitoring || [];
  const old = input.id ? existing.find(r => r.id === input.id && r.book === input.book) : undefined;
  if (input.id && !old) throw Error('Không tìm thấy bản ghi trong sổ này.');
@@ -51,6 +54,7 @@ export function saveOtherRegister(state: OtherRegisterState, raw: unknown, id: s
    const n = Number(value);
    const negative = field.key.startsWith('temperature') || field.key === 'storageTemperature';
    if (!Number.isFinite(n) || (!negative && n < 0) || Math.abs(n) > 1e11) throw Error(`${field.label}: số liệu không hợp lệ.`);
+   if (field.key === 'total' && !Number.isSafeInteger(n)) throw Error('Giá trị (đ) phải là số nguyên không âm.');
    if (field.key === 'quantity' && !Number.isInteger(n)) throw Error('Số lượng phải là số nguyên.');
    if (Math.abs(n * 1000 - Math.round(n * 1000)) > 0.00001) throw Error(`${field.label}: tối đa 3 chữ số thập phân.`);
    values[field.key] = n;
@@ -101,6 +105,16 @@ export function saveOtherRegister(state: OtherRegisterState, raw: unknown, id: s
  }
  if (input.confirmed && ['packing', 'warehouse', 'sales-monitoring'].includes(input.book) && (Number(values.quantity) <= 0 || Number(values.weight) <= 0)) throw Error('Số lượng và khối lượng phải lớn hơn 0.');
  if (input.confirmed && input.book === 'sales-monitoring' && (values.appearanceOk !== 'Đ' || values.transportOk !== 'Đ')) throw Error('Chỉ xuất bán khi cảm quan sản phẩm và phương tiện vận chuyển đều đạt.');
+ if (input.book === 'sales-monitoring') {
+  values.customer=[values.customerName,values.customerAddress].filter(Boolean).join('\n');
+  if (old?.values.valueOrigin && Number(old.values.total) === Number(values.total)) {
+   values.valueOrigin=old.values.valueOrigin;
+   if (old.values.valueNote) values.valueNote=old.values.valueNote;
+  }
+  const receipts=state.payments.filter(p=>p.recordId===otherSaleFinanceId(old?.id || id));
+  if (receipts.reduce((sum,p)=>sum+p.amount,0)>Number(values.total || 0)) throw Error('Giá trị xuất bán không được thấp hơn số tiền đã thu.');
+  if (receipts.some(p=>p.date < String(values.date || ''))) throw Error('Ngày xuất bán không được sau ngày đã thu tiền.');
+ }
  const auditEvent = { actor, at: now, values: { ...values }, confirmed: input.confirmed, action: old ? 'UPDATE' : 'CREATE', origin, ...(origin === 'IMPORTED_PREVIEW' ? { note: 'Nhập bộ dữ liệu khởi tạo theo yêu cầu; nguồn ban đầu là dữ liệu minh họa, chưa xác minh phép đo thực tế.' } : {}) };
  const record = { id: old?.id || id, book: input.book, sourceId: source.id, lotCode: source.code, confirmed: input.confirmed, values };
  const next: OtherRegisterState = input.book === 'preprocessing'

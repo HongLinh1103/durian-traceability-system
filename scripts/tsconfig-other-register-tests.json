@@ -10,6 +10,6 @@
     "rootDir": "..",
     "jsx": "react-jsx"
   },
-  "include": ["test-other-registers.ts", "test-other-register-write.ts", "test-other-register-cleanup.ts", "../src/types/**/*.d.ts"],
+  "include": ["test-other-registers.ts", "test-other-register-write.ts", "test-other-register-cleanup.ts", "test-other-finance.tsx", "../src/types/**/*.d.ts"],
   "exclude": ["../node_modules"]
 }

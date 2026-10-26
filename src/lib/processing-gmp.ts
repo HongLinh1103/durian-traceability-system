@@ -1,3 +1,4 @@
+import { processingFinanceSales } from './processing-finance-sales';
 import { parseSalesContact, contactName, contactPhone } from './sales-contact';
 import { isCertificateLink } from './processing-certificate';
 import { dryingTimestamp } from './drying-time';
@@ -1162,7 +1163,7 @@ export function saveRecord(state: GmpState, stage: Stage, input: { id?: string; 
 export function addPayment(state: GmpState, p: Payment): GmpState {
     if (!['Chuyển khoản', 'Tiền mặt'].includes(p.method)) throw new Error('Phương thức thanh toán không hợp lệ.');
     const stage = p.direction === 'IN' ? 'sales' : 'purchases';
-    const r = state.records[stage].find(r => r.id === p.recordId);
+    const r = (p.direction === 'IN' ? processingFinanceSales(state) : state.records.purchases).find(r => r.id === p.recordId);
     if (r?.draft) throw new Error('Vui lòng hoàn tất chứng từ trước khi thanh toán.');
     if (!r || !['IN', 'OUT'].includes(p.direction)) throw new Error('Chứng từ thanh toán không hợp lệ.');
     const total = Math.round(Number(r.values.total ?? (stage === 'sales' ? Number(r.values.price) * Number(r.values.weight_kg) : Number(r.values.total))));

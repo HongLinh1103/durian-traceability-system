@@ -40,8 +40,8 @@ async function main() {
  assert.equal(otherRegisterRows(state, 'packing').length, 0, 'Do not automatically migrate legacy packaging records');
  assert.deepEqual(otherBooks.map(b => b.key), [...OTHER_REGISTER_KEYS]);
  assert.deepEqual(freshBooks.map(b => b.key), ['preprocessing', 'packaging', 'inspection', 'sales', 'aftersales']);
- assert.equal(OTHER_REGISTERS.warehouse.fields.length, 7);
- assert.equal(OTHER_REGISTERS['sales-monitoring'].fields.length, 9);
+ assert.equal(OTHER_REGISTERS.warehouse.fields.length, 8);
+ assert.equal(OTHER_REGISTERS['sales-monitoring'].fields.length, 11);
  assert.equal(OTHER_REGISTERS.packing.fields.length, 12);
  assert.equal(OTHER_REGISTERS.preprocessing.fields.find(f => f.key === 'lotCode')!.label, 'Mã lô NL');
  const receivingState = structuredClone(state);

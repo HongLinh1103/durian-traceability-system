@@ -1,4 +1,6 @@
 'use client';
+import { processingFinanceSales, salesSubsystemLabel } from '@/lib/processing-finance-sales';
+import { SalesSubsystemBadge } from './sales-subsystem-badge';
 import { SalesContactField } from './sales-contact-field';
 import { parseSalesContact } from '@/lib/sales-contact';
 import { dryingInput, dryingDuration, formatDryingTime } from '@/lib/drying-time';
@@ -233,6 +235,10 @@ export function ProcessingGmpView({ screen, embedded = false }: { screen: Screen
           }
         }
       }
+      if (screen === 'finance') for (const sale of processingFinanceSales(state)) {
+        const day = String(sale.values.date || '');
+        if (!sale.draft && /^\d{4}-\d{2}/.test(day)) months.add(day.slice(0,7));
+      }
       for (const e of state.expenses || []) {
         const d = String(e.date || '');
         if (/^\d{4}-\d{2}/.test(d)) {
@@ -244,7 +250,7 @@ export function ProcessingGmpView({ screen, embedded = false }: { screen: Screen
     const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     months.add(currentYm);
     return Array.from(months).sort((a, b) => b.localeCompare(a));
-  }, [state]);
+  }, [state, screen]);
   async function exportRegister() {
     if (!stage || !config) return;
     setBusy(true); setError('');
@@ -1001,7 +1007,8 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState('');
   const [exportError, setExportError] = useState('');
 
-  const sales = state.records.sales
+  const financeSales = useMemo(()=>processingFinanceSales(state),[state]);
+  const sales = financeSales
     .filter(r => !r.draft && matches(r, filter))
     .sort((a, b) => String(b.values?.date || '').localeCompare(String(a.values?.date || '')));
   const purchases = state.records.purchases
@@ -1010,7 +1017,7 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
   const total = (r: GmpRecord) => Number(r.values.total ?? Number(r.values.weight_kg) * Number(r.values.price));
   const paid = (r: GmpRecord) => state.payments.filter(p => p.recordId === r.id).reduce((s, p) => s + p.amount, 0);
   const payments = state.payments
-    .filter(p => (!filter.from || p.date >= filter.from) && (!filter.to || p.date <= filter.to) && [...state.records.purchases, ...state.records.sales].some(r => r.id === p.recordId && (!filter.season || r.season === filter.season) && (!filter.query || matches(r, { ...filter, from: '', to: '' }))))
+    .filter(p => (!filter.from || p.date >= filter.from) && (!filter.to || p.date <= filter.to) && [...state.records.purchases, ...financeSales].some(r => r.id === p.recordId && (!filter.season || r.season === filter.season) && (!filter.query || matches(r, { ...filter, from: '', to: '' }))))
     .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
 
   const rawExpenses = state.expenses || [];
@@ -1055,7 +1062,7 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
   const cashFlowItems: CashFlowItem[] = useMemo(() => {
     const paymentItems: CashFlowItem[] = payments.map(p => {
       const isSales = p.direction === 'IN';
-      const linkedRecord = (isSales ? state.records.sales : state.records.purchases).find(r => r.id === p.recordId);
+      const linkedRecord = (isSales ? financeSales : state.records.purchases).find(r => r.id === p.recordId);
       const lotCode = isSales ? linkedRecord?.lotCode || '' : String(linkedRecord?.values.purchaseCode || linkedRecord?.lotCode || '');
       const partner = isSales ? String(linkedRecord?.values?.customer || '') : String(linkedRecord?.values?.seller || '');
       return {
@@ -1092,7 +1099,7 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
       }
       return a.id.localeCompare(b.id);
     });
-  }, [payments, expenses, state.records.purchases, state.records.sales]);
+  }, [payments, expenses, state.records.purchases, financeSales]);
 
   const receivable = sales.reduce((s, r) => s + total(r) - paid(r), 0); const payable = purchases.reduce((s, r) => s + total(r) - paid(r), 0);
   const sumSales = sales.reduce((s, r) => s + total(r), 0); const sumPurchases = purchases.reduce((s, r) => s + total(r), 0);
@@ -1111,9 +1118,9 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
     setExporting(true); setExportError('');
     try {
       const { buildFinanceWorkbook, financeExcelDate } = await import('@/lib/processing-finance-export');
-      const salesHeaders = ['Ngày', 'Mã số lô hàng', 'Đối tác', 'Giá trị (đ)', 'Đã thanh toán (đ)', 'Còn lại (đ)', 'Trạng thái'];
+      const salesHeaders = ['Ngày', 'Mã số lô hàng', 'Phân hệ xuất bán', 'Đối tác', 'Giá trị (đ)', 'Đã thanh toán (đ)', 'Còn lại (đ)', 'Trạng thái'];
       const salesRows = sales.map(r => [
-        financeExcelDate(r.values.date), r.lotCode, String(r.values.customer || ''),
+        financeExcelDate(r.values.date), r.lotCode, salesSubsystemLabel(r), String(r.values.customer || ''),
         total(r), paid(r), Math.max(0, total(r) - paid(r)),
         total(r) <= paid(r) ? 'Đã thu đủ' : paid(r) > 0 ? 'Thanh toán một phần' : 'Chưa thanh toán',
       ]);
@@ -1141,7 +1148,7 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
         ];
       });
       const bytes = await buildFinanceWorkbook([
-        { name: tabs[0], headers: salesHeaders, rows: salesRows, moneyColumns: [4, 5, 6] },
+        { name: tabs[0], headers: salesHeaders, rows: salesRows, moneyColumns: [5, 6, 7] },
         { name: tabs[1], headers: purchaseHeaders, rows: purchaseRows, moneyColumns: [7, 8, 9] },
         {
           name: tabs[2], headers: ['Ngày', 'Mã chi phí', 'Nhóm chi phí', 'Nội dung', 'Lô hàng liên quan', 'Phương thức', 'Số tiền (đ)'],
@@ -1164,10 +1171,10 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
       return <button type="button" key={name} aria-pressed={tab === i} onClick={() => setTab(i)} className={"flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-center text-xs font-bold leading-tight transition sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm " + (tab === i ? "bg-brand-600 text-white shadow-soft" : "text-slate-600 hover:bg-brand-50 hover:text-brand-700")}><Icon aria-hidden="true" className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" /><span>{name}</span></button>;
     })}
   </nav><section className="overflow-hidden rounded-2xl border bg-white">
-      {tab < 2 && <div className="overflow-x-auto"><table className={`w-full ${tab === 1 ? 'min-w-[1300px]' : 'min-w-[850px]'} text-left text-sm border-collapse border border-slate-300`}><thead className="bg-slate-100/90 text-xs text-slate-700">
+      {tab < 2 && <div className="overflow-x-auto"><table className={`w-full ${tab === 1 ? 'min-w-[1300px]' : 'min-w-[1100px]'} text-left text-sm border-collapse border border-slate-300`}><thead className="bg-slate-100/90 text-xs text-slate-700">
         <tr>
           {tab === 0 ? (
-            ['Ngày xuất bán', 'Mã số lô hàng', 'Đối tác', 'Giá trị (đ)', 'Đã thanh toán (đ)', 'Còn lại (đ)', 'Ngày thanh toán', 'Trạng thái', 'Thao tác'].map(h => (
+            ['Ngày xuất bán', 'Mã số lô hàng', 'Phân hệ xuất bán', 'Đối tác', 'Giá trị (đ)', 'Đã thanh toán (đ)', 'Còn lại (đ)', 'Ngày thanh toán', 'Trạng thái', 'Thao tác'].map(h => (
               <th className={`border border-slate-300 px-4 py-3 font-semibold text-center ${h === 'Mã số lô hàng' ? 'w-[135px] whitespace-nowrap' : ''}`} key={h}>{h}</th>
             ))
           ) : (
@@ -1196,8 +1203,9 @@ function Finance({ company, month, state, filter, busy, mutate, exporting, setEx
               <tr key={r.id} className="hover:bg-slate-50/70 transition">
                 <td className="border border-slate-200 px-4 py-3 text-center whitespace-nowrap font-medium text-slate-700">{formatDateVN(r.values.date)}</td>
                 <td className="border border-slate-200 px-3 py-3 font-semibold text-emerald-700 whitespace-nowrap text-center font-mono w-[135px]">{r.lotCode}</td>
+                {tab === 0 && <td className="border border-slate-200 px-3 py-3 text-center"><SalesSubsystemBadge other={r.values.salesSubsystem === 'OTHER'} /></td>}
                 <td className={`border border-slate-200 ${tab === 1 ? 'px-3 py-3 font-normal text-slate-900 whitespace-nowrap' : 'px-4 py-3'}`}>
-                  {tab === 0 ? String(r.values.customer || '—') : String(r.values.seller || '—')}
+                  {tab === 0 ? <div><span className={r.values.salesSubsystem === 'OTHER' ? 'font-semibold' : ''}>{String(r.values.customer || '—')}</span>{r.values.salesSubsystem === 'OTHER' && r.values.customerAddress && <span className="mt-1 block text-xs font-normal text-slate-500">{String(r.values.customerAddress)}</span>}</div> : String(r.values.seller || '—')}
                 </td>
                 {tab === 1 && (
                   <>

@@ -106,9 +106,19 @@ async function main() {
   assert.equal(persisted.state.otherMonitoring.filter(r => r.book === 'sales-monitoring').length, 2);
   const rejected = await fetch(base + '/api/processing/other-registers', { method: 'POST', headers: { Cookie: wrongRole, 'Content-Type': 'application/json' }, body: JSON.stringify({ revision, record }) });
   assert.equal(rejected.status, 403);
+  await prisma.partnerFacility.create({data:{ownerId:id,type:'PROCESSING_FACILITY',name:'Temporary HTTP fixture',code:id,representativeName:'HTTP test',representativePhone:id,identityNumber:id,organizationType:'Test',phone:id,address:'Local test',province:'Test',status:'APPROVED'}});
+  const financeSource=persisted.state.otherMonitoring.find(r=>r.book==='sales-monitoring');
+  const financeUpdate=await post({revision:persisted.revision,record:{book:'sales-monitoring',id:financeSource.id,materialCode,confirmed:true,values:{...financeSource.values,customerName:'Công ty kiểm thử HTTP',customerAddress:'Địa chỉ kiểm thử local',total:10000000}}});
+  assert.equal(financeUpdate.status,200,await financeUpdate.text());
+  const financeState=await(await fetch(base+'/api/processing/gmp',{headers:fixtureHeaders})).json();
+  const payment=await fetch(base+'/api/processing/gmp',{method:'POST',headers:fixtureHeaders,body:JSON.stringify({action:'payment',revision:financeState.revision,payment:{recordId:'other-sale:'+financeSource.id,direction:'IN',date:'2026-10-26',amount:500000,method:'Chuyển khoản'}})});
+  const paid=await payment.json();assert.equal(payment.status,200,JSON.stringify(paid));assert.equal(paid.state.payments.at(-1).recordId,'other-sale:'+financeSource.id);
+  const paidRow=await prisma.processingGmpWorkspace.findUniqueOrThrow({where:{ownerId:id}});assert.equal(paidRow.data.records.sales.length,0,'CB receipt does not create a fresh sale');assert.equal(paidRow.data.payments.length,1);
+  console.log('PASS HTTP finance: CB sale value persists and accepts receipt through the shared finance API without duplicating a fresh sale');
   console.log('PASS HTTP: eight persisted tables and enabled forms; all eight POSTs read back from DB; audit, tenant isolation, stale revisions, concurrent stock limits and fresh routes');
  } finally {
   if (fixtureId) {
+   await prisma.partnerFacility.deleteMany({where:{ownerId:fixtureId}});
    await prisma.processingGmpWorkspace.deleteMany({ where: { ownerId: fixtureId } });
    await prisma.user.deleteMany({ where: { id: fixtureId } });
   }

@@ -158,7 +158,7 @@ export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], region
     regions?: RegionSource[];
     onDetail?: (record: GmpRecord) => void;
     onEdit?: (record: GmpRecord) => void;
-    presentation?: { title: string; code: string; fields: Field[]; widths?: number[]; actionWidth?: number; fitDesktop?: boolean; emptyMessage: string; renderValue: (field: Field, record: GmpRecord, index: number) => ReactNode };
+    presentation?: { title: string; code: string; fields: Field[]; widths?: number[]; actionWidth?: number; fitDesktop?: boolean; align?: 'center'; emptyMessage: string; renderValue: (field: Field, record: GmpRecord, index: number) => ReactNode };
 }) {
     const config = presentation || REGISTERS[stage];
     const { width } = layout[stage];
@@ -217,7 +217,7 @@ export function ProcessingGmpRegisterTable({ stage, rows, purchases = [], region
                                     key={field.key}
                                     className={`border border-slate-200 ${presentation || isCompact ? 'px-1.5 py-2.5' : 'px-3 py-2.5'} align-middle leading-snug ${isOrigin
                                         ? 'text-left min-w-[240px] max-w-sm whitespace-normal'
-                                        : `${presentation ? 'whitespace-normal break-words [overflow-wrap:anywhere]' : 'whitespace-nowrap'} ${isRight ? 'text-right' : isCenter ? 'text-center' : 'text-left'}`
+                                        : `${presentation ? 'whitespace-normal break-words [overflow-wrap:anywhere]' : 'whitespace-nowrap'} ${presentation?.align === 'center' ? 'text-center' : isRight ? 'text-right' : isCenter ? 'text-center' : 'text-left'}`
                                         }`}
                                 >
                                     {presentation ? presentation.renderValue(field, record, index) : field.key === 'purchaseCode' ? (() => {

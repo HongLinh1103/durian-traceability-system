@@ -1,5 +1,6 @@
 'use client';
 
+import { otherSaleCustomer } from '@/lib/processing-finance-sales';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Download, Loader2, Plus, RefreshCw, Search } from 'lucide-react';
 import Link from 'next/link';
@@ -91,10 +92,11 @@ export function OtherRegisterView({ book, initialState, initialRevision = 0 }: {
   </section>
   <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white" aria-busy={loading}>
    <div className="flex items-center justify-between border-b px-5 py-3 text-sm text-slate-500"><span role="status">{loading ? 'Đang tải dữ liệu…' : `${rows.length} bản ghi`}</span><button type="button" className={button} aria-label="Tải lại dữ liệu" disabled={loading} onClick={() => void load()}><RefreshCw size={16} /></button></div>
-   <ProcessingGmpRegisterTable stage="preprocessing" rows={loading ? [] : rows} onEdit={record => { setError(''); setNotice(''); setEditing(record); }} presentation={{ ...config, ...columnLayout, emptyMessage: loading ? 'Đang tải dữ liệu…' : error ? 'Chưa tải được dữ liệu.' : 'Chưa có bản ghi phù hợp. Điều chỉnh bộ lọc hoặc thêm bản ghi.', renderValue: (field, record, index) => {
+   <ProcessingGmpRegisterTable stage="preprocessing" rows={loading ? [] : rows} onEdit={record => { setError(''); setNotice(''); setEditing(record); }} presentation={{ ...config, ...columnLayout, align:'center', emptyMessage: loading ? 'Đang tải dữ liệu…' : error ? 'Chưa tải được dữ liệu.' : 'Chưa có bản ghi phù hợp. Điều chỉnh bộ lọc hoặc thêm bản ghi.', renderValue: (field, record, index) => {
     const value = otherRegisterValue(field as OtherRegisterColumn, record, index);
     const row = record as OtherRegisterRow;
-    if (field.key === 'lotCode') return <div className="space-y-1"><Link href="/dashboard/processing/grading" className="font-mono font-bold text-emerald-700 hover:underline" title="Đối chiếu mã CB tại Sổ Nhập hàng">{value}</Link>{row.sourceOnly && <span className="block text-xs text-slate-500">Đã tiếp nhận · Chưa ghi nhận sơ chế</span>}</div>;
+    if (field.key === 'lotCode') return <div className="space-y-1"><Link href="/dashboard/processing/grading" className="font-mono font-bold text-emerald-700 hover:underline" title="Đối chiếu mã CB tại Sổ Nhập hàng">{value}</Link>{row.sourceBlocked ? <span className="block text-xs text-amber-700">Chờ đối chiếu nguồn</span> : row.draft && <span className="block text-xs text-slate-500">Chờ ghi nhận</span>}</div>;
+    if (field.key === 'customer') {const customer=otherSaleCustomer(record.values);return <div className="space-y-1 text-center"><strong className="block font-bold">{customer.name || '—'}</strong>{customer.address && <span className="block font-normal text-slate-600">{customer.address}</span>}</div>;}
     if (field.key === 'product') return <span>{value}</span>;
     if (value === 'Đ' || value === 'K') return <span title={value === 'Đ' ? 'Đạt' : 'Không đạt'} className={`inline-flex h-7 min-w-7 items-center justify-center rounded-md border px-2 font-bold ${value === 'Đ' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>{value}</span>;
     return <span className={field.key === 'lotCode' ? 'font-mono font-bold text-emerald-700' : value === '—' ? 'text-slate-400' : ''}>{typeof value === 'number' ? value.toLocaleString('vi-VN') : value}</span>;
